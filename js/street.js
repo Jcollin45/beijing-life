@@ -2386,10 +2386,20 @@ const Street = Lazy('Street', () => {
     }
     lamp(RD0 - 1.9, -9.0); lamp(RD0 - 1.9, 5.0); lamp(RD1 + 1.9, -3.0); lamp(RD1 + 1.9, 11.0);
     lamp(-8.0, -2.3, 1); lamp(12.0, -2.3, 1);
-    tree(RD0 - 2.1, -5.2, 1.1, false); tree(RD0 - 2.1, 9.4, 1.0, false);
+    // -5.2 → 6.5. This is the same fault as the tree that used to stand at x 4.6 in the alley:
+    // at (25.4, -5.2) its crown filled the view of 药店's door and fascia from every position on
+    // the footway south of it. 6.5 is opposite the alley mouth, where the west side has no
+    // frontage at all and a tree is just a tree.
+    tree(RD0 - 2.1, 6.5, 1.1, false); tree(RD0 - 2.1, 9.4, 1.0, false);
     tree(RD1 + 2.1, -8.0, 1.05, false); tree(RD1 + 2.1, 6.0, 1.15, false);
 
-    const bsx = RD0 - 2.6, bsz = -12.0;
+    // The shelter is at the KERB now, not the back of the footway. 北京银行 skins the corner
+    // block's east elevation at z -11.40 .. -7.10 (js/street-bank.js) and this shelter is 7.30 m
+    // of glass centred on z -12.0 — at RD0 - 2.6 it stood squarely across the branch's own
+    // frontage. RD0 - 1.35 puts its glass at 26.99, 29 cm inside the kerb face at 27.28, and
+    // leaves a 1.0 m lane between it and the shop windows, which is where a pavement's walking
+    // room actually is: shops at the back, shelter at the kerb, people between.
+    const bsx = RD0 - 1.35, bsz = -12.0;
     box(bsx, 3.05, bsz, 1.90, .16, 7.40, col.steelD, { hard: true, gloss: .36 });
     box(bsx - .1, 3.18, bsz, 2.10, .06, 7.60, col.steel, { hard: true, gloss: .44 });
     for (const oz of [-3.4, 0, 3.4])
