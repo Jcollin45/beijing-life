@@ -1,3 +1,29 @@
+## The game is read off the live site, not off this machine
+
+**Canonical URL: https://jcollin45.github.io/beijing-life/** — that is where the owner and anyone
+else looks at the game. A local `serve.py` on :8000 is a scratch pad for a change in progress; it
+is not the thing being reviewed. Nothing is "done" until it is live there.
+
+- **Publishing is `git push`.** Repo `git@github.com:Jcollin45/beijing-life.git`, branch `main`,
+  Pages serves `main` at `/ (root)`. Measured 2026-08-09: the site went live 60 s after the branch
+  landed. Commit and push as part of finishing work, not as a separate errand afterwards.
+- **Every asset path must stay relative.** The site is served from the `/beijing-life/` subpath, so
+  a leading-slash path like `/assets/foo.glb` resolves locally and 404s in production. Verified
+  clean at the initial commit; it is the easiest way to break the deploy and it will not show up
+  on :8000.
+- **`.nojekyll` must stay at the root.** Without it Jekyll drops `assets/_staging/` and
+  `_probe.html` for their leading underscores — silently, with no build error.
+- **`.gitignore` ships only `index.html`, `js/`, `assets/`, `audio/` and the docs.** `art/` (783 MB
+  of concept art) and every root dot-directory (3.9 GB of caches and QA output) are excluded. A new
+  runtime asset placed outside those four paths will be missing in production and present locally —
+  check `git status` before assuming a push carried it.
+- **Cost of the loop:** verifying against the live site costs a push plus roughly a minute of build.
+  Iterate on :8000, but confirm on the URL above before reporting anything as working.
+
+Measured payload 2026-08-09: 723 MB in the repo, 5.6 MB to reach the title screen, 28.9 MB to boot
+into gameplay with 9 rigs streamed. Rigs load on demand (`js/assets.js:1092`), so repo size is not
+first-load size. Pages caps a published site at 1 GB — `art/` cannot be added back.
+
 ## Art direction and asset downloads
 See `ART.md` at the repo root. It is the single visual language every room is built against
 (target: Sims 3 *staging*, not Sims 3 fidelity), and it holds the material kit, the surface
