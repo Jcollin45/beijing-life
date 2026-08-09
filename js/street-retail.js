@@ -1074,7 +1074,7 @@
     // reads `HOURS` and formats it, so a plate is incapable of disagreeing with the hour its own
     // shop's lights go off. That is the whole reason the table was rounded to the half hour when
     // these went up — see the note on `HOURS`.
-    hoursPlate(10.20, 1.60, EZ + .085, 'shop');       // white frontage face -2.88, east of the door
+    hoursPlate(4.72, 1.60, EZ + .085, 'shop');        // the 40 cm white pier west of window 1
     hoursPlate(-6.27, 1.60, EZ + .205, 'noodle');     // the 34 cm pier between window 2 and the jamb
     hoursPlate(19.72, 1.86, HWG + .012, 'hardw');     // the 22 cm slot between unit B's jamb and C
     hoursPlate(40.405, 1.70, -6.35, 'mall', -Math.PI / 2);   // the stone north of the mall glazing
@@ -1103,13 +1103,20 @@
     // course. These add a fourth, fifth and sixth *object* and a zeroth chicane, because every
     // one of them stands entirely inside the strip the body cannot reach:
     //
-    //   x 10.30  front face -2.512   45.9 cm north of the body's limit at -2.05
+    //   x 8.05   front face -2.511   46.1 cm north of the body's limit at -2.05
     //   x -8.35  front face -2.402   35.2 cm      (2.4 cm clear of 面馆's tiled stallriser)
     //   x 12.55  front face -2.422   37.2 cm      (3.4 cm clear of the block's plinth at -2.74)
     //
+    // The 超市's board, its hours plate and its number plate were all at x 10.20-10.45 and all
+    // three were INVISIBLE, which a live render caught and no amount of arithmetic would have:
+    // street.js:1716 puts the blue service door to the flat above at x 10.04 .. 11.06, standing
+    // 34 cm proud of the wall, and it covered the lot. The board is west of the door now, in the
+    // 25 cm between the shop's third crate (which ends at 7.80) and the glass door's reveal (which
+    // starts at 8.42); the two plates are on the 40 cm of white pier west of window 1.
+    //
     // No `solid`, no `blocker`, and the narrowest run in the district is still the 1.21 m beside
     // the fruit trike, untouched by any of the three.
-    aBoard(10.30, -2.55, '今日特价', ['鸡蛋 四块五', '青菜 两块'], REDD);
+    aBoard(8.05, -2.55, '今日特价', ['鸡蛋 四块五', '青菜 两块'], REDD);
     aBoard(-8.35, -2.44, '本店招牌', ['牛肉面 十八', '加面 免费'], C('#8a2f2f'));
     aBoard(12.55, -2.46, '五金电器', ['水暖 电料', '开锁 换锁'], C('#1f4f8f'));
 
@@ -1117,7 +1124,7 @@
     // even numbers on the block side, rising eastward, with the 单元门's own 十八号 between the
     // noodle shop and the 超市 where it already is.
     numPlate(-9.38, 2.30, EZ + .205, '十四号');    // 老李面馆
-    numPlate(10.45, 2.30, EZ + .085, '二十号');    // 幸福超市
+    numPlate(4.72, 2.32, EZ + .085, '二十号');     // 幸福超市
     numPlate(22.10, 1.30, HWW + .012, '二十四号'); // 五金电器, on the corner block's return
 
     // ---- D3. Two more 竖幅, which street.js's own comment calls "the vertical kind on every
