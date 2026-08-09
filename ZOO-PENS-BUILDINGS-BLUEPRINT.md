@@ -2,7 +2,7 @@
 
 Status: **construction-ready** · revision **1** · parent zoo revision **2**
 
-Content hash: `sha256:4358f077f28d051227540ead947098a38ac17691eeeec6735c0df104fa18a027`
+Content hash: `sha256:cb8cd1ea95de8bd4df7f9904b93d440eef0ccf4062bf81ddf9818b65903acc3c`
 
 This document is the human-readable companion to `ZOO-PENS-BUILDINGS-BLUEPRINT.json`. The JSON is canonical. Load it only after the parent revision/hash matches `ZOO-EXPANSION-BLUEPRINT.json`.
 
@@ -20,8 +20,9 @@ This document is the human-readable companion to `ZOO-PENS-BUILDINGS-BLUEPRINT.j
 - 21 outdoor habitats: 7 preserved core + 14 expansion habitats
 - 9 site buildings/structures
 - 7 Tropical House rooms/exhibits
-- 399 exact content records; 227 are additive build-v1 placements
+- 409 exact content records; 237 are additive build-v1 placements
 - 31 material definitions and 30 construction archetypes
+- 8 local outdoor fixture interactions extend the parent thing cap from 75 to 83
 
 ## Build sequence
 
@@ -141,6 +142,7 @@ Bounds: `[6, 16, -2.5, 4]` · public side: `x0` · species: 大象
 | H04/O06 | scrub post | at (9.3, 0, -0.8) · size (0.42 × 2.4 × 0.42) | M-TIMBER-DARK | none | build-v1 | skin care and enrichment |
 | H04/O07 | keeper safety square | at (15.25, 0.02, 2.6) · size (1 × 0.02 × 1) | M-CONCRETE | none | build-v1 | east service-gate landing |
 | H04/O08 | habitat camera | at (6.55, 0, 3.45) · size (0.24 × 4 × 0.24) | M-STEEL-DARK | none | build-v1 | welfare monitoring |
+| H04/O09 | wallow overflow drain | at (14.35, -0.23, 0.75) · size (0.45 × 0.03 × 0.45) | M-STEEL | none | build-v1 | mud-wallow level control and washout |
 
 Animal population/activity anchors:
 
@@ -165,6 +167,7 @@ Bounds: `[-13, -5, 7, 13.5]` · public side: `z0` · species: 猴子
 | H05/O08 | keeper feed basket | at (-11.6, 0, 11.8) · size (0.75 × 0.32 × 0.55) | M-FOOD-STEEL | none | build-v1 | scatter-feed staging |
 | H05/O09 | keeper safety square | at (-12.1, 0.02, 12.75) · size (0.9 × 0.02 × 0.9) | M-CONCRETE | none | build-v1 | north service-gate landing |
 | H05/O10 | habitat camera | at (-5.5, 0, 12.9) · size (0.22 × 3.6 × 0.22) | M-STEEL-DARK | none | build-v1 | welfare monitoring |
+| H05/O11 | moat filtration intake | at (-11.85, -0.53, 8.1) · size (0.45 × 0.03 × 0.45) | M-STEEL | none | build-v1 | water circulation and safe draw-down |
 
 Animal population/activity anchors:
 
@@ -188,6 +191,7 @@ Bounds: `[1, 10, 7, 13.5]` · public side: `z0` · species: 老虎
 | H06/O06 | meat feed hatch | at (8.7, 0, 12) · size (0.95 × 0.3 × 0.65) | M-FOOD-STEEL | none | build-v1 | protected feeding station |
 | H06/O07 | keeper safety square | at (8.3, 0.02, 12.75) · size (1 × 0.02 × 1) | M-CONCRETE | none | build-v1 | north service-gate landing |
 | H06/O08 | habitat camera | at (1.45, 0, 12.95) · size (0.22 × 3.6 × 0.22) | M-STEEL-DARK | none | build-v1 | welfare monitoring |
+| H06/O09 | cooling-pool drain | at (2.4, -0.27, 8.35) · size (0.38 × 0.03 × 0.38) | M-STEEL | none | build-v1 | pool filtration and cleaning |
 
 Animal population/activity anchors:
 
@@ -321,6 +325,8 @@ Bounds: `[-34, -24, 26, 37]` · public side: `x0` · species: 雪豹
 | H21/OPS02 | high lookout ledge | at (-31.6, 0, 34.8) · size (1.8 × 1.5 × 1) | M-ROCK | none | build-v1 | elevated resting |
 | H21/OPS03 | keeper safety square | at (-24.65, 0.02, 34) · size (0.8 × 0.02 × 1) | M-CONCRETE | none | build-v1 | dry service landing |
 | H21/OPS04 | habitat camera | at (-33.5, 0, 26.5) · size (0.22 × 3.5 × 0.22) | M-STEEL-DARK | none | build-v1 | den and shelf monitoring |
+| H21/OPS05 | heated alpine drinker | at (-33.4, 0, 26.6) · size (1 × 0.26 × 0.7) | M-ROCK | none | build-v1 | freeze-protected drinking water |
+| H21/OPS06 | meltwater drainage channel | at (-29.5, 0.01, 26.25) · size (3 × 0.03 × 0.35) | M-STEEL | none | build-v1 | keeps the rock shelf dry and ice-free |
 
 Animal population/activity anchors:
 
@@ -342,6 +348,8 @@ Bounds: `[-34, -24, 43, 52]` · public side: `x1` · species: 小熊猫
 | H30/OPS02 | canopy mist nozzle | at (-28, 3.7, 50.4) · size (0.18 × 0.18 × 0.18) | M-STEEL | none | build-v1 | summer cooling mist |
 | H30/OPS03 | keeper safety square | at (-33.4, 0.02, 49) · size (0.9 × 0.02 × 1) | M-CONCRETE | none | build-v1 | service-gate landing |
 | H30/OPS04 | habitat camera | at (-24.5, 0, 43.5) · size (0.22 × 3.8 × 0.22) | M-STEEL-DARK | none | build-v1 | canopy monitoring |
+| H30/OPS05 | shallow stone drinker | at (-25, 0, 51.3) · size (0.9 × 0.2 × 0.65) | M-ROCK | none | build-v1 | fresh drinking water beneath the canopy |
+| H30/OPS06 | misting runoff drain | at (-32, 0.01, 52) · size (0.42 × 0.03 × 0.42) | M-STEEL | none | build-v1 | prevents saturated forest substrate |
 
 Animal population/activity anchors:
 
@@ -431,6 +439,8 @@ Bounds: `[24, 36.5, -10, 15]` · public side: `x0` · species: 亚洲象
 | H40/OPS02 | sand pile | at (34.5, 0, 12.7) · size (2 × 0.75 × 1.8) | M-SAND | none | build-v1 | dusting enrichment |
 | H40/OPS03 | keeper safety square | at (24.7, 0.02, -7.7) · size (1.1 × 0.02 × 1.3) | M-CONCRETE | none | build-v1 | service-gate landing |
 | H40/OPS04 | habitat camera | at (36, 0, 14.5) · size (0.24 × 4.2 × 0.24) | M-STEEL-DARK | none | build-v1 | reserve monitoring |
+| H40/OPS05 | pool filtration intake | at (27.2, -0.7, -5.5) · size (0.55 × 0.03 × 0.55) | M-STEEL | none | build-v1 | main pool filtration and draw-down |
+| H40/OPS06 | wallow overflow drain | at (34.2, -0.18, 11.8) · size (0.5 × 0.03 × 0.5) | M-STEEL | none | build-v1 | mud-wallow level control |
 
 Animal population/activity anchors:
 
@@ -474,6 +484,7 @@ Bounds: `[24, 36.5, 23, 37]` · public side: `x0` · species: 犀牛
 | H42/OPS02 | mineral feed block | at (27, 0, 31) · size (0.55 × 0.55 × 0.55) | M-ROCK-LIGHT | none | build-v1 | mineral enrichment |
 | H42/OPS03 | keeper safety square | at (35.8, 0.02, 34) · size (0.9 × 0.02 × 1) | M-CONCRETE | none | build-v1 | service landing |
 | H42/OPS04 | habitat camera | at (24.5, 0, 23.5) · size (0.24 × 3.8 × 0.24) | M-STEEL-DARK | none | build-v1 | wallow monitoring |
+| H42/OPS05 | wallow overflow drain | at (34.2, -0.18, 34) · size (0.5 × 0.03 × 0.5) | M-STEEL | none | build-v1 | mud-wallow level control and washout |
 
 Animal population/activity anchors:
 
@@ -616,9 +627,9 @@ Room rect: `[-10.7, -9.5, 28, 31]`
 
 | Stable ID | Object | Exact placement | Material | Collision | Build state |
 |---|---|---|---|---|---|
-| B04/seating/FIX01 | communal tea table | at (-10.1, 0.5, 29.5) · size (0.82 × 0.82 × 1.55) | M-TIMBER | body | build-v1 |
-| B04/seating/FIX02 | stool north | at (-9.65, 0.5, 30.2) · size (0.42 × 0.48 × 0.42) | M-TIMBER | none | build-v1 |
-| B04/seating/FIX03 | stool south | at (-9.65, 0.5, 28.8) · size (0.42 × 0.48 × 0.42) | M-TIMBER | none | build-v1 |
+| B04/seating/FIX01 | communal tea table | at (-10.1, 0.5, 30.2) · size (0.82 × 0.82 × 1.25) | M-TIMBER | body | build-v1 |
+| B04/seating/FIX02 | stool north | at (-9.65, 0.5, 30.92) · size (0.42 × 0.48 × 0.42) | M-TIMBER | none | build-v1 |
+| B04/seating/FIX03 | stool south | at (-9.65, 0.5, 29.42) · size (0.42 × 0.48 × 0.42) | M-TIMBER | none | build-v1 |
 | B04/seating/FIX04 | lake binocular | at (-9.55, 1.1, 30.85) · size (0.28 × 1.35 × 0.28) | M-STEEL-DARK | body | build-v1 |
 
 ### B05-conservation-west — brick, timber screens and green tile

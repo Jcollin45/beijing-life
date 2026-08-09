@@ -609,6 +609,7 @@ const RAW = `
 动物医院|dòngwù yīyuàn|animal hospital|medical
 茶亭|chátíng|tea pavilion|food
 望远镜|wàngyuǎnjìng|binoculars
+入口状态|rùkǒu zhuàngtài|entrance status
 熊猫保护|xióngmāo bǎohù|panda conservation
 急救|jíjiù|first aid|medical
 保育展|bǎoyù zhǎn|conservation exhibition

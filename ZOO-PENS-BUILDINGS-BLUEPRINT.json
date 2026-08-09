@@ -37,6 +37,12 @@
     "implementationSelector": "implementationStatus === \"build-v1\"",
     "idOwnership": "first rendered structural primitive owns the base ID; children use /Gnn"
   },
+  "performanceExtension": {
+    "parentOutdoorThingCap": 75,
+    "addedLocalFixtureThings": 8,
+    "outdoorThingCap": 83,
+    "reason": "Eight new building fixtures need independent local tags, focuses and actions; none can safely alias a distant parent thing."
+  },
   "materials": [
     {
       "id": "M-GRASS",
@@ -2036,6 +2042,26 @@
           ],
           "yaw": 0,
           "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H04/O09",
+          "label": "wallow overflow drain",
+          "archetype": "floor-drain",
+          "at": [
+            14.35,
+            -0.23,
+            0.75
+          ],
+          "size": [
+            0.45,
+            0.03,
+            0.45
+          ],
+          "material": "M-STEEL",
+          "collision": "none",
+          "purpose": "mud-wallow level control and washout",
+          "yaw": 0,
+          "implementationStatus": "build-v1"
         }
       ],
       "activityAnchors": [
@@ -2396,6 +2422,26 @@
           ],
           "yaw": 0,
           "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H05/O11",
+          "label": "moat filtration intake",
+          "archetype": "floor-drain",
+          "at": [
+            -11.85,
+            -0.53,
+            8.1
+          ],
+          "size": [
+            0.45,
+            0.03,
+            0.45
+          ],
+          "material": "M-STEEL",
+          "collision": "none",
+          "purpose": "water circulation and safe draw-down",
+          "yaw": 0,
+          "implementationStatus": "build-v1"
         }
       ],
       "activityAnchors": [
@@ -2666,6 +2712,26 @@
             5.5,
             10
           ],
+          "yaw": 0,
+          "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H06/O09",
+          "label": "cooling-pool drain",
+          "archetype": "floor-drain",
+          "at": [
+            2.4,
+            -0.27,
+            8.35
+          ],
+          "size": [
+            0.38,
+            0.03,
+            0.38
+          ],
+          "material": "M-STEEL",
+          "collision": "none",
+          "purpose": "pool filtration and cleaning",
           "yaw": 0,
           "implementationStatus": "build-v1"
         }
@@ -4767,6 +4833,46 @@
           ],
           "yaw": 0,
           "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H21/OPS05",
+          "label": "heated alpine drinker",
+          "archetype": "water-trough",
+          "at": [
+            -33.4,
+            0,
+            26.6
+          ],
+          "size": [
+            1,
+            0.26,
+            0.7
+          ],
+          "material": "M-ROCK",
+          "collision": "none",
+          "purpose": "freeze-protected drinking water",
+          "yaw": 0,
+          "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H21/OPS06",
+          "label": "meltwater drainage channel",
+          "archetype": "floor-drain",
+          "at": [
+            -29.5,
+            0.01,
+            26.25
+          ],
+          "size": [
+            3,
+            0.03,
+            0.35
+          ],
+          "material": "M-STEEL",
+          "collision": "none",
+          "purpose": "keeps the rock shelf dry and ice-free",
+          "yaw": 0,
+          "implementationStatus": "build-v1"
         }
       ],
       "activityAnchors": [
@@ -5083,6 +5189,46 @@
             -28,
             47
           ],
+          "yaw": 0,
+          "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H30/OPS05",
+          "label": "shallow stone drinker",
+          "archetype": "water-trough",
+          "at": [
+            -25,
+            0,
+            51.3
+          ],
+          "size": [
+            0.9,
+            0.2,
+            0.65
+          ],
+          "material": "M-ROCK",
+          "collision": "none",
+          "purpose": "fresh drinking water beneath the canopy",
+          "yaw": 0,
+          "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H30/OPS06",
+          "label": "misting runoff drain",
+          "archetype": "floor-drain",
+          "at": [
+            -32,
+            0.01,
+            52
+          ],
+          "size": [
+            0.42,
+            0.03,
+            0.42
+          ],
+          "material": "M-STEEL",
+          "collision": "none",
+          "purpose": "prevents saturated forest substrate",
           "yaw": 0,
           "implementationStatus": "build-v1"
         }
@@ -6450,6 +6596,46 @@
           ],
           "yaw": 0,
           "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H40/OPS05",
+          "label": "pool filtration intake",
+          "archetype": "floor-drain",
+          "at": [
+            27.2,
+            -0.7,
+            -5.5
+          ],
+          "size": [
+            0.55,
+            0.03,
+            0.55
+          ],
+          "material": "M-STEEL",
+          "collision": "none",
+          "purpose": "main pool filtration and draw-down",
+          "yaw": 0,
+          "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H40/OPS06",
+          "label": "wallow overflow drain",
+          "archetype": "floor-drain",
+          "at": [
+            34.2,
+            -0.18,
+            11.8
+          ],
+          "size": [
+            0.5,
+            0.03,
+            0.5
+          ],
+          "material": "M-STEEL",
+          "collision": "none",
+          "purpose": "mud-wallow level control",
+          "yaw": 0,
+          "implementationStatus": "build-v1"
         }
       ],
       "activityAnchors": [
@@ -7093,6 +7279,26 @@
           ],
           "yaw": 0,
           "implementationStatus": "build-v1"
+        },
+        {
+          "id": "H42/OPS05",
+          "label": "wallow overflow drain",
+          "archetype": "floor-drain",
+          "at": [
+            34.2,
+            -0.18,
+            34
+          ],
+          "size": [
+            0.5,
+            0.03,
+            0.5
+          ],
+          "material": "M-STEEL",
+          "collision": "none",
+          "purpose": "mud-wallow level control and washout",
+          "yaw": 0,
+          "implementationStatus": "build-v1"
         }
       ],
       "activityAnchors": [
@@ -7532,8 +7738,8 @@
           "interaction": {
             "tag": "检票",
             "focus": [
-              -57,
-              21.1
+              -56.85,
+              22.3
             ],
             "reach": 1.5
           },
@@ -7579,7 +7785,7 @@
           "purpose": "hours, ticket status and accessible route",
           "yaw": 1.5707963267948966,
           "interaction": {
-            "tag": "西门",
+            "tag": "入口状态",
             "focus": [
               -57,
               24
@@ -8701,7 +8907,7 @@
               "interaction": {
                 "tag": "茶亭",
                 "focus": [
-                  -9,
+                  -9.45,
                   29
                 ],
                 "reach": 2.2
@@ -8790,12 +8996,12 @@
               "at": [
                 -10.1,
                 0.5,
-                29.5
+                30.2
               ],
               "size": [
                 0.82,
                 0.82,
-                1.55
+                1.25
               ],
               "material": "M-TIMBER",
               "collision": "body",
@@ -8811,7 +9017,7 @@
               "at": [
                 -9.65,
                 0.5,
-                30.2
+                30.92
               ],
               "size": [
                 0.42,
@@ -8832,7 +9038,7 @@
               "at": [
                 -9.65,
                 0.5,
-                28.8
+                29.42
               ],
               "size": [
                 0.42,
@@ -8867,8 +9073,8 @@
               "interaction": {
                 "tag": "望远镜",
                 "focus": [
-                  -9,
-                  30.4
+                  -9.05,
+                  29.45
                 ],
                 "reach": 1.5
               },
@@ -9544,7 +9750,7 @@
                 "tag": "熊猫保护",
                 "focus": [
                   -8,
-                  56.8
+                  56.5
                 ],
                 "reach": 2
               },
@@ -10026,7 +10232,7 @@
                 "tag": "保育展",
                 "focus": [
                   7.5,
-                  60.5
+                  60.75
                 ],
                 "reach": 1.8
               },
@@ -13844,5 +14050,5 @@
       }
     ]
   },
-  "contentHash": "sha256:4358f077f28d051227540ead947098a38ac17691eeeec6735c0df104fa18a027"
+  "contentHash": "sha256:cb8cd1ea95de8bd4df7f9904b93d440eef0ccf4062bf81ddf9818b65903acc3c"
 }

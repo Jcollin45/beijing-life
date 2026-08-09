@@ -76,6 +76,14 @@ function finiteScene(scene) {
     p.color.every(Number.isFinite) && p.m && [...p.m].every(Number.isFinite));
 }
 function idSet(rows) { return new Set(rows.map(x => x.blueprintId).filter(Boolean)); }
+function contentBuildRows(contents, scope) {
+  const rows=scope==='outdoor'
+    ? [...contents.habitats.flatMap(h=>h.contents),
+       ...contents.buildings.flatMap(b=>[...b.sharedFixtures,...b.rooms.flatMap(r=>r.fixtures)])]
+    : [...contents.tropicalScene.rooms.flatMap(r=>r.contents),...contents.tropicalScene.sharedObjects];
+  return rows.filter(q=>q.implementationStatus==='build-v1');
+}
+function contentBuildIds(contents, scope) { return contentBuildRows(contents,scope).map(q=>q.id); }
 function uniquePropIds(scene) {
   const seen=new Set();
   for(const p of scene.props) if(p.blueprintId) {
@@ -145,7 +153,7 @@ function connectedSegments(rows, width=.18) {
 }
 
 function validate(probe = buildProbe()) {
-  const { outdoor:o, tropical:t, npcRows, zooUse, tropicalUse, plan:p } = probe;
+  const { outdoor:o, tropical:t, npcRows, zooUse, tropicalUse, plan:p, contents } = probe;
   const failures = [], pass = [];
   const check = (name, ok, detail = '') => (ok ? pass : failures).push(detail ? `${name}: ${detail}` : name);
   check('outdoor scene built', o.props.length > 0);
@@ -156,6 +164,40 @@ function validate(probe = buildProbe()) {
   check('tropical marked prop IDs are unique',uniquePropIds(t));
   check('every outdoor prop tag resolves locally',tagsResolveLocally(o));
   check('every tropical prop tag resolves locally',tagsResolveLocally(t));
+  const expectedOutdoorContents=contentBuildIds(contents,'outdoor');
+  const expectedTropicalContents=contentBuildIds(contents,'tropical');
+  const actualOutdoorContents=o.expansion&&o.expansion.contentsStats&&o.expansion.contentsStats.ids;
+  const actualTropicalContents=t.contentsStats&&t.contentsStats.ids;
+  check('all planned outdoor content records compile exactly once',!!actualOutdoorContents&&
+    actualOutdoorContents.length===expectedOutdoorContents.length&&
+    new Set(actualOutdoorContents).size===expectedOutdoorContents.length&&
+    expectedOutdoorContents.every(id=>actualOutdoorContents.includes(id)),
+    `${actualOutdoorContents?actualOutdoorContents.length:0}/${expectedOutdoorContents.length}`);
+  check('all planned Tropical House content records compile exactly once',!!actualTropicalContents&&
+    actualTropicalContents.length===expectedTropicalContents.length&&
+    new Set(actualTropicalContents).size===expectedTropicalContents.length&&
+    expectedTropicalContents.every(id=>actualTropicalContents.includes(id)),
+    `${actualTropicalContents?actualTropicalContents.length:0}/${expectedTropicalContents.length}`);
+  const outdoorPropIds=idSet(o.props),tropicalPropIds=idSet(t.props);
+  check('every planned outdoor content ID owns rendered geometry',
+    expectedOutdoorContents.every(id=>outdoorPropIds.has(id)));
+  check('every planned Tropical House content ID owns rendered geometry',
+    expectedTropicalContents.every(id=>tropicalPropIds.has(id)));
+  for(const [scope,scene,table] of [['outdoor',o,zooUse],['Tropical House',t,tropicalUse]]){
+    for(const q of contentBuildRows(contents,scope==='outdoor'?'outdoor':'tropical').filter(q=>q.interaction)){
+      const tag=q.interaction.tag;
+      check(`${scope} fixture ${q.id} exposes its visible interaction tag`,
+        scene.props.some(p=>p.tag===tag&&p.blueprintId&&
+          (p.blueprintId===q.id||p.blueprintId.startsWith(q.id+'/'))));
+      check(`${scope} fixture ${q.id} resolves to a local thing`,q.interaction.aliasOf?
+        scene.things.some(th=>th.tag===tag):scene.things.some(th=>th.blueprintId==='TH-'+q.id&&th.tag===tag));
+      check(`${scope} fixture ${q.id} has a place-specific action`,!!table[tag]);
+      check(`${scope} fixture ${q.id} has a standable interaction focus`,standable(scene,q.interaction.focus),
+        q.interaction.focus.join(','));
+      if(q.at)check(`${scope} fixture ${q.id} focus stays within its authored reach`,
+        Math.hypot(q.at[0]-q.interaction.focus[0],q.at[2]-q.interaction.focus[1])<=q.interaction.reach+1e-6);
+    }
+  }
   check('outdoor prop budget', o.props.length <= p.performanceBudgets.outdoorTotalProps,
     `${o.props.length}/${p.performanceBudgets.outdoorTotalProps}`);
   check('tropical prop budget', t.props.length <= p.performanceBudgets.tropicalProps,
@@ -170,8 +212,8 @@ function validate(probe = buildProbe()) {
     `${o.solids.length}/${p.performanceBudgets.bodySolids}`);
   check('outdoor blocker budget', o.blockers.length <= p.performanceBudgets.cameraBlockers,
     `${o.blockers.length}/${p.performanceBudgets.cameraBlockers}`);
-  check('outdoor things budget', o.things.length <= p.performanceBudgets.things,
-    `${o.things.length}/${p.performanceBudgets.things}`);
+  check('outdoor things budget', o.things.length <= contents.performanceExtension.outdoorThingCap,
+    `${o.things.length}/${contents.performanceExtension.outdoorThingCap}`);
   check('outdoor defined-light budget',o.lights.length<=p.performanceBudgets.pointLightsDefined,
     `${o.lights.length}/${p.performanceBudgets.pointLightsDefined}`);
   check('Tropical House active-light budget',t.lights.filter(q=>q.on!==false).length<=

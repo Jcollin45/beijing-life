@@ -214,6 +214,7 @@ const coreHabitats = [
       item('H04/O06','scrub post','scrub-post',[9.3,0,-0.8],[0.42,2.4,0.42],'M-TIMBER-DARK','none','skin care and enrichment'),
       item('H04/O07','keeper safety square','keeper-safe-zone',[15.25,0.02,2.6],[1.0,0.02,1.0],'M-CONCRETE','none','east service-gate landing'),
       item('H04/O08','habitat camera','habitat-camera',[6.55,0,3.45],[0.24,4.0,0.24],'M-STEEL-DARK','none','welfare monitoring',{ facing:[12,0.5] }),
+      item('H04/O09','wallow overflow drain','floor-drain',[14.35,-0.23,0.75],[0.45,0.03,0.45],'M-STEEL','none','mud-wallow level control and washout'),
     ],
     activityAnchors:[
       { id:'H04/Z01', label:'wallow', at:[13,0,0.75], acts:['dust','drink'] },
@@ -242,6 +243,7 @@ const coreHabitats = [
       item('H05/O08','keeper feed basket','feed-trough',[-11.6,0,11.8],[0.75,0.32,0.55],'M-FOOD-STEEL','none','scatter-feed staging'),
       item('H05/O09','keeper safety square','keeper-safe-zone',[-12.1,0.02,12.75],[0.9,0.02,0.9],'M-CONCRETE','none','north service-gate landing'),
       item('H05/O10','habitat camera','habitat-camera',[-5.5,0,12.9],[0.22,3.6,0.22],'M-STEEL-DARK','none','welfare monitoring',{ facing:[-9,10.5] }),
+      item('H05/O11','moat filtration intake','floor-drain',[-11.85,-0.53,8.1],[0.45,0.03,0.45],'M-STEEL','none','water circulation and safe draw-down'),
     ],
     activityAnchors:[
       { id:'H05/Z01', label:'hill crest', at:[-9,1.95,10.7], acts:['climb','sit','groom'] },
@@ -262,6 +264,7 @@ const coreHabitats = [
       item('H06/O06','meat feed hatch','feed-trough',[8.7,0,12.0],[0.95,0.30,0.65],'M-FOOD-STEEL','none','protected feeding station'),
       item('H06/O07','keeper safety square','keeper-safe-zone',[8.3,0.02,12.75],[1.0,0.02,1.0],'M-CONCRETE','none','north service-gate landing'),
       item('H06/O08','habitat camera','habitat-camera',[1.45,0,12.95],[0.22,3.6,0.22],'M-STEEL-DARK','none','welfare monitoring',{ facing:[5.5,10] }),
+      item('H06/O09','cooling-pool drain','floor-drain',[2.4,-0.27,8.35],[0.38,0.03,0.38],'M-STEEL','none','pool filtration and cleaning'),
     ],
     activityAnchors:[
       { id:'H06/Z01', label:'open grass', at:[5.3,0,9.2], acts:['graze','sit'] },
@@ -307,12 +310,16 @@ const habitatOps = {
     item('H21/OPS02','high lookout ledge','box-fixture',[-31.6,0,34.8],[1.8,1.5,1.0],'M-ROCK','none','elevated resting'),
     item('H21/OPS03','keeper safety square','keeper-safe-zone',[-24.65,0.02,34.0],[0.8,0.02,1.0],'M-CONCRETE','none','dry service landing'),
     item('H21/OPS04','habitat camera','habitat-camera',[-33.5,0,26.5],[0.22,3.5,0.22],'M-STEEL-DARK','none','den and shelf monitoring',{ facing:[-29,32] }),
+    item('H21/OPS05','heated alpine drinker','water-trough',[-33.4,0,26.6],[1.0,0.26,0.7],'M-ROCK','none','freeze-protected drinking water'),
+    item('H21/OPS06','meltwater drainage channel','floor-drain',[-29.5,0.01,26.25],[3.0,0.03,0.35],'M-STEEL','none','keeps the rock shelf dry and ice-free'),
   ],
   'H30-red-panda': [
     item('H30/OPS01','bamboo feed shelf','feed-trough',[-32.4,1.05,44.5],[1.1,0.18,0.55],'M-TIMBER','none','raised feed point'),
     item('H30/OPS02','canopy mist nozzle','light-fixture',[-28,3.7,50.4],[0.18,0.18,0.18],'M-STEEL','none','summer cooling mist',{ system:'water-mist' }),
     item('H30/OPS03','keeper safety square','keeper-safe-zone',[-33.4,0.02,49.0],[0.9,0.02,1.0],'M-CONCRETE','none','service-gate landing'),
     item('H30/OPS04','habitat camera','habitat-camera',[-24.5,0,43.5],[0.22,3.8,0.22],'M-STEEL-DARK','none','canopy monitoring',{ facing:[-28,47] }),
+    item('H30/OPS05','shallow stone drinker','water-trough',[-25.0,0,51.3],[0.9,0.2,0.65],'M-ROCK','none','fresh drinking water beneath the canopy'),
+    item('H30/OPS06','misting runoff drain','floor-drain',[-32.0,0.01,52.0],[0.42,0.03,0.42],'M-STEEL','none','prevents saturated forest substrate'),
   ],
   'H31-waterfowl-lake': [
     item('H31/OPS01','floating feed station','feed-trough',[-13.8,0.04,25.0],[0.9,0.12,0.7],'M-TIMBER','none','controlled waterfowl feed'),
@@ -337,6 +344,8 @@ const habitatOps = {
     item('H40/OPS02','sand pile','rock-cluster',[34.5,0,12.7],[2.0,0.75,1.8],'M-SAND','none','dusting enrichment'),
     item('H40/OPS03','keeper safety square','keeper-safe-zone',[24.7,0.02,-7.7],[1.1,0.02,1.3],'M-CONCRETE','none','service-gate landing'),
     item('H40/OPS04','habitat camera','habitat-camera',[36.0,0,14.5],[0.24,4.2,0.24],'M-STEEL-DARK','none','reserve monitoring',{ facing:[30,3] }),
+    item('H40/OPS05','pool filtration intake','floor-drain',[27.2,-0.7,-5.5],[0.55,0.03,0.55],'M-STEEL','none','main pool filtration and draw-down'),
+    item('H40/OPS06','wallow overflow drain','floor-drain',[34.2,-0.18,11.8],[0.5,0.03,0.5],'M-STEEL','none','mud-wallow level control'),
   ],
   'H41-mixed-savannah': [
     item('H41/OPS01','mineral lick','box-fixture',[48.7,0,-7.6],[0.5,0.55,0.5],'M-ROCK-LIGHT','none','mineral enrichment'),
@@ -349,6 +358,7 @@ const habitatOps = {
     item('H42/OPS02','mineral feed block','box-fixture',[27.0,0,31.0],[0.55,0.55,0.55],'M-ROCK-LIGHT','none','mineral enrichment'),
     item('H42/OPS03','keeper safety square','keeper-safe-zone',[35.8,0.02,34.0],[0.9,0.02,1.0],'M-CONCRETE','none','service landing'),
     item('H42/OPS04','habitat camera','habitat-camera',[24.5,0,23.5],[0.24,3.8,0.24],'M-STEEL-DARK','none','wallow monitoring',{ facing:[31,30] }),
+    item('H42/OPS05','wallow overflow drain','floor-drain',[34.2,-0.18,34.0],[0.5,0.03,0.5],'M-STEEL','none','mud-wallow level control and washout'),
   ],
   'H43-lion': [
     item('H43/OPS01','protected meat hatch','feed-trough',[48.7,0,26.0],[1.0,0.32,0.7],'M-FOOD-STEEL','none','keeper feeding station'),
@@ -493,9 +503,9 @@ const expansionHabitats = parent.habitats.map(h => ({
 
 const buildingFixtures = {
   'B01-west-gate-pavilion': [
-    item('B01/FIX01','south ticket reader','box-fixture',[-56.05,0,21.1],[0.28,1.1,0.34],'M-STEEL-DARK','body','secondary-entry ticket validation',{ interaction:{ tag:'检票', focus:[-57.0,21.1], reach:1.5 } }),
+    item('B01/FIX01','south ticket reader','box-fixture',[-56.05,0,21.1],[0.28,1.1,0.34],'M-STEEL-DARK','body','secondary-entry ticket validation',{ interaction:{ tag:'检票', focus:[-56.85,22.3], reach:1.5 } }),
     item('B01/FIX02','north ticket reader','box-fixture',[-56.05,0,26.9],[0.28,1.1,0.34],'M-STEEL-DARK','body','secondary-entry ticket validation'),
-    item('B01/FIX03','entry status screen','screen',[-55.62,2.25,24.0],[0.05,0.75,1.9],'M-SCREEN','none','hours, ticket status and accessible route',{ yaw:PI/2, interaction:{ tag:'西门', focus:[-57.0,24], reach:2.0 } }),
+    item('B01/FIX03','entry status screen','screen',[-55.62,2.25,24.0],[0.05,0.75,1.9],'M-SCREEN','none','hours, ticket status and accessible route',{ yaw:PI/2, interaction:{ tag:'入口状态', focus:[-57.0,24], reach:2.0 } }),
     item('B01/FIX04','emergency intercom','box-fixture',[-55.64,0.95,22.3],[0.08,0.3,0.22],'M-STEEL','none','visitor assistance',{ yaw:PI/2 }),
     item('B01/FIX05','passage ceiling light A','light-fixture',[-56.75,4.15,22.0],[0.65,0.08,0.18],'M-CERAMIC','none','night entry illumination',{ lumens:1100, temperatureK:3000 }),
     item('B01/FIX06','passage ceiling light B','light-fixture',[-56.75,4.15,26.0],[0.65,0.08,0.18],'M-CERAMIC','none','night entry illumination',{ lumens:1100, temperatureK:3000 }),
@@ -533,14 +543,16 @@ const buildingFixtures = {
     item('B03/FIX-L02','hub ceiling light B','light-fixture',[47.8,2.85,21.85],[0.75,0.06,0.22],'M-CERAMIC','none','toilet lighting',{ lumens:1300, temperatureK:3500 }),
   ],
   'B04-lake-pavilion': [
-    item('B04/tea/FIX01','tea service counter','counter',[-11.55,0.5,29.5],[1.5,1.05,3.0],'M-TIMBER-DARK','body','tea preparation and sales',{ room:'tea-counter', interaction:{ tag:'茶亭', focus:[-9.0,29], reach:2.2 } }),
+    item('B04/tea/FIX01','tea service counter','counter',[-11.55,0.5,29.5],[1.5,1.05,3.0],'M-TIMBER-DARK','body','tea preparation and sales',{ room:'tea-counter', interaction:{ tag:'茶亭', focus:[-9.45,29], reach:2.2 } }),
     item('B04/tea/FIX02','hot-water boiler','cylinder-fixture',[-12.0,1.1,30.25],[0.42,0.75,0.42],'M-FOOD-STEEL','none','tea water heating',{ room:'tea-counter' }),
     item('B04/tea/FIX03','handwash sink','sanitary-fixture',[-12.0,0.5,28.7],[0.6,0.9,0.45],'M-FOOD-STEEL','none','staff hand washing',{ room:'tea-counter' }),
     item('B04/tea/FIX04','tea shelf','shelf',[-12.2,0.5,29.5],[0.32,1.9,1.8],'M-TIMBER','body','tea and cup storage',{ room:'tea-counter' }),
-    item('B04/seating/FIX01','communal tea table','table',[-10.1,0.5,29.5],[0.82,0.82,1.55],'M-TIMBER','body','visitor seating',{ room:'seating' }),
-    item('B04/seating/FIX02','stool north','chair',[-9.65,0.5,30.2],[0.42,0.48,0.42],'M-TIMBER','none','visitor seat',{ room:'seating' }),
-    item('B04/seating/FIX03','stool south','chair',[-9.65,0.5,28.8],[0.42,0.48,0.42],'M-TIMBER','none','visitor seat',{ room:'seating' }),
-    item('B04/seating/FIX04','lake binocular','box-fixture',[-9.55,1.1,30.85],[0.28,1.35,0.28],'M-STEEL-DARK','body','waterfowl viewing',{ room:'seating', interaction:{ tag:'望远镜', focus:[-9.0,30.4], reach:1.5 } }),
+    // Keep the exact 1.6 m public-door aisle clear: the table occupies the north seating bay,
+    // while the two loose stools sit beyond its ends instead of across the approach line.
+    item('B04/seating/FIX01','communal tea table','table',[-10.1,0.5,30.2],[0.82,0.82,1.25],'M-TIMBER','body','visitor seating',{ room:'seating' }),
+    item('B04/seating/FIX02','stool north','chair',[-9.65,0.5,30.92],[0.42,0.48,0.42],'M-TIMBER','none','visitor seat',{ room:'seating' }),
+    item('B04/seating/FIX03','stool south','chair',[-9.65,0.5,29.42],[0.42,0.48,0.42],'M-TIMBER','none','visitor seat',{ room:'seating' }),
+    item('B04/seating/FIX04','lake binocular','box-fixture',[-9.55,1.1,30.85],[0.28,1.35,0.28],'M-STEEL-DARK','body','waterfowl viewing',{ room:'seating', interaction:{ tag:'望远镜', focus:[-9.05,29.45], reach:1.5 } }),
     item('B04/FIX05','life ring cabinet','cabinet',[-12.45,0.5,27.85],[0.55,0.85,0.22],'M-STEEL','none','water safety'),
     item('B04/FIX-L01','pavilion pendant','light-fixture',[-11.0,3.6,29.5],[0.46,0.34,0.46],'M-ROOF-RED','none','evening pavilion light',{ lumens:900, temperatureK:2700 }),
   ],
@@ -554,7 +566,7 @@ const buildingFixtures = {
     item('B05/classroom/FIX03','equipment cabinet','cabinet',[-16.1,0,60.35],[0.55,1.9,1.35],'M-TIMBER-DARK','body','class materials storage',{ room:'classroom' }),
     ...[[-10.1,57.2],[-8.0,57.2],[-10.1,59.6],[-8.0,59.6]].map((p,i)=>
       item(`B05/gallery/CASE${String(i+1).padStart(2,'0')}`,`panda science display ${i+1}`,'display-case',[p[0],0,p[1]],[1.25,1.25,0.72],'M-GLASS','body','panda conservation specimen and model',{ room:'panda-lab-gallery' })),
-    item('B05/gallery/FIX05','genetics touchscreen','screen',[-6.72,1.35,56.8],[0.08,0.9,1.25],'M-SCREEN','none','interactive genetics exhibit',{ room:'panda-lab-gallery', yaw:-PI/2, interaction:{ tag:'熊猫保护', focus:[-8.0,56.8], reach:2.0 } }),
+    item('B05/gallery/FIX05','genetics touchscreen','screen',[-6.72,1.35,56.8],[0.08,0.9,1.25],'M-SCREEN','none','interactive genetics exhibit',{ room:'panda-lab-gallery', yaw:-PI/2, interaction:{ tag:'熊猫保护', focus:[-8.0,56.5], reach:2.0 } }),
     item('B05/gallery/FIX06','lab viewing window','box-fixture',[-6.55,1.6,59.8],[0.08,1.6,2.4],'M-GLASS','none','view into offstage conservation lab',{ room:'panda-lab-gallery', yaw:PI/2 }),
     item('B05/FIX-L01','classroom light row','light-fixture',[-14.3,4.4,58.5],[0.24,0.08,4.5],'M-CERAMIC','none','classroom lighting',{ lumens:3200, temperatureK:3800 }),
     item('B05/FIX-L02','gallery light row','light-fixture',[-9.0,4.4,58.5],[0.24,0.08,4.5],'M-CERAMIC','none','gallery lighting',{ lumens:2800, temperatureK:3500 }),
@@ -567,7 +579,7 @@ const buildingFixtures = {
     item('B06/aid/FIX05','AED cabinet','cabinet',[2.62,1.3,57.8],[0.18,0.55,0.48],'M-RED-LIGHT','none','public defibrillator',{ room:'first-aid', interaction:{ tag:'急救', focus:[3.3,57.8], reach:1.5 } }),
     ...[[7.35,56.8],[8.25,58.3],[7.35,60.0]].map((p,i)=>
       item(`B06/exhibition/PLINTH${String(i+1).padStart(2,'0')}`,`conservation plinth ${i+1}`,'display-case',[p[0],0,p[1]],[0.74,1.6,0.74],'M-RENDER','body','rotating conservation object',{ room:'exhibition' })),
-    item('B06/exhibition/FIX04','species recovery wall','screen',[6.62,1.65,60.85],[0.08,1.35,2.6],'M-SCREEN','none','species recovery timeline',{ room:'exhibition', yaw:PI/2, interaction:{ tag:'保育展', focus:[7.5,60.5], reach:1.8 } }),
+    item('B06/exhibition/FIX04','species recovery wall','screen',[6.62,1.65,60.85],[0.08,1.35,2.6],'M-SCREEN','none','species recovery timeline',{ room:'exhibition', yaw:PI/2, interaction:{ tag:'保育展', focus:[7.5,60.75], reach:1.8 } }),
     ...[56.5,58.1,59.7].map((z,i)=>
       item(`B06/shop/SHELF${String(i+1).padStart(2,'0')}`,`library shelf ${i+1}`,'shelf',[15.55,0,z],[0.6,2.45,1.18],'M-TIMBER-DARK','body','books and learning materials',{ room:'library-shop' })),
     item('B06/shop/FIX04','sales counter','counter',[11.0,0,56.25],[2.25,1.05,0.62],'M-TIMBER-DARK','body','bookshop checkout',{ room:'library-shop', interaction:{ tag:'图书商店', focus:[11.0,55.3], reach:1.8 } }),
@@ -930,6 +942,12 @@ const blueprint = {
     implementationSelector:'implementationStatus === "build-v1"',
     idOwnership:'first rendered structural primitive owns the base ID; children use /Gnn',
   },
+  performanceExtension:{
+    parentOutdoorThingCap:parent.performanceBudgets.things,
+    addedLocalFixtureThings:8,
+    outdoorThingCap:parent.performanceBudgets.things+8,
+    reason:'Eight new building fixtures need independent local tags, focuses and actions; none can safely alias a distant parent thing.',
+  },
   materials,archetypes,habitats,buildings,tropicalScene,buildPhases,validation,
 };
 
@@ -979,6 +997,7 @@ function markdown(bp) {
     `- ${bp.tropicalScene.rooms.length} Tropical House rooms/exhibits`,
     `- ${contents.length} exact content records; ${planned.length} are additive build-v1 placements`,
     `- ${bp.materials.length} material definitions and ${bp.archetypes.length} construction archetypes`,
+    `- ${bp.performanceExtension.addedLocalFixtureThings} local outdoor fixture interactions extend the parent thing cap from ${bp.performanceExtension.parentOutdoorThingCap} to ${bp.performanceExtension.outdoorThingCap}`,
     '',
     '## Build sequence','',
     ...bp.buildPhases.map(p=>`${p.order}. **${p.id} — ${p.label}.** ${p.includes.join('; ')}.`),
@@ -1044,12 +1063,100 @@ document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{document.quer
 </script></body></html>`;
 }
 
+function visualizationFragment(bp) {
+  const compact={habitats:bp.habitats.map(h=>({id:h.id,label:h.label,bounds:h.bounds,items:h.contents})),
+    buildings:bp.buildings.map(b=>({id:b.id,label:b.label,bounds:b.footprint,items:[...b.sharedFixtures,...b.rooms.flatMap(r=>r.fixtures)],rooms:b.rooms.map(r=>({id:r.id,rect:r.rect}))})),
+    tropical:bp.tropicalScene.rooms.map(r=>({id:r.id,label:r.label,bounds:r.rect,items:r.contents}))};
+  return `<section id="zoo-realism-blueprint">
+  <header class="zrb-head">
+    <h2>Realistic zoo contents plan</h2>
+    <div class="text-small text-muted">21 outdoor habitats · 9 buildings · 7 Tropical House rooms · 409 positioned records</div>
+  </header>
+  <div class="viz-controls" aria-label="Map controls">
+    <button type="button" class="btn btn-primary" data-zrb-mode="habitats" aria-pressed="true">Outdoor pens</button>
+    <button type="button" class="btn" data-zrb-mode="buildings" aria-pressed="false">Buildings</button>
+    <button type="button" class="btn" data-zrb-mode="tropical" aria-pressed="false">Tropical House</button>
+    <label class="form-label">Area<select class="form-select" data-zrb-place></select></label>
+    <label class="form-label">Object<select class="form-select" data-zrb-object></select></label>
+  </div>
+  <div class="zrb-layout">
+    <div class="zrb-map">
+      <svg data-zrb-plan role="img" aria-labelledby="zrb-map-title zrb-map-desc"><title id="zrb-map-title">Selected zoo construction plan</title><desc id="zrb-map-desc">A coordinate map of the selected habitat, building, or Tropical House room and all of its contents.</desc></svg>
+      <div class="zrb-legend text-small text-muted"><span><i class="zrb-swatch zrb-existing"></i>already built</span><span><i class="zrb-swatch zrb-build"></i>new realistic fit-out</span><span><i class="zrb-swatch zrb-selected"></i>selected object</span></div>
+    </div>
+    <section class="card zrb-detail" aria-live="polite">
+      <h3 data-zrb-title></h3><div class="text-small text-muted" data-zrb-subtitle></div>
+      <dl data-zrb-facts></dl>
+    </section>
+  </div>
+</section>
+<style>
+#zoo-realism-blueprint{width:100%;color:var(--foreground)}
+#zoo-realism-blueprint .zrb-head{margin-block-end:var(--spacing,16px)}
+#zoo-realism-blueprint .zrb-head h2{margin-block-end:4px}
+#zoo-realism-blueprint .zrb-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(230px,300px);gap:16px;align-items:start;margin-block-start:16px}
+#zoo-realism-blueprint .zrb-map{min-width:0}
+#zoo-realism-blueprint [data-zrb-plan]{display:block;width:100%;aspect-ratio:1.38;background:var(--card);border:1px solid var(--border)}
+#zoo-realism-blueprint .zrb-frame{fill:var(--card);stroke:var(--border);stroke-width:.11}
+#zoo-realism-blueprint .zrb-room{fill:var(--muted);fill-opacity:.42;stroke:var(--muted-foreground);stroke-width:.07}
+#zoo-realism-blueprint .zrb-item-existing{fill:var(--viz-series-1);fill-opacity:.48;stroke:var(--foreground);stroke-opacity:.55;stroke-width:.045}
+#zoo-realism-blueprint .zrb-item-build{fill:var(--viz-series-2);fill-opacity:.72;stroke:var(--foreground);stroke-opacity:.72;stroke-width:.055}
+#zoo-realism-blueprint .zrb-item-selected{stroke:var(--primary);stroke-width:.16;fill-opacity:1}
+#zoo-realism-blueprint .zrb-label{fill:var(--foreground);font-size:.32px;font-weight:500;paint-order:stroke;stroke:var(--card);stroke-width:.11px}
+#zoo-realism-blueprint .zrb-room-label{fill:var(--muted-foreground);font-size:.27px}
+#zoo-realism-blueprint .zrb-legend{display:flex;gap:14px;flex-wrap:wrap;margin-block-start:8px}
+#zoo-realism-blueprint .zrb-swatch{display:inline-block;width:10px;height:10px;margin-inline-end:5px;vertical-align:-1px}
+#zoo-realism-blueprint .zrb-existing{background:var(--viz-series-1);opacity:.58}
+#zoo-realism-blueprint .zrb-build{background:var(--viz-series-2);opacity:.82}
+#zoo-realism-blueprint .zrb-selected{border:2px solid var(--primary)}
+#zoo-realism-blueprint .zrb-detail h3{margin-block:0 4px}
+#zoo-realism-blueprint .zrb-detail dl{display:grid;grid-template-columns:minmax(72px,auto) 1fr;gap:7px 10px;margin-block-end:0}
+#zoo-realism-blueprint .zrb-detail dt{color:var(--muted-foreground)}
+#zoo-realism-blueprint .zrb-detail dd{margin:0;overflow-wrap:anywhere}
+@media(max-width:640px){#zoo-realism-blueprint .zrb-layout{grid-template-columns:1fr}#zoo-realism-blueprint [data-zrb-plan]{aspect-ratio:1.15}}
+</style>
+<script>
+(()=>{
+const root=document.getElementById('zoo-realism-blueprint');if(!root)return;
+const DATA=${JSON.stringify(compact)};
+let mode='habitats',place=DATA.habitats[0],item=DATA.habitats[0].items[0];
+const svg=root.querySelector('[data-zrb-plan]'),placeSelect=root.querySelector('[data-zrb-place]'),itemSelect=root.querySelector('[data-zrb-object]');
+const esc=s=>String(s).replace(/[&<>\"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','\"':'&quot;'}[c]));
+const geom=q=>q.rect?q.rect.slice():q.at&&q.size?[q.at[0]-q.size[0]/2,q.at[0]+q.size[0]/2,q.at[2]-q.size[2]/2,q.at[2]+q.size[2]/2]:q.centres?(()=>{const xs=q.centres.map(c=>c[0]),zs=q.centres.map(c=>c[1]);return[Math.min(...xs)-.7,Math.max(...xs)+.7,Math.min(...zs)-.7,Math.max(...zs)+.7]})():null;
+function fillPlaces(){placeSelect.innerHTML=DATA[mode].map((q,i)=>'<option value="'+i+'">'+esc(q.id+' — '+q.label)+'</option>').join('');place=DATA[mode][0];fillItems()}
+function fillItems(){itemSelect.innerHTML=place.items.map((q,i)=>'<option value="'+i+'">'+esc(q.id+' — '+q.label)+'</option>').join('');item=place.items[0];draw()}
+function facts(){
+  const title=root.querySelector('[data-zrb-title]'),subtitle=root.querySelector('[data-zrb-subtitle]'),facts=root.querySelector('[data-zrb-facts]');
+  title.textContent=item.id+' — '+item.label;subtitle.textContent=place.id+' · '+place.label;
+  const placement=item.at?'('+item.at.join(', ')+') · '+item.size.join(' × '):item.rect?'['+item.rect.join(', ')+']':item.centres?JSON.stringify(item.centres):'reference';
+  const rows=[['Placement',placement],['Archetype',item.archetype],['Material',item.material||'inherited'],['Collision',item.collision],['Build state',item.implementationStatus],['Purpose',item.purpose]];
+  facts.innerHTML=rows.map(r=>'<dt>'+esc(r[0])+'</dt><dd>'+esc(r[1])+'</dd>').join('');
+}
+function draw(){
+  const b=place.bounds,pad=Math.max(1,Math.max(b[1]-b[0],b[3]-b[2])*.08),x0=b[0]-pad,x1=b[1]+pad,z0=b[2]-pad,z1=b[3]+pad;
+  svg.setAttribute('viewBox',x0+' '+(-z1)+' '+(x1-x0)+' '+(z1-z0));
+  let out='<title id="zrb-map-title">'+esc(place.id+' '+place.label)+'</title><desc id="zrb-map-desc">'+esc(place.items.length+' exact objects; '+place.items.filter(q=>q.implementationStatus==='build-v1').length+' are new fit-out placements.')+'</desc>';
+  out+='<rect class="zrb-frame" x="'+b[0]+'" y="'+(-b[3])+'" width="'+(b[1]-b[0])+'" height="'+(b[3]-b[2])+'"/>';
+  (place.rooms||[]).forEach(r=>{out+='<rect class="zrb-room" x="'+r.rect[0]+'" y="'+(-r.rect[3])+'" width="'+(r.rect[1]-r.rect[0])+'" height="'+(r.rect[3]-r.rect[2])+'"/><text class="zrb-room-label" x="'+((r.rect[0]+r.rect[1])/2)+'" y="'+(-((r.rect[2]+r.rect[3])/2))+'" text-anchor="middle">'+esc(r.id)+'</text>'});
+  place.items.forEach(q=>{const r=geom(q);if(!r)return;const selected=q.id===item.id,cls=(q.implementationStatus==='build-v1'?'zrb-item-build':'zrb-item-existing')+(selected?' zrb-item-selected':'');const w=Math.max(.08,r[1]-r[0]),h=Math.max(.08,r[3]-r[2]);out+='<rect class="'+cls+'" x="'+r[0]+'" y="'+(-r[3])+'" width="'+w+'" height="'+h+'"/>';if(w>.72&&h>.5)out+='<text class="zrb-label" x="'+((r[0]+r[1])/2)+'" y="'+(-((r[2]+r[3])/2))+'" text-anchor="middle">'+esc(q.id.split('/').pop())+'</text>'});
+  svg.innerHTML=out;facts();
+}
+root.querySelectorAll('[data-zrb-mode]').forEach(button=>button.addEventListener('click',()=>{mode=button.dataset.zrbMode;root.querySelectorAll('[data-zrb-mode]').forEach(b=>{const on=b===button;b.setAttribute('aria-pressed',String(on));b.classList.toggle('btn-primary',on)});fillPlaces()}));
+placeSelect.addEventListener('change',()=>{place=DATA[mode][Number(placeSelect.value)];fillItems()});
+itemSelect.addEventListener('change',()=>{item=place.items[Number(itemSelect.value)];draw()});
+fillPlaces();
+})();
+</script>\n`;
+}
+
 const jsonPath=path.join(ROOT,'ZOO-PENS-BUILDINGS-BLUEPRINT.json');
 const mdPath=path.join(ROOT,'ZOO-PENS-BUILDINGS-BLUEPRINT.md');
 const htmlPath=path.join(ROOT,'zoo-pens-buildings-blueprint.html');
 fs.writeFileSync(jsonPath,JSON.stringify(blueprint,null,2)+'\n');
 fs.writeFileSync(mdPath,markdown(blueprint));
 fs.writeFileSync(htmlPath,html(blueprint));
+if(process.env.ZOO_VISUAL_OUTPUT)
+  fs.writeFileSync(path.resolve(process.env.ZOO_VISUAL_OUTPUT),visualizationFragment(blueprint));
 const content=allContent(blueprint),planned=content.filter(q=>q.implementationStatus==='build-v1');
 console.log(`wrote ${path.basename(jsonPath)}, ${path.basename(mdPath)}, ${path.basename(htmlPath)}`);
 console.log(`${content.length} content records; ${planned.length} build-v1; hash ${blueprint.contentHash}`);

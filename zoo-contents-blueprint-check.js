@@ -23,6 +23,12 @@ ok(plan.status==='construction-ready','status must be construction-ready');
 ok(plan.parent.schema===parent.schema,'parent schema mismatch');
 ok(plan.parent.revision===parent.revision,'parent revision mismatch');
 ok(plan.parent.geometryHash===parent.geometryHash,'parent geometry hash mismatch');
+ok(plan.performanceExtension.parentOutdoorThingCap===parent.performanceBudgets.things,
+  'contents performance extension must start at the parent thing cap');
+ok(plan.performanceExtension.addedLocalFixtureThings===8,
+  'contents blueprint must declare eight local outdoor fixture things');
+ok(plan.performanceExtension.outdoorThingCap===parent.performanceBudgets.things+8,
+  'contents outdoor thing cap must equal parent cap plus local fixture things');
 const unhashed={...plan};delete unhashed.contentHash;
 const digest='sha256:'+crypto.createHash('sha256').update(stable(unhashed)).digest('hex');
 ok(plan.contentHash===digest,`content hash mismatch: expected ${digest}`);
@@ -123,8 +129,8 @@ for(const q of plan.tropicalScene.sharedObjects){
 ok(plan.habitats.length===21,'expected 21 outdoor habitats');
 ok(plan.buildings.length===9,'expected 9 buildings/structures');
 ok(plan.tropicalScene.rooms.length===7,'expected 7 Tropical House rooms');
-ok(contentCount===399,`expected 399 content records, found ${contentCount}`);
-ok(plannedCount===227,`expected 227 build-v1 records, found ${plannedCount}`);
+ok(contentCount===409,`expected 409 content records, found ${contentCount}`);
+ok(plannedCount===237,`expected 237 build-v1 records, found ${plannedCount}`);
 ok(plan.buildPhases.length===10,'expected ten ordered build phases');
 ok(plan.validation.acceptance.length===10,'expected ten acceptance checks');
 

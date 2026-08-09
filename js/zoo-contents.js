@@ -9,7 +9,7 @@ const ZooContents = (() => {
 
   const SCHEMA='chinesegame.zoo-contents/v1';
   const REVISION=1;
-  const CONTENT_HASH='sha256:4358f077f28d051227540ead947098a38ac17691eeeec6735c0df104fa18a027';
+  const CONTENT_HASH='sha256:cb8cd1ea95de8bd4df7f9904b93d440eef0ccf4062bf81ddf9818b65903acc3c';
   const EPS=1e-6;
   const planOf=input=>input||(typeof window!=='undefined'?window.ZOO_CONTENTS_BLUEPRINT:null);
 
@@ -45,7 +45,7 @@ const ZooContents = (() => {
       if(Array.isArray(v))v.forEach(visit);else Object.values(v).forEach(visit);
     };
     visit(plan);
-    if(additions!==227)throw new Error(`ZooContents: expected 227 additions, found ${additions}`);
+    if(additions!==237)throw new Error(`ZooContents: expected 237 additions, found ${additions}`);
     return plan;
   }
 
@@ -59,11 +59,18 @@ const ZooContents = (() => {
 
   function compiler(B,plan,scope) {
     const {box,cyl,ball,capsule,taper,flat,glyphs,solid,blocker,glow,light,thing}=B;
-    const mats=new Map(plan.materials.map(m=>[m.id,{
-      ...m,color:C(m.color),opt:{mode:m.renderMode,gloss:m.gloss,
-        ...(m.texture&&['concrete','wood','steel','brick','plaster','rooftile','paving'].includes(m.texture)?
-          {mat:m.texture,matScale:m.texture==='paving'?.7:1,matAmt:.28}:{})},
-    }]));
+    const materialRepeat=Object.freeze({
+      concrete:[1.45,.28],wood:[.60,.32],steel:[.55,.28],brick:[.88,.34],
+      plaster:[2.10,.28],rooftile:[.58,.30],paving:[.72,.34],
+    });
+    const mats=new Map(plan.materials.map(m=>{
+      const repeat=materialRepeat[m.texture];
+      // Rendering mode belongs to the primitive, not the pigment: concrete furniture is an
+      // ordinary opaque box even when a concrete floor uses mode 9. Keeping mode off this common
+      // option also lets the new fit-out join the zoo's existing material batches.
+      return [m.id,{...m,color:C(m.color),opt:{gloss:m.gloss,
+        ...(repeat?{mat:m.texture,matScale:repeat[0],matAmt:repeat[1]}:{})}}];
+    }));
     const stats={scope,records:0,props:0,solids:0,blockers:0,things:0,lights:0,ids:[]};
     const propStart=B.props.length,solidStart=B.solids.length,blockerStart=B.blockers.length,
       thingStart=B.things.length,lightStart=B.lights.length;
@@ -80,7 +87,8 @@ const ZooContents = (() => {
     const mark=(p,id,tag)=>{if(p){p.blueprintId=id;if(tag)p.tag=tag;}return p;};
 
     function build(q) {
-      const before=B.props.length,m=material(q),opt={...m.opt},tag=q.interaction&&q.interaction.tag;
+      const before=B.props.length,m=material(q),opt={...m.opt},
+        tag=q.interaction&&q.interaction.tag;
       const [x,y,z]=atOf(q),[w,h,d]=sizeOf(q),yaw=q.yaw||0;
       if(tag)opt.tag=tag;
       let first=null,child=1;
@@ -136,7 +144,8 @@ const ZooContents = (() => {
           b(x,y+h,z,w,.18,d,mats.get('M-ROOF-GREEN').color,{...mats.get('M-ROOF-GREEN').opt});break;
         case 'animal-den':
           b(x,y+h/2,z,w,h,d,m.color);
-          b(x,y+h*.42,z-d*.51,Math.min(1,w*.42),h*.65,.035,mats.get('M-MESH').color,{mode:1});break;
+          add(box(x,y+h*.42,z-d*.51,Math.min(1,w*.42),h*.65,.035,
+            mats.get('M-MESH').color,{hard:true,mode:1}));break;
         case 'feed-trough':
           b(x,y+h*.35,z,w,h*.7,d,m.color);
           b(x,y+h*.78,z,w*.82,h*.16,d*.76,mats.get('M-SAND').color,{hard:false});break;
@@ -158,7 +167,10 @@ const ZooContents = (() => {
           for(let i=-2;i<=2;i++)b(x+i*w*.16,y+.034,z,w*.045,.012,d*.88,mats.get('M-MESH').color,{mode:1});break;
         case 'keeper-safe-zone':
           fl(rectOf(q),y,m.color,{mode:9,gloss:.10});
-          for(const s of [-1,1])b(x+s*w*.42,y+.025,z,w*.08,.025,d*.82,mats.get('M-ROOF-RED').color,{mode:1});break;
+          // The two painted edge bars are untextured markings, so submit them through the zoo's
+          // existing mode-1 box batch instead of inheriting the concrete pad material.
+          for(const s of [-1,1])add(box(x+s*w*.42,y+.025,z,w*.08,.025,d*.82,
+            mats.get('M-ROOF-RED').color,{hard:true,mode:1}));break;
         case 'counter':
           b(x,y+h*.45,z,w,h*.9,d,m.color,{ry:yaw});b(x,y+h*.96,z,w+Math.min(.16,w*.08),h*.1,d+Math.min(.12,d*.1),mats.get('M-TIMBER').color,{ry:yaw});break;
         case 'table':
@@ -176,7 +188,10 @@ const ZooContents = (() => {
           c(x,y+h*.82,z-d*.32,Math.min(.04,w*.08),h*.24,mats.get('M-STEEL').color,{hard:false});break;
         case 'display-case':
           b(x,y+h*.25,z,w,h*.5,d,mats.get('M-RENDER').color,{ry:yaw});
-          b(x,y+h*.68,z,w*.94,h*.62,d*.94,mats.get('M-GLASS').color,{mode:1,alpha:.28,gloss:.9,ry:yaw,hard:false});
+          // Outdoor cases share the established opaque-glass batch; the enclosed Tropical
+          // House can afford a dedicated translucent pass for close-up exhibit glazing.
+          b(x,y+h*.68,z,w*.94,h*.62,d*.94,mats.get('M-GLASS').color,
+            {mode:1,...(scope==='tropical'?{alpha:.28}:{}),gloss:.9,ry:yaw,hard:false});
           bl(x,y+h*.65,z,w*.16,h*.16,d*.16,mats.get('M-ROCK-LIGHT').color,{hard:false});break;
         case 'screen': {
           const thin=Math.min(w,d),faceX=w<=d;
@@ -188,7 +203,10 @@ const ZooContents = (() => {
         }
         case 'light-fixture':
           b(x,y,z,w,h,d,m.color,{mode:1,glow:q.heat?.10:.06,ry:yaw});
-          if(q.lumens){const lc=q.heat?[1,.34,.20]:[1,.86,.68];light(x,y-.18,z,lc,Math.min(1.1,.4+q.lumens/6000),Math.max(3,Math.sqrt(q.lumens)*.11));}
+          if(q.lumens&&(scope==='tropical'||OUTDOOR_POINT_LIGHT_IDS.has(q.id))){
+            const lc=q.heat?[1,.34,.20]:[1,.86,.68];
+            light(x,y-.18,z,lc,Math.min(1.1,.4+q.lumens/6000),Math.max(3,Math.sqrt(q.lumens)*.11));
+          }
           break;
         case 'mesh-enclosure':
           for(const ox of [-w/2,w/2])for(const oz of [-d/2,d/2])b(x+ox,y+h/2,z+oz,.08,h,.08,m.color);
@@ -243,6 +261,7 @@ const ZooContents = (() => {
 
   const ACTIONS=Object.freeze({
     '检票':{zh:'检票入园',py:'jiǎnpiào rùyuán',en:'validate the ticket',done:'检票完成，可以入园。',doneTr:'The ticket is valid; you may enter.'},
+    '入口状态':{zh:'查看入口状态',py:'chákàn rùkǒu zhuàngtài',en:'check the entrance status',done:'屏幕显示开放时间、检票状态和无障碍路线。',doneTr:'The screen shows opening hours, ticket status, and the accessible route.'},
     '茶亭':{zh:'在茶亭喝茶',py:'zài chátíng hē chá',en:'have tea at the pavilion',done:'坐在湖边喝了一杯热茶。',doneTr:'You have a cup of hot tea beside the lake.'},
     '望远镜':{zh:'用望远镜看水鸟',py:'yòng wàngyuǎnjìng kàn shuǐniǎo',en:'watch waterfowl through the binoculars',done:'远处的水鸟看得很清楚。',doneTr:'The distant waterfowl come into clear view.'},
     '熊猫保护':{zh:'了解熊猫保护',py:'liǎojiě xióngmāo bǎohù',en:'learn about panda conservation',done:'屏幕介绍了熊猫的遗传和栖息地保护。',doneTr:'The display explains panda genetics and habitat protection.'},
@@ -250,12 +269,18 @@ const ZooContents = (() => {
     '保育展':{zh:'参观保育展',py:'cānguān bǎoyù zhǎn',en:'visit the conservation exhibition',done:'展览记录了动物恢复的过程。',doneTr:'The exhibition traces how animal populations recover.'},
     '图书商店':{zh:'逛图书商店',py:'guàng túshū shāngdiàn',en:'browse the bookshop',done:'书架上都是动物和自然读物。',doneTr:'The shelves are full of books about animals and nature.'},
     '动物声音':{zh:'听动物声音',py:'tīng dòngwù shēngyīn',en:'listen to animal calls',done:'耳机里传来不同动物的叫声。',doneTr:'Different animal calls play through the listening station.'},
+    '无障碍路线':{zh:'查看无障碍路线',py:'chákàn wúzhàng’ài lùxiàn',en:'check the accessible route',done:'路线避开了台阶和工作通道。',doneTr:'The route avoids steps and service paths.'},
     '雨林声音':{zh:'听雨林声音',py:'tīng yǔlín shēngyīn',en:'listen to the rainforest',done:'能听见雨声、虫鸣和鸟叫。',doneTr:'You hear rain, insects and birds.'},
   });
 
+  const OUTDOOR_POINT_LIGHT_IDS=new Set([
+    'B01/FIX05','B01/FIX06','B03/FIX-L01','B04/FIX-L01',
+    'B05/FIX-L02','B06/FIX-L02','B07/FIX-L02','B08/FIX04',
+  ]);
+
   function useRows(contentsPlan,place,parentPlan) {
     const plan=validatePlan(contentsPlan,parentPlan),out={};
-    const records=place==='zoo_tropical'?recordsForTropical(plan):recordsForOutdoor(plan);
+    const records=place==='zoo_tropical'?recordsForTropical(plan):place==='zoo'?recordsForOutdoor(plan):[];
     for(const q of records){const tag=q.interaction&&!q.interaction.aliasOf&&q.interaction.tag,a=tag&&ACTIONS[tag];if(!a)continue;
       out[tag]={zh:a.zh,py:a.py,en:a.en,secs:2.4,mins:5,gain:{mood:5},pose:{type:'stand'},done:a.done,doneTr:a.doneTr};}
     return out;
