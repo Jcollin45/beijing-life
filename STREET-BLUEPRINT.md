@@ -415,34 +415,47 @@ collider.
 district: **2 → 3** (+z alley, −x parade, **+x west footway**). Corners: **0 → 1** — the corner
 block turns from 五金电器 on the hutong to 药店 and 银行 on the road, and it cost no new mass.
 
-### Wave 3 — the 步行街 is BLOCKED, and this is the measurement that blocks it
+### Wave 3 — 新天地步行街 is BUILT
 
-Attempted, and it does not fit. Not "expensive" — **there is nowhere on the reachable far pavement
-to put its mouth.** A pedestrian lane opening off `x = 41.60` has to be entered from the `road`
-zone, which ends at `x = 39.80`; the body reaches `x = 39.50`. So the mouth has to be a gap in the
-parade with 4 m or more of clear pavement in front of it. Every metre of that pavement between
-z −13.5 and 13.5 is already spoken for:
+It took two goes. The first attempt is worth keeping because it is why the second one worked.
 
-| z | what stands there |
+**Why it looked blocked.** A lane opening off `x = 41.60` must be entered from the `road` zone,
+which ends at `x = 39.80` with the body reaching 39.50, so its mouth needs 4 m or more of clear far
+pavement. Every metre between z −13.5 and 13.5 was spoken for — the mall took −13.5..−5.60, the
+metro mouth −5.68..−3.68, the bike rank −1.20..0, then the guard, the office threshold, the
+courier, two hedge planters, the camera mast, the hypermarket and the notice board. The only gap
+was **2.48 m**.
+
+**What unblocked it.** The mall's own portal *is* the hole. 北京新天地 was leaving the parade
+anyway, so the 7.20 m it occupied became the mouth — **z −12.60 .. −5.80, 6.80 m**, wider than the
+hutong. Nothing was squeezed and the metro mouth never had to move.
+
+| built | detail |
 |---|---|
-| −13.5 .. −5.60 | 北京新天地, a full-height mall entrance 7.20 m wide (`street.js:2991`) |
-| −5.68 .. −3.68 | the 商务区 metro mouth, its stair pit and canopy (`street.js:3067`, x to 40.15) |
-| −3.68 .. −1.20 | **2.48 m clear — the only gap, and too narrow for a lane** |
-| −1.20 .. 0.00 | the bike rank, five machines (`street-civic.js:503`) |
-| 0.68 | the 保安 podium |
-| 2.20 | 公司, the office threshold |
-| 3.24 | the courier's trolley and parcels |
-| 4.30, 11.90 | hedge planters |
-| 6.10 | the camera mast |
-| 6.50 | 大超市 |
-| 8.60 | 公示栏 |
+| the lane | x 41.60 .. 59.00, z −12.60 .. −5.80. Paved, two frontages facing each other, a closed east end with a stair, and a red 牌坊 gateway at the mouth carrying 新天地步行街 on both faces |
+| 北京新天地 → (46.60, −5.80) | north side, facing −z. Recessed automatic door, warm lobby, gold mullions, red fascia, blade sign into the lane |
+| 大超市 → (52.80, −12.60) | south side, facing +z, cool interior against the mall's warm one. Keeps its `market` exit, return point 2.55 m out into the lane and 1.85 m inside the walkable edge |
+| four small units | 面包房, 花店 south; 奶茶店, 书店 north — all on `S.FASCIA / S.FASCIAH`, the same datum as the alley |
+| the parade | leaves a gap at the mouth; a block that would straddle it is cut back, one starting inside it is skipped, a cut leaving under 4 m gives the sliver to the gap |
+| the backstop | `blocker(FX, FX+40, …)` split around the mouth |
+| civic | post box → z 13.00, sweeper's cart → −2.70, the −11.05 hedge planter dropped: the three things standing in the mouth |
+| the road tree at (39.6, −8.0) | deleted — it stood under the gateway arch |
 
-Freeing 4 m means moving the metro mouth or the mall entrance first — each a larger job than the
-lane, and the metro's furniture is built across two files against the shell's mouth position.
+**The convention that had to be written down.** `n` is a frontage's outward normal along z, **+1
+south, −1 north**. Anything in front is `zf + n·d`; the mass behind is `zf − n·WALL/2`; glyphs face
+`n > 0 ? 0 : π`. The first draft got it backwards on *both* sides and built two shopfronts facing
+into their own buildings. A lane has two frontages pointing at each other, which is exactly the
+geometry where a sign convention has to be stated rather than remembered.
 
-**So the lane is not deferred on taste. It is blocked on ground.** The route to it, if it is ever
-wanted, is: move the 商务区 metro mouth south to z −11.60 *first* (Part 4.1 already proposes this,
-for its own reasons), which opens z −5.68 .. −1.20 to 4.48 m — and then the lane fits.
+**Two process faults worth keeping.** The deploy watcher checked only the new file, so the first
+look was at a page whose `index.html` had not yet picked the script up — `Object.keys(StreetFit)`
+was empty and the lane simply was not there. And `CAM.fx/fz` is a *smoothed* follow point: setting
+`P` teleports the body but the camera eases to it over several seconds, so every screenshot taken
+immediately after a jump was framed from the previous position. Set `CAM.fx/fz/px/pz` too.
+
+**Final score against Part 2.** Doors on the x 41.60 line: **7 → 3**. Frontage orientations:
+**2 → 5** (+z alley, −x parade, +x west footway, −z and +z lane). Corners: **0 → 2**. Crossings:
+**1 → 2**.
 
 ### The case against it anyway, which stands
 
