@@ -2355,7 +2355,17 @@ function syncMovingCulls(s) {
 // (js/home-walls.js) — the setting does nothing to the geometry of any other scene, so it must not
 // move any other scene's camera either. Cheap: two reads, called a handful of times a frame, never
 // per prop.
-function dollHouse() { return SET.wallsOff && place === 'home'; }
+// Deck 2 and not the whole tower, and the lobby is why. Verified on the live site 2026-08-09:
+// with the release gated on `place` alone, V in 一楼·大堂 craned the eye up into the underside of
+// the street above and filled the frame with the top face of a slab, player included — the exact
+// "staring at whatever surface is nearest" complaint, moved upward. The deck stamp is what saves
+// this on deck 2 (an upper floor's slab is stamped and culled when drawDeck is 2), and the shell's
+// own envelope is `undefined` and never culled, so deck 0's roof is opaque from on top of it and
+// always will be. The partitions the setting hides are flat 202's anyway (js/home-walls.js), so
+// this is the deck the feature is about; every other deck keeps the walking camera it had.
+function dollHouse() {
+  return SET.wallsOff && place === 'home' && !!scene.level && scene.level() === 2;
+}
 function hiddenAt(px, pz) {
   return (hideX > 0 && px > cutRoom.x1 - 0.42) || (hideX < 0 && px < cutRoom.x0 + 0.42) ||
          (hideZ > 0 && pz > cutRoom.z1 - 0.42) || (hideZ < 0 && pz < cutRoom.z0 + 0.42);
