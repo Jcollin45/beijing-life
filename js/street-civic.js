@@ -464,15 +464,25 @@ StreetFit['civic'] = S => {
   // that faces -x, and this elevation faces +x, so `cx` is +.15 out instead of -.11 and the stays
   // hang off the near end. The 20 cm wall plate is buried from 23.24 to 23.44 so it reads as fixed
   // whether the render behind it is at 23.30 or the bank's 23.56, and shares a plane with neither.
+  //
+  // The case is SHALLOWER than the panel, and that is the whole difference between this and the
+  // helper it is mirrored from. street-retail.js:147 builds the case at `T*2 + .05` = .20 deep and
+  // the lit panel at `T*2` = .15 inside it, with the characters at ±.088 — so the case's own face
+  // at ±.10 is in front of both, and a 侧招 built that way renders as a blank slab of case colour
+  // with no panel and no text on it. Verified on the live site: the first cut of these two came
+  // out as two dark red rectangles. So here the case is .13 (±.065), the panel .17 (±.085) and the
+  // characters sit 12 mm off the panel — a returned frame with the lit face proud of it, which is
+  // what a light box actually is. TICKET, L2: js/street-retail.js's three alley blades are built
+  // by that helper and appear to have the same defect.
   function bladeE(z, out, base, ink, text) {
     const T = .075, size = Math.min(BLADEH * .68, (out - .20) / text.length * .88);
     const cx = 23.45 + out / 2;
     box(23.34, BLADE, z, .20, BLADEH * .86, .22, col.steelD, { hard: true, gloss: .34 });
-    box(cx, BLADE, z, out, BLADEH + .06, T * 2 + .05, BLADEB, { hard: true, gloss: .26 });
-    const panel = box(cx, BLADE, z, out - .09, BLADEH - .05, T * 2, base,
+    box(cx, BLADE, z, out, BLADEH + .06, T * 2 - .02, BLADEB, { hard: true, gloss: .26 });
+    const panel = box(cx, BLADE, z, out - .09, BLADEH - .05, T * 2 + .02, base,
       { hard: true, mode: 1, gloss: .20 });
     for (const s of [-1, 1])
-      glyphs(cx, BLADE, z + s * (T + .013), s > 0 ? 0 : Math.PI, text,
+      glyphs(cx, BLADE, z + s * (T + .022), s > 0 ? 0 : Math.PI, text,
         { size, gap: size * .20, color: ink, mode: 1, lift: .008 });
     for (const sy of [-1, 1])
       cyl(cx - .01, BLADE + sy * (BLADEH / 2 + .07), z, .012, out * .96, col.steelD,
