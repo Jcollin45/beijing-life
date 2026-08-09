@@ -2769,9 +2769,21 @@ const Street = Lazy('Street', () => {
     // rest queued up behind it, the road had no built edge, and a camera swung round behind
     // the player on the far pavement ended up a metre from a blank flank filling the screen.
     const FX = 41.6;                                  // the building line
+    // The lane's mouth. js/street-lane.js opens 新天地步行街 through this frontage at
+    // z -12.60 .. -5.80 — the 6.80 m 北京新天地's portal used to occupy — so the parade stops
+    // short of it and starts again on the other side. A block that would straddle the gap is cut
+    // back to it; one that would start inside it is skipped; and a cut that would leave a sliver
+    // under 4 m gives the sliver to the gap, because 3 m of six-storey block is not a building.
+    const GZ0 = -12.60, GZ1 = -5.80;
     let fz = -54, nearUnit = 0;
     while (fz < 52) {
-      const len = 13 + rnd() * 8, bh = 15.5 + rnd() * 6, dep = 17 + rnd() * 7;
+      if (fz >= GZ0 && fz < GZ1) { fz = GZ1; continue; }
+      let len = 13 + rnd() * 8;
+      if (fz < GZ0 && fz + len > GZ0) {
+        len = GZ0 - fz;
+        if (len < 4) { fz = GZ1; continue; }
+      }
+      const bh = 15.5 + rnd() * 6, dep = 17 + rnd() * 7;
       const cz = fz + len / 2, cx = FX + dep / 2;
       box(cx, bh / 2, cz, dep, bh, len, col.render, { hard: true, mode: 14, gloss: G.paint, ...RENDER });
       box(cx, bh + .30, cz, dep + .22, .60, len + .22, col.renderD, { hard: true, gloss: G.paint });
@@ -3006,80 +3018,17 @@ const Street = Lazy('Street', () => {
     // the lobby, looking out through the back of its own walls, which are single-sided. Capped at
     // 4.2 m so a high camera can still see over the frontage.
     blocker(FX - .95, FX, OFZ - 1.85, OFZ + 1.85, 4.2);
-    // ---- 北京新天地. A full-height mall entrance replaces several anonymous shop bays on the
-    // business-district parade. It is broad, bright and readable from the subway stairs, with a
-    // recessed automatic door rather than another flat sheet of shop glass.
-    const MLZ = -9.20;
-    box(FX - .58, 3.35, MLZ, 1.12, 6.70, 7.20, col.charcoal,
-      { hard:true, gloss:.30, tag:'购物中心' });
-    box(FX - 1.16, 3.08, MLZ, .10, 5.75, 5.95, col.glassDark,
-      { hard:true, gloss:.22, tag:'购物中心' });
-    pane(box(FX - 1.22, 3.08, MLZ, .045, 5.55, 5.72, col.glassDay,
-      { hard:true, mode:1, alpha:.70, gloss:G.glass, tag:'购物中心' }), 1.0);
-    // Warm lobby beyond the glass, with dark returns so it reads as a room and not a lightbox.
-    litten(box(FX - 1.10, 2.12, MLZ, .05, 3.86, 5.22, C('#e9d3a6'),
-      { hard:true, mode:1, glow:.08, tag:'购物中心' }), 1.25);
-    for(const s of [-1,1]) {
-      box(FX - 1.34, 1.50, MLZ + s*.82, .14, 2.88, .10, col.gold,
-        { hard:true, gloss:G.metal, tag:'购物中心' });
-      capsule(FX - 1.44, 1.46, MLZ + s*.23, .026, .46, .026, col.goldL,
-        { gloss:G.metal, tag:'购物中心' });
-    }
-    box(FX - 1.35, 5.42, MLZ, .16, 1.12, 6.25, col.redD,
-      { hard:true, gloss:.28, tag:'购物中心' });
-    for(const g of B.glyphs(FX - 1.46, 5.42, MLZ, -Math.PI/2, '北京新天地',
-      { size:.50,gap:.16,color:col.goldL,mode:1,glow:.22,lift:.012,tag:'购物中心' })) litten(g,1.3);
-    // A vertical blade sign makes the entrance legible while walking along the pavement too.
-    box(FX - 2.05, 4.70, MLZ - 3.18, .42, 3.30, .86, col.redD,
-      { hard:true, gloss:.28, tag:'购物中心' });
-    B.glyphs(FX - 2.28, 4.70, MLZ - 3.18, -Math.PI/2, '购物中心',
-      { size:.33,gap:.12,vertical:true,color:col.goldL,mode:1,glow:.18,tag:'购物中心' });
-    for(const s of [-1,1]) {
-      taper(FX - 2.05,.28,MLZ+s*2.65,.54,.56,.54,col.stoneD,{gloss:.24});
-      ball(FX - 2.05,.68,MLZ+s*2.65,.35,.38,.35,col.green,{mode:15,gloss:.12});
-    }
-    shade(FX - 2.0,MLZ,2.2,7.0,.30);
-    thing('购物中心',FX - 1.55,5.95,MLZ,'这家购物中心有电影院和美食广场。',
-      'This shopping mall has a cinema and a food court.',
-      '购物 shopping + 中心 centre. 商场 is the everyday shorter word.',
-      { focus:[FX - 2.55,MLZ],reach:2.4 });
-
-    // ---- 大超市 the hypermarket, further up the same pavement. A wide glazed frontage with the
-    // trolley bay showing through it, because that is how you know one from the road: not by the
-    // sign but by the trolleys and the fact that the glass runs for twenty metres. Deliberately at
-    // the north end, well clear of the mall at z -9.2 and the chemist's, so the three doorways on
-    // this pavement do not pile into each other.
-    const SMZ = 6.50;
-    box(FX - .50, 2.90, SMZ, 1.00, 5.80, 9.60, col.stone,
-      { hard: true, gloss: .24, tag: '大超市' });
-    pane(box(FX - 1.06, 2.30, SMZ, .05, 4.20, 8.90, col.glassDay,
-      { hard: true, mode: 1, alpha: .62, gloss: G.glass, tag: '大超市' }), 1.0);
-    // the lit interior showing through, cool where the mall's is warm — fluorescent, not lobby
-    litten(box(FX - .98, 2.10, SMZ, .05, 3.60, 8.40, C('#dfe8ee'),
-      { hard: true, mode: 1, glow: .07, tag: '大超市' }), 1.15);
-    // the fascia, and the name across it
-    box(FX - 1.10, 5.05, SMZ, .18, 1.10, 9.20, col.redD,
-      { hard: true, gloss: .26, tag: '大超市' });
-    for (const g of B.glyphs(FX - 1.22, 5.05, SMZ, -Math.PI / 2, '大超市',
-      { size: .62, gap: .20, color: C('#f2e4c4'), mode: 1, glow: .22, lift: .012, tag: '大超市' }))
-      litten(g, 1.3);
-    // the sliding doors in the middle of the run
-    for (const s of [-1, 1])
-      box(FX - 1.12, 1.30, SMZ + s * .78, .06, 2.60, 1.44, col.steel,
-        { hard: true, gloss: G.metal, tag: '大超市' });
-    // and the trolleys nested outside it, which is the real sign
-    for (let i = 0; i < 5; i++) {
-      const tz = SMZ + 3.05 + i * .30;
-      taper(FX - 2.15, .52, tz, .50, .40, .80, col.steel,
-        { hard: true, ry: Math.PI / 2, gloss: G.metal, tag: '大超市' });
-      capsule(FX - 2.15, .84, tz - .34, .018, .46, .018, C('#c8452f'),
-        { rx: Math.PI / 2, gloss: .30, tag: '大超市' });
-    }
-    shade(FX - 2.0, SMZ, 2.2, 9.4, .28);
-    thing('大超市', FX - 1.30, 5.05, SMZ, '大超市什么都有，比小卖部便宜。',
-      'The hypermarket has everything, and it is cheaper than the corner shop.',
-      '大 big + 超市 supermarket. The 超市 by your door is a 便利店 by comparison.',
-      { focus: [FX - 2.55, SMZ], reach: 2.6 }).exit = { place: 'market', at: { x: FX - 2.55, z: SMZ, yaw: -Math.PI / 2 } };
+    // ---- 北京新天地 and 大超市 are NOT here any more.
+    //
+    // Both are on 新天地步行街 now (js/street-lane.js), the pedestrian lane that opens through
+    // this frontage at z -12.60 .. -5.80 — which is the 6.80 m the mall's own portal used to
+    // occupy, and the only stretch of this pavement that was ever going to be free. Seven of the
+    // district's thirteen doors stood on this one 27 m line; with 银行 and 药店 across the road
+    // and these two off it, three do.
+    //
+    // Deleted rather than left dark: the procedural parade above already builds ordinary shop
+    // units the whole length of the frontage, so removing the two portals reveals a continuous
+    // row of them rather than leaving a hole. The mouth is the gap the loop leaves at GZ0..GZ1.
 
     // ---- 地铁站 the 商务区 entrance, on the far pavement outside the office tower
     metroMouth(38.70, -5.20, '商务区');
@@ -3162,7 +3111,11 @@ const Street = Lazy('Street', () => {
           col.glassDay, { hard: true, mode: 1 }), rnd(), true);
     }
     // and one continuous stop so the eye can never slip past the far building line
-    blocker(FX, FX + 40, -70, 70, 15.5);
+    // Cut at the lane's mouth. js/street-lane.js builds its own side blocks and its own end, so
+    // the stop that keeps the eye from slipping past the far building line is not needed there —
+    // and left whole it would have stood across the entrance.
+    for (const [bz0, bz1] of [[-70, -12.60], [-5.80, 70]])
+      blocker(FX, FX + 40, bz0, bz1, 15.5);
 
     // ---- the middle distance. Without this the built district simply stops and the ground
     // runs out to the horizon as a bare plain, which is the one thing that gives the whole
@@ -3996,6 +3949,9 @@ const Street = Lazy('Street', () => {
       // street-hotel.js extends the east pavement north of the hypermarket. Kept in that module's
       // coordinate contract so the arrival court and its walkable boundary cannot drift apart.
       ...(S.HOTEL_ZONE ? [S.HOTEL_ZONE] : []),
+      // js/street-lane.js's 步行街, published the same way. It overlaps the road zone at
+      // x 39.30..39.80 so the two are genuinely connected after clampMove takes the body radius.
+      ...(S.LANE_ZONE ? [S.LANE_ZONE] : []),
     ],
     roomAt(x, z, prev) {
       const zs = this.zones;

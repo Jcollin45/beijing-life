@@ -554,7 +554,11 @@ StreetFit['civic'] = S => {
 
   // ---- 信箱, the post box. Deliberately not lettered with any operator's name: a plain green
   // pillar with a slot and the word for what it is.
-  const MB = 40.15, MBZ = -6.95;
+  // MBZ 13.00, not -6.95: js/street-lane.js opens 新天地步行街 through this frontage at
+  // z -12.60 .. -5.80 and the post box stood inside the mouth. 13.00 is the north end of the
+  // pavement, 0.45 m clear of the hedge planter that runs 11.25 .. 12.55, and the road zone
+  // reaches 13.50.
+  const MB = 40.15, MBZ = 13.00;
   cyl(MB, .58, MBZ, .21, 1.16, POSTG, { gloss: .28 });
   taper(MB, 1.25, MBZ, .44, .20, .44, POSTG, { gloss: .28 });
   cyl(MB, 1.38, MBZ, .06, .08, C('#155440'), { gloss: .30 });
@@ -565,7 +569,10 @@ StreetFit['civic'] = S => {
 
   // ---- 环卫. The sweeper's cart with the long bamboo broom leaning on it and the pan hooked to
   // the side, parked where it is always parked — against the frontage, out of everybody's way.
-  const HX = 40.05, HZ = -9.55;
+  // HZ -2.70, not -9.55: the sweeper's cart stood in the middle of the lane's mouth. -2.70 is
+  // the gap between the 商务区 metro canopy, which ends at -3.68, and the bike rank, which starts
+  // at -1.20 — 2.48 m, and the cart is 1.2 m long.
+  const HX = 40.05, HZ = -2.70;
   box(HX, .48, HZ, .52, .58, .86, HIVIS, { hard: true, gloss: .24 });
   box(HX, .81, HZ, .56, .06, .90, C('#b04d16'), { hard: true, gloss: .26 });
   box(HX - .03, .28, HZ, .48, .30, .78, C('#3c4147'), { hard: true, gloss: .20 });
@@ -640,7 +647,9 @@ StreetFit['civic'] = S => {
 
   // ---- the hedge. Clipped box in stone planters down the civic stretch, which is what separates
   // a pavement that has been looked after from one that has not.
-  for (const hz of [-11.05, 4.30, 11.90]) {
+  // -11.05 is gone: that planter stood squarely in the lane's mouth, and there is nowhere on
+  // this pavement to move it to that is not already something. Two planters, not three.
+  for (const hz of [4.30, 11.90]) {
     box(40.16, .26, hz, .62, .52, 1.30, col.stoneD, { hard: true, gloss: .22 });
     box(40.16, .31, hz, .50, .46, 1.18, C('#5b5347'), { hard: true, gloss: .18 });
     for (let i = 0; i < 3; i++)
