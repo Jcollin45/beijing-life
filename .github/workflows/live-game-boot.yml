@@ -8,6 +8,7 @@ on:
       - ZOO-EXPANSION-BLUEPRINT.json
       - js/**
       - .bootcheck.js
+      - live-game-boot-check.js
       - .harness-env.js
       - .render-gate.js
       - serve.py
@@ -56,7 +57,7 @@ jobs:
         shell: bash
         run: |
           set +e
-          node .bootcheck.js 2>&1 | tee /tmp/live-game-boot.log
+          node live-game-boot-check.js 2>&1 | tee /tmp/live-game-boot.log
           status=${PIPESTATUS[0]}
           if (( status != 0 )); then
             {
