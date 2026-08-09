@@ -2404,7 +2404,13 @@ const Street = Lazy('Street', () => {
     // the footway south of it. 6.5 is opposite the alley mouth, where the west side has no
     // frontage at all and a tree is just a tree.
     tree(RD0 - 2.1, 6.5, 1.1, false); tree(RD0 - 2.1, 9.4, 1.0, false);
-    tree(RD1 + 2.1, -8.0, 1.05, false); tree(RD1 + 2.1, 6.0, 1.15, false);
+    // The tree that stood at (39.6, -8.0) is GONE — the third time this fault has turned up
+    // today and the third time there was nowhere to move it to. It stood in the mouth of
+    // 新天地步行街 (js/street-lane.js opens the lane at z -12.60 .. -5.80), directly under the
+    // gateway arch, and the far pavement's remaining gaps are the 2.48 m between the metro canopy
+    // and the bike rank and the 1.4 m between the notice board and a hedge planter. A tree in a
+    // street entrance is worse than one tree fewer.
+    tree(RD1 + 2.1, 6.0, 1.15, false);
 
     // The shelter is at the KERB now, not the back of the footway. 北京银行 skins the corner
     // block's east elevation at z -11.40 .. -7.10 (js/street-bank.js) and this shelter is 7.30 m
