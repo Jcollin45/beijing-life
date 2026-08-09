@@ -536,11 +536,11 @@ StreetFit['civic'] = S => {
   // stands in front of (x 25.00..27.10, z -15.7..-8.3), so it is read over the shelter roof from
   // the north, which is why the units are up at 3.2 m and not at head height.
   const SDZ = -12.80;
-  box(23.36, 1.08, SDZ, .12, 2.16, 1.10, DOORD, { hard: true, gloss: .26 });          // frame
+  box(23.34, 1.08, SDZ, .18, 2.16, 1.10, DOORD, { hard: true, gloss: .26 });          // frame
   box(23.41, 1.04, SDZ, .06, 2.04, .96, DOORG,
     { hard: true, gloss: .34, mat: 'steel', matScale: .50, matAmt: .30 });            // leaf
   for (const dz of [-.40, .40])
-    box(23.45, 1.04, SDZ + dz, .02, 1.96, .04, DOORD, { hard: true, gloss: .38 });
+    box(23.455, 1.04, SDZ + dz, .02, 1.96, .04, DOORD, { hard: true, gloss: .38 });
   cyl(23.47, 1.02, SDZ - .36, .022, .22, col.steel, { gloss: G.metal });              // lever
   box(23.46, 1.72, SDZ, .02, .13, .30, C('#d8d2c2'), { hard: true, gloss: .24 });
   glyphs(23.475, 1.72, SDZ, Math.PI / 2, '配电间',
