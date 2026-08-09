@@ -1070,12 +1070,14 @@
     // at -1.30 in front of it anyway.
     stripCurtain(SHOPDOOR, 1.25, EZ + .60, 1.16, 2.10);
 
-    // ---- A3. 营业时间. Six plates, and not one of them has its times written out: `hoursPlate`
+    // ---- A3. 营业时间. y 1.80 and not 1.60 on the two block frontages: at 1.60 the alley's own
+    // eye-height cable run crossed the plate between its header and its opening time, which a
+    // live render caught and the tape did not. Six plates, and not one of them has its times written out: `hoursPlate`
     // reads `HOURS` and formats it, so a plate is incapable of disagreeing with the hour its own
     // shop's lights go off. That is the whole reason the table was rounded to the half hour when
     // these went up — see the note on `HOURS`.
-    hoursPlate(4.72, 1.60, EZ + .085, 'shop');        // the 40 cm white pier west of window 1
-    hoursPlate(-6.27, 1.60, EZ + .205, 'noodle');     // the 34 cm pier between window 2 and the jamb
+    hoursPlate(4.72, 1.80, EZ + .085, 'shop');        // the 40 cm white pier west of window 1
+    hoursPlate(-6.27, 1.80, EZ + .205, 'noodle');     // the 34 cm pier between window 2 and the jamb
     hoursPlate(19.72, 1.86, HWG + .012, 'hardw');     // the 22 cm slot between unit B's jamb and C
     hoursPlate(40.405, 1.70, -6.35, 'mall', -Math.PI / 2);   // the stone north of the mall glazing
     hoursPlate(41.30, 1.70, -14.95, 'parade', -Math.PI / 2); // the far parade, by the 烟酒 blade
