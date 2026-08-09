@@ -1,13 +1,13 @@
 {
   "schema": "chinesegame.zoo-contents/v1",
-  "revision": 1,
+  "revision": 2,
   "status": "construction-ready",
   "title": "Zoo Pens and Buildings — Complete Contents Construction Blueprint",
   "parent": {
     "file": "ZOO-EXPANSION-BLUEPRINT.json",
     "schema": "chinesegame.zoo-expansion/v1",
     "revision": 2,
-    "geometryHash": "sha256:d83fda0095d68a322ba6d3e5567edf1293a9052f417ce07517def7eb2e403110"
+    "geometryHash": "sha256:e7ab50e717b8a69d3d689d027e5aed835c0cd6acff12483f95e32a21d7a1e6c9"
   },
   "coordinateSystem": {
     "units": "metres",
@@ -1021,9 +1021,9 @@
           "label": "east browse tree",
           "archetype": "tree",
           "at": [
-            12,
+            12.8,
             0,
-            -7.5
+            -9.4
           ],
           "size": [
             2.1,
@@ -1044,7 +1044,7 @@
           "at": [
             8.15,
             0,
-            -8.95
+            -10.25
           ],
           "size": [
             1.88,
@@ -1106,7 +1106,7 @@
           "label": "sand drainage channel",
           "archetype": "floor-drain",
           "at": [
-            9.2,
+            11.4,
             0.01,
             -10.25
           ],
@@ -1185,7 +1185,7 @@
           "at": [
             8.15,
             0,
-            -8.95
+            -10.25
           ],
           "acts": [
             "drink"
@@ -1273,19 +1273,19 @@
           "label": "south bamboo clump",
           "archetype": "bamboo-clump",
           "at": [
-            -14.6,
+            -15,
             0,
-            -0.9
+            -1.85
           ],
           "size": [
-            2.2,
+            1.5,
             3.6,
-            2.2
+            1.5
           ],
           "material": "M-BAMBOO",
           "collision": "body",
           "purpose": "feeding cover",
-          "caneCount": 9,
+          "caneCount": 7,
           "yaw": 0,
           "implementationStatus": "existing-r2"
         },
@@ -1294,40 +1294,40 @@
           "label": "north-west bamboo clump",
           "archetype": "bamboo-clump",
           "at": [
-            -14.8,
+            -15,
             0,
-            2.5
+            3.4
           ],
           "size": [
-            2.2,
-            3.9,
-            2.2
-          ],
-          "material": "M-BAMBOO",
-          "collision": "body",
-          "purpose": "feeding cover",
-          "caneCount": 8,
-          "yaw": 0,
-          "implementationStatus": "existing-r2"
-        },
-        {
-          "id": "H02/O03",
-          "label": "north-centre bamboo clump",
-          "archetype": "bamboo-clump",
-          "at": [
-            -12.4,
-            0,
-            3
-          ],
-          "size": [
-            2.2,
-            3.3,
-            2.2
+            1.4,
+            3.8,
+            1.4
           ],
           "material": "M-BAMBOO",
           "collision": "body",
           "purpose": "feeding cover",
           "caneCount": 6,
+          "yaw": 0,
+          "implementationStatus": "existing-r2"
+        },
+        {
+          "id": "H02/O03",
+          "label": "east low bamboo clump",
+          "archetype": "bamboo-clump",
+          "at": [
+            -9,
+            0,
+            0.9
+          ],
+          "size": [
+            0.8,
+            2.2,
+            0.8
+          ],
+          "material": "M-BAMBOO",
+          "collision": "body",
+          "purpose": "low browse screen",
+          "caneCount": 3,
           "yaw": 0,
           "implementationStatus": "existing-r2"
         },
@@ -1489,9 +1489,9 @@
           "id": "H02/Z01",
           "label": "bamboo feeding",
           "at": [
-            -13.6,
+            -14.15,
             0,
-            -0.5
+            -1.8
           ],
           "acts": [
             "eat",
@@ -1502,9 +1502,9 @@
           "id": "H02/Z02",
           "label": "climb structure",
           "at": [
-            -10.4,
-            0.7,
-            -0.6
+            -9.4,
+            0,
+            0
           ],
           "acts": [
             "climb",
@@ -1645,9 +1645,9 @@
           "label": "north-east shrub",
           "archetype": "tree",
           "at": [
-            1.35,
+            -0.2,
             0,
-            3.28
+            3
           ],
           "size": [
             1.1,
@@ -1872,41 +1872,41 @@
         },
         {
           "id": "H04/O01",
-          "label": "mud wallow outer basin",
+          "label": "north-east mud wallow",
           "archetype": "pool-volume",
           "at": [
             13,
             0,
-            0.75
+            2.9
           ],
           "size": [
-            4.2,
-            0.25,
-            3.4
+            4.1,
+            0.12,
+            2.4
           ],
           "material": "M-MUD",
           "collision": "none",
-          "purpose": "dusting and cooling",
+          "purpose": "dusting and cooling, separated from the dry shelter",
           "innerWaterSize": [
-            1.72,
-            0.12,
-            1.05
+            1.68,
+            0.06,
+            0.88
           ],
           "yaw": 0,
           "implementationStatus": "existing-r2"
         },
         {
           "id": "H04/O02",
-          "label": "east rock cluster",
+          "label": "south-west rock cluster",
           "archetype": "rock-cluster",
           "at": [
-            14.65,
+            7.6,
             0,
-            3.05
+            -0.85
           ],
           "size": [
-            2.3,
-            1.05,
+            2.2,
+            1,
             2
           ],
           "material": "M-ROCK",
@@ -1942,9 +1942,9 @@
           "label": "suspended enrichment ball",
           "archetype": "climbing-frame",
           "at": [
-            11.55,
+            13.6,
             0,
-            -0.32
+            -2.1
           ],
           "size": [
             0.7,
@@ -2049,8 +2049,8 @@
           "archetype": "floor-drain",
           "at": [
             14.35,
-            -0.23,
-            0.75
+            -0.1,
+            2.9
           ],
           "size": [
             0.45,
@@ -2071,7 +2071,7 @@
           "at": [
             13,
             0,
-            0.75
+            2.9
           ],
           "acts": [
             "dust",
@@ -2573,9 +2573,9 @@
           "label": "east shade outcrop",
           "archetype": "rock-cluster",
           "at": [
-            9,
+            6.2,
             0,
-            12.95
+            12.6
           ],
           "size": [
             2.4,
@@ -2885,9 +2885,9 @@
           "slotId": "otter-feed",
           "species": "水獭",
           "at": [
-            -42.52,
+            -42.85,
             0,
-            -3
+            -7.16
           ],
           "act": "eat",
           "hours": [
@@ -3168,9 +3168,9 @@
           "id": "H10-otter/Z04",
           "label": "otter-feed",
           "at": [
-            -42.52,
+            -42.85,
             0,
-            -3
+            -7.16
           ],
           "acts": [
             "eat"
@@ -3252,9 +3252,9 @@
           "slotId": "hippo-bank",
           "species": "河马",
           "at": [
-            -41.64,
+            -41.2,
             0,
-            7.85
+            12.14
           ],
           "act": "lie",
           "hours": [
@@ -3539,9 +3539,9 @@
           "id": "H11-hippo/Z03",
           "label": "hippo-bank",
           "at": [
-            -41.64,
+            -41.2,
             0,
-            7.85
+            12.14
           ],
           "acts": [
             "lie"
@@ -3954,7 +3954,8 @@
             12.5
           ],
           "width": 1.5,
-          "access": "staff"
+          "access": "staff",
+          "foldJamb": "z1"
         },
         "public": [],
         "animal": []
@@ -3965,9 +3966,9 @@
           "slotId": "crane-wade",
           "species": "丹顶鹤",
           "at": [
-            -30.5,
+            -28.8,
             0,
-            8.7
+            8.88
           ],
           "act": "graze",
           "hours": [
@@ -4216,9 +4217,9 @@
           "id": "H13-crane/Z01",
           "label": "crane-wade",
           "at": [
-            -30.5,
+            -28.8,
             0,
-            8.7
+            8.88
           ],
           "acts": [
             "graze"
@@ -4309,9 +4310,9 @@
           "slotId": "takin-feed",
           "species": "羚牛",
           "at": [
-            -41.2,
+            -40.65,
             0,
-            33.7
+            34.78
           ],
           "act": "eat",
           "hours": [
@@ -4541,9 +4542,9 @@
           "id": "H20-takin/Z02",
           "label": "takin-feed",
           "at": [
-            -41.2,
+            -40.65,
             0,
-            33.7
+            34.78
           ],
           "acts": [
             "eat"
@@ -4622,9 +4623,9 @@
           "slotId": "snow-den",
           "species": "雪豹",
           "at": [
-            -25.5,
+            -26.2,
             0,
-            34.58
+            35.746
           ],
           "act": "lie",
           "hours": [
@@ -4637,9 +4638,9 @@
           "slotId": "snow-prowl",
           "species": "雪豹",
           "at": [
-            -30.5,
+            -29.5,
             0,
-            28.75
+            29.3
           ],
           "act": "graze",
           "hours": [
@@ -4815,9 +4816,9 @@
           "label": "habitat camera",
           "archetype": "habitat-camera",
           "at": [
-            -33.5,
+            -33.4,
             0,
-            26.5
+            29
           ],
           "size": [
             0.22,
@@ -4892,9 +4893,9 @@
           "id": "H21-snow-leopard/Z02",
           "label": "snow-den",
           "at": [
-            -25.5,
+            -26.2,
             0,
-            34.58
+            35.746
           ],
           "acts": [
             "lie"
@@ -4904,9 +4905,9 @@
           "id": "H21-snow-leopard/Z03",
           "label": "snow-prowl",
           "at": [
-            -30.5,
+            -29.5,
             0,
-            28.75
+            29.3
           ],
           "acts": [
             "graze"
@@ -4958,9 +4959,9 @@
           "slotId": "redpanda-tree",
           "species": "小熊猫",
           "at": [
-            -28,
+            -27.1,
             0,
-            47.05
+            47.23
           ],
           "act": "climb",
           "hours": [
@@ -5238,9 +5239,9 @@
           "id": "H30-red-panda/Z01",
           "label": "redpanda-tree",
           "at": [
-            -28,
+            -27.1,
             0,
-            47.05
+            47.23
           ],
           "acts": [
             "climb"
@@ -5344,9 +5345,9 @@
           "slotId": "duck-reeds",
           "species": "鸳鸯",
           "at": [
-            -13.5,
+            -11.8,
             0,
-            33.2
+            33.704
           ],
           "act": "swim",
           "hours": [
@@ -5359,9 +5360,9 @@
           "slotId": "waterfowl-island",
           "species": "天鹅",
           "at": [
-            -11,
+            -14,
             0,
-            29.7
+            32.5
           ],
           "act": "preen",
           "hours": [
@@ -5577,9 +5578,9 @@
           "id": "H31-waterfowl-lake/Z02",
           "label": "duck-reeds",
           "at": [
-            -13.5,
+            -11.8,
             0,
-            33.2
+            33.704
           ],
           "acts": [
             "swim"
@@ -5589,9 +5590,9 @@
           "id": "H31-waterfowl-lake/Z03",
           "label": "waterfowl-island",
           "at": [
-            -11,
+            -14,
             0,
-            29.7
+            32.5
           ],
           "acts": [
             "preen"
@@ -5672,9 +5673,9 @@
           "slotId": "goat-feed",
           "species": "兔子",
           "at": [
-            12.15,
+            9.54,
             0,
-            31.8
+            33.69
           ],
           "act": "eat",
           "hours": [
@@ -5687,9 +5688,9 @@
           "slotId": "rabbit-rest",
           "species": "山羊",
           "at": [
-            13.89,
+            11.208,
             0,
-            25.08
+            24.702
           ],
           "act": "lie",
           "hours": [
@@ -5902,7 +5903,7 @@
           "purpose": "controlled public entry",
           "interlock": true,
           "yaw": 0,
-          "implementationStatus": "build-v1"
+          "implementationStatus": "existing-r2"
         },
         {
           "id": "H32/OPS04",
@@ -5946,9 +5947,9 @@
           "id": "H32-family-farm/Z02",
           "label": "goat-feed",
           "at": [
-            12.15,
+            9.54,
             0,
-            31.8
+            33.69
           ],
           "acts": [
             "eat"
@@ -5958,9 +5959,9 @@
           "id": "H32-family-farm/Z03",
           "label": "rabbit-rest",
           "at": [
-            13.89,
+            11.208,
             0,
-            25.08
+            24.702
           ],
           "acts": [
             "lie"
@@ -6012,9 +6013,9 @@
           "slotId": "golden-high",
           "species": "金丝猴",
           "at": [
-            9.25,
+            7.8,
             0,
-            47.5
+            46.6
           ],
           "act": "climb",
           "hours": [
@@ -6042,9 +6043,9 @@
           "slotId": "golden-feed",
           "species": "金丝猴",
           "at": [
-            12.875,
+            5.103,
             0,
-            46.15
+            44.602
           ],
           "act": "eat",
           "hours": [
@@ -6200,7 +6201,7 @@
           "at": [
             15.7,
             0.02,
-            49
+            44
           ],
           "size": [
             0.8,
@@ -6243,9 +6244,9 @@
           "id": "H33-golden-monkey/Z01",
           "label": "golden-high",
           "at": [
-            9.25,
+            7.8,
             0,
-            47.5
+            46.6
           ],
           "acts": [
             "climb"
@@ -6267,9 +6268,9 @@
           "id": "H33-golden-monkey/Z03",
           "label": "golden-feed",
           "at": [
-            12.875,
+            5.103,
             0,
-            46.15
+            44.602
           ],
           "acts": [
             "eat"
@@ -6558,9 +6559,9 @@
           "label": "keeper safety square",
           "archetype": "keeper-safe-zone",
           "at": [
-            24.7,
+            35.65,
             0.02,
-            -7.7
+            11
           ],
           "size": [
             1.1,
@@ -6720,12 +6721,12 @@
       "population": [
         {
           "id": "H41-mixed-savannah/A01",
-          "slotId": "savannah-browse",
+          "slotId": "giraffe-browse",
           "species": "斑马",
           "at": [
-            47.45,
+            47.65,
             0,
-            8
+            5.35
           ],
           "act": "browse",
           "hours": [
@@ -6735,12 +6736,12 @@
         },
         {
           "id": "H41-mixed-savannah/A02",
-          "slotId": "savannah-graze",
+          "slotId": "zebra-graze",
           "species": "羚羊",
           "at": [
-            44.9,
+            44.305,
             0,
-            -1.25
+            1.5
           ],
           "act": "graze",
           "hours": [
@@ -6750,7 +6751,7 @@
         },
         {
           "id": "H41-mixed-savannah/A03",
-          "slotId": "savannah-drink",
+          "slotId": "antelope-drink",
           "species": "长颈鹿",
           "at": [
             43.625,
@@ -6930,9 +6931,9 @@
           "label": "keeper safety square",
           "archetype": "keeper-safe-zone",
           "at": [
-            49.3,
+            49.25,
             0.02,
-            -7.4
+            10
           ],
           "size": [
             0.9,
@@ -6973,11 +6974,11 @@
       "activityAnchors": [
         {
           "id": "H41-mixed-savannah/Z01",
-          "label": "savannah-browse",
+          "label": "giraffe-browse",
           "at": [
-            47.45,
+            47.65,
             0,
-            8
+            5.35
           ],
           "acts": [
             "browse"
@@ -6985,11 +6986,11 @@
         },
         {
           "id": "H41-mixed-savannah/Z02",
-          "label": "savannah-graze",
+          "label": "zebra-graze",
           "at": [
-            44.9,
+            44.305,
             0,
-            -1.25
+            1.5
           ],
           "acts": [
             "graze"
@@ -6997,7 +6998,7 @@
         },
         {
           "id": "H41-mixed-savannah/Z03",
-          "label": "savannah-drink",
+          "label": "antelope-drink",
           "at": [
             43.625,
             0,
@@ -7068,9 +7069,9 @@
           "slotId": "rhino-feed",
           "species": "犀牛",
           "at": [
-            27.75,
+            28.1,
             0,
-            27.9
+            30.994
           ],
           "act": "eat",
           "hours": [
@@ -7318,9 +7319,9 @@
           "id": "H42-rhino/Z02",
           "label": "rhino-feed",
           "at": [
-            27.75,
+            28.1,
             0,
-            27.9
+            30.994
           ],
           "acts": [
             "eat"
@@ -7384,9 +7385,9 @@
           "slotId": "lion-lookout",
           "species": "狮子",
           "at": [
-            46.175,
+            43.804,
             0,
-            30.5
+            30.201
           ],
           "act": "sit",
           "hours": [
@@ -7399,9 +7400,9 @@
           "slotId": "lion-shade",
           "species": "狮子",
           "at": [
-            48.3,
+            46.804,
             0,
-            34.14
+            34.803
           ],
           "act": "lie",
           "hours": [
@@ -7578,7 +7579,7 @@
           "at": [
             49.2,
             0.02,
-            34
+            27
           ],
           "size": [
             0.8,
@@ -7621,9 +7622,9 @@
           "id": "H43-lion/Z01",
           "label": "lion-lookout",
           "at": [
-            46.175,
+            43.804,
             0,
-            30.5
+            30.201
           ],
           "acts": [
             "sit"
@@ -7633,9 +7634,9 @@
           "id": "H43-lion/Z02",
           "label": "lion-shade",
           "at": [
-            48.3,
+            46.804,
             0,
-            34.14
+            34.803
           ],
           "acts": [
             "lie"
@@ -14050,5 +14051,5 @@
       }
     ]
   },
-  "contentHash": "sha256:cb8cd1ea95de8bd4df7f9904b93d440eef0ccf4062bf81ddf9818b65903acc3c"
+  "contentHash": "sha256:7acb1ddef3e8491eb3f97d0929a0f8e45fb1409b200b81eeee131e36f90d15df"
 }

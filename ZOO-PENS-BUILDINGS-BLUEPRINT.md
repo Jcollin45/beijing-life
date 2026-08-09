@@ -1,8 +1,8 @@
 # Zoo Pens and Buildings — Complete Contents Construction Blueprint
 
-Status: **construction-ready** · revision **1** · parent zoo revision **2**
+Status: **construction-ready** · revision **2** · parent zoo revision **2**
 
-Content hash: `sha256:cb8cd1ea95de8bd4df7f9904b93d440eef0ccf4062bf81ddf9818b65903acc3c`
+Content hash: `sha256:7acb1ddef3e8491eb3f97d0929a0f8e45fb1409b200b81eeee131e36f90d15df`
 
 This document is the human-readable companion to `ZOO-PENS-BUILDINGS-BLUEPRINT.json`. The JSON is canonical. Load it only after the parent revision/hash matches `ZOO-EXPANSION-BLUEPRINT.json`.
 
@@ -20,7 +20,7 @@ This document is the human-readable companion to `ZOO-PENS-BUILDINGS-BLUEPRINT.j
 - 21 outdoor habitats: 7 preserved core + 14 expansion habitats
 - 9 site buildings/structures
 - 7 Tropical House rooms/exhibits
-- 409 exact content records; 237 are additive build-v1 placements
+- 409 exact content records; 236 are additive build-v1 placements
 - 31 material definitions and 30 construction archetypes
 - 8 local outdoor fixture interactions extend the parent thing cap from 75 to 83
 
@@ -70,11 +70,11 @@ Bounds: `[5, 14, -11, -5.5]` · public side: `z0` · species: 长颈鹿
 |---|---|---|---|---|---|---|
 | H01/S01 | sand paddock floor | rect [5, 14, -11, -5.5] | M-SAND | none | existing-r2 | primary substrate |
 | H01/O01 | west browse tree | at (7.2, 0, -7.1) · size (2.1 × 3.9 × 2.1) | M-FOLIAGE | none | existing-r2 | natural browse and shade |
-| H01/O02 | east browse tree | at (12, 0, -7.5) · size (2.1 × 3.9 × 2.1) | M-FOLIAGE | none | existing-r2 | natural browse and shade |
-| H01/O03 | low water trough | at (8.15, 0, -8.95) · size (1.88 × 0.36 × 0.88) | M-CONCRETE | none | existing-r2 | drinking station |
+| H01/O02 | east browse tree | at (12.8, 0, -9.4) · size (2.1 × 3.9 × 2.1) | M-FOLIAGE | none | existing-r2 | natural browse and shade |
+| H01/O03 | low water trough | at (8.15, 0, -10.25) · size (1.88 × 0.36 × 0.88) | M-CONCRETE | none | existing-r2 | drinking station |
 | H01/O04 | raised keeper feeding deck | at (10.9, 0, -7.2) · size (3.6 × 3.85 × 2.2) | M-TIMBER | none | existing-r2 | high browse presentation |
 | H01/O05 | seven-slot browse rack | at (10.9, 3.26, -8.26) · size (3.4 × 0.8 × 0.2) | M-TIMBER-DARK | none | existing-r2 | holds leafy browse |
-| H01/O06 | sand drainage channel | at (9.2, 0.01, -10.25) · size (3.2 × 0.03 × 0.35) | M-STEEL | none | build-v1 | surface drainage |
+| H01/O06 | sand drainage channel | at (11.4, 0.01, -10.25) · size (3.2 × 0.03 × 0.35) | M-STEEL | none | build-v1 | surface drainage |
 | H01/O07 | keeper safety square | at (13.2, 0.02, -6.25) · size (1 × 0.02 × 1) | M-CONCRETE | none | build-v1 | service-gate landing |
 | H01/O08 | habitat camera | at (5.45, 0, -6) · size (0.22 × 3.6 × 0.22) | M-STEEL-DARK | none | build-v1 | welfare monitoring |
 
@@ -90,9 +90,9 @@ Bounds: `[-16, -8, -2.5, 4]` · public side: `x1` · species: 熊猫
 | Stable ID | Object | Exact placement | Material | Collision | Build state | Purpose |
 |---|---|---|---|---|---|---|
 | H02/S01 | grass yard | rect [-16, -8, -2.5, 4] | M-GRASS | none | existing-r2 | primary substrate |
-| H02/O01 | south bamboo clump | at (-14.6, 0, -0.9) · size (2.2 × 3.6 × 2.2) | M-BAMBOO | body | existing-r2 | feeding cover |
-| H02/O02 | north-west bamboo clump | at (-14.8, 0, 2.5) · size (2.2 × 3.9 × 2.2) | M-BAMBOO | body | existing-r2 | feeding cover |
-| H02/O03 | north-centre bamboo clump | at (-12.4, 0, 3) · size (2.2 × 3.3 × 2.2) | M-BAMBOO | body | existing-r2 | feeding cover |
+| H02/O01 | south bamboo clump | at (-15, 0, -1.85) · size (1.5 × 3.6 × 1.5) | M-BAMBOO | body | existing-r2 | feeding cover |
+| H02/O02 | north-west bamboo clump | at (-15, 0, 3.4) · size (1.4 × 3.8 × 1.4) | M-BAMBOO | body | existing-r2 | feeding cover |
+| H02/O03 | east low bamboo clump | at (-9, 0, 0.9) · size (0.8 × 2.2 × 0.8) | M-BAMBOO | body | existing-r2 | low browse screen |
 | H02/O04 | heated panda house | at (-14.1, 0, 0.75) · size (3.5 × 3 × 3.9) | M-RENDER | camera-blocker | existing-r2 | indoor retreat |
 | H02/O05 | south climbing frame | at (-10.4, 0, -0.6) · size (0.8 × 0.85 × 2.5) | M-TIMBER | body | existing-r2 | climbing and resting |
 | H02/O06 | north climbing frame | at (-11.2, 0, 1.9) · size (0.8 × 0.85 × 2.5) | M-TIMBER | body | existing-r2 | climbing and resting |
@@ -115,7 +115,7 @@ Bounds: `[-4, 2, -2.5, 4]` · public side: `z0` · species: 孔雀
 | H03/S01 | aviary grass floor | rect [-4, 2, -2.5, 4] | M-MEADOW | none | existing-r2 | primary substrate |
 | H03/O01 | full-height aviary cage | at (-1, 0, 0.75) · size (6 × 4.2 × 6.5) | M-MESH | camera-blocker | existing-r2 | flight containment |
 | H03/O02 | diagonal timber perch | at (-1.8, 1.4, 1.35) · size (2.6 × 0.12 × 0.12) | M-TIMBER | none | existing-r2 | roosting |
-| H03/O03 | north-east shrub | at (1.35, 0, 3.28) · size (1.1 × 1.1 × 1.1) | M-FOLIAGE | none | existing-r2 | cover and nesting |
+| H03/O03 | north-east shrub | at (-0.2, 0, 3) · size (1.1 × 1.1 × 1.1) | M-FOLIAGE | none | existing-r2 | cover and nesting |
 | H03/O04 | grain feeder | at (-2.8, 0, 2.7) · size (0.75 × 0.24 × 0.55) | M-FOOD-STEEL | none | build-v1 | daily feeding |
 | H03/O05 | dust bath | at (0.45, 0, 1.4) · size (1.15 × 0.12 × 0.9) | M-SAND | none | build-v1 | dust bathing |
 | H03/O06 | shallow drinker | at (-2.75, 0, -1.5) · size (0.8 × 0.18 × 0.55) | M-CERAMIC | none | build-v1 | fresh drinking water |
@@ -134,15 +134,15 @@ Bounds: `[6, 16, -2.5, 4]` · public side: `x0` · species: 大象
 | Stable ID | Object | Exact placement | Material | Collision | Build state | Purpose |
 |---|---|---|---|---|---|---|
 | H04/S01 | sand yard | rect [6, 16, -2.5, 4] | M-SAND | none | existing-r2 | primary substrate |
-| H04/O01 | mud wallow outer basin | at (13, 0, 0.75) · size (4.2 × 0.25 × 3.4) | M-MUD | none | existing-r2 | dusting and cooling |
-| H04/O02 | east rock cluster | at (14.65, 0, 3.05) · size (2.3 × 1.05 × 2) | M-ROCK | none | existing-r2 | scratching and visual cover |
+| H04/O01 | north-east mud wallow | at (13, 0, 2.9) · size (4.1 × 0.12 × 2.4) | M-MUD | none | existing-r2 | dusting and cooling, separated from the dry shelter |
+| H04/O02 | south-west rock cluster | at (7.6, 0, -0.85) · size (2.2 × 1 × 2) | M-ROCK | none | existing-r2 | scratching and visual cover |
 | H04/O03 | open elephant shelter | at (13.6, 0, -0.5) · size (4.8 × 4 × 4.2) | M-CONCRETE-DARK | camera-blocker | existing-r2 | shade and rain cover |
-| H04/O04 | suspended enrichment ball | at (11.55, 0, -0.32) · size (0.7 × 3.4 × 0.7) | M-RUBBER | none | existing-r2 | moving enrichment |
+| H04/O04 | suspended enrichment ball | at (13.6, 0, -2.1) · size (0.7 × 3.4 × 0.7) | M-RUBBER | none | existing-r2 | moving enrichment |
 | H04/O05 | drinking trough | at (8.2, 0, 2.5) · size (1.9 × 0.42 × 0.9) | M-CONCRETE | none | build-v1 | fresh drinking water |
 | H04/O06 | scrub post | at (9.3, 0, -0.8) · size (0.42 × 2.4 × 0.42) | M-TIMBER-DARK | none | build-v1 | skin care and enrichment |
 | H04/O07 | keeper safety square | at (15.25, 0.02, 2.6) · size (1 × 0.02 × 1) | M-CONCRETE | none | build-v1 | east service-gate landing |
 | H04/O08 | habitat camera | at (6.55, 0, 3.45) · size (0.24 × 4 × 0.24) | M-STEEL-DARK | none | build-v1 | welfare monitoring |
-| H04/O09 | wallow overflow drain | at (14.35, -0.23, 0.75) · size (0.45 × 0.03 × 0.45) | M-STEEL | none | build-v1 | mud-wallow level control and washout |
+| H04/O09 | wallow overflow drain | at (14.35, -0.1, 2.9) · size (0.45 × 0.03 × 0.45) | M-STEEL | none | build-v1 | mud-wallow level control and washout |
 
 Animal population/activity anchors:
 
@@ -184,7 +184,7 @@ Bounds: `[1, 10, 7, 13.5]` · public side: `z0` · species: 老虎
 |---|---|---|---|---|---|---|
 | H06/S01 | long grass yard | rect [1, 10, 7, 13.5] | M-GRASS | none | existing-r2 | primary substrate |
 | H06/O01 | west shade outcrop | at (2, 0, 12.95) · size (2.4 × 1.35 × 2) | M-ROCK | none | existing-r2 | shade and lookout |
-| H06/O02 | east shade outcrop | at (9, 0, 12.95) · size (2.4 × 1.35 × 2) | M-ROCK | none | existing-r2 | shade and lookout |
+| H06/O02 | east shade outcrop | at (6.2, 0, 12.6) · size (2.4 × 1.35 × 2) | M-ROCK | none | existing-r2 | shade and lookout |
 | H06/O03 | fallen branching trunk | at (7.1, 0.26, 9.4) · size (3.2 × 0.48 × 0.48) | M-TIMBER | none | existing-r2 | scratching and cover |
 | H06/O04 | fourteen-clump long grass zone | at (4.6, 0, 9.3) · size (5.6 × 0.7 × 3.3) | M-WILLOW | none | existing-r2 | concealment |
 | H06/O05 | shallow cooling pool | at (2.4, 0, 8.35) · size (2 × 0.28 × 1.35) | M-WATER | none | build-v1 | summer cooling |
@@ -219,7 +219,7 @@ Animal population/activity anchors:
 - H10-otter/A01: 水獭 — (-47.25, 0, -6.2) · swim · hours 7–20
 - H10-otter/A02: 水獭 — (-45.05, 0, -3.4) · swim · hours 7–20
 - H10-otter/A03: 水獭 — (-41.42, 0, -6.6) · lie · hours 7–20
-- H10-otter/A04: 水獭 — (-42.52, 0, -3) · eat · hours 7–20
+- H10-otter/A04: 水獭 — (-42.85, 0, -7.16) · eat · hours 7–20
 
 ### H11-hippo — 河马栖息地
 
@@ -242,7 +242,7 @@ Animal population/activity anchors:
 
 - H11-hippo/A01: 河马 — (-47.25, 0, 6.55) · swim · hours 7–20
 - H11-hippo/A02: 河马 — (-45.6, 0, 11.36) · swim · hours 7–20
-- H11-hippo/A03: 河马 — (-41.64, 0, 7.85) · lie · hours 7–20
+- H11-hippo/A03: 河马 — (-41.2, 0, 12.14) · lie · hours 7–20
 - H11-hippo/A04: 河马 — (-41.42, 0, 4.6) · eat · hours 7–20
 
 ### H12-flamingo — 火烈鸟栖息地
@@ -286,7 +286,7 @@ Bounds: `[-34, -24, 6, 15]` · public side: `x0` · species: 丹顶鹤
 
 Animal population/activity anchors:
 
-- H13-crane/A01: 丹顶鹤 — (-30.5, 0, 8.7) · graze · hours 7–20
+- H13-crane/A01: 丹顶鹤 — (-28.8, 0, 8.88) · graze · hours 7–20
 - H13-crane/A02: 丹顶鹤 — (-27.5, 0, 11.4) · display · hours 7–20
 - H13-crane/A03: 丹顶鹤 — (-26.5, 0, 13.2) · sit · hours 7–20
 
@@ -308,7 +308,7 @@ Bounds: `[-50, -39, 26, 37]` · public side: `x1` · species: 羚牛
 Animal population/activity anchors:
 
 - H20-takin/A01: 羚牛 — (-46.15, 0, 33.15) · graze · hours 7–20
-- H20-takin/A02: 羚牛 — (-41.2, 0, 33.7) · eat · hours 7–20
+- H20-takin/A02: 羚牛 — (-40.65, 0, 34.78) · eat · hours 7–20
 - H20-takin/A03: 羚牛 — (-43.95, 0, 28.75) · lie · hours 7–20
 
 ### H21-snow-leopard — 雪豹栖息地
@@ -324,15 +324,15 @@ Bounds: `[-34, -24, 26, 37]` · public side: `x0` · species: 雪豹
 | H21/OPS01 | chilled feeding shelf | at (-25.2, 0, 27.6) · size (0.9 × 0.32 × 0.65) | M-FOOD-STEEL | none | build-v1 | protected meat feed |
 | H21/OPS02 | high lookout ledge | at (-31.6, 0, 34.8) · size (1.8 × 1.5 × 1) | M-ROCK | none | build-v1 | elevated resting |
 | H21/OPS03 | keeper safety square | at (-24.65, 0.02, 34) · size (0.8 × 0.02 × 1) | M-CONCRETE | none | build-v1 | dry service landing |
-| H21/OPS04 | habitat camera | at (-33.5, 0, 26.5) · size (0.22 × 3.5 × 0.22) | M-STEEL-DARK | none | build-v1 | den and shelf monitoring |
+| H21/OPS04 | habitat camera | at (-33.4, 0, 29) · size (0.22 × 3.5 × 0.22) | M-STEEL-DARK | none | build-v1 | den and shelf monitoring |
 | H21/OPS05 | heated alpine drinker | at (-33.4, 0, 26.6) · size (1 × 0.26 × 0.7) | M-ROCK | none | build-v1 | freeze-protected drinking water |
 | H21/OPS06 | meltwater drainage channel | at (-29.5, 0.01, 26.25) · size (3 × 0.03 × 0.35) | M-STEEL | none | build-v1 | keeps the rock shelf dry and ice-free |
 
 Animal population/activity anchors:
 
 - H21-snow-leopard/A01: 雪豹 — (-28.2, 0, 32.38) · sit · hours 7–20
-- H21-snow-leopard/A02: 雪豹 — (-25.5, 0, 34.58) · lie · hours 7–20
-- H21-snow-leopard/A03: 雪豹 — (-30.5, 0, 28.75) · graze · hours 7–20
+- H21-snow-leopard/A02: 雪豹 — (-26.2, 0, 35.746) · lie · hours 7–20
+- H21-snow-leopard/A03: 雪豹 — (-29.5, 0, 29.3) · graze · hours 7–20
 
 ### H30-red-panda — 小熊猫栖息地
 
@@ -353,7 +353,7 @@ Bounds: `[-34, -24, 43, 52]` · public side: `x1` · species: 小熊猫
 
 Animal population/activity anchors:
 
-- H30-red-panda/A01: 小熊猫 — (-28, 0, 47.05) · climb · hours 7–20
+- H30-red-panda/A01: 小熊猫 — (-27.1, 0, 47.23) · climb · hours 7–20
 - H30-red-panda/A02: 小熊猫 — (-26.5, 0, 49.75) · eat · hours 7–20
 - H30-red-panda/A03: 小熊猫 — (-31.2, 0, 47.95) · lie · hours 7–20
 
@@ -376,8 +376,8 @@ Bounds: `[-16, -6, 22, 36]` · public side: `x1` · species: 天鹅、鸳鸯
 Animal population/activity anchors:
 
 - H31-waterfowl-lake/A01: 天鹅 — (-13, 0, 25.5) · swim · hours 7–20
-- H31-waterfowl-lake/A02: 鸳鸯 — (-13.5, 0, 33.2) · swim · hours 7–20
-- H31-waterfowl-lake/A03: 天鹅 — (-11, 0, 29.7) · preen · hours 7–20
+- H31-waterfowl-lake/A02: 鸳鸯 — (-11.8, 0, 33.704) · swim · hours 7–20
+- H31-waterfowl-lake/A03: 天鹅 — (-14, 0, 32.5) · preen · hours 7–20
 
 ### H32-family-farm — 山羊／兔子栖息地
 
@@ -393,14 +393,14 @@ Bounds: `[2, 16.5, 22, 36]` · public side: `x0` · species: 山羊、兔子
 | H32-family-farm/O04 | rabbit shelter | rect [12, 15.5, 23, 26] · y 0…1.24 | M-ROCK | none | existing-r2 | covered retreat |
 | H32/OPS01 | goat feed trough | at (8.8, 0, 33.9) · size (1.35 × 0.34 × 0.55) | M-FOOD-STEEL | none | build-v1 | supervised visitor feeding |
 | H32/OPS02 | rabbit drinker | at (14.8, 0, 27.2) · size (0.7 × 0.25 × 0.5) | M-CERAMIC | none | build-v1 | fresh drinking water |
-| H32/OPS03 | contact-yard double gate | at (2, 0, 29) · size (0.2 × 1.4 × 1.8) | M-TIMBER | threshold | build-v1 | controlled public entry |
+| H32/OPS03 | contact-yard double gate | at (2, 0, 29) · size (0.2 × 1.4 × 1.8) | M-TIMBER | threshold | existing-r2 | controlled public entry |
 | H32/OPS04 | habitat camera | at (16, 0, 22.5) · size (0.22 × 3.2 × 0.22) | M-STEEL-DARK | none | build-v1 | contact yard monitoring |
 
 Animal population/activity anchors:
 
 - H32-family-farm/A01: 山羊 — (9.975, 0, 26.9) · climb · hours 7–20
-- H32-family-farm/A02: 兔子 — (12.15, 0, 31.8) · eat · hours 7–20
-- H32-family-farm/A03: 山羊 — (13.89, 0, 25.08) · lie · hours 7–20
+- H32-family-farm/A02: 兔子 — (9.54, 0, 33.69) · eat · hours 7–20
+- H32-family-farm/A03: 山羊 — (11.208, 0, 24.702) · lie · hours 7–20
 
 ### H33-golden-monkey — 金丝猴栖息地
 
@@ -414,14 +414,14 @@ Bounds: `[2, 16.5, 43, 52]` · public side: `x0` · species: 金丝猴
 | H33-golden-monkey/O03 | heated shelter | rect [13, 16, 49, 51.5] · y 0…1.24 | M-ROCK | none | existing-r2 | covered retreat |
 | H33/OPS01 | fruit feed basket | at (4, 1.2, 44.6) · size (0.8 × 0.3 × 0.6) | M-FOOD-STEEL | none | build-v1 | raised feeding |
 | H33/OPS02 | heated drinker | at (14.7, 0, 45) · size (0.75 × 0.3 × 0.55) | M-CERAMIC | none | build-v1 | freeze-safe water |
-| H33/OPS03 | keeper safety square | at (15.7, 0.02, 49) · size (0.8 × 0.02 × 1) | M-CONCRETE | none | build-v1 | service landing |
+| H33/OPS03 | keeper safety square | at (15.7, 0.02, 44) · size (0.8 × 0.02 × 1) | M-CONCRETE | none | build-v1 | service landing |
 | H33/OPS04 | habitat camera | at (2.5, 0, 51.5) · size (0.22 × 4 × 0.22) | M-STEEL-DARK | none | build-v1 | climbing network monitoring |
 
 Animal population/activity anchors:
 
-- H33-golden-monkey/A01: 金丝猴 — (9.25, 0, 47.5) · climb · hours 7–20
+- H33-golden-monkey/A01: 金丝猴 — (7.8, 0, 46.6) · climb · hours 7–20
 - H33-golden-monkey/A02: 金丝猴 — (7.075, 0, 48.85) · groom · hours 7–20
-- H33-golden-monkey/A03: 金丝猴 — (12.875, 0, 46.15) · eat · hours 7–20
+- H33-golden-monkey/A03: 金丝猴 — (5.103, 0, 44.602) · eat · hours 7–20
 
 ### H40-elephant-reserve — 亚洲象栖息地
 
@@ -437,7 +437,7 @@ Bounds: `[24, 36.5, -10, 15]` · public side: `x0` · species: 亚洲象
 | H40-elephant-reserve/O03 | feeder | at (33, 0, 4) · size (1.35 × 0.34 × 0.55) | M-FOOD-STEEL | none | existing-r2 | feeding or drinking station |
 | H40/OPS01 | high-capacity drinker | at (25.6, 0, 11.8) · size (2.2 × 0.48 × 1) | M-CONCRETE | none | build-v1 | fresh drinking water |
 | H40/OPS02 | sand pile | at (34.5, 0, 12.7) · size (2 × 0.75 × 1.8) | M-SAND | none | build-v1 | dusting enrichment |
-| H40/OPS03 | keeper safety square | at (24.7, 0.02, -7.7) · size (1.1 × 0.02 × 1.3) | M-CONCRETE | none | build-v1 | service-gate landing |
+| H40/OPS03 | keeper safety square | at (35.65, 0.02, 11) · size (1.1 × 0.02 × 1.3) | M-CONCRETE | none | build-v1 | service-gate landing |
 | H40/OPS04 | habitat camera | at (36, 0, 14.5) · size (0.24 × 4.2 × 0.24) | M-STEEL-DARK | none | build-v1 | reserve monitoring |
 | H40/OPS05 | pool filtration intake | at (27.2, -0.7, -5.5) · size (0.55 × 0.03 × 0.55) | M-STEEL | none | build-v1 | main pool filtration and draw-down |
 | H40/OPS06 | wallow overflow drain | at (34.2, -0.18, 11.8) · size (0.5 × 0.03 × 0.5) | M-STEEL | none | build-v1 | mud-wallow level control |
@@ -461,13 +461,13 @@ Bounds: `[41.5, 50, -10, 15]` · public side: `x0` · species: 斑马、羚羊�
 | H41-mixed-savannah/O03 | water trough | at (43.5, 0, 11) · size (1.35 × 0.34 × 0.55) | M-WATER-LIGHT | none | existing-r2 | feeding or drinking station |
 | H41/OPS01 | mineral lick | at (48.7, 0, -7.6) · size (0.5 × 0.55 × 0.5) | M-ROCK-LIGHT | none | build-v1 | mineral enrichment |
 | H41/OPS02 | low hay feeder | at (44.5, 0, 4.2) · size (1.35 × 0.34 × 0.55) | M-FOOD-STEEL | none | build-v1 | zebra and antelope feed |
-| H41/OPS03 | keeper safety square | at (49.3, 0.02, -7.4) · size (0.9 × 0.02 × 1) | M-CONCRETE | none | build-v1 | service landing |
+| H41/OPS03 | keeper safety square | at (49.25, 0.02, 10) · size (0.9 × 0.02 × 1) | M-CONCRETE | none | build-v1 | service landing |
 | H41/OPS04 | habitat camera | at (42, 0, 14.5) · size (0.24 × 4 × 0.24) | M-STEEL-DARK | none | build-v1 | savannah monitoring |
 
 Animal population/activity anchors:
 
-- H41-mixed-savannah/A01: 斑马 — (47.45, 0, 8) · browse · hours 7–20
-- H41-mixed-savannah/A02: 羚羊 — (44.9, 0, -1.25) · graze · hours 7–20
+- H41-mixed-savannah/A01: 斑马 — (47.65, 0, 5.35) · browse · hours 7–20
+- H41-mixed-savannah/A02: 羚羊 — (44.305, 0, 1.5) · graze · hours 7–20
 - H41-mixed-savannah/A03: 长颈鹿 — (43.625, 0, 10) · drink · hours 7–20
 
 ### H42-rhino — 犀牛栖息地
@@ -489,7 +489,7 @@ Bounds: `[24, 36.5, 23, 37]` · public side: `x0` · species: 犀牛
 Animal population/activity anchors:
 
 - H42-rhino/A01: 犀牛 — (32.5, 0, 32.52) · dust · hours 7–20
-- H42-rhino/A02: 犀牛 — (27.75, 0, 27.9) · eat · hours 7–20
+- H42-rhino/A02: 犀牛 — (28.1, 0, 30.994) · eat · hours 7–20
 - H42-rhino/A03: 犀牛 — (33.375, 0, 25.8) · lie · hours 7–20
 
 ### H43-lion — 狮子栖息地
@@ -504,13 +504,13 @@ Bounds: `[41.5, 50, 24, 37]` · public side: `x0` · species: 狮子
 | H43-lion/O03 | deadfall log | at (44, 0, 25.5) · size (3 × 0.48 × 0.4) | M-TIMBER | none | existing-r2 | scratching and enrichment |
 | H43/OPS01 | protected meat hatch | at (48.7, 0, 26) · size (1 × 0.32 × 0.7) | M-FOOD-STEEL | none | build-v1 | keeper feeding station |
 | H43/OPS02 | fresh water basin | at (43.2, 0, 35.4) · size (1.1 × 0.32 × 0.65) | M-ROCK | none | build-v1 | drinking water |
-| H43/OPS03 | keeper safety square | at (49.2, 0.02, 34) · size (0.8 × 0.02 × 1) | M-CONCRETE | none | build-v1 | service landing |
+| H43/OPS03 | keeper safety square | at (49.2, 0.02, 27) · size (0.8 × 0.02 × 1) | M-CONCRETE | none | build-v1 | service landing |
 | H43/OPS04 | habitat camera | at (42, 0, 24.5) · size (0.24 × 3.8 × 0.24) | M-STEEL-DARK | none | build-v1 | kopje and shade monitoring |
 
 Animal population/activity anchors:
 
-- H43-lion/A01: 狮子 — (46.175, 0, 30.5) · sit · hours 7–20
-- H43-lion/A02: 狮子 — (48.3, 0, 34.14) · lie · hours 7–20
+- H43-lion/A01: 狮子 — (43.804, 0, 30.201) · sit · hours 7–20
+- H43-lion/A02: 狮子 — (46.804, 0, 34.803) · lie · hours 7–20
 - H43-lion/A03: 狮子 — (44.05, 0, 27.25) · graze · hours 7–20
 
 ## Building shells, rooms and fixtures

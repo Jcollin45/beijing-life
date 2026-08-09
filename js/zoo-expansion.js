@@ -10,7 +10,7 @@ const ZooExpansion = (() => {
   const SCHEMA = 'chinesegame.zoo-expansion/v1';
   const REVISION = 2;
   const GEOMETRY_HASH =
-    'sha256:d83fda0095d68a322ba6d3e5567edf1293a9052f417ce07517def7eb2e403110';
+    'sha256:e7ab50e717b8a69d3d689d027e5aed835c0cd6acff12483f95e32a21d7a1e6c9';
   const EPS = 1e-6;
 
   const planOf = plan => plan ||
@@ -270,6 +270,38 @@ const ZooExpansion = (() => {
       return trunk;
     }
 
+    function acaciaTree(x, z, h, id) {
+      // Savannah acacias are identified by a split trunk and a broad, shallow umbrella crown.
+      // Reusing the round broadleaf tree here made H41 look like another temperate paddock.
+      const trunk = mark(cyl(x - .06, h * .27, z, .15, h * .54, P.timberD,
+        { rz: -.055, gloss: .15, ...MAT.timber }), id);
+      const forkY = h * .52;
+      const fork = (x0, z0, x1, z1, y, radius) => {
+        const dx=x1-x0,dz=z1-z0;
+        return capsule((x0+x1)/2,y,(z0+z1)/2,radius,Math.hypot(dx,dz),radius,P.timber,
+          { rz:Math.PI/2,ry:-Math.atan2(dz,dx),gloss:.14,...MAT.timber });
+      };
+      fork(x-.08,z,x-1.03,z+.24,forkY,.09);
+      fork(x+.02,z,x+.93,z-.18,forkY+.20,.085);
+      ball(x-.34,h*.72,z+.08,h*.34,h*.105,h*.28,P.leaf,
+        { mode:15,gloss:.05,ry:.10 });
+      ball(x+.55,h*.74,z-.12,h*.30,h*.095,h*.25,P.leafL,
+        { mode:15,gloss:.05,ry:-.16 });
+      ball(x-.92,h*.68,z+.20,h*.20,h*.08,h*.19,P.leaf,
+        { mode:15,gloss:.05,ry:.24 });
+      // Preserve the same measured trunk body and planting accounting as the shared tree helper.
+      solid(x - .28, x + .28, z - .28, z + .28);
+      counts.planting++;
+      return trunk;
+    }
+
+    function habitatSpan(a, b, y, radius, pigment, opt = {}) {
+      const dx=b[0]-a[0],dz=b[1]-a[1];
+      return capsule((a[0]+b[0])/2,y,(a[1]+b[1])/2,
+        radius,Math.hypot(dx,dz),radius,pigment,
+        { rz:Math.PI/2,ry:-Math.atan2(dz,dx),gloss:.13,...MAT.timber,...opt });
+    }
+
     function rockCluster(x, z, scale, id, height = 1.1) {
       let first = null;
       const offsets = [[0,0,1],[-.46,.18,.66],[.42,.12,.72],[-.15,-.38,.58],[.34,-.32,.48]];
@@ -282,36 +314,72 @@ const ZooExpansion = (() => {
       return first;
     }
 
-    // One exact, low ground sheet expands the grade without covering the preserved core paving.
-    const sb = plan.site.bounds;
-    mark(flat((sb.x0 + sb.x1) / 2, -.003, (sb.z0 + sb.z1) / 2,
-      sb.x1 - sb.x0, sb.z1 - sb.z0, P.grass, { mode: 17, gloss: .07 }), 'SITE-GROUND');
-
-    // District undertones are subtle but make the plan's ecological zoning legible from the
-    // elevated camera. D0 is intentionally untouched so the heritage core remains exact.
-    for (const d of plan.districts.filter(d => d.id !== 'D0')) {
-      const r = fpRect(d.bounds);
-      const col = d.id === 'D1' ? C('#526f47') : d.id === 'D2' ? C('#676b50') :
-        d.id === 'D3' ? C('#4e7044') : d.id === 'D4' ? C('#577b58') :
-        d.id === 'D5' ? C('#806f46') : d.id === 'D6' ? C('#486b47') : C('#5b6259');
-      rectFlat(r, -.002, col, { mode: 17, gloss: .06 }, `${d.id}/GROUND`);
+    function hollowHabitatShell(rect, height, publicSide, doorSpan, doorHeight, id,
+      pigment, material) {
+      const [x,z]=center(rect),[w,d]=dims(rect),t=.16,pieces=[],
+        edge={x0:rect[0],x1:rect[1],z0:rect[2],z1:rect[3]};
+      const add=(xx,yy,zz,ww,hh,dd)=>pieces.push(box(xx,yy,zz,ww,hh,dd,pigment,
+        {hard:true,gloss:.08,...material}));
+      const upper=Math.max(.10,height-doorHeight);
+      if(publicSide[0]==='x'){
+        const front=edge[publicSide],rear=edge[publicSide==='x0'?'x1':'x0'];
+        add(rear,height/2,z,t,height,d);
+        add(x,height/2,edge.z0,w,height,t);add(x,height/2,edge.z1,w,height,t);
+        const wing=Math.max(.12,(d-doorSpan)/2);
+        add(front,height/2,edge.z0+wing/2,t,height,wing);
+        add(front,height/2,edge.z1-wing/2,t,height,wing);
+        add(front,doorHeight+upper/2,z,t,upper,doorSpan);
+      }else{
+        const front=edge[publicSide],rear=edge[publicSide==='z0'?'z1':'z0'];
+        add(x,height/2,rear,w,height,t);
+        add(edge.x0,height/2,z,t,height,d);add(edge.x1,height/2,z,t,height,d);
+        const wing=Math.max(.12,(w-doorSpan)/2);
+        add(edge.x0+wing/2,height/2,front,wing,height,t);
+        add(edge.x1-wing/2,height/2,front,wing,height,t);
+        add(x,doorHeight+upper/2,front,doorSpan,upper,t);
+      }
+      return mark(pieces[0],id);
     }
+
+    // Expand the grade around—not beneath—the preserved 54×42 m core ground. A single site-wide
+    // sheet only 3 mm below it produced a huge depth-fighting rectangle through the old zoo.
+    const sb = plan.site.bounds;
+    const coreHalfX=(options.core&&options.core.RX||22)+5;
+    const coreHalfZ=(options.core&&options.core.RZ||16)+5;
+    const siteGroundRects=[
+      [sb.x0,-coreHalfX,sb.z0,sb.z1],
+      [coreHalfX,sb.x1,sb.z0,sb.z1],
+      [-coreHalfX,coreHalfX,coreHalfZ,sb.z1],
+    ];
+    siteGroundRects.forEach((r,i)=>mark(flat((r[0]+r[1])/2,-.003,(r[2]+r[3])/2,
+      r[1]-r[0],r[3]-r[2],P.grass,{mode:17,gloss:.07}),
+      i?`SITE-GROUND/G${String(i).padStart(2,'0')}`:'SITE-GROUND'));
+
+    // District identity now comes from habitat planting, rail accents and wayfinding. The former
+    // seven full-district sheets sat only one millimetre above SITE-GROUND, creating huge duplicate
+    // planes and visible depth shimmer across most of the expanded site.
 
     // Public and staff circulation, including every exact keeper spur.
     for (const p of plan.paths) {
       const publicPath = p.access === 'public';
+      // The path-material graph is bipartite at every authored crossing. Two deliberate finish
+      // levels therefore remove every different-material coplanar overlap without accumulating
+      // a staircase through the zoo: pale/red paving share the lower bed; timber, dark/stone
+      // paving and service concrete share the 12 mm raised finish.
+      const pathY = /^(?:paving|red-paving)$/.test(p.surface) ? .010 : .022;
       const color = p.surface === 'timber-boardwalk' ? P.timber :
         p.surface === 'red-paving' ? P.redPath : publicPath ?
           (p.surface === 'paving-dark' ? P.pathD : P.path) : P.service;
-      const opt = p.surface === 'timber-boardwalk' ? { mode: 6, gloss: .14, ...MAT.timber } :
-        { mode: publicPath ? 9 : 10, gloss: .10, ...MAT.path };
+      const opt = p.surface === 'timber-boardwalk' ?
+        { mode: 6, gloss: .14, y:pathY, ...MAT.timber } :
+        { mode: publicPath ? 9 : 10, gloss: .10, y:pathY, ...MAT.path };
       for (let i = 1; i < p.centerline.length; i++) {
         pathSegment(p.centerline[i - 1], p.centerline[i], p.width, color, opt,
           i === 1 ? p.id : `${p.id}/G${String(i).padStart(2, '0')}`);
         if (publicPath && p.accessible) {
           const q = pathSegment(p.centerline[i - 1], p.centerline[i], .18, P.blue,
             { mode:1, alpha:0, alphaGroup:'zoo-accessible-route', glow:0,
-              gloss:.18, y:.026 }, null);
+              gloss:.18, y:.038 }, null);
           if (q) {
             q.blueprintId = undefined; q.accessibleOwner=p.id; accessibleOverlay.push(q);
             accessibleRouteSegments.push({a:p.centerline[i-1].slice(),b:p.centerline[i].slice(),
@@ -326,7 +394,7 @@ const ZooExpansion = (() => {
     // preserved D0 rectangles and the short final approaches not represented as plan.path rows.
     const accessibleLine = (a,b,id) => {
       const p=pathSegment(a,b,.18,P.blue,{mode:1,alpha:0,
-        alphaGroup:'zoo-accessible-route',glow:0,gloss:.18,y:.034},null);
+        alphaGroup:'zoo-accessible-route',glow:0,gloss:.18,y:.040},null);
       if(p){
         p.accessibleOwner=id;accessibleOverlay.push(p);
         accessibleRouteSegments.push({a:a.slice(),b:b.slice(),owner:id});
@@ -411,15 +479,15 @@ const ZooExpansion = (() => {
     for (const p of plan.routes.keeperAccessSpurs) {
       for (let i = 1; i < p.centerline.length; i++)
         pathSegment(p.centerline[i - 1], p.centerline[i], p.width, P.service,
-          { mode: 10, gloss: .08, ...MAT.path },
+          { mode: 10, gloss: .08, y:.034, ...MAT.path },
           i === 1 ? p.id : `${p.id}/G${String(i).padStart(2, '0')}`);
     }
     for (const c of plan.controlledCrossings) {
       const [x, z] = c.at;
-      mark(flat(x, .019, z, c.width, c.width, P.redPath,
+      mark(flat(x, .034, z, c.width, c.width, P.redPath,
         { mode: 9, gloss: .12, ...MAT.path }), c.id);
       // The stop line and removable bollards make the public-priority state visible.
-      flat(x - c.width * .34, .024, z, .10, c.width * .76, P.white, { gloss: .12 });
+      flat(x - c.width * .34, .042, z, .10, c.width * .76, P.white, { gloss: .12 });
       for (const dz of [-1.45, 1.45])
         cyl(x + 1.55, .42, z + dz, .065, .84, P.charcoal, { gloss: .40, ...MAT.steel });
     }
@@ -518,6 +586,18 @@ const ZooExpansion = (() => {
           { hard: true, gloss: .16, ...MAT.timber });
         box(x, .92, z, w, .14, d, P.timber,
           { hard: true, gloss: .16, ...MAT.timber });
+        // A pair of uninterrupted rails reads as two beams suspended over the ground.  Family
+        // fencing needs a visible load path, especially in the wide zoo view, so each canonical
+        // run gets its own grounded post rhythm.  These are visual children only; the exact
+        // rectangle below remains the sole collision authority.
+        const len = range[1] - range[0], n = Math.max(2, Math.ceil(len / 2.4));
+        for (let i = 0; i <= n; i++) {
+          const v = range[0] + len * i / n;
+          if (side[0] === 'x') cyl(x, .61, v, .065, 1.22, P.timberD,
+            { gloss: .14, ...MAT.timber });
+          else cyl(v, .61, z, .065, 1.22, P.timberD,
+            { gloss: .14, ...MAT.timber });
+        }
       } else if (isRail && pub) {
         first = box(x, .23, z, w + (side[0] === 'z' ? 0 : .22), .46,
           d + (side[0] === 'x' ? 0 : .22), P.rock,
@@ -526,6 +606,30 @@ const ZooExpansion = (() => {
           box(x, y, z, side[0] === 'z' ? w : .045, .045,
             side[0] === 'x' ? d : .045, P.steelD,
             { hard: true, gloss: .54, ...MAT.steel });
+      } else if ((isGlass || isRail) && !pub) {
+        // The habitat contract calls these planted mesh, rock or reinforced rear boundaries, not
+        // featureless steel walls.  A full-height opaque slab made the wetland and savannah rows
+        // read as grey storage bins and hid every animal below the horizon.  Keep the exact body
+        // and camera rectangles below, but render a low stone/earth plinth with a sparse dark cable
+        // frame above it.  The containment silhouette remains credible while planting, landform and
+        // animals can be seen through the enclosure from oblique public views.
+        const plinth = Math.min(isRail ? .72 : .52, Math.max(.26, height * .34));
+        first = box(x, plinth / 2, z, side[0] === 'z' ? w : Math.max(w, .18), plinth,
+          side[0] === 'x' ? d : Math.max(d, .18), P.rock,
+          { hard: true, gloss: .08, ...MAT.concrete });
+        const len = range[1] - range[0], n = Math.max(2, Math.ceil(len / 2.15));
+        for (let i = 0; i <= n; i++) {
+          const v = range[0] + len * i / n;
+          if (side[0] === 'x') cyl(x, plinth + (height - plinth) / 2, v, .028,
+            height - plinth, P.steelD, { gloss: .44, ...MAT.steel });
+          else cyl(v, plinth + (height - plinth) / 2, z, .028,
+            height - plinth, P.steelD, { gloss: .44, ...MAT.steel });
+        }
+        for (const y of [plinth + (height - plinth) * .36,
+                         plinth + (height - plinth) * .70, height])
+          box(x, y, z, side[0] === 'z' ? w : .038, .038,
+            side[0] === 'x' ? d : .038, P.steelD,
+            { hard: true, gloss: .48, ...MAT.steel });
       } else if (isMesh) {
         // Mesh must be visually open. The old fallback was one full-height opaque steel box with
         // bars drawn over it, which turned every aviary and primate habitat into a blind metal
@@ -574,22 +678,30 @@ const ZooExpansion = (() => {
         blocker(...rect, archetype.cameraBlockerTop);
     }
 
-    function closedHabitatGate(h, gate, id) {
+    function habitatGate(h, gate, id, openForStaff = false) {
       const b = h.bounds, t = .10;
       let rect, p;
       if (gate.side[0] === 'x') {
         const x = b[gate.side], z = gate.center[1];
-        // The panel is drawn open against the inside wall so the authored opening remains visible;
-        // the exact threshold collider below keeps it staff/animal-only for the player.
-        p = box(x + (gate.side === 'x0' ? .34 : -.34), .9, z - gate.width / 2 + .08,
-          .08, 1.8, gate.width - .16, P.steelD,
-          { hard: true, gloss: .48, ...MAT.steel });
+        const inside = gate.side === 'x0' ? 1 : -1, leaf = gate.width - .16;
+        const jamb = gate.foldJamb === 'z1' ? 1 : -1;
+        // Staff leaves fold ninety degrees into the habitat, against a jamb; animal-transfer
+        // leaves remain across their opening. The former "open" version merely offset a closed
+        // full-width panel and every keeper visibly walked through its hinge edge.
+        p = openForStaff ?
+          box(x + inside * leaf / 2, .9, z + jamb * (gate.width / 2 - .08),
+            leaf, 1.8, .08, P.steelD, { hard:true, gloss:.48, ...MAT.steel }) :
+          box(x, .9, z, .08, 1.8, leaf, P.steelD,
+            { hard:true, gloss:.48, ...MAT.steel });
         rect = [x - t / 2, x + t / 2, z - gate.width / 2, z + gate.width / 2];
       } else {
         const x = gate.center[0], z = b[gate.side];
-        p = box(x - gate.width / 2 + .08, .9, z + (gate.side === 'z0' ? .34 : -.34),
-          gate.width - .16, 1.8, .08, P.steelD,
-          { hard: true, gloss: .48, ...MAT.steel });
+        const inside = gate.side === 'z0' ? 1 : -1, leaf = gate.width - .16;
+        p = openForStaff ?
+          box(x - gate.width / 2 + .08, .9, z + inside * leaf / 2,
+            .08, 1.8, leaf, P.steelD, { hard:true, gloss:.48, ...MAT.steel }) :
+          box(x, .9, z, leaf, 1.8, .08, P.steelD,
+            { hard:true, gloss:.48, ...MAT.steel });
         rect = [x - gate.width / 2, x + gate.width / 2, z - t / 2, z + t / 2];
       }
       mark(p, id);
@@ -615,10 +727,29 @@ const ZooExpansion = (() => {
         }
         case 'den': case 'rabbit-shelter': case 'heated-shelter': {
           const [x, z] = center(rect), [w, d] = dims(rect);
-          first = mark(box(x, .62, z, w, 1.24, d, P.rock,
-            { hard: true, gloss: .06, ...MAT.concrete }), id);
-          box(x + w * .26, .44, z + (h.publicSide === 'z0' ? -d / 2 - .01 : 0),
-            Math.min(1.0, w * .34), .88, .10, P.black, { hard: true });
+          const side=h.publicSide,faceSpan=Math.min(1.0,(side[0]==='x'?d:w)*.42);
+          first=hollowHabitatShell(rect,1.24,side,faceSpan,.84,id,P.rock,MAT.concrete);
+          const roofCol=o.type==='heated-shelter'?P.tile:P.timberD;
+          box(x-w*.23,1.34,z,w*.58,.12,d+.24,roofCol,
+            {hard:true,rz:-.12,gloss:.14,...MAT.roof});
+          box(x+w*.23,1.34,z,w*.58,.12,d+.24,roofCol,
+            {hard:true,rz:.12,gloss:.14,...MAT.roof});
+          box(x,1.47,z,.10,.10,d+.30,roofCol,{hard:true,gloss:.14,...MAT.roof});
+          // Put the retreat opening on the habitat's actual viewing face.  The former z-only
+          // calculation buried a black rectangle through the middle of every x-facing shelter.
+          if(side[0]==='x'){
+            const fx=x+(side==='x0'?-w/2-.012:w/2+.012);
+            box(fx,.45,z,.035,.84,faceSpan,P.black,{hard:true});
+            for(const s of [-1,1])box(fx,.47,z+s*(faceSpan/2+.045),.07,.94,.09,P.timber,
+              {hard:true,gloss:.14,...MAT.timber});
+            box(fx,.93,z,.07,.10,faceSpan+.18,P.timber,{hard:true,gloss:.14,...MAT.timber});
+          }else{
+            const fz=z+(side==='z0'?-d/2-.012:d/2+.012);
+            box(x,.45,fz,faceSpan,.84,.035,P.black,{hard:true});
+            for(const s of [-1,1])box(x+s*(faceSpan/2+.045),.47,fz,.09,.94,.07,P.timber,
+              {hard:true,gloss:.14,...MAT.timber});
+            box(x,.93,fz,faceSpan+.18,.10,.07,P.timber,{hard:true,gloss:.14,...MAT.timber});
+          }
           break;
         }
         case 'keeper-landing':
@@ -626,11 +757,18 @@ const ZooExpansion = (() => {
           break;
         case 'shade-shelter': {
           const [x, z] = center(rect), [w, d] = dims(rect), ht = o.height || 3.2;
-          first = mark(box(x, ht, z, w, .18, d, P.timberD,
-            { hard: true, gloss: .14, ...MAT.timber }), id);
+          first = mark(box(x-w*.22,ht,z,w*.58,.16,d+.14,P.sand,
+            {hard:true,rz:-.105,gloss:.09,...MAT.timber}),id);
+          box(x+w*.22,ht,z,w*.58,.16,d+.14,P.sand,
+            {hard:true,rz:.105,gloss:.09,...MAT.timber});
+          box(x,ht+.15,z,.12,.12,d+.24,P.timberD,
+            {hard:true,gloss:.14,...MAT.timber});
           for (const xx of [rect[0] + .22, rect[1] - .22])
             for (const zz of [rect[2] + .22, rect[3] - .22])
-              cyl(xx, ht / 2, zz, .10, ht, P.steelD, { gloss: .42, ...MAT.steel });
+              cyl(xx, ht / 2, zz, .11, ht, P.timberD, { gloss: .14, ...MAT.timber });
+          for(const xx of [rect[0]+.22,rect[1]-.22])
+            box(xx,ht*.73,z,.10,.10,d-.34,P.timber,
+              {hard:true,gloss:.14,...MAT.timber});
           break;
         }
         case 'feed-trough': case 'water-trough': case 'feeder': case 'feed-pan': {
@@ -669,29 +807,49 @@ const ZooExpansion = (() => {
           first = mark(cyl(at[0], .30, at[1], .72, .20, P.timber,
             { gloss: .12, ...MAT.timber }), id);
           break;
-        case 'shallow-pool': case 'mud-wallow':
-          first = rectFlat(rect, .018, o.type === 'shallow-pool' ? P.waterL : P.mud,
-            { mode: o.type === 'shallow-pool' ? 16 : 10, gloss: .28 }, id);
+        case 'shallow-pool':
+          first = rectFlat(rect,.018,P.waterL,{mode:16,gloss:.28},id);
           break;
+        case 'mud-wallow': {
+          const [x,z]=center(rect),[w,d]=dims(rect);
+          first=mark(ball(x-w*.10,.027,z-d*.08,w*.38,.025,d*.35,P.mud,
+            {mode:10,gloss:.16,ry:.08}),id);
+          ball(x+w*.18,.029,z+d*.10,w*.33,.027,d*.31,P.mud,
+            {mode:10,gloss:.18,ry:-.11});
+          ball(x-w*.03,.031,z+d*.28,w*.27,.029,d*.21,P.earth,
+            {mode:10,gloss:.10,ry:.22});
+          break;
+        }
         case 'pine':
           first = tree(at[0], at[1], o.height || 5.2, id, 'pine');
           break;
         case 'hay-rack': case 'browse-rack': {
           const ht = o.height || 1.7;
-          first = mark(box(at[0], ht * .52, at[1], 1.6, .12, .12, P.timber,
-            { ry: .35, hard: true, gloss: .16, ...MAT.timber }), id);
+          first = mark(box(at[0], ht * .70, at[1], 1.75, .13, .13, P.timber,
+            { ry: .18, hard: true, gloss: .16, ...MAT.timber }), id);
           for (const s of [-1, 1])
             capsule(at[0] + s * .58, ht / 2, at[1], .065, ht, .065, P.timberD,
               { rz: s * .18, gloss: .14, ...MAT.timber });
+          box(at[0],ht*.43,at[1],1.48,.09,.09,P.timberD,
+            {hard:true,ry:-.12,gloss:.14,...MAT.timber});
+          for(const s of [-1,1]){
+            taper(at[0]+s*.43,ht*.73,at[1]+s*.08,.86,1.02,.54,
+              s>0?P.leafL:P.leaf,{mode:15,ry:s*.42,rz:s*.10,gloss:.05});
+          }
           break;
         }
         case 'tree-climb': case 'climbing-tower': {
           const ht = o.height || 4;
-          first = mark(cyl(at[0], ht / 2, at[1], .20, ht, P.timberD,
-            { gloss: .14, ...MAT.timber }), id);
-          for (let q = 0; q < 3; q++)
-            capsule(at[0], 1.2 + q * 1.15, at[1], .10, 3.2 - q * .35, .10, P.timber,
-              { rz: Math.PI / 2, ry: q * 1.1, gloss: .14, ...MAT.timber });
+          first = mark(cyl(at[0]-.08, ht / 2, at[1], .20, ht, P.timberD,
+            { rz:-.035,gloss: .14, ...MAT.timber }), id);
+          cyl(at[0]-.58,ht*.39,at[1]+.38,.15,ht*.78,P.timber,
+            {rz:.09,gloss:.14,...MAT.timber});
+          cyl(at[0]+.52,ht*.34,at[1]-.32,.14,ht*.68,P.timber,
+            {rz:-.11,gloss:.14,...MAT.timber});
+          habitatSpan([at[0]-.68,at[1]+.36],[at[0]+1.28,at[1]-.54],ht*.31,.105,P.timber);
+          habitatSpan([at[0]-.92,at[1]-.30],[at[0]+.68,at[1]+.66],ht*.54,.095,P.timberD);
+          habitatSpan([at[0]-.48,at[1]+.50],[at[0]+1.12,at[1]+.12],ht*.76,.085,P.timber);
+          habitatSpan([at[0]-.20,at[1]],[at[0]-.88,at[1]+1.10],ht*.88,.075,P.timberD);
           break;
         }
         case 'rope-bridge': {
@@ -701,12 +859,27 @@ const ZooExpansion = (() => {
             { rz: Math.PI / 2, ry: -Math.atan2(dz, dx), gloss: .12 }), id);
           break;
         }
-        case 'nest-box':
-          first = mark(box(at[0], o.height || 2.4, at[1], .70, .72, .65, P.timber,
+        case 'nest-box': {
+          const y=o.height||2.4,side=h.publicSide;
+          first = mark(box(at[0], y, at[1], .70, .72, .65, P.timber,
             { hard: true, gloss: .14, ...MAT.timber }), id);
-          cyl(at[0], o.height || 2.4, at[1] - .34, .11, .03, P.black,
-            { rx: Math.PI / 2, hard: true });
+          box(at[0]-.18,y+.43,at[1],.52,.09,.82,P.tile,
+            {hard:true,rz:-.13,gloss:.14,...MAT.roof});
+          box(at[0]+.18,y+.43,at[1],.52,.09,.82,P.tile,
+            {hard:true,rz:.13,gloss:.14,...MAT.roof});
+          if(side[0]==='x'){
+            const s=side==='x0'?-1:1,fx=at[0]+s*.36;
+            cyl(fx,y,at[1],.115,.035,P.black,{rz:Math.PI/2,hard:true});
+            capsule(fx+s*.16,y-.28,at[1],.025,.36,.025,P.timberD,
+              {rz:Math.PI/2,gloss:.14,...MAT.timber});
+          }else{
+            const s=side==='z0'?-1:1,fz=at[1]+s*.34;
+            cyl(at[0],y,fz,.115,.035,P.black,{rx:Math.PI/2,hard:true});
+            capsule(at[0],y-.28,fz+s*.16,.025,.36,.025,P.timberD,
+              {rx:Math.PI/2,gloss:.14,...MAT.timber});
+          }
           break;
+        }
         case 'tea-pavilion':
           // B04 owns this record's geometry; retain the stable child ID on its map entry below.
           break;
@@ -723,10 +896,28 @@ const ZooExpansion = (() => {
         }
         case 'barn': {
           const [x, z] = center(rect), [w, d] = dims(rect), ht = o.height || 3.5;
-          first = mark(box(x, ht / 2, z, w, ht, d, P.brickD,
-            { hard: true, gloss: .10, ...MAT.brick }), id);
-          taper(x, ht + .62, z, w + .35, 1.25, d + .35, P.tile,
-            { hard: true, rz: Math.PI / 4, gloss: .15, ...MAT.roof });
+          first=hollowHabitatShell(rect,ht,h.publicSide,1.66,2.34,id,P.brickD,MAT.brick);
+          box(x-w*.23,ht+.25,z,w*.58,.18,d+.42,P.tile,
+            {hard:true,rz:-.18,gloss:.15,...MAT.roof});
+          box(x+w*.23,ht+.25,z,w*.58,.18,d+.42,P.tile,
+            {hard:true,rz:.18,gloss:.15,...MAT.roof});
+          box(x,ht+.48,z,.14,.14,d+.52,P.tileL,
+            {hard:true,gloss:.15,...MAT.roof});
+          const fx=h.publicSide==='x1'?rect[1]+.012:rect[0]-.012;
+          box(fx,1.23,z,.04,2.34,1.66,P.black,{hard:true});
+          for(const s of [-1,1]){
+            box(fx,1.24,z+s*.88,.08,2.48,.11,P.timber,
+              {hard:true,gloss:.14,...MAT.timber});
+            box(fx,1.16,z+s*1.25,.07,2.15,.62,P.timberD,
+              {hard:true,gloss:.14,...MAT.timber});
+          }
+          box(fx,2.46,z,.08,.15,1.90,P.timber,
+            {hard:true,gloss:.14,...MAT.timber});
+          box(x+.90,2.55,rect[2]-.012,.82,.56,.04,P.black,{hard:true});
+          box(x+.90,2.55,rect[2]-.035,.08,.66,.05,P.timber,
+            {hard:true,gloss:.14,...MAT.timber});
+          box(x+.90,2.55,rect[2]-.035,.92,.08,.05,P.timber,
+            {hard:true,gloss:.14,...MAT.timber});
           break;
         }
         case 'handwash':
@@ -741,25 +932,35 @@ const ZooExpansion = (() => {
           break;
         case 'rope-network': {
           const [x, z] = center(rect), [w, d] = dims(rect), ht = o.height || 3.2;
-          first = mark(capsule(x, ht, z, .045, w, .045, P.timber,
-            { rz: Math.PI / 2, gloss: .12 }), id);
-          for (let q = 0; q < 5; q++) {
-            const zz = rect[2] + d * (q + .5) / 5;
-            capsule(x, ht - (q % 2) * .28, zz, .035, w, .035, P.timber,
-              { rz: Math.PI / 2, gloss: .12 });
+          const routes=[
+            [[x-w*.46,z-d*.34],[x-.10,z-d*.18],[x+w*.46,z-d*.30],ht+.16],
+            [[x-w*.45,z+.02],[x+.12,z-.10],[x+w*.45,z+.16],ht-.18],
+            [[x-w*.42,z+d*.34],[x-.18,z+d*.18],[x+w*.43,z+d*.28],ht+.04],
+          ];
+          for(const [a,m,b,yy] of routes){
+            const p=habitatSpan(a,m,yy-.18,.040,P.timber);
+            if(!first)first=mark(p,id);
+            habitatSpan(m,b,yy-.18,.040,P.timber);
           }
+          capsule(x-w*.12,ht-.05,z-.05,.026,.72,.026,P.timber,
+            {gloss:.12});
+          capsule(x+w*.18,ht-.16,z+.12,.026,.66,.026,P.timber,
+            {gloss:.12});
           break;
         }
         case 'acacia':
-          first = tree(at[0], at[1], o.height || 5.5, id, 'broadleaf');
+          first = acaciaTree(at[0], at[1], o.height || 5.5, id);
           break;
         default:
           if (at) first = mark(box(at[0], .35, at[1], .72, .70, .72, P.rock,
             { hard: true, gloss: .08, ...MAT.concrete }), id);
       }
-      // Keep the first, broad structural shape as the long-distance silhouette. Fine habitat
-      // clutter retires beyond 26 m, as required by the graphics contract.
-      if (o.type !== 'pine' && o.type !== 'acacia')
+      // Essential supports and openings are part of the silhouette.  Culling every child left
+      // floating roofs, sealed dens, bare poles and single-blob kopjes in the wide zoo view.
+      // Only genuinely fine habitat dressing retires at 26 m; whole structures remain coherent
+      // until their district render chunk is culled.
+      const wholeSilhouette=/^(?:rock-cluster|rock-slope|rock-shelf|kopje|shade-rock|den|rabbit-shelter|heated-shelter|shade-shelter|nest-island|nest-platform|hay-rack|browse-rack|tree-climb|climbing-tower|nest-box|footbridge|barn|rope-network)$/;
+      if (!wholeSilhouette.test(o.type) && o.type !== 'pine' && o.type !== 'acacia')
         props.slice(propStart + 1).forEach(p => { p.zooLodMax = 26; });
       return first;
     }
@@ -768,7 +969,7 @@ const ZooExpansion = (() => {
       const b = h.bounds, rect = [b.x0, b.x1, b.z0, b.z1];
       h.ground.forEach((g, i) => {
         const id = `${h.id}/G${String(i + 1).padStart(2, '0')}`;
-        if (g.rect) rectFlat(g.rect, .006 + i * .002, groundColor(g.kind),
+        if (g.rect) rectFlat(g.rect, .006 + i * .014, groundColor(g.kind),
           { mode: groundMode(g.kind), gloss: /water|pool/.test(g.kind) ? .30 : .07 }, id);
         else if (g.centres) g.centres.forEach((q, j) =>
           mark(cyl(q[0], .026, q[1], .72 + j * .12, .052, P.mud,
@@ -791,9 +992,26 @@ const ZooExpansion = (() => {
         const cuts = (h.publicAccessZones || []).map(z => z.rect);
         rectMinusCuts(rect, cuts).forEach(r => solid(...r));
       }
-      if (h.serviceGate) closedHabitatGate(h, h.serviceGate, `HG-${h.id}-service`);
-      (h.animalGates || []).forEach((g, i) => closedHabitatGate(h, g,
+      if (h.serviceGate) habitatGate(h, h.serviceGate, `HG-${h.id}-service`, true);
+      (h.animalGates || []).forEach((g, i) => habitatGate(h, g,
         g.id || `HG-${h.id}-animal-${String(i + 1).padStart(2, '0')}`));
+      if(h.id==='H32-family-farm'&&h.publicGates&&h.publicGates[0]){
+        // The supervised contact-yard gate is open to visitors in this release.  Show both leaves
+        // folded back against the inside fence instead of drawing a floating lintel or closing the
+        // authored opening.  This remains presentation-only; PAZ-H32 owns movement state.
+        const g=h.publicGates[0],x=b.x0+.52,z=g.center[1];
+        let gateFirst=null;
+        for(const s of [-1,1]){
+          const zz=z+s*(g.width/2-.06);
+          for(const y of [.34,.88]){
+            const p=box(x,y,zz,.98,.10,.08,P.timber,
+              {hard:true,gloss:.16,...MAT.timber});
+            if(!gateFirst)gateFirst=mark(p,`${g.id}/VIS`);
+          }
+          cyl(b.x0+.08,.62,zz,.07,1.24,P.timberD,{gloss:.14,...MAT.timber});
+          cyl(b.x0+.96,.62,zz,.055,1.12,P.timberD,{gloss:.14,...MAT.timber});
+        }
+      }
       h.objects.forEach((o, i) => buildHabitatObject(h, o, i));
       counts.habitats++;
     }
@@ -971,6 +1189,17 @@ const ZooExpansion = (() => {
 
     function fixtureSolid(rect) { solid(rect[0], rect[1], rect[2], rect[3]); }
 
+    function openStaffGateVisual(d, id, insideX) {
+      const x=d.at[0],z=d.at[1],leaf=(d.width-.16)/2;
+      // The exact ID stays on the overhead access-control beam at the canonical anchor. Two
+      // half-leaves fold against the inner wall, leaving the keeper centreline visibly open.
+      mark(box(x,2.45,z,.14,.16,d.width,P.steelD,
+        {hard:true,gloss:.52,...MAT.steel}),id);
+      for(const [i,s] of [[1,-1],[2,1]])
+        mark(box(x+insideX*leaf/2,.90,z+s*(d.width/2-.08),leaf,1.80,.08,P.steelD,
+          {hard:true,gloss:.52,...MAT.steel}),`${id}/G${String(i).padStart(2,'0')}`);
+    }
+
     function buildingLabel(b, text, at, yaw = Math.PI) {
       const q = glyphs(at[0], at[1], at[2], yaw, text,
         { size:.17, gap:.026, color:P.white, mode:1 });
@@ -1093,11 +1322,25 @@ const ZooExpansion = (() => {
       }
       const [x, z] = center(fpRect(f)), [w, d] = dims(fpRect(f));
       if (glass) {
-        mark(box(x, b.height + .08, z, w + .18, .16, d + .18, P.glass,
-          { hard: true, mode: 1, alpha: .26, gloss: .94 }), `${b.id}/ROOF`);
-        for (let xx = f.x0 + 1.2; xx < f.x1; xx += 3.0)
-          box(xx, b.height + .16, z, .09, .22, d + .28, P.steelD,
-            { hard: true, gloss: .50, ...MAT.steel });
+        // A tropical conservatory needs a draining glazed roof and a visible structural rhythm.
+        // The former 25-by-18-metre horizontal pane read as one enormous glass block. Two pitched
+        // planes, eaves, a ridge and paired rafters keep the exact footprint while explaining how
+        // the roof stands up and where rainwater goes.
+        const rise=2.0,half=d/2,pitch=Math.atan2(rise,half),slope=Math.hypot(half,rise);
+        mark(box(x,b.height+rise/2,z-half/2,w+.18,.12,slope+.12,P.glass,
+          {hard:true,mode:1,alpha:.26,gloss:.94,rx:-pitch}),`${b.id}/ROOF`);
+        mark(box(x,b.height+rise/2,z+half/2,w+.18,.12,slope+.12,P.glass,
+          {hard:true,mode:1,alpha:.26,gloss:.94,rx:pitch}),`${b.id}/ROOF/G01`);
+        box(x,b.height+rise,z,w+.40,.12,.12,P.steelD,
+          {hard:true,gloss:.50,...MAT.steel});
+        for(const ez of [f.z0,f.z1])box(x,b.height+.05,ez,w+.32,.12,.12,P.steelD,
+          {hard:true,gloss:.50,...MAT.steel});
+        for (let xx = f.x0 + 1.2; xx < f.x1; xx += 3.0) {
+          box(xx,b.height+rise/2,z-half/2,.09,.10,slope+.18,P.steelD,
+            {hard:true,rx:-pitch,gloss:.50,...MAT.steel});
+          box(xx,b.height+rise/2,z+half/2,.09,.10,slope+.18,P.steelD,
+            {hard:true,rx:pitch,gloss:.50,...MAT.steel});
+        }
       } else {
         const liftCut=b.id==='B05-conservation-west'?conservationLifts[0]:
           b.id==='B06-conservation-east'?conservationLifts[1]:null;
@@ -1124,12 +1367,9 @@ const ZooExpansion = (() => {
         // Its thin threshold keeps the body at the tagged transition while preserving the opening.
         solid(publicDoor.at[0]+.30,publicDoor.at[0]+.46,
           publicDoor.at[1]-publicDoor.width/2,publicDoor.at[1]+publicDoor.width/2);
-        // The east opening remains visible for staff logistics but is physically closed to visitors.
-        mark(box(serviceDoor.at[0],1.18,serviceDoor.at[1],.14,2.36,serviceDoor.width,P.steelD,
-          {hard:true,gloss:.52,...MAT.steel}),`${b.id}/SERVICE-GATE`);
-        for(let z=serviceDoor.at[1]-serviceDoor.width/2+.25;
-            z<serviceDoor.at[1]+serviceDoor.width/2;z+=.42)
-          cyl(serviceDoor.at[0]-.03,1.18,z,.03,2.25,P.steel,{gloss:.58,...MAT.steel});
+        // Staff use this opening continuously; show its paired leaves retracted inside the house
+        // instead of making the keeper patrol phase through a closed steel panel.
+        openStaffGateVisual(serviceDoor,`${b.id}/SERVICE-GATE`,-1);
         solid(serviceDoor.at[0]-.09,serviceDoor.at[0]+.09,
           serviceDoor.at[1]-serviceDoor.width/2,serviceDoor.at[1]+serviceDoor.width/2);
         blocker(serviceDoor.at[0]-.09,serviceDoor.at[0]+.09,
@@ -1179,6 +1419,9 @@ const ZooExpansion = (() => {
       // two-sided 10 m approach occupies the west verge of P104 and leaves its centreline clear.
       const rise = b.entranceApron.y0, run = rise * 20;
       const midZ = (apron[2] + apron[3]) / 2;
+      // The ramp keeps a 2.5 m body-clear width, while its landing surface begins exactly where
+      // the authored apron ends. That preserves the west-rail clearance at nearby map/board foci
+      // without submitting the former half-metre of coplanar timber twice.
       const rampX0 = apron[1] - .5, rampX1 = apron[1] + 2.0;
       const rampW = rampX1 - rampX0, rampX = (rampX0 + rampX1) / 2;
       const slope = Math.atan2(rise, run), rampLen = Math.hypot(run, rise);
@@ -1186,7 +1429,7 @@ const ZooExpansion = (() => {
         { hard:true,rx:-slope,gloss:.13,...MAT.timber }), `${b.id}/RAMP-SOUTH`);
       mark(box(rampX, rise / 2 - .04, midZ + run / 2, rampW, .08, rampLen, P.timber,
         { hard:true,rx:slope,gloss:.13,...MAT.timber }), `${b.id}/RAMP-NORTH`);
-      rectFlat([rampX0,rampX1,apron[2],apron[3]], rise, P.timber,
+      rectFlat([apron[1],rampX1,apron[2],apron[3]], rise, P.timber,
         { mode:6,gloss:.13,...MAT.timber }, `${b.id}/RAMP-LANDING`);
       const rail = (id, xx, z0, z1, down) => {
         const zz = (z0 + z1) / 2, len = z1 - z0;
@@ -1237,7 +1480,9 @@ const ZooExpansion = (() => {
       // end faces visually seal the wing connections.
       mark(box(x,b.y0-.06,z,w,.12,d,P.path,
         {hard:true,mode:9,gloss:.10,...MAT.path}),b.id);
-      box(x,b.y0+b.height+.06,z,w+.18,.12,d+.18,P.glass,
+      // Recess the bridge roof at both lift joints. The tile lift caps now meet it across a 4 cm
+      // expansion shadow-gap instead of occupying the same horizontal strip and depth plane.
+      box(x,b.y0+b.height+.06,z,w-.50,.12,d+.18,P.glass,
         {hard:true,mode:1,alpha:.26,gloss:.92});
       for(const zz of [r[2],r[3]]){
         box(x,b.y0+b.height/2,zz,w,b.height,.10,P.glass,
@@ -1332,12 +1577,12 @@ const ZooExpansion = (() => {
           { hard: true, gloss: .16, ...MAT.roof });
         solid(...r.rect); blocker(...r.rect, h + .3);
       });
-      // Both service openings are staff-only closed gates for player collision.
+      // Both service openings remain staff-only for player collision, but their visible leaves are
+      // folded inward because all three keeper patrols traverse these exact centre lines.
       for (const d of b.serviceDoors) {
         const onWest = Math.abs(d.at[0] - b.footprint.x0) < .02;
         const x = d.at[0], z = d.at[1];
-        mark(box(x, 1.18, z, .12, 2.36, d.width, P.steelD,
-          { hard: true, gloss: .50, ...MAT.steel }), `${b.id}/GATE-${onWest ? 'W' : 'E'}`);
+        openStaffGateVisual(d,`${b.id}/GATE-${onWest ? 'W' : 'E'}`,onWest?1:-1);
         solid(x - .07, x + .07, z - d.width / 2, z + d.width / 2);
       }
       counts.buildings++;
@@ -1633,8 +1878,8 @@ const ZooExpansion = (() => {
         glyphs(x + nx * .486, y, z + nz * .486, yaw, label,
           { size: .105, gap: .012, color: P.cream, mode: 1 });
       });
-      // Fingerposts are deliberately visual-only: several exact visitor loops begin at these
-      // junction coordinates, and the blueprint gives them no body-collision contract.
+      // Fingerposts are visual-only and the blueprint places them in the paved junction verge,
+      // diagonally clear of both crossing route centrelines and the labelled ground medallion.
     });
 
     // A world-space mover on the exact service-patrol polyline. All parts are marked dynamic so
@@ -1838,8 +2083,23 @@ const ZooExpansion = (() => {
     const pavilionRamp = [pavilionApron[1] - .5, pavilionApron[1] + 2,
       pavilionMidZ - pavilionRun, pavilionMidZ + pavilionRun];
     const pavilionLanding = [pavilionRamp[0],pavilionRamp[1],pavilionApron[2],pavilionApron[3]];
+    const rockClusterLift = (x,z,cx,cz,scale,height) => {
+      let top=0;
+      for(const [ox,oz,s] of [[0,0,1],[-.46,.18,.66],[.42,.12,.72],[-.15,-.38,.58],[.34,-.32,.48]]){
+        const rx=scale*s*.52,rz=scale*s*.46,ry=height*s*.45;
+        const dx=(x-cx-ox*scale)/rx,dz=(z-cz-oz*scale)/rz,q=dx*dx+dz*dz;
+        if(q<=1)top=Math.max(top,ry+ry*Math.sqrt(1-q));
+      }
+      return top;
+    };
     function liftAt(x, z, currentLift = 0) {
       const inside = r => x >= r[0] && x <= r[1] && z >= r[2] && z <= r[3];
+      // H20 and H21 schedule animals directly on their canonical rock-cluster geometry. Match the
+      // same five ellipsoids used by rockCluster() so hooves and paws rest on the surface instead
+      // of disappearing inside it; outside those landforms the habitat grade remains zero.
+      const habitatRock=Math.max(rockClusterLift(x,z,-45,32,2.6,1.3),
+        rockClusterLift(x,z,-28.5,32,1.2,2.8));
+      if(habitatRock>0)return habitatRock;
       if(conservationLifts.some(inside))return conservationBridge.y0;
       // The same x/z rectangle is also P104's underpass. Only someone who arrived at bridge
       // height through a lift stays on the gallery; a ground-level walker keeps all 4.10 m clear.
@@ -1927,7 +2187,8 @@ const ZooExpansion = (() => {
           temper: i % 3 === 0 ? 'genial' : i % 3 === 1 ? 'shy' : 'steady',
           speed: /swim/.test(slot.act) ? .28 : .38, hours: [7, 20],
           look: { scale: .90 + (i % 3) * .06 },
-          spots: [{ h0: 7, h1: 20, at: [x, z], face: (i * 2.17) % (Math.PI * 2), act: slot.act }],
+          spots: [{ h0: 7, h1: 20, at: [x, z],
+            face: Number.isFinite(slot.face) ? slot.face : (i * 2.17) % (Math.PI * 2), act: slot.act }],
         });
       });
     }

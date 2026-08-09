@@ -104,16 +104,22 @@ const ZooArtCentral = (() => {
     {
       const add = group('ART-H31');
       const reeds = [
-        [-15.18, .48, 23.82, .43, .94, .30, -.16, P.reedGold],
-        [-15.08, .59, 27.02, .50, 1.15, .34, .12, P.reed],
-        [-15.15, .51, 30.22, .40, .99, .29, -.08, P.reedGold],
-        [-11.86, .57, 34.62, .58, 1.10, .36, .18, P.reed],
-        [-8.48, .48, 34.55, .45, .93, .31, -.13, P.reedGold],
-        [-7.38, .61, 32.32, .52, 1.19, .35, .10, P.reed],
-        [-7.36, .53, 24.36, .47, 1.02, .32, -.18, P.reed],
+        [-15.18, 23.82, .94, .022, -.16, P.reedGold],
+        [-14.92, 24.02, .76, .018,  .12, P.reed],
+        [-15.08, 27.02, 1.15,.024,  .10, P.reed],
+        [-14.84, 27.20, .84, .019, -.12, P.reedGold],
+        [-15.15, 30.22, .99, .021, -.08, P.reedGold],
+        [-14.88, 30.45, .82, .018,  .14, P.reed],
+        [-11.86, 34.62, 1.10,.024,  .18, P.reed],
+        [-11.55, 34.48, .84, .019, -.11, P.reedGold],
+        [-8.48,  34.55, .93, .021, -.13, P.reedGold],
+        [-7.38,  32.32, 1.19,.025,  .10, P.reed],
+        [-7.36,  24.36, 1.02,.022, -.18, P.reed],
       ];
-      for (const [x, y, z, sx, sy, sz, rz, col] of reeds)
-        add(taper(x, y, z, sx, sy, sz, col,
+      // Individual, irregular stems keep the shoreline porous.  The former seven solid tapers
+      // read as evenly spaced green traffic cones from the public boardwalk.
+      for (const [x, z, h, r, rz, col] of reeds)
+        add(capsule(x, h / 2, z, r, h, r, col,
           { mode: 15, ry: x + z, rz, gloss: .04 }));
 
       add(ball(-13.62, .10, 23.34, .68, .10, .35, P.mud,
@@ -160,10 +166,9 @@ const ZooArtCentral = (() => {
       add(capsule(8.86, .91, 23.22, .23, .92, .34, P.leafLight,
         { mode: 15, rz: PI / 2, ry: -.18, gloss: .04 }));
 
-      add(capsule(15.66, .35, 30.44, .12, .70, .53, P.barkDark,
-        { gloss: .08 }));
-      add(ball(4.02, .24, 34.42, .24, .24, .20, P.stone,
-        { mode: 10, gloss: .03 }));
+      // The south-east barn apron and supervised west gate remain deliberately open.  Removing
+      // the old wall-touching stump and isolated gate stone gives both circulation points a full
+      // metre of visual breathing room.
     }
 
     // H33 — golden monkey: broadleaf and conifer silhouettes create two forest strata while
@@ -202,8 +207,8 @@ const ZooArtCentral = (() => {
     }
 
     const props = B.props.slice(begin);
-    if (props.length !== 63 || ids.length !== 63 || new Set(ids).size !== 63)
-      throw new Error(`ZooArtCentral: expected 63 unique props, found ${props.length}/${ids.length}`);
+    if (props.length !== 65 || ids.length !== 65 || new Set(ids).size !== 65)
+      throw new Error(`ZooArtCentral: expected 65 unique props, found ${props.length}/${ids.length}`);
     return { props, ids };
   }
 

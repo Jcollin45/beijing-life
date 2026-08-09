@@ -835,20 +835,20 @@ const NPCS = [
       // bamboo actually is.
       { hz: '熊猫', place: 'zoo', animal: 'panda', temper: 'frail', speed: .34, hours: [7, 20],
         spots: day(P2.panda, [
-          [7,  .30, .28,  1.20, 'eat'],      // in the bamboo, sitting up with a stem
-          [10, .70, .40,  1.90, 'graze'],
-          [12, .62, .70,  2.40, 'sit'],
-          [14, .34, .72,  0.90, 'lie'],      // the long afternoon sleep
-          [17, .30, .30,  1.20, 'eat'],
+          [7,  .23, .11,  1.20, 'eat'],      // beside the south bamboo, clear of the retreat wall
+          [10, .53, .40,  1.90, 'graze'],    // framed in the open east doorway
+          [12, .89, .69,  2.40, 'sit'],      // north-east viewing clearing
+          [14, .24, .50,  0.90, 'lie'],      // asleep inside the hollow retreat
+          [17, .23, .10,  1.20, 'eat'],
         ], 20) },
       { hz: '熊猫二', place: 'zoo', animal: 'panda', temper: 'bored', speed: .30,
         look: { scale: .78 }, hours: [7, 20],
         spots: day(P2.panda, [
-          [7,  .74, .66, -1.90, 'graze'],
-          [9,  .82, .34,  1.10, 'climb'],    // up on the climbing frame
-          [11, .32, .60,  1.40, 'eat'],
-          [15, .78, .58, -2.20, 'lie'],
-          [18, .34, .26,  1.20, 'eat'],
+          [7,  .78, .62, -1.90, 'graze'],    // beside the east low-bamboo clearing
+          [9,  .83, .38,  1.10, 'climb'],    // faces the south frame without standing in its log
+          [11, .24, .90,  1.40, 'eat'],
+          [15, .34, .62, -2.20, 'lie'],      // a separate sleeping bay inside the retreat
+          [18, .78, .62,  1.20, 'eat'],
         ], 20) },
       // 老虎. Big cats sleep sixteen hours a day and do it in the open, which is exactly why the
       // 老虎 action says you saw its back: most of the time that is all there is to see.
@@ -864,23 +864,23 @@ const NPCS = [
       // between the two: drinking, throwing dust about, and standing in the shade.
       { hz: '大象', place: 'zoo', animal: 'elephant', temper: 'steady', speed: .48, hours: [6, 21],
         spots: day(P2.elephant, [
-          [6,  .30, .36, -1.40, 'graze'],
-          [9,  .70, .50,  1.30, 'drink'],    // at the wallow
-          [11, .66, .52,  1.90, 'dust'],
-          [14, .78, .28,  2.40, 'graze'],
-          [17, .34, .68, -0.80, 'drink'],
-          [19, .52, .40,  1.10, 'dust'],
+          [6,  .30, .54, -1.40, 'graze'],    // open sand between rubbing outcrop and scrub post
+          [9,  .72, .80,  1.30, 'drink'],    // north-east wallow, outside the dry shelter
+          [11, .72, .83,  1.90, 'dust'],
+          [14, .76, .32,  0.30, 'graze'],    // square under the roof, clear of piers and hanging toy
+          [17, .41, .77, -0.80, 'drink'],    // east side of the separate west trough
+          [19, .64, .75,  1.10, 'dust'],
         ], 21) },
       { hz: '大象二', place: 'zoo', animal: 'elephant', temper: 'eager', speed: .55,
         look: { scale: .60 }, hours: [6, 21],
         spots: day(P2.elephant, [
-          // Keep a constant shoulder-to-shoulder offset from the adult's matching keyframes.
-          // That preserves the "following calf" read without letting the two rigs merge.
+          // Follow the adult through the same functional zones with enough lateral separation
+          // that the smaller body never merges into a shelter post or the adult barrel.
           [6,  .10, .54, -0.90, 'graze'],
-          [9,  .50, .68,  1.60, 'drink'],
-          [11, .46, .70,  2.10, 'dust'],
-          [14, .58, .46, -1.30, 'graze'],
-          [17, .14, .86,  1.40, 'drink'],
+          [9,  .56, .83,  1.60, 'drink'],
+          [11, .56, .88,  2.10, 'dust'],
+          [14, .48, .42, -1.30, 'graze'],    // west of the shelter, separated from the adult
+          [17, .22, .59,  0.00, 'drink'],    // south side of the trough, away from the camera boom
           [19, .32, .58, -0.60, 'graze'],
         ], 21) },
       // 长颈鹿. The browse rack on the feeding deck is at the back of the paddock, and 'browse' is
@@ -896,16 +896,16 @@ const NPCS = [
           [11, .68, .40,  0.20, 'browse'],
           [14, .34, .30, -0.60, 'drink'],    // forelegs splayed, which is the shot to catch
           [16, .60, .36,  0.10, 'browse'],
-          [19, .40, .48, -1.60, 'graze'],
+          [19, .28, .48, -1.60, 'graze'],
         ], 21) },
       { hz: '长颈鹿二', place: 'zoo', animal: 'giraffe', temper: 'shy', speed: .42,
         look: { scale: .82 }, hours: [6, 21],
         spots: day(P2.giraffe, [
           [6,  .30, .34, -1.10, 'graze'],
-          [8,  .76, .40,  0.30, 'browse'],
-          [12, .44, .62,  2.20, 'graze'],
+          [8,  .64, .40,  0.30, 'browse'],   // centred between the two front deck piers
+          [12, .177778, .381818, 0.00, 'graze'], // open west bay, clear of acacia, trough and deck
           [15, .72, .36,  0.10, 'browse'],
-          [18, .36, .36, -0.80, 'drink'],
+          [18, .36, .30, -0.80, 'drink'],
         ], 21) },
       // 猴子. The one enclosure where something is always happening. Their spots are on the rock
       // rather than around it, which only works because zoo.js gives the room a `liftAt`: on flat
@@ -950,7 +950,7 @@ const NPCS = [
         spots: day(P2.penguin, [
           [6,  .30, .36, -1.10, 'preen'],
           [9,  .58, .62,  1.70, 'swim'],     // the pool is the middle and back of the pen
-          [12, .78, .28,  2.20, 'preen'],
+          [12, .78, .24,  2.20, 'preen'],    // first dry tread, not the overlap between steps
           [15, .52, .58,  1.30, 'swim'],
           [18, .32, .30, -0.80, 'preen'],
         ], 22) },
@@ -968,7 +968,7 @@ const NPCS = [
           [6,  .48, .62,  0.20, 'swim'],
           [11, .52, .30,  2.80, 'preen'],
           [14, .44, .60,  0.60, 'swim'],
-          [17, .72, .34,  2.10, 'preen'],
+          [17, .72, .36,  2.10, 'preen'],    // third tread, spaced from the other two birds
         ], 22) },
       // 孔雀. 开屏 is on its own slow clock in `animalPose` as well, so the bird displays now and
       // then whatever it is doing; these spots are when it does nothing else but.

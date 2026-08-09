@@ -8,9 +8,17 @@ const ZooContents = (() => {
   'use strict';
 
   const SCHEMA='chinesegame.zoo-contents/v1';
-  const REVISION=1;
-  const CONTENT_HASH='sha256:cb8cd1ea95de8bd4df7f9904b93d440eef0ccf4062bf81ddf9818b65903acc3c';
+  const REVISION=2;
+  const CONTENT_HASH='sha256:7acb1ddef3e8491eb3f97d0929a0f8e45fb1409b200b81eeee131e36f90d15df';
   const EPS=1e-6;
+  const SCREEN_LABELS=Object.freeze({
+    'B03/snack/FIX05':'茶点菜单',
+    'B08/FIX03':'热带馆',
+    'T03/FIX09':'湿度',
+    'T04/FIX06':'请关双门',
+    'T04/FIX07':'请关双门',
+    'TROP/SERVICE02':'环境控制',
+  });
   const planOf=input=>input||(typeof window!=='undefined'?window.ZOO_CONTENTS_BLUEPRINT:null);
 
   function validatePlan(input,parentPlan) {
@@ -45,7 +53,7 @@ const ZooContents = (() => {
       if(Array.isArray(v))v.forEach(visit);else Object.values(v).forEach(visit);
     };
     visit(plan);
-    if(additions!==237)throw new Error(`ZooContents: expected 237 additions, found ${additions}`);
+    if(additions!==236)throw new Error(`ZooContents: expected 236 additions, found ${additions}`);
     return plan;
   }
 
@@ -56,6 +64,53 @@ const ZooContents = (() => {
   const recordsForTropical=plan=>[
     ...plan.tropicalScene.rooms.flatMap(r=>r.contents),...plan.tropicalScene.sharedObjects,
   ].filter(q=>q.implementationStatus==='build-v1');
+
+  // The revision-2 outdoor builder predates the detailed fit-out. Remove only its exact visual
+  // stand-ins before compiling the canonical contents: collision and interactions remain owned by
+  // the expansion, while the three staff rooms receive open-fronted shells instead of solid cubes.
+  function cleanOutdoorBase(B) {
+    const close=(a,b)=>Math.abs(a-b)<1e-5;
+    const matches=(p,x,y,z,w,h,d)=>p&&p.ob&&close(p.ob.x,x)&&close(p.ob.y,y)&&
+      close(p.ob.z,z)&&close(p.ob.sx,w)&&close(p.ob.sy,h)&&close(p.ob.sz,d);
+    const oldRoomIds=new Set(['quarantine','feed-kitchen','staff-lockers']);
+    const isOldCrate=p=>!p.blueprintId&&[-42.58,-41.84,-41.10,-40.36].some(x=>
+      matches(p,x,.38,58.75,.58,.76,.72));
+    const isOldPavilion=p=>!p.blueprintId&&(
+      matches(p,-11.55,1.03,29.5,1.5,1.05,3)||
+      matches(p,-10.1,.93,29.5,.82,.10,1.55));
+    const isOldTropicalSign=p=>p.blueprintId==='TH-tropical'||
+      (p.tag==='热带馆'&&p.ob&&p.ob.x>24&&p.ob.x<26&&p.ob.z>49&&p.ob.z<55);
+    for(let i=B.props.length-1;i>=0;i--){
+      const p=B.props[i];
+      if(oldRoomIds.has(p.blueprintId)||isOldCrate(p)||isOldPavilion(p)||isOldTropicalSign(p))
+        B.props.splice(i,1);
+    }
+    // Both hospital view panes use the same glass and visual opacity. The dedicated observation
+    // sign remains the interaction target, so these render-only panes can stay unpickable/loose
+    // instead of spending a whole alpha batch on a one-percent historical opacity difference.
+    for(const p of B.props)if(p.tag==='动物医院'&&p.alpha<.999){
+      p.alpha=.24;
+      p.mesh='softBox';
+      p.hard=false;
+      p.tag=undefined;
+      p.ob=null;
+    }
+
+    const render=C('#e6dcc6'),floor=C('#8c8577');
+    const shell=(id,r,h)=>{
+      let part=0;
+      const mark=p=>{p.blueprintId=part++?`${id}/SHELL-${String(part-1).padStart(2,'0')}`:id;
+        p.zooLodMax=32;return p;};
+      const x=(r[0]+r[1])/2,z=(r[2]+r[3])/2,w=r[1]-r[0],d=r[3]-r[2];
+      mark(B.flat(x,.021,z,w,d,floor,{hard:true,mode:9,gloss:.08}));
+      mark(B.box(r[0],h/2,z,.14,h,d,render,{hard:true,gloss:.07}));
+      mark(B.box(r[1],h/2,z,.14,h,d,render,{hard:true,gloss:.07}));
+      mark(B.box(x,h/2,r[3],w,h,.14,render,{hard:true,gloss:.07}));
+    };
+    shell('quarantine',[-50,-44,55.5,60.5],3.8);
+    shell('feed-kitchen',[-43,-40,47,52],3.5);
+    shell('staff-lockers',[-43,-40,53,56],3.2);
+  }
 
   function compiler(B,plan,scope) {
     const {box,cyl,ball,capsule,taper,flat,glyphs,solid,blocker,glow,light,thing}=B;
@@ -89,7 +144,16 @@ const ZooContents = (() => {
     function build(q) {
       const before=B.props.length,m=material(q),opt={...m.opt},
         tag=q.interaction&&q.interaction.tag;
-      const [x,y,z]=atOf(q),[w,h,d]=sizeOf(q),yaw=q.yaw||0;
+      let [x,y,z]=atOf(q),[w,h,d]=sizeOf(q);
+      const yaw=q.yaw||0;
+      // These tiny placement corrections preserve the canonical records while resolving the
+      // handful of furniture collisions exposed by the close visual audit.
+      if(q.id==='B04/seating/FIX02'||q.id==='B04/seating/FIX03')x=-10.10;
+      if(q.id==='B04/tea/FIX02')z=30.0;
+      if(q.id==='B04/tea/FIX04')y=1.85;
+      if(q.id==='B07/quarantine/FIX06'){x=-44.40;z=55.95;}
+      if(q.id==='B08/FIX04')y=3.02;
+      if(q.id==='T00/FIX08'){x=-10.43;y=1.25;z=-1.82;w=.06;h=.28;d=.22;}
       if(tag)opt.tag=tag;
       let first=null,child=1;
       const add=p=>{if(!p)return p;mark(p,first?q.id+'/G'+String(child++).padStart(2,'0'):q.id,tag);if(!first)first=p;return p;};
@@ -101,12 +165,25 @@ const ZooContents = (() => {
 
       switch(q.archetype){
         case 'surface-rect': {
-          const r=q.rect||rectOf(q);fl(r,q.y===undefined?(q.at?q.at[1]:q.y0||0):q.y);break;
+          const r=q.rect||rectOf(q),authoredY=(q.id==='T04/S01'||q.id==='T04/S02') ? .030 : null,
+            surfaceY=authoredY===null?(q.y===undefined?(q.at?q.at[1]:q.y0||0):q.y):authoredY;
+          fl(r,surfaceY);break;
         }
         case 'pool-volume': {
-          const r=q.rect||rectOf(q),surfaceY=q.waterLevel===undefined?
+          const r=q.rect||rectOf(q);
+          let surfaceY=q.waterLevel===undefined?
             (q.rect?(q.y0||0)+(q.height||0):y+h/2):q.waterLevel;
-          if((q.height||h)>.8&&scope==='tropical')
+          // The crocodile room floor sits at 8 mm. Owning the water at 18 mm keeps the authored
+          // pool readable without shimmering against either that floor or the 25 mm mud shelf.
+          if(q.id==='T01/S01')surfaceY=.018;
+          if(q.id==='T02/S01'){
+            // A blue-tinted depth veil just behind the visitor glass reads as a filled aquarium
+            // without giving the transparent volume a full top face coplanar with the water sheet.
+            // Keeping this first preserves T02/S01 for the volume and /G01 for the mode-16 surface.
+            const depthH=surfaceY-.025;
+            b((r[0]+r[1])/2,depthH/2,r[3]-.0125,r[1]-r[0],depthH,.025,m.color,
+              {mode:1,alpha:.20,gloss:.72,hard:false});
+          }else if((q.height||h)>.8&&scope==='tropical')
             b((r[0]+r[1])/2,surfaceY-(q.height||h)/2,(r[2]+r[3])/2,r[1]-r[0],q.height||h,r[3]-r[2],m.color,
               {mode:1,alpha:.20,gloss:.72,hard:false});
           fl(r,surfaceY,m.color,{mode:16,gloss:.60,hard:false});break;
@@ -117,6 +194,20 @@ const ZooContents = (() => {
             i%2?mats.get('M-ROCK-LIGHT').color:m.color,{mode:10,gloss:.06,hard:false}));break;
         }
         case 'ground-log':
+          if(scope==='tropical'&&(q.id==='T00/FIX06'||q.id==='T00/FIX07')){
+            const qx=q.id.endsWith('06')?-12.30:-10.75,z0=-1.14,z1=.24;
+            for(const pz of [z0,(z0+z1)/2,z1])
+              c(qx,.45,pz,.026,.90,mats.get('M-STEEL').color,{hard:false});
+            cp(qx,.72,(z0+z1)/2,.026,z1-z0,.026,mats.get('M-STEEL').color,
+              {rx:Math.PI/2,hard:false});
+            break;
+          }
+          if(scope==='tropical'&&q.id==='T00/FIX05'){
+            fl([-12.56,-11.78,2.22,2.37],.018,m.color,{mode:1,hard:false});
+            b(-12.17,.029,2.22,.78,.018,.022,m.color,{mode:1,hard:false});
+            b(-12.17,.029,2.37,.78,.018,.022,m.color,{mode:1,hard:false});
+            break;
+          }
           cp(x,y+h/2,z,h/2,w,h/2,m.color,{rz:Math.PI/2,ry:yaw,hard:false});
           if(h>.22)for(const s of [-1,1])cp(x+Math.cos(yaw)*w*.28*s,y+h*.55,z-Math.sin(yaw)*w*.28*s,h*.22,w*.23,h*.22,
             mats.get('M-TIMBER-DARK').color,{rz:Math.PI/2,ry:yaw+s*.8,hard:false});
@@ -173,34 +264,79 @@ const ZooContents = (() => {
           // existing mode-1 box batch instead of inheriting the concrete pad material.
           for(const s of [-1,1])add(box(x+s*w*.42,y+.052,z,w*.08,.025,d*.82,
             mats.get('M-ROOF-RED').color,{hard:true,mode:1}));break;
-        case 'counter':
-          b(x,y+h*.45,z,w,h*.9,d,m.color,{ry:yaw});b(x,y+h*.96,z,w+Math.min(.16,w*.08),h*.1,d+Math.min(.12,d*.1),mats.get('M-TIMBER').color,{ry:yaw});break;
+        case 'counter': {
+          // A service counter is a framed work station, not one waist-high cuboid. The canonical
+          // collision still owns its full footprint while the open under-counter bays expose the
+          // sink, boiler and tea storage behind it.
+          for(const oz of [-d*.41,d*.41])
+            b(x,y+h*.51,z+oz,w*.84,h*.78,Math.min(.10,d*.06),m.color,{ry:yaw});
+          b(x,y+h*.43,z,w*.82,h*.06,d*.84,mats.get('M-TIMBER').color,{ry:yaw});
+          b(x,y+h*.96,z,w+Math.min(.16,w*.08),h*.1,d+Math.min(.12,d*.1),
+            mats.get('M-TIMBER').color,{ry:yaw});
+          break;
+        }
         case 'table':
           b(x,y+h*.78,z,w,h*.12,d,m.color,{ry:yaw});
           for(const ox of [-w*.38,w*.38])for(const oz of [-d*.34,d*.34])b(x+ox,y+h*.38,z+oz,Math.min(.08,w*.08),h*.72,Math.min(.08,d*.12),mats.get('M-STEEL-DARK').color,{ry:yaw});break;
         case 'chair':
           b(x,y+h*.48,z,w,h*.08,d,m.color,{ry:yaw});b(x,y+h*.74,z-d*.42,w,h*.48,.08,m.color,{ry:yaw});break;
-        case 'cabinet':
-          b(x,y+h/2,z,w,h,d,m.color,{ry:yaw});b(x,y+h*.52,z-d*.505,w*.92,.03,d*.02,mats.get('M-STEEL-DARK').color,{ry:yaw});break;
-        case 'shelf':
-          b(x,y+h/2,z,w,h,d,m.color,{ry:yaw});
-          for(let i=1;i<5;i++)b(x,y+h*i/5,z-d*.51,w*.9,.045,.035,mats.get('M-TIMBER').color,{ry:yaw});break;
+        case 'cabinet': {
+          // The snack chiller is accessed from the staff side of its counter; its authored yaw
+          // describes the body footprint, while the functional door must face north into the bay.
+          const cabinetYaw=q.id==='B03/snack/FIX03'?Math.PI:yaw;
+          b(x,y+h/2,z,w,h,d,m.color,{ry:cabinetYaw});
+          const nx=-Math.sin(cabinetYaw),nz=-Math.cos(cabinetYaw),
+            tx=Math.cos(cabinetYaw),tz=-Math.sin(cabinetYaw),
+            fx=x+nx*(d*.505+.012),fz=z+nz*(d*.505+.012);
+          b(fx,y+h*.54,fz,w*.84,h*.78,.026,m.color,{ry:cabinetYaw});
+          c(fx+tx*w*.25,y+h*.56,fz+tz*w*.25,.012,h*.20,
+            mats.get('M-STEEL-DARK').color,{hard:false});
+          break;
+        }
+        case 'shelf': {
+          // Open shelves keep their full authored envelope but never fill it with an opaque block.
+          for(const yy of [.08,.94])b(x,y+h*yy,z,w*.94,.045,d*.92,m.color,{ry:yaw});
+          if(w<=d){
+            for(const oz of [-d*.43,d*.43])b(x,y+h*.50,z+oz,w*.92,h*.92,.045,m.color,{ry:yaw});
+          }else for(const ox of [-w*.43,w*.43])b(x+ox,y+h*.50,z,.045,h*.92,d*.92,m.color,{ry:yaw});
+          if(/tea/i.test(q.label)){
+            // Keep the two existing canister child IDs, put them on a genuine middle shelf, and
+            // append that new shelf as G06 so all previously-authored child mappings remain stable.
+            const midY=y+h*.50,canisterH=h*.17,canisterY=midY+.0225+canisterH/2+.02;
+            for(const zz of [-d*.25,0])c(x,canisterY,z+zz,Math.min(.07,w*.20),canisterH,
+              mats.get('M-CERAMIC').color,{hard:false});
+            b(x,midY,z,w*.94,.045,d*.92,m.color,{ry:yaw});
+          }
+          else if(/brochure/i.test(q.label))for(const zz of [-d*.18,d*.18])
+            b(x+w*.08,y+h*.53,z+zz,w*.15,h*.26,d*.24,mats.get('M-CERAMIC').color,
+              {mode:1});
+          else for(const zz of [-d*.22,d*.22])
+            bl(x,y+h*.30,z+zz,w*.25,h*.15,d*.15,mats.get('M-SAND').color,{hard:false});
+          break;
+        }
         case 'sanitary-fixture':
           b(x,y+h*.38,z,w*.72,h*.55,d,m.color,{ry:yaw});bl(x,y+h*.68,z-d*.16,w*.36,h*.20,d*.34,m.color,{hard:false});
           c(x,y+h*.82,z-d*.32,Math.min(.04,w*.08),h*.24,mats.get('M-STEEL').color,{hard:false});break;
         case 'display-case':
           b(x,y+h*.25,z,w,h*.5,d,mats.get('M-RENDER').color,{ry:yaw});
-          // Outdoor cases share the established opaque-glass batch; the enclosed Tropical
-          // House can afford a dedicated translucent pass for close-up exhibit glazing.
+          // All cases need readable contents; opaque glazing made the outdoor galleries look like
+          // solid storage blocks at normal visitor distance.
           b(x,y+h*.68,z,w*.94,h*.62,d*.94,mats.get('M-GLASS').color,
-            {mode:1,...(scope==='tropical'?{alpha:.28}:{}),gloss:.9,ry:yaw,hard:false});
+            {mode:1,alpha:scope==='tropical'?.28:.32,gloss:.9,ry:yaw,hard:false});
           bl(x,y+h*.65,z,w*.16,h*.16,d*.16,mats.get('M-ROCK-LIGHT').color,{hard:false});break;
         case 'screen': {
           const thin=Math.min(w,d),faceX=w<=d;
-          b(x,y,z,w,h,d,mats.get('M-STEEL-DARK').color,{ry:yaw});
-          b(x+(faceX?Math.sin(yaw)*thin*.55:0),y,z+(faceX?Math.cos(yaw)*thin*.55:-d*.55),
-            faceX?w*.15:w*.92,h*.82,faceX?d*.9:Math.max(.02,d*.08),m.color,{mode:1,glow:.04,ry:yaw});
-          if(tag)glyphs(x,y,z+(faceX?0:-d*.6),yaw,tag,{size:Math.min(.16,1.1/Math.max(1,[...tag].length)),gap:.02,color:mats.get('M-CERAMIC').color,mode:1,tag});
+          const nx=Math.sin(yaw),nz=Math.cos(yaw),screenText=tag||SCREEN_LABELS[q.id]||null,
+            screenTag=tag||(q.id==='B08/FIX03'?'热带馆':null);
+          // Screen sizes are authored in world axes. Rotating those dimensions a second time made
+          // every portrait display into a long blade through its room.
+          b(x,y,z,w,h,d,mats.get('M-STEEL-DARK').color);
+          b(x+nx*thin*.55,y,z+nz*thin*.55,
+            faceX?w*.15:w*.92,h*.82,faceX?d*.9:Math.max(.02,d*.08),m.color,
+            {mode:1,glow:.04});
+          if(screenText)glyphs(x+nx*thin*.62,y,z+nz*thin*.62,yaw,screenText,
+            {size:Math.min(.16,1.1/Math.max(1,[...screenText].length)),gap:.02,
+              color:mats.get('M-CERAMIC').color,mode:1,...(screenTag?{tag:screenTag}:{})});
           break;
         }
         case 'light-fixture':
@@ -215,8 +351,56 @@ const ZooContents = (() => {
           for(const yy of [y+.65,y+h*.55,y+h]){cp(x,yy,z-d/2,.025,w,.025,m.color,{rz:Math.PI/2,hard:false});cp(x,yy,z+d/2,.025,w,.025,m.color,{rz:Math.PI/2,hard:false});}
           for(let zz=z-d/2;zz<=z+d/2+EPS;zz+=Math.max(.65,d/4)){c(x-w/2,y+h/2,zz,.014,h,m.color,{hard:false});c(x+w/2,y+h/2,zz,.014,h,m.color,{hard:false});}
           break;
-        case 'box-fixture':
-          b(x,y+h/2,z,w,h,d,m.color,{ry:yaw});break;
+        case 'box-fixture': {
+          const rockLike=/stone|ledge|mineral|lick/i.test(q.label),crate=/crate/i.test(q.label),
+            ticket=/ticket reader/i.test(q.label),binocular=/binocular/i.test(q.label),
+            window=/viewing window/i.test(q.label),scale=/platform scale/i.test(q.label),
+            hose=/hose reel/i.test(q.label),cart=/cleaning cart/i.test(q.label),
+            pedestal=/audio station|sound post/i.test(q.label);
+          if(rockLike){
+            add(ball(x,y+h*.44,z,w*.50,h*.44,d*.50,m.color,
+              {mode:10,gloss:.06,hard:false}));
+          }else if(ticket){
+            if(q.id.startsWith('B01/'))b(x,y+h/2,z,w,h,d,m.color,{ry:yaw,hard:false});
+            else{
+              c(x,y+h*.36,z,Math.min(w,d)*.20,h*.72,m.color,{hard:false});
+              b(x,y+h*.82,z,w*.92,h*.30,d*.94,m.color,{ry:yaw});
+            }
+          }else if(binocular){
+            c(x,y+h*.38,z,.055,h*.76,m.color,{hard:false});
+            cp(x,y+h*.82,z,.12,.42,.12,m.color,{rz:Math.PI/2,ry:yaw,hard:false});
+            c(x,y+h*.87,z-.10,.065,.18,mats.get('M-STEEL').color,
+              {rx:Math.PI/2,hard:false});
+          }else if(window){
+            b(x,y+h/2,z,w*.76,h*.88,d,m.color,{mode:1,alpha:.28,hard:false});
+            b(x,y+h*.08,z,w,.07,d,mats.get('M-STEEL-DARK').color);
+            b(x,y+h*.92,z,w,.07,d,mats.get('M-STEEL-DARK').color);
+          }else if(scale){
+            b(x,y+h*.24,z,w,h*.48,d,m.color);
+          }else if(hose){
+            c(x,y+h/2,z,Math.min(h,d)*.42,w,m.color,{rz:Math.PI/2,hard:false});
+            cp(x,y+h*.20,z+d*.38,.035,d*.62,.035,mats.get('M-RUBBER').color,
+              {rx:Math.PI/2,rz:.28,hard:false});
+          }else if(cart){
+            b(x,y+h*.25,z,w,h*.12,d*.86,m.color);
+            b(x,y+h*.62,z,w*.86,h*.54,d*.62,m.color);
+            cp(x,y+h*.90,z+d*.42,.025,w*.76,.025,mats.get('M-STEEL-DARK').color,
+              {rz:Math.PI/2,hard:false});
+          }else if(crate){
+            b(x,y+h/2,z,w,h,d,m.color,{ry:yaw});
+          }else if(pedestal){
+            c(x,y+h*.38,z,Math.min(w,d)*.22,h*.76,mats.get('M-STEEL-DARK').color,
+              {hard:false});
+            b(x,y+h*.82,z,w,h*.34,d,m.color,{ry:yaw});
+            b(x,y+h*.84,z-d*.51,w*.60,h*.14,.025,mats.get('M-SCREEN').color,
+              {ry:yaw,mode:1,glow:.04});
+          }else{
+            // Tiny wall controls and appliances use a single rounded, purpose-coloured housing;
+            // at this scale extra coplanar facelets shimmer more than they clarify the object.
+            b(x,y+h/2,z,w,h,d,m.color,{ry:yaw,hard:false});
+          }
+          break;
+        }
         case 'cylinder-fixture':
           c(x,y+h/2,z,Math.min(w,d)/2,h,m.color,{ry:yaw});break;
         case 'door-opening':
@@ -233,7 +417,15 @@ const ZooContents = (() => {
       // fixtures retain the exact body contract declared in the contents blueprint.
       const habitatOwned=scope==='outdoor'&&/^H\d/.test(q.id);
       if(!habitatOwned&&q.collision&&q.collision!=='none'&&q.collision!=='inherited'){
-        const r=rectOf(q);solid(...r);
+        // The PPE cabinet is deliberately moved into the clear east-wall bay. Its collision must
+        // follow the visual instead of retaining the obsolete PEN01-overlapping blueprint rect.
+        let r=rectOf(q);
+        if(q.id==='B07/quarantine/FIX06'){
+          const cc=Math.abs(Math.cos(yaw)),ss=Math.abs(Math.sin(yaw)),
+            hx=(cc*w+ss*d)/2,hz=(ss*w+cc*d)/2;
+          r=[x-hx,x+hx,z-hz,z+hz];
+        }
+        solid(...r);
         if(/camera/.test(q.collision))blocker(...r,(q.at?q.at[1]:q.y0||0)+(q.size?q.size[1]:q.height||2)+.15);
       }
       if(q.interaction&&!q.interaction.aliasOf){
@@ -254,6 +446,7 @@ const ZooContents = (() => {
 
   function buildOutdoor(B,contentsPlan,parentPlan) {
     const plan=validatePlan(contentsPlan,parentPlan);
+    cleanOutdoorBase(B);
     return compiler(B,plan,'outdoor').buildAll(recordsForOutdoor(plan));
   }
   function buildTropical(B,contentsPlan,parentPlan) {

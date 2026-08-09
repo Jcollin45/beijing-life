@@ -18,7 +18,7 @@ function stable(value){
 }
 
 ok(plan.schema==='chinesegame.zoo-contents/v1','schema must be chinesegame.zoo-contents/v1');
-ok(plan.revision===1,'revision must be 1');
+ok(plan.revision===2,'revision must be 2');
 ok(plan.status==='construction-ready','status must be construction-ready');
 ok(plan.parent.schema===parent.schema,'parent schema mismatch');
 ok(plan.parent.revision===parent.revision,'parent revision mismatch');
@@ -130,7 +130,7 @@ ok(plan.habitats.length===21,'expected 21 outdoor habitats');
 ok(plan.buildings.length===9,'expected 9 buildings/structures');
 ok(plan.tropicalScene.rooms.length===7,'expected 7 Tropical House rooms');
 ok(contentCount===409,`expected 409 content records, found ${contentCount}`);
-ok(plannedCount===237,`expected 237 build-v1 records, found ${plannedCount}`);
+ok(plannedCount===236,`expected 236 build-v1 records, found ${plannedCount}`);
 ok(plan.buildPhases.length===10,'expected ten ordered build phases');
 ok(plan.validation.acceptance.length===10,'expected ten acceptance checks');
 

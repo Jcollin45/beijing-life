@@ -154,9 +154,8 @@ const ZooArtCore = (() => {
       patch(-3.55, -9.05, 1.12, .58, P.stone);
       patch(-1.05, -6.35, .82, .52, P.stoneL);
       patch(-2.55, -6.85, 1.22, .76, P.waterD, 16, .032);
-      // H00/O03 and O08 already own the den/camera cluster in this corner.
-      box(-5.22, .43, -7.18, 1.18, .86, .84, P.stoneD);
-      cone(-5.22, 1.00, -7.18, 1.38, .34, 1.02, P.stone);
+      // The base habitat's irregular haul-out rocks already form this sheltered corner. The old
+      // extra cuboid-and-cap stack was the last purely decorative block form in the rookery.
       cylinder(-.62, .11, -8.42, .27, .14, P.steelD);
       box(-1.08, .035, -10.42, 1.26, .05, .18, P.black);
     });
@@ -166,10 +165,9 @@ const ZooArtCore = (() => {
     habitat('H01', () => {
       patch(6.10, -9.95, .92, .48, P.sandD);
       patch(10.20, -10.25, 1.48, .44, P.mud);
-      patch(12.75, -6.25, .76, .42, P.grassD, 17);
-      // H01/O07 keeper pad owns the back-right floor area.
-      shrub(12.38, -6.02, .62, .38, .50, P.leaf);
-      shrub(13.38, -6.68, .48, .34, .42, P.leafL);
+      // H01/O07 and its service-gate sweep own the entire north-east corner. The former two shrubs
+      // grew through the painted safety square and the relocated browse tree now supplies the
+      // intended soft backdrop farther south.
       cone(6.08, .62, -6.34, .92, 1.24, .82, P.mudD);
       rock(6.62, -6.43, .48, .24, .38, P.sandD);
       log(6.35, .075, -7.62, .15, 1.62, .18, P.trunkL);
@@ -183,14 +181,11 @@ const ZooArtCore = (() => {
       patch(-10.45, -1.62, 1.18, .56, P.grassD, 17);
       patch(-10.55, 3.08, 1.06, .48, P.mudD);
       patch(-9.22, .82, .66, .80, P.waterD, 16, .032);
-      // Canonical H02/O07 trough and O10 camera keep the back-east working edge clear.
-      rock(-11.35, 2.82, .72, .45, .58, P.stoneD);
-      rock(-10.72, 2.55, .46, .28, .38, P.stone);
-      // The feeding panda uses (-10.4,.1); the deadwood belongs in the quiet west edge, not
-      // through the animal's body at its longest daytime stop.
-      log(-14.60, .075, -1.65, .15, 1.82, .38, P.trunk);
+      // Canonical H02/O07, both climbing frames and the compact bamboo groves already articulate
+      // this edge. Extra boulders here buried the north frame and turned the clearing into clutter.
+      // The south bamboo apron now hosts two scheduled feeding stops. Deadwood once laid across
+      // that exact footing added no behavior the two purpose-built climbing frames do not supply.
       // The canonical H02/O08 fixture already supplies the browse platform at this edge.
-      box(-15.16, .30, 3.34, 1.08, .58, .72, P.trunk);
     });
 
     // H03 — a planted woodland aviary.  A damp understory island anchors a natural forked roost;
@@ -220,10 +215,9 @@ const ZooArtCore = (() => {
       shrub(10.90, -1.85, .54, .42, .46, P.grassD);
       shrub(11.60, -1.95, .62, .38, .42, P.grass);
       shrub(12.30, -1.82, .52, .34, .46, P.grassL);
-      rock(8.00, -1.70, .76, .64, .60, P.stoneD);
-      rock(8.85, -1.65, .48, .32, .42, P.stone);
+      // The canonical south-west rubbing outcrop supplies the stone mass here; duplicating it in
+      // the art layer made a dense boulder pile and narrowed the elephants' open walking ground.
       log(8.12, .095, 1.08, .19, 2.10, .24, P.trunkL);
-      box(10.18, .44, -1.52, 1.34, .88, .70, P.trunk);
       rock(10.58, -1.52, .52, .38, .44, P.sand);
       box(15.18, .035, 3.38, 1.16, .05, .18, P.steelD);
     });
@@ -239,7 +233,8 @@ const ZooArtCore = (() => {
       log(-8.92, 3.22, 11.82, .075, 3.62, 0, P.trunkL);
       upright(-10.66, 1.88, 11.82, .11, 3.76, P.trunk);
       box(-7.18, 2.18, 11.48, 1.22, .18, 1.00, P.trunkL);
-      cylinder(-8.02, .48, 9.28, .32, .78, P.stoneL);
+      // The macaque's 11:00 grooming root owns this foreground ledge; another freestanding stone
+      // here merged with its body and added no useful structure to the island composition.
       // The canonical H05/O08 trough and the keeper ingress own this corner.
     });
 
@@ -249,12 +244,13 @@ const ZooArtCore = (() => {
       patch(3.10, 8.22, 1.18, .54, P.grassD, 17);
       patch(5.18, 12.54, 1.34, .46, P.mudD);
       patch(7.72, 11.10, 1.42, .78, P.mud);
-      patch(8.02, 11.02, 1.16, .62, P.water, 16, .032);
-      patch(8.24, 10.94, .62, .34, P.waterD, 16, .036);
+      // One irregular water plane reads as a pool. The former second rectangle sat only 4 mm
+      // above it and flickered into a conspicuous nested tile at the wide camera.
+      patch(8.02, 11.02, 1.16, .62, P.water, 16, .040);
       shrub(2.00, 12.65, .64, .46, .52, P.leafD);
       shrub(2.75, 12.95, .58, .38, .42, P.leaf);
       upright(4.06, .86, 11.46, .14, 1.72, P.trunk);
-      box(8.72, .20, 8.08, 1.42, .38, .82, P.stoneD);
+      rock(8.72, 8.08, .71, .22, .41, P.stoneD);
       log(5.72, .080, 12.72, .16, 2.18, .12, P.trunkL);
     });
 

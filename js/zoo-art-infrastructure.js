@@ -15,7 +15,7 @@ const ZooArtInfrastructure = (() => {
   function build(B, context = {}) {
     if (!B || !Array.isArray(B.props))
       throw new Error('ZooArtInfrastructure.build requires an unfinished Build.scene');
-    for (const name of ['box', 'ball', 'taper'])
+    for (const name of ['box', 'ball', 'capsule', 'taper'])
       if (typeof B[name] !== 'function')
         throw new Error(`ZooArtInfrastructure.build requires Build.${name}`);
 
@@ -41,6 +41,7 @@ const ZooArtInfrastructure = (() => {
       bambooD: tone('bambooD', '#5e7a33'),
       willow: tone('willow', '#6d8f45'),
       steelD: tone('steelD', '#7b8288'),
+      soil: tone('soil', '#5b4937'),
     });
 
     const props = [];
@@ -76,6 +77,25 @@ const ZooArtInfrastructure = (() => {
       inSite(x - rx, x + rx, z - rz, z + rz);
       return keep(B.ball(x, ry * .82, z, rx, ry, rz, color,
         { mode: 15, gloss: .09 }), PLANT_LOD);
+    }
+
+    function canopy(x, y, z, rx, ry, rz, color = P.leafD) {
+      finite(x, y, z, rx, ry, rz);
+      inSite(x - rx, x + rx, z - rz, z + rz);
+      return keep(B.ball(x, y, z, rx, ry, rz, color,
+        { mode:15, gloss:.08 }), PLANT_LOD);
+    }
+
+    function oval(x, y, z, rx, ry, rz, color, mode = 0) {
+      finite(x, y, z, rx, ry, rz);
+      inSite(x - rx, x + rx, z - rz, z + rz);
+      return keep(B.ball(x, y, z, rx, ry, rz, color,{mode,gloss:.08}),FINE_LOD);
+    }
+
+    function trunk(x, y, z, w, h, d, color = P.timberD) {
+      finite(x, y, z, w, h, d);
+      inSite(x-w/2,x+w/2,z-d/2,z+d/2);
+      return keep(B.capsule(x,y,z,w,h,d,color,{gloss:.10}),FINE_LOD);
     }
 
     function finial(x, y, z, w, h, d, color = P.roofD) {
@@ -179,7 +199,7 @@ const ZooArtInfrastructure = (() => {
       box(-47.00, 3.34, 42.26, 5.00, .22, .78, P.roofD);
       box(-49.20, 1.82, 42.64, .50, 3.64, .72, P.render);
       box(-44.80, 1.82, 42.64, .50, 3.64, .72, P.render);
-      box(-47.00, .48, 42.48, 3.82, .70, .34, P.stoneD);
+      oval(-48.10, .36, 42.48, .73, .24, .14, P.stoneD,10);
       box(-50.20, .20, 42.72, 1.02, .40, .48, P.brickD);
       shrub(-50.20, 42.74, .42, .30, .20, P.leafD);
       box(-43.80, .20, 42.72, 1.02, .40, .48, P.brickD);
@@ -198,7 +218,24 @@ const ZooArtInfrastructure = (() => {
       shrub(25.48, 55.92, .34, .55, .52, P.leafD);
       shrub(25.38, 56.55, .38, .46, .50, P.leaf);
       shrub(25.54, 57.12, .30, .38, .38, P.leafL);
-      box(24.70, 4.18, 52.00, 1.18, .22, 4.72, P.roofD);
+      oval(24.70, 4.18, 52.00, .59, .11, 2.36, P.roofD);
+
+      // Interior proxy planting is visible through the glass shell from the forecourt. Two low
+      // organic beds flank the straight entry corridor; layered trunks and asymmetric crowns make
+      // the roof read as a living greenhouse rather than an empty pavilion.
+      oval(35.50,.10,47.20,6.50,.10,1.70,P.soil,10);
+      oval(40.50,.10,57.30,7.25,.10,2.10,P.soil,10);
+      trunk(34.00,2.00,47.30,.28,4.00,.28,P.timberD);
+      trunk(42.50,2.25,57.00,.30,4.50,.30,P.timberD);
+      trunk(37.60,1.70,58.20,.25,3.40,.25,P.timber);
+      canopy(34.00,3.75,47.30,1.70,1.10,1.40,P.leafD);
+      canopy(35.20,4.10,47.00,1.40,.90,1.20,P.leaf);
+      canopy(42.50,4.25,57.00,2.00,1.20,1.60,P.leafD);
+      canopy(44.00,4.55,56.60,1.55,.95,1.40,P.leafL);
+      canopy(37.50,3.20,58.20,1.40,.90,1.25,P.leaf);
+      canopy(36.40,3.45,58.00,1.10,.75,1.00,P.leafL);
+      shrub(30.15,47.25,.78,.55,.88,P.leafD);
+      shrub(46.35,57.35,.82,.58,.92,P.leafL);
     });
 
     // Three junction verges receive the same low brick-and-plant marker.  Each is placed in a

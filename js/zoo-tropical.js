@@ -16,7 +16,8 @@ const ZooTropical = Lazy('ZooTropical', () => {
     brick: C('#8f4d3d'), brickD: C('#6d392f'), mortar: C('#bba88d'),
     steel: C('#42544f'), steelL: C('#71847d'), glass: C('#8eb9b1'), sky: C('#b9d7ce'),
     leaf: C('#387044'), leafD: C('#245534'), leafL: C('#5f985b'), fern: C('#4b8750'),
-    trunk: C('#66503a'), vine: C('#537a3f'), soil: C('#5b4937'), sand: C('#b4a078'),
+    trunk: C('#66503a'), trunkD: C('#493a2c'), vine: C('#537a3f'),
+    soil: C('#5b4937'), sand: C('#b4a078'),
     water: C('#315f64'), waterL: C('#4d8585'), waterD: C('#233f47'),
     rock: C('#686a64'), rockL: C('#888b82'), rockD: C('#4f514d'),
     white: C('#eee9dc'), cream: C('#dfd5ba'), charcoal: C('#252c2b'),
@@ -30,7 +31,7 @@ const ZooTropical = Lazy('ZooTropical', () => {
           glow, light, thing } = B;
   const H = S.height;
   const bounds = S.localBounds;
-  const movers = [], lit = [], waterGlows = [];
+  const movers = [], lit = [], waterGlows = [], wallPosts = new Map();
   const tagged = (id, tag, extra = {}) => ({ blueprintId: id, tag, ...extra });
   const markThing = (th, id) => { th.blueprintId = id; return th; };
   function moving(p, id, phase, amp = .15) {
@@ -65,9 +66,19 @@ const ZooTropical = Lazy('ZooTropical', () => {
     const n = Math.max(1, Math.ceil(len / 2.25));
     for (let i = 0; i <= n; i++) {
       const q = w.range[0] + len * i / n;
-      box(vertical ? w.at : q, H / 2, vertical ? q : w.at,
+      const px=vertical?w.at:q,pz=vertical?q:w.at,
+        id=w.id + '/G' + String(i + 3).padStart(2,'0'),
+        key=px.toFixed(4)+','+pz.toFixed(4),existing=wallPosts.get(key);
+      if(existing){
+        // Adjacent outer-wall records share their corner upright. Keep one physical post and
+        // explicitly retain the suppressed source ID as an alias on that same deterministic prop.
+        (existing.blueprintAliases||(existing.blueprintAliases=[])).push(id);
+        continue;
+      }
+      const post=box(px, H / 2, pz,
         vertical ? .10 : .10, H, vertical ? .10 : .10, col.steel,
-        { hard:true, blueprintId:w.id + '/G' + String(i + 3).padStart(2,'0'), gloss:.48 });
+        { hard:true, blueprintId:id, gloss:.48 });
+      wallPosts.set(key,post);
     }
     if (w.bodySolid) {
       if (vertical) solid(w.at - w.thickness / 2, w.at + w.thickness / 2,
@@ -164,13 +175,15 @@ const ZooTropical = Lazy('ZooTropical', () => {
   function buildShell() {
     rectFlat('TROP-GROUND', [bounds.x0,bounds.x1,bounds.z0,bounds.z1], col.floor,
       { y:0, mode:9, gloss:.10, mat:'paving', matScale:.75, matAmt:.25 });
-    for (const p of S.paths)
+    for (let i=0;i<S.paths.length;i++) {
+      const p=S.paths[i];
       rectFlat(p.id, p.rect, p.id === 'TP06-atrium' ? col.pathD : col.path,
-        { mode:9, gloss:.13, mat:'paving', matScale:.62, matAmt:.30 });
+        { y:.010+i*.002, mode:9, gloss:.13, mat:'paving', matScale:.62, matAmt:.30 });
+    }
     for (const p of S.restNiches) rectFlat(p.id, p.rect, col.pathD,
-      { mode:9, gloss:.12, mat:'paving', matScale:.55, matAmt:.27 });
+      { y:.025, mode:9, gloss:.12, mat:'paving', matScale:.55, matAmt:.27 });
     for (const p of S.staffPaths) rectFlat(p.id, p.rect, col.floorD,
-      { mode:9, gloss:.10, mat:'paving', matScale:.85, matAmt:.22 });
+      { y:.006, mode:9, gloss:.10, mat:'paving', matScale:.85, matAmt:.22 });
     for (const w of S.outerWalls) wallRun(w);
 
     // Steel greenhouse roof, translucent enough that the indoor lighting still reads.
@@ -197,7 +210,7 @@ const ZooTropical = Lazy('ZooTropical', () => {
       const r = room.rect;
       if (room.id === 'T00-lobby') continue;
       if (room.id === 'T06-atrium') {
-        rectFlat(room.id + '/G00', r, col.soil, { mode:17, gloss:.06 });
+        rectFlat(room.id + '/G00', r, col.soil, { y:.027, mode:17, gloss:.06 });
         continue;
       }
       const ground = room.id === 'T01-crocodile' || room.id === 'T02-river-aquarium' ?
@@ -290,7 +303,7 @@ const ZooTropical = Lazy('ZooTropical', () => {
       body.flutter = true;
       wl.flutter = wr.flutter = true;
     }
-    for (const [x,z] of [[3,4.2],[5.2,5.1],[3.4,7.2],[6.1,7.5]]) tropicalPlant(x,z,2.0);
+    for (const [x,z] of [[3,4.2],[5.2,5.1],[3.4,7.2],[5.4,7.5]]) tropicalPlant(x,z,2.0);
 
     // T05 fruit bats hang in a dim mesh volume.
     for (let i=0;i<5;i++) {
@@ -303,14 +316,35 @@ const ZooTropical = Lazy('ZooTropical', () => {
         moving(taper(x+s*.34,y,z,.34,.035,.30,col.bat,{rz:s*.16,tag:'果蝠'}),
           'T05-nocturnal/G'+String(base+(s<0?1:2)).padStart(2,'0'),i*.72,.18);
     }
-    box(10.25,2.75,4.5,2.45,5.45,2.95,col.charcoal,
-      { hard:true,blueprintId:'T05-mesh',tag:'果蝠',mode:1,alpha:.16,gloss:.15 });
+    // A slim open frame keeps the bats visible. The former full-volume dark cuboid read as an
+    // opaque shipping container and hid every silhouette inside it.
+    let meshPart=0;
+    const mesh=p=>{p.blueprintId=meshPart?
+      'T05-mesh/G'+String(meshPart).padStart(2,'0'):'T05-mesh';meshPart++;return p;};
+    for(const xx of [9.15,11.35])for(const zz of [3.20,5.85])
+      mesh(box(xx,2.725,zz,.055,5.45,.055,col.charcoal,
+        {hard:true,tag:'果蝠',gloss:.20}));
+    for(const yy of [.35,2.75,5.35]){
+      for(const zz of [3.20,5.85])mesh(box(10.25,yy,zz,2.20,.035,.035,col.charcoal,
+        {hard:true,tag:'果蝠',gloss:.18}));
+      for(const xx of [9.15,11.35])mesh(box(xx,yy,4.525,.035,.035,2.65,col.charcoal,
+        {hard:true,tag:'果蝠',gloss:.18}));
+    }
   }
 
   function rocks(x,z,id,start=1) {
     for (let i=0;i<4;i++) {
       const a=i*1.8, r=.25+i*.08;
       ball(x+Math.cos(a)*.48,.16+r*.25,z+Math.sin(a)*.40,r,r*.55,r*.8,
+        i%2?col.rock:col.rockL,
+        {blueprintId:id+'/G'+String(start+i).padStart(2,'0'),gloss:.05});
+    }
+  }
+  function compactRocks(x,z,id,start=1) {
+    // Pool-edge clusters stay wholly inside the receiving basin so both side lanes remain clear.
+    for (let i=0;i<4;i++) {
+      const a=i*1.8, r=(.25+i*.08)*.58;
+      ball(x+Math.cos(a)*.28,.13+r*.25,z+Math.sin(a)*.23,r,r*.55,r*.8,
         i%2?col.rock:col.rockL,
         {blueprintId:id+'/G'+String(start+i).padStart(2,'0'),gloss:.05});
     }
@@ -328,12 +362,17 @@ const ZooTropical = Lazy('ZooTropical', () => {
     for (const o of S.objects) {
       const [x,y,z]=o.at;
       if (o.type === 'desk') {
-        box(x,.58,z,1.65,1.0,.70,col.trunk,{hard:true,ry:o.yaw,...tagged(o.id,'服务台'),mat:'wood',matScale:.7,matAmt:.34});
-        box(x,.86,z,1.85,.10,.82,col.cream,{hard:true,ry:o.yaw,tag:'服务台'});
-        glyphs(x,.76,z-.43,o.yaw,'服务台',{size:.14,color:col.red,mode:1,tag:'服务台'});
-        markThing(thing('服务台',x,.9,z,'在服务台领取热带馆导览。','Pick up a Tropical House guide.',
-          '服务台 is an information desk.',{focus:[-10,.40],reach:2}), 'TH-'+o.id);
-        solid(x-1.0,x+1.0,z-.45,z+.45);
+        const dx=-10.46,dz=1.40,yaw=o.yaw||0,nx=Math.sin(yaw),nz=Math.cos(yaw);
+        box(dx,.55,dz,1.45,1.0,.62,col.trunk,
+          {hard:true,ry:yaw,...tagged(o.id,'服务台'),mat:'wood',matScale:.7,matAmt:.34});
+        box(dx,1.09,dz,1.57,.10,.74,col.cream,{hard:true,ry:yaw,tag:'服务台'});
+        box(dx+nx*.322,.69,dz+nz*.322,1.12,.46,.035,col.trunkD,
+          {hard:true,ry:yaw,tag:'服务台',mat:'wood',matScale:.6,matAmt:.28});
+        glyphs(dx+nx*.345,.72,dz+nz*.345,yaw,'服务台',
+          {size:.13,color:col.cream,mode:1,tag:'服务台'});
+        markThing(thing('服务台',dx,.9,dz,'在服务台领取热带馆导览。','Pick up a Tropical House guide.',
+          '服务台 is an information desk.',{focus:[-9.55,1.40],reach:2}), 'TH-'+o.id);
+        solid(-10.83,-10.09,.61,2.19);
       } else if (o.type === 'map-board') {
         for(const s of [-1,1]) cyl(x,.82,z+s*.62,.05,1.64,col.steel,{tag:'导游图'});
         box(x,1.55,z, .10,1.75,1.55,col.teal,{hard:true,tag:'导游图',blueprintId:o.id});
@@ -376,18 +415,38 @@ const ZooTropical = Lazy('ZooTropical', () => {
         markThing(thing('导游图',x,1.6,z,'看看热带馆导游图。','Look at the Tropical House map.',
           '六个展区围绕雨林中庭。',{focus:[-9.1,-2.2],reach:2.1}), 'TH-'+o.id);
       } else if (o.type === 'waterfall') {
-        const sc=o.scale;
-        box(x,y,z,sc[0],sc[1],sc[2],col.rockD,{hard:true,blueprintId:o.id});
-        for(let i=0;i<7;i++) moving(box(x+(i-3)*.20,y,z-.34, .15,sc[1]*.90,.035,col.waterL,
-          {hard:true,mode:1,alpha:.66,glow:.03}),
-          o.id+'/G'+String(i+1).padStart(2,'0'),i*.4,.05);
+        let wfPart=0;
+        const wfId=()=>wfPart++?o.id+'/G'+String(wfPart-1).padStart(2,'0'):o.id;
+        const rock=(p)=>{p.blueprintId=wfId();return p;};
+        rock(ball(-.30,2.22,7.54,.50,2.20,.42,col.rockD,{gloss:.04}));
+        rock(ball(.30,2.05,7.53,.48,1.92,.38,col.rock,{gloss:.04}));
+        rock(taper(-.48,1.18,7.45,.36,2.36,.48,col.rockL,{ry:-.12,gloss:.04}));
+        rock(taper(.48,1.02,7.46,.34,2.04,.46,col.rockD,{ry:.14,gloss:.04}));
+        rock(ball(0,4.33,7.52,.62,.43,.42,col.rockL,{gloss:.04}));
+        rock(ball(.04,.50,7.33,.76,.46,.52,col.rock,{gloss:.04}));
+        const ribbons=[[-.44,2.28,.10,3.55],[-.21,2.48,.08,3.90],[0,2.31,.11,3.52],
+          [.21,2.48,.08,3.82],[.44,2.20,.07,3.30]];
+        for(let i=0;i<ribbons.length;i++){
+          const [rx,ry,rw,rh]=ribbons[i],id=wfId();
+          moving(capsule(rx,ry,7.08,rw,rh,.035,col.waterL,
+            {mode:1,alpha:.68,glow:.03}),id,i*.47,.045);
+        }
         waterGlows.push(glow(M.trs(x,.025,z-.75,0,2.4,1,1.8),col.waterL,.22,false));
       } else if (o.type === 'tropical-tree') {
         capsule(x,o.height*.38,z,.22,o.height*.76,.22,col.trunk,{blueprintId:o.id,gloss:.14});
-        for(let i=0;i<12;i++) {
-          const a=i*2.399, r=.8+(i%3)*.32;
-          ball(x+Math.cos(a)*r,o.height*(.72+(i%3)*.08),z+Math.sin(a)*r,
-            .78,.46,.78,i%3?col.leaf:col.leafL,{mode:15,gloss:.10});
+        let treePart=1;
+        for(const q of [[-.38,3.55,-.08,-.43,.42],[.34,3.72,.08,.38,-.55],
+          [-.08,4.05,.35,.30,.70]])
+          capsule(x+q[0],q[1],z+q[2],.16,1.75,.16,col.trunk,
+            {blueprintId:o.id+'/G'+String(treePart++).padStart(2,'0'),ry:q[4],rz:q[3],gloss:.12});
+        const crown=[[-.88,4.30,-.28,1.03,.64,.88],[.02,4.65,-.76,1.18,.70,.94],
+          [.90,4.32,-.18,.98,.60,.83],[-.72,4.72,.67,1.04,.67,.90],
+          [.30,4.96,.57,1.22,.69,1.02],[1.02,4.58,.66,.80,.52,.72],
+          [-.08,5.34,-.02,1.08,.54,.91],[-1.10,4.05,.48,.68,.48,.64]];
+        for(let i=0;i<crown.length;i++){
+          const q=crown[i];
+          ball(x+q[0],q[1],z+q[2],q[3],q[4],q[5],i%3?col.leaf:col.leafL,
+            {blueprintId:o.id+'/G'+String(treePart++).padStart(2,'0'),mode:15,gloss:.10});
         }
         solid(x-.32,x+.32,z-.32,z+.32);
         shade(x,z,3.6,3.6,.28);
@@ -405,8 +464,9 @@ const ZooTropical = Lazy('ZooTropical', () => {
     }
 
     // The waterfall's receiving pool and the planted atrium are the visual centre of the loop.
-    flat(0,.018,6.8,3.4,2.6,col.water,{mode:16,gloss:.82,blueprintId:'T06-pool'});
-    rocks(-.75,6.9,'T06-atrium',20); rocks(.85,6.5,'T06-atrium',24);
+    flat(0,.032,6.8,1.52,2.6,col.water,{mode:16,gloss:.82,blueprintId:'T06-pool'});
+    solid(-.78,.78,5.5,8.1);
+    compactRocks(-.28,6.9,'T06-atrium',20); compactRocks(.28,6.5,'T06-atrium',24);
     for(const [x,z,h] of [[-.6,-6.7,2.6],[.65,-4.8,2.2],[-.55,-1.5,2.8],[.55,2.2,2.3]])
       tropicalPlant(x,z,h);
 

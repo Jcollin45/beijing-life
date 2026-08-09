@@ -295,6 +295,37 @@ function validate(probe = buildProbe()) {
   const m100=o.props.find(q=>q.blueprintId==='M100-south-existing');
   check('M100 base ID belongs to its exact centered backing',!!(m100&&
     Math.abs(m100.m[12]+16.2)<1e-6&&Math.abs(m100.m[14]+9)<1e-6));
+  const h13Leaf=o.props.find(q=>q.blueprintId==='HG-H13-crane-service');
+  check('H13 service leaf folds onto the north jamb away from its keeper line',!!(h13Leaf&&
+    h13Leaf.ob&&h13Leaf.ob.z>13));
+  const h32Gate=contents.habitats.flatMap(h=>h.contents).find(q=>q.id==='H32/OPS03');
+  check('H32 public gate has one folded visual owner, not a duplicate content lintel',!!(h32Gate&&
+    h32Gate.implementationStatus==='existing-r2'&&!oPropIds.has('H32/OPS03')&&
+    oPropIds.has('HG-H32-public-01/VIS')));
+  // A path crossing may overlap geometrically, but different finish families must never be
+  // coplanar. The two-level authored finish graph keeps all such pairs at least 10 mm apart.
+  const pathSegs=[];
+  for(const path of p.paths)for(let i=1;i<path.centerline.length;i++){
+    const a=path.centerline[i-1],b=path.centerline[i],w=path.width,id=i===1?path.id:
+      `${path.id}/G${String(i).padStart(2,'0')}`,prop=o.props.find(q=>q.blueprintId===id);
+    let rect=null;
+    if(Math.abs(a[0]-b[0])<1e-6)rect=[a[0]-w/2,a[0]+w/2,Math.min(a[1],b[1]),Math.max(a[1],b[1])];
+    else if(Math.abs(a[1]-b[1])<1e-6)rect=[Math.min(a[0],b[0]),Math.max(a[0],b[0]),a[1]-w/2,a[1]+w/2];
+    if(rect&&prop)pathSegs.push({owner:path.id,surface:path.surface,rect,y:prop.m[13]});
+  }
+  const coplanarPathPairs=[];
+  for(let i=0;i<pathSegs.length;i++)for(let j=i+1;j<pathSegs.length;j++){
+    const a=pathSegs[i],b=pathSegs[j];if(a.owner===b.owner||a.surface===b.surface)continue;
+    const ox=Math.min(a.rect[1],b.rect[1])-Math.max(a.rect[0],b.rect[0]);
+    const oz=Math.min(a.rect[3],b.rect[3])-Math.max(a.rect[2],b.rect[2]);
+    if(ox>.01&&oz>.01&&Math.abs(a.y-b.y)<.01)coplanarPathPairs.push(`${a.owner}/${b.owner}`);
+  }
+  check('different-material path junctions use separated finish levels',coplanarPathPairs.length===0,
+    coplanarPathPairs.slice(0,4).join(','));
+  const h21Rows=contents.habitats.flatMap(h=>h.contents),h21Camera=h21Rows.find(q=>q.id==='H21/OPS04'),
+    h21Drinker=h21Rows.find(q=>q.id==='H21/OPS05');
+  check('H21 habitat camera is spaced clear of its drinker',!!(h21Camera&&h21Drinker&&
+    Math.hypot(h21Camera.at[0]-h21Drinker.at[0],h21Camera.at[2]-h21Drinker.at[2])>1));
   for(const h of p.interactions.habitatThings) {
     check(`${h.id} thing exists`, oThingIds.has(h.id));
     check(`${h.id} tagged board exists`, o.props.some(x=>x.blueprintId===h.id&&x.tag===h.hz));
@@ -304,6 +335,19 @@ function validate(probe = buildProbe()) {
     check(`${h.id} public thing exists`, oThingIds.has(h.id));
     check(`${h.id} focus is standable`, standable(o,h.focus), h.focus.join(','));
   }
+  // Visual-only wayfinding still has to respect moving bodies. These posts deliberately live
+  // diagonally in the paved verge; otherwise actors pass through their pole or arrow arms even
+  // though the collision sampler cannot see an uncollidable sign.
+  const actorRoutes=[...p.routes.visitorLoops,...p.routes.keeperRoutes,
+    ...npcRows.filter(n=>n.pairedRoute&&Array.isArray(n.patrol)).map(n=>({waypoints:n.patrol}))];
+  const routeClearance=at=>Math.min(...actorRoutes.flatMap(route=>route.waypoints.slice(1).map(
+    (b,i)=>segmentDistance(at,at,route.waypoints[i],b))));
+  for(const fp of p.wayfinding.fingerposts)
+    check(`${fp.id} visual envelope clears every actor route`,routeClearance(fp.at)>=1.25,
+      `${routeClearance(fp.at).toFixed(3)}m`);
+  const conservation=p.interactions.requiredPublicThings.find(q=>q.id==='TH-conservation');
+  check('conservation sign stands beside, not across, the visitor corridor',
+    conservation&&routeClearance([conservation.position[0],conservation.position[2]])>=1.25);
   for(const group of ['benches','bins','lamps','mapBoards','waterStations','firstAid',
                        'accessibleRouteSigns']) {
     const rows=p.objectSchedules[group] || [];
@@ -359,6 +403,10 @@ function validate(probe = buildProbe()) {
   check('B06b keeps P104 underpass at grade and bridge walkers at y=4.2',
     o.liftAt(-2,59.5,0)===0&&o.liftAt(-2,59.5,4.2)===4.2&&
     o.liftAt(-6.6,59.5,0)===4.2&&o.liftAt(2.6,59.5,4.2)===4.2);
+  check('penguin preening roots stand on the exact haul-out tread tops',
+    Math.abs(o.liftAt(-1.32,-9.68)-.15)<1e-8&&
+    Math.abs(o.liftAt(-1.44,-9.24)-.25)<1e-8&&
+    Math.abs(o.liftAt(-1.68,-9.02)-.35)<1e-8);
   for(const [id,x] of [['B05',-11.5],['B06',9]]) {
     check(`${id} south public-door centreline stays open`,standable(o,[x,55.8]));
     check(`${id} north public-door centreline stays open`,standable(o,[x,61.2]));
@@ -393,6 +441,13 @@ function validate(probe = buildProbe()) {
     /H32-family-farm-goat-feed$/.test(n.npcId||'')&&n.hz==='山羊'));
   check('H32 rabbit rest slot has a rabbit',animals.some(n=>
     /H32-family-farm-rabbit-rest$/.test(n.npcId||'')&&n.hz==='兔子'));
+  for(const slotId of ['takin-feed','giraffe-browse']){
+    const habitat=p.habitats.find(h=>h.animalSlots.some(s=>s.id===slotId)),
+      slot=habitat&&habitat.animalSlots.find(s=>s.id===slotId),
+      animal=animals.find(n=>n.animalSlot===slotId);
+    check(`${slotId} preserves its blueprint-authored feeder approach`,!!(slot&&animal&&
+      Number.isFinite(slot.face)&&Math.abs(animal.spots[0].face-slot.face)<1e-8));
+  }
   check('three keeper routes are populated',npcRows.filter(n=>n.serviceRoute).length===3);
   check('three visitor loops are populated',npcRows.filter(n=>
     /(?:^|-)R-VIS-/.test(n.npcId||'') && !n.pairedRoute &&

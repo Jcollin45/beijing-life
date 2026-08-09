@@ -131,25 +131,26 @@ const ZooArtTropical = (() => {
       return add(B.taper(x,y,z,w,h,d,pigment,{ry:yaw,gloss:.035}));
     }
 
-    // T00 — planted arrival frames live on the high wall edges. The floor, spawn, desk, map,
-    // queue rails and both sides of the four-metre entrance remain visually unobstructed.
+    // T00 — four ceiling-rooted vine drops soften the lobby without consuming any floor area.
+    // All foliage stays above head height, leaving the spawn, desk, map, queue and stroller bay
+    // visually unobstructed.
     room('T00', () => {
-      mass(-12.43,1.18,-2.12,.16,.15,.27,P.soilD);
-      stem(-12.40,1.65,-2.12,.035,.94,P.trunk);
-      frond(-12.37,1.84,-2.05,.10,.82,.15,P.leafD,-.35,.18);
-      frond(-12.45,1.93,-2.20,.09,.76,.14,P.leaf,.65,-.16);
-      frond(-12.33,1.72,-2.24,.09,.68,.13,P.leafL,1.15,.12);
-      mass(-12.42,1.24,2.12,.17,.16,.26,P.soil);
-      stem(-12.39,1.73,2.12,.036,.98,P.trunkD);
-      frond(-12.35,1.94,2.03,.10,.86,.15,P.leaf,-.72,.17);
-      frond(-12.46,2.00,2.19,.09,.78,.14,P.leafD,.38,-.15);
-      frond(-12.31,1.78,2.24,.09,.70,.13,P.leafL,1.26,.11);
-      frond(-10.34,4.72,-2.14,.075,1.74,.11,P.vine,.22,.05);
-      frond(-10.52,4.94,-1.88,.070,1.42,.10,P.leafD,-.48,-.08);
-      frond(-10.33,4.68,2.14,.078,1.80,.11,P.vine,-.20,-.05);
-      frond(-10.55,4.98,2.25,.068,1.38,.10,P.leaf,.56,.07);
-      frond(-11.48,4.72,-1.82,.12,.92,.20,P.leafL,.84,1.00);
-      frond(-11.42,4.78,1.80,.12,.96,.20,P.fern,-.76,-.98);
+      stem(-12.42,4.96,-2.12,.026,2.58,P.vine,FOLIAGE_LOD,.015);
+      frond(-12.36,4.55,-2.07,.070,1.08,.10,P.leafD,-.22,.045);
+      frond(-12.47,4.92,-2.18,.065,.90,.09,P.leaf,.44,-.040);
+      frond(-12.34,5.28,-2.22,.068,.82,.10,P.leafL,.92,.038);
+      stem(-12.42,4.98,2.12,.026,2.54,P.vine,FOLIAGE_LOD,-.012);
+      frond(-12.36,4.56,2.06,.070,1.06,.10,P.leaf,.24,-.044);
+      frond(-12.47,4.94,2.18,.065,.88,.09,P.leafD,-.48,.038);
+      frond(-12.34,5.30,2.22,.068,.80,.10,P.leafL,-.94,-.036);
+      stem(-10.32,4.97,-2.14,.026,2.56,P.vine,FOLIAGE_LOD,-.010);
+      frond(-10.38,4.54,-2.08,.070,1.08,.10,P.leafD,.30,-.042);
+      frond(-10.26,4.92,-2.20,.065,.90,.09,P.leaf,-.52,.040);
+      frond(-10.39,5.29,-2.23,.068,.81,.10,P.fern,-1.02,-.036);
+      stem(-10.32,4.99,2.14,.026,2.52,P.vine,FOLIAGE_LOD,.012);
+      frond(-10.38,4.56,2.08,.070,1.05,.10,P.leaf,.28,.042);
+      frond(-10.26,4.94,2.20,.065,.88,.09,P.leafD,-.54,-.038);
+      frond(-10.39,5.31,2.23,.068,.79,.10,P.fern,-1.00,.035);
     });
 
     // T01 — crocodile paludarium. Low banks form a water-to-mud gradient; all raised roots,
@@ -175,11 +176,11 @@ const ZooArtTropical = (() => {
       frond(-7.56,.53,-3.67,.05,.98,.08,P.reed,.12,.08);
       frond(-7.31,.68,-3.80,.05,1.28,.08,P.reedL,-.22,-.10);
       frond(-7.05,.48,-3.61,.045,.88,.075,P.reed,.48,.12);
-      frond(-2.55,.59,-8.02,.05,1.10,.08,P.reed,-.40,-.08);
+      frond(-3.05,.59,-8.02,.05,1.10,.08,P.reed,-.40,-.08);
       frond(-2.79,.47,-8.16,.045,.86,.075,P.reedL,.18,.10);
       frond(-7.58,.56,-7.86,.05,1.05,.08,P.reed,.66,.07);
       frond(-2.48,.51,-4.60,.045,.94,.075,P.reedL,-.54,-.09);
-      mass(-6.43,.17,-5.00,.62,.15,.50,P.rockL);
+      mass(-7.25,.17,-6.00,.50,.15,.40,P.rockL);
       mass(-6.92,.13,-5.33,.50,.12,.40,P.rock);
       mass(-5.88,.12,-4.78,.39,.11,.31,P.rockL);
       mass(-7.38,.10,-5.02,.25,.09,.31,P.rockD);
@@ -264,7 +265,11 @@ const ZooArtTropical = (() => {
                        [6.38,3.78,1.72,-.05],[5.42,8.00,1.90,.07]]) {
         const [x,z,h,lean]=q;
         stem(x,h*.34,z,.055,h*.68,P.trunkD,FINE_LOD,lean);
-        frond(x-.13,h*.67,z+.05,.12,h*.74,.24,P.leafD,-.42,.22);
+        // The two south-edge plants sit between the z=3.8 and z=5.25 butterfly lanes. Their
+        // first leaves are compact ground fronds in that gap instead of tall blades through the
+        // moving wing envelopes; the north pair retain their taller asymmetry.
+        if(z<4)frond(x-.13,.28,z+.74,.14,.34,.24,P.leafD,-.42,.04);
+        else frond(x-.13,h*.67,z+.05,.12,h*.74,.24,P.leafD,-.42,.22);
         frond(x+.16,h*.74,z-.08,.11,h*.68,.22,P.leaf,.66,-.20);
         frond(x+.02,h*.88,z+.16,.10,h*.58,.20,P.leafL,1.22,.16);
       }

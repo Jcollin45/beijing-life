@@ -136,17 +136,17 @@ const coreHabitats = [
     contents:[
       surface('H01/S01','sand paddock floor',[5,14,-11,-5.5],0.006,'M-SAND','primary substrate'),
       item('H01/O01','west browse tree','tree',[7.2,0,-7.1],[2.1,3.9,2.1],'M-FOLIAGE','none','natural browse and shade',{ trunkHeight:3.4 }),
-      item('H01/O02','east browse tree','tree',[12.0,0,-7.5],[2.1,3.9,2.1],'M-FOLIAGE','none','natural browse and shade',{ trunkHeight:3.4 }),
-      item('H01/O03','low water trough','water-trough',[8.15,0,-8.95],[1.88,0.36,0.88],'M-CONCRETE','none','drinking station',{ waterMaterial:'M-WATER' }),
+      item('H01/O02','east browse tree','tree',[12.8,0,-9.4],[2.1,3.9,2.1],'M-FOLIAGE','none','natural browse and shade',{ trunkHeight:3.4 }),
+      item('H01/O03','low water trough','water-trough',[8.15,0,-10.25],[1.88,0.36,0.88],'M-CONCRETE','none','drinking station',{ waterMaterial:'M-WATER' }),
       item('H01/O04','raised keeper feeding deck','climbing-frame',[10.9,0,-7.2],[3.6,3.85,2.2],'M-TIMBER','none','high browse presentation',{ deckY:3.26, fourPosts:true }),
       item('H01/O05','seven-slot browse rack','climbing-frame',[10.9,3.26,-8.26],[3.4,0.8,0.2],'M-TIMBER-DARK','none','holds leafy browse',{ slotCount:7 }),
-      item('H01/O06','sand drainage channel','floor-drain',[9.2,0.01,-10.25],[3.2,0.03,0.35],'M-STEEL','none','surface drainage'),
+      item('H01/O06','sand drainage channel','floor-drain',[11.4,0.01,-10.25],[3.2,0.03,0.35],'M-STEEL','none','surface drainage'),
       item('H01/O07','keeper safety square','keeper-safe-zone',[13.2,0.02,-6.25],[1.0,0.02,1.0],'M-CONCRETE','none','service-gate landing'),
       item('H01/O08','habitat camera','habitat-camera',[5.45,0,-6.0],[0.22,3.6,0.22],'M-STEEL-DARK','none','welfare monitoring',{ facing:[10,-8] }),
     ],
     activityAnchors:[
       { id:'H01/Z01', label:'browse face', at:[10.9,0,-8.55], acts:['browse'] },
-      { id:'H01/Z02', label:'water trough', at:[8.15,0,-8.95], acts:['drink'] },
+      { id:'H01/Z02', label:'water trough', at:[8.15,0,-10.25], acts:['drink'] },
       { id:'H01/Z03', label:'open grazing', at:[7.8,0,-7.9], acts:['graze'] },
     ],
   },
@@ -158,9 +158,9 @@ const coreHabitats = [
     ],
     contents:[
       surface('H02/S01','grass yard',[-16,-8,-2.5,4],0.006,'M-GRASS','primary substrate'),
-      item('H02/O01','south bamboo clump','bamboo-clump',[-14.6,0,-0.9],[2.2,3.6,2.2],'M-BAMBOO','body','feeding cover',{ caneCount:9 }),
-      item('H02/O02','north-west bamboo clump','bamboo-clump',[-14.8,0,2.5],[2.2,3.9,2.2],'M-BAMBOO','body','feeding cover',{ caneCount:8 }),
-      item('H02/O03','north-centre bamboo clump','bamboo-clump',[-12.4,0,3.0],[2.2,3.3,2.2],'M-BAMBOO','body','feeding cover',{ caneCount:6 }),
+      item('H02/O01','south bamboo clump','bamboo-clump',[-15.0,0,-1.85],[1.5,3.6,1.5],'M-BAMBOO','body','feeding cover',{ caneCount:7 }),
+      item('H02/O02','north-west bamboo clump','bamboo-clump',[-15.0,0,3.4],[1.4,3.8,1.4],'M-BAMBOO','body','feeding cover',{ caneCount:6 }),
+      item('H02/O03','east low bamboo clump','bamboo-clump',[-9.0,0,0.9],[0.8,2.2,0.8],'M-BAMBOO','body','low browse screen',{ caneCount:3 }),
       item('H02/O04','heated panda house','box-fixture',[-14.1,0,0.75],[3.5,3.0,3.9],'M-RENDER','camera-blocker','indoor retreat',{ roofMaterial:'M-ROOF-GREEN', opening:{ side:'x1', width:1.4, height:2.1 }, signage:'熊猫馆' }),
       item('H02/O05','south climbing frame','climbing-frame',[-10.4,0,-0.6],[0.8,0.85,2.5],'M-TIMBER','body','climbing and resting'),
       item('H02/O06','north climbing frame','climbing-frame',[-11.2,0,1.9],[0.8,0.85,2.5],'M-TIMBER','body','climbing and resting'),
@@ -170,8 +170,8 @@ const coreHabitats = [
       item('H02/O10','habitat camera','habitat-camera',[-8.45,0,3.5],[0.22,3.2,0.22],'M-STEEL-DARK','none','welfare monitoring',{ facing:[-12,0.75] }),
     ],
     activityAnchors:[
-      { id:'H02/Z01', label:'bamboo feeding', at:[-13.6,0,-0.5], acts:['eat','graze'] },
-      { id:'H02/Z02', label:'climb structure', at:[-10.4,0.7,-0.6], acts:['climb','sit'] },
+      { id:'H02/Z01', label:'bamboo feeding', at:[-14.15,0,-1.8], acts:['eat','graze'] },
+      { id:'H02/Z02', label:'climb structure', at:[-9.4,0,0], acts:['climb','sit'] },
       { id:'H02/Z03', label:'cooling stone', at:[-9.6,0.24,-1.45], acts:['lie'] },
     ],
   },
@@ -185,7 +185,7 @@ const coreHabitats = [
       surface('H03/S01','aviary grass floor',[-4,2,-2.5,4],0.006,'M-MEADOW','primary substrate'),
       item('H03/O01','full-height aviary cage','mesh-enclosure',[-1,0,0.75],[6,4.2,6.5],'M-MESH','camera-blocker','flight containment',{ grid:1.0, roofGrid:1.2, cornerPost:0.13 }),
       item('H03/O02','diagonal timber perch', 'ground-log',[-1.8,1.4,1.35],[2.6,0.12,0.12],'M-TIMBER','none','roosting',{ yaw:1.44 }),
-      item('H03/O03','north-east shrub','tree',[1.35,0,3.28],[1.1,1.1,1.1],'M-FOLIAGE','none','cover and nesting'),
+      item('H03/O03','north-east shrub','tree',[-0.2,0,3.0],[1.1,1.1,1.1],'M-FOLIAGE','none','cover and nesting'),
       item('H03/O04','grain feeder','feed-trough',[-2.8,0,2.7],[0.75,0.24,0.55],'M-FOOD-STEEL','none','daily feeding'),
       item('H03/O05','dust bath','pool-volume',[0.45,0,1.4],[1.15,0.12,0.9],'M-SAND','none','dust bathing',{ depth:0.12 }),
       item('H03/O06','shallow drinker','water-trough',[-2.75,0,-1.5],[0.8,0.18,0.55],'M-CERAMIC','none','fresh drinking water'),
@@ -206,18 +206,18 @@ const coreHabitats = [
     ],
     contents:[
       surface('H04/S01','sand yard',[6,16,-2.5,4],0.006,'M-SAND','primary substrate'),
-      item('H04/O01','mud wallow outer basin','pool-volume',[13,0,0.75],[4.2,0.25,3.4],'M-MUD','none','dusting and cooling',{ innerWaterSize:[1.72,0.12,1.05] }),
-      item('H04/O02','east rock cluster','rock-cluster',[14.65,0,3.05],[2.3,1.05,2.0],'M-ROCK','none','scratching and visual cover'),
+      item('H04/O01','north-east mud wallow','pool-volume',[13,0,2.9],[4.1,0.12,2.4],'M-MUD','none','dusting and cooling, separated from the dry shelter',{ innerWaterSize:[1.68,0.06,0.88] }),
+      item('H04/O02','south-west rock cluster','rock-cluster',[7.6,0,-0.85],[2.2,1.0,2.0],'M-ROCK','none','scratching and visual cover'),
       item('H04/O03','open elephant shelter','animal-shelter',[13.6,0,-0.5],[4.8,4.0,4.2],'M-CONCRETE-DARK','camera-blocker','shade and rain cover',{ roofMaterial:'M-ROOF-RED', postSize:0.46 }),
-      item('H04/O04','suspended enrichment ball','climbing-frame',[11.55,0,-0.32],[0.7,3.4,0.7],'M-RUBBER','none','moving enrichment',{ pivotY:3.38, swingRadius:1.45 }),
+      item('H04/O04','suspended enrichment ball','climbing-frame',[13.6,0,-2.1],[0.7,3.4,0.7],'M-RUBBER','none','moving enrichment',{ pivotY:3.38, swingRadius:1.45 }),
       item('H04/O05','drinking trough','water-trough',[8.2,0,2.5],[1.9,0.42,0.9],'M-CONCRETE','none','fresh drinking water'),
       item('H04/O06','scrub post','scrub-post',[9.3,0,-0.8],[0.42,2.4,0.42],'M-TIMBER-DARK','none','skin care and enrichment'),
       item('H04/O07','keeper safety square','keeper-safe-zone',[15.25,0.02,2.6],[1.0,0.02,1.0],'M-CONCRETE','none','east service-gate landing'),
       item('H04/O08','habitat camera','habitat-camera',[6.55,0,3.45],[0.24,4.0,0.24],'M-STEEL-DARK','none','welfare monitoring',{ facing:[12,0.5] }),
-      item('H04/O09','wallow overflow drain','floor-drain',[14.35,-0.23,0.75],[0.45,0.03,0.45],'M-STEEL','none','mud-wallow level control and washout'),
+      item('H04/O09','wallow overflow drain','floor-drain',[14.35,-0.10,2.9],[0.45,0.03,0.45],'M-STEEL','none','mud-wallow level control and washout'),
     ],
     activityAnchors:[
-      { id:'H04/Z01', label:'wallow', at:[13,0,0.75], acts:['dust','drink'] },
+      { id:'H04/Z01', label:'wallow', at:[13,0,2.9], acts:['dust','drink'] },
       { id:'H04/Z02', label:'shelter shade', at:[13.6,0,-0.5], acts:['graze','lie'] },
       { id:'H04/Z03', label:'water trough', at:[8.2,0,2.5], acts:['drink'] },
     ],
@@ -257,7 +257,7 @@ const coreHabitats = [
     contents:[
       surface('H06/S01','long grass yard',[1,10,7,13.5],0.006,'M-GRASS','primary substrate'),
       item('H06/O01','west shade outcrop','rock-cluster',[2,0,12.95],[2.4,1.35,2.0],'M-ROCK','none','shade and lookout'),
-      item('H06/O02','east shade outcrop','rock-cluster',[9,0,12.95],[2.4,1.35,2.0],'M-ROCK','none','shade and lookout'),
+      item('H06/O02','east shade outcrop','rock-cluster',[6.2,0,12.6],[2.4,1.35,2.0],'M-ROCK','none','shade and lookout'),
       item('H06/O03','fallen branching trunk','ground-log',[7.1,0.26,9.4],[3.2,0.48,0.48],'M-TIMBER','none','scratching and cover',{ yaw:0.4 }),
       item('H06/O04','fourteen-clump long grass zone','tree',[4.6,0,9.3],[5.6,0.7,3.3],'M-WILLOW','none','concealment',{ clumpCount:14, noTrunk:true }),
       item('H06/O05','shallow cooling pool','pool-volume',[2.4,0,8.35],[2.0,0.28,1.35],'M-WATER','none','summer cooling',{ depth:0.28 }),
@@ -309,7 +309,7 @@ const habitatOps = {
     item('H21/OPS01','chilled feeding shelf','feed-trough',[-25.2,0,27.6],[0.9,0.32,0.65],'M-FOOD-STEEL','none','protected meat feed'),
     item('H21/OPS02','high lookout ledge','box-fixture',[-31.6,0,34.8],[1.8,1.5,1.0],'M-ROCK','none','elevated resting'),
     item('H21/OPS03','keeper safety square','keeper-safe-zone',[-24.65,0.02,34.0],[0.8,0.02,1.0],'M-CONCRETE','none','dry service landing'),
-    item('H21/OPS04','habitat camera','habitat-camera',[-33.5,0,26.5],[0.22,3.5,0.22],'M-STEEL-DARK','none','den and shelf monitoring',{ facing:[-29,32] }),
+    item('H21/OPS04','habitat camera','habitat-camera',[-33.4,0,29.0],[0.22,3.5,0.22],'M-STEEL-DARK','none','den and shelf monitoring',{ facing:[-29,32] }),
     item('H21/OPS05','heated alpine drinker','water-trough',[-33.4,0,26.6],[1.0,0.26,0.7],'M-ROCK','none','freeze-protected drinking water'),
     item('H21/OPS06','meltwater drainage channel','floor-drain',[-29.5,0.01,26.25],[3.0,0.03,0.35],'M-STEEL','none','keeps the rock shelf dry and ice-free'),
   ],
@@ -336,13 +336,13 @@ const habitatOps = {
   'H33-golden-monkey': [
     item('H33/OPS01','fruit feed basket','feed-trough',[4.0,1.2,44.6],[0.8,0.3,0.6],'M-FOOD-STEEL','none','raised feeding'),
     item('H33/OPS02','heated drinker','water-trough',[14.7,0,45.0],[0.75,0.3,0.55],'M-CERAMIC','none','freeze-safe water'),
-    item('H33/OPS03','keeper safety square','keeper-safe-zone',[15.7,0.02,49.0],[0.8,0.02,1.0],'M-CONCRETE','none','service landing'),
+    item('H33/OPS03','keeper safety square','keeper-safe-zone',[15.7,0.02,44.0],[0.8,0.02,1.0],'M-CONCRETE','none','service landing'),
     item('H33/OPS04','habitat camera','habitat-camera',[2.5,0,51.5],[0.22,4.0,0.22],'M-STEEL-DARK','none','climbing network monitoring',{ facing:[9,47.5] }),
   ],
   'H40-elephant-reserve': [
     item('H40/OPS01','high-capacity drinker','water-trough',[25.6,0,11.8],[2.2,0.48,1.0],'M-CONCRETE','none','fresh drinking water'),
     item('H40/OPS02','sand pile','rock-cluster',[34.5,0,12.7],[2.0,0.75,1.8],'M-SAND','none','dusting enrichment'),
-    item('H40/OPS03','keeper safety square','keeper-safe-zone',[24.7,0.02,-7.7],[1.1,0.02,1.3],'M-CONCRETE','none','service-gate landing'),
+    item('H40/OPS03','keeper safety square','keeper-safe-zone',[35.65,0.02,11.0],[1.1,0.02,1.3],'M-CONCRETE','none','service-gate landing'),
     item('H40/OPS04','habitat camera','habitat-camera',[36.0,0,14.5],[0.24,4.2,0.24],'M-STEEL-DARK','none','reserve monitoring',{ facing:[30,3] }),
     item('H40/OPS05','pool filtration intake','floor-drain',[27.2,-0.7,-5.5],[0.55,0.03,0.55],'M-STEEL','none','main pool filtration and draw-down'),
     item('H40/OPS06','wallow overflow drain','floor-drain',[34.2,-0.18,11.8],[0.5,0.03,0.5],'M-STEEL','none','mud-wallow level control'),
@@ -350,7 +350,7 @@ const habitatOps = {
   'H41-mixed-savannah': [
     item('H41/OPS01','mineral lick','box-fixture',[48.7,0,-7.6],[0.5,0.55,0.5],'M-ROCK-LIGHT','none','mineral enrichment'),
     item('H41/OPS02','low hay feeder','feed-trough',[44.5,0,4.2],[1.35,0.34,0.55],'M-FOOD-STEEL','none','zebra and antelope feed'),
-    item('H41/OPS03','keeper safety square','keeper-safe-zone',[49.3,0.02,-7.4],[0.9,0.02,1.0],'M-CONCRETE','none','service landing'),
+    item('H41/OPS03','keeper safety square','keeper-safe-zone',[49.25,0.02,10.0],[0.9,0.02,1.0],'M-CONCRETE','none','service landing'),
     item('H41/OPS04','habitat camera','habitat-camera',[42.0,0,14.5],[0.24,4.0,0.24],'M-STEEL-DARK','none','savannah monitoring',{ facing:[46,3] }),
   ],
   'H42-rhino': [
@@ -363,7 +363,7 @@ const habitatOps = {
   'H43-lion': [
     item('H43/OPS01','protected meat hatch','feed-trough',[48.7,0,26.0],[1.0,0.32,0.7],'M-FOOD-STEEL','none','keeper feeding station'),
     item('H43/OPS02','fresh water basin','water-trough',[43.2,0,35.4],[1.1,0.32,0.65],'M-ROCK','none','drinking water'),
-    item('H43/OPS03','keeper safety square','keeper-safe-zone',[49.2,0.02,34.0],[0.8,0.02,1.0],'M-CONCRETE','none','service landing'),
+    item('H43/OPS03','keeper safety square','keeper-safe-zone',[49.2,0.02,27.0],[0.8,0.02,1.0],'M-CONCRETE','none','service landing'),
     item('H43/OPS04','habitat camera','habitat-camera',[42.0,0,24.5],[0.24,3.8,0.24],'M-STEEL-DARK','none','kopje and shade monitoring',{ facing:[46,30] }),
   ],
 };
@@ -757,6 +757,10 @@ const knownExisting = new Set([
   'H04/S01','H04/O01','H04/O02','H04/O03','H04/O04',
   'H05/S01','H05/W01','H05/O01','H05/O02','H05/O03','H05/O04','H05/O05','H05/O06',
   'H06/S01','H06/O01','H06/O02','H06/O03','H06/O04',
+  // The expansion barrier compiler already owns H32's folded public gate leaf. Keeping this
+  // content record as an existing-r2 contract prevents a second floating timber lintel from
+  // visually closing the same opening.
+  'H32/OPS03',
   'B02/women/FIX01','B02/women/FIX02','B02/women/FIX03','B02/women/FIX04',
   'B02/women/FIX05','B02/women/FIX06','B02/family/FIX01','B02/family/FIX02','B02/family/FIX03',
   'B03/snack/FIX01','B03/snack/FIX04','B03/toilets/FIX01','B03/toilets/FIX02',
@@ -925,7 +929,7 @@ const validation = {
 };
 
 const blueprint = {
-  schema:'chinesegame.zoo-contents/v1',revision:1,status:'construction-ready',
+  schema:'chinesegame.zoo-contents/v1',revision:2,status:'construction-ready',
   title:'Zoo Pens and Buildings — Complete Contents Construction Blueprint',
   parent:{file:'ZOO-EXPANSION-BLUEPRINT.json',schema:parent.schema,revision:parent.revision,geometryHash:parent.geometryHash},
   coordinateSystem:{

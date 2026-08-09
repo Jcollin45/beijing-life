@@ -199,6 +199,10 @@ async function main() {
   zooViews.west = await enterScene('zoo', {x:-37.5,z:-5,yaw:-Math.PI/2}, 'zoo-west-wetlands');
   zooViews.central = await enterScene('zoo', {x:-19,z:29,yaw:Math.PI/2}, 'zoo-central-conservation');
   zooViews.east = await enterScene('zoo', {x:20.5,z:2.5,yaw:Math.PI/2}, 'zoo-east-savannah');
+  zooViews.westHighlands = await enterScene('zoo', {x:-36.5,z:18,yaw:0},
+    'zoo-west-highlands');
+  zooViews.eastPlains = await enterScene('zoo', {x:20.5,z:18,yaw:0},
+    'zoo-east-plains');
   zooViews.north = await enterScene('zoo', {x:23,z:52,yaw:Math.PI/2}, 'zoo-north-buildings');
   zooViews.tropical = await enterScene('zoo_tropical', {x:-11.5,z:0,yaw:Math.PI/2},
     'zoo-tropical-house');

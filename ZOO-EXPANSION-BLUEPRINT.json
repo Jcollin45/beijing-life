@@ -1,7 +1,7 @@
 {
   "schema": "chinesegame.zoo-expansion/v1",
   "revision": 2,
-  "geometryHash": "sha256:d83fda0095d68a322ba6d3e5567edf1293a9052f417ce07517def7eb2e403110",
+  "geometryHash": "sha256:e7ab50e717b8a69d3d689d027e5aed835c0cd6acff12483f95e32a21d7a1e6c9",
   "title": "北京动物园扩建总图 / Beijing Zoo Expansion Master Plan",
   "status": "build-ready-blueprint",
   "units": "metres",
@@ -185,7 +185,7 @@
       "ground": [{ "kind": "water", "rect": [-49, -43, -8, -2], "depth": 0.7 }, { "kind": "rock-bank", "rect": [-43, -39.5, -8.5, -1.5] }],
       "serviceGate": { "side": "x0", "center": [-50, -5], "width": 1.8, "access": "staff" },
       "objects": [{ "type": "rock-cluster", "at": [-42.4, -3.1], "scale": 1.4 }, { "type": "log", "at": [-45.6, -6.5], "yaw": 0.7 }, { "type": "den", "rect": [-49.5, -47, -3.4, -1.3] }, { "type": "keeper-landing", "rect": [-50, -49, -5.9, -4.1], "surface": "broom-finished concrete" }],
-      "animalSlots": [{ "id": "otter-swim-a", "uv": [0.25, 0.35], "act": "swim" }, { "id": "otter-swim-b", "uv": [0.45, 0.7], "act": "swim" }, { "id": "otter-rest", "uv": [0.78, 0.3], "act": "lie" }, { "id": "otter-feed", "uv": [0.68, 0.75], "act": "eat" }]
+      "animalSlots": [{ "id": "otter-swim-a", "uv": [0.25, 0.35], "act": "swim" }, { "id": "otter-swim-b", "uv": [0.45, 0.7], "act": "swim" }, { "id": "otter-rest", "uv": [0.78, 0.3], "act": "lie" }, { "id": "otter-feed", "uv": [0.65, 0.23], "act": "eat" }]
     },
     {
       "id": "H11-hippo", "district": "D1", "species": ["河马"], "bounds": { "x0": -50, "x1": -39, "z0": 2, "z1": 15 }, "publicSide": "x1", "viewingPath": "P110-wetland-boardwalk", "focus": [-37.25, 8.5],
@@ -193,7 +193,7 @@
       "ground": [{ "kind": "water", "rect": [-48.8, -42.5, 3, 13.8], "depth": 1.2 }, { "kind": "sand", "rect": [-42.5, -39.5, 3, 13.8] }],
       "serviceGate": { "side": "x0", "center": [-50, 12], "width": 2.4, "access": "staff" },
       "objects": [{ "type": "shade-shelter", "rect": [-43, -39.6, 10.5, 14.3], "height": 3.2 }, { "type": "feed-trough", "at": [-41, 5] }, { "type": "scrub-post", "at": [-41.2, 8.1] }, { "type": "keeper-landing", "rect": [-50, -48.8, 10.8, 13.2], "surface": "broom-finished concrete" }],
-      "animalSlots": [{ "id": "hippo-pool-a", "uv": [0.25, 0.35], "act": "swim" }, { "id": "hippo-pool-b", "uv": [0.4, 0.72], "act": "swim" }, { "id": "hippo-bank", "uv": [0.76, 0.45], "act": "lie" }, { "id": "hippo-feed", "uv": [0.78, 0.2], "act": "eat" }]
+      "animalSlots": [{ "id": "hippo-pool-a", "uv": [0.25, 0.35], "act": "swim" }, { "id": "hippo-pool-b", "uv": [0.4, 0.72], "act": "swim" }, { "id": "hippo-bank", "uv": [0.8, 0.78], "act": "lie" }, { "id": "hippo-feed", "uv": [0.78, 0.2], "act": "eat" }]
     },
     {
       "id": "H12-flamingo", "district": "D1", "species": ["火烈鸟"], "bounds": { "x0": -34, "x1": -24, "z0": -9, "z1": 3.5 }, "publicSide": "x0", "viewingPath": "P110-wetland-boardwalk", "focus": [-35.75, -2.75],
@@ -207,9 +207,9 @@
       "id": "H13-crane", "district": "D1", "species": ["丹顶鹤"], "bounds": { "x0": -34, "x1": -24, "z0": 6, "z1": 15 }, "publicSide": "x0", "viewingPath": "P110-wetland-boardwalk", "focus": [-35.75, 10.5],
       "barrier": { "archetypeId": "BA-AVIARY-TALL", "public": "1.1m planted rail plus overhead flight mesh", "back": "3.8m dark aviary mesh", "bodySolid": "player-only habitat rectangle", "cameraBlockerTop": 3.8 },
       "ground": [{ "kind": "marsh", "rect": [-33, -25, 7, 12] }, { "kind": "grass", "rect": [-33, -25, 12, 14] }],
-      "serviceGate": { "side": "x1", "center": [-24, 12.5], "width": 1.5, "access": "staff" },
+      "serviceGate": { "side": "x1", "center": [-24, 12.5], "width": 1.5, "access": "staff", "foldJamb": "z1" },
       "objects": [{ "type": "reed-bed", "at": [-31, 9], "count": 20 }, { "type": "nest-platform", "at": [-27, 12.8] }, { "type": "shallow-pool", "rect": [-32.5, -27, 7.3, 10.5] }],
-      "animalSlots": [{ "id": "crane-wade", "uv": [0.35, 0.3], "act": "graze" }, { "id": "crane-display", "uv": [0.65, 0.6], "act": "display" }, { "id": "crane-rest", "uv": [0.75, 0.8], "act": "sit" }]
+      "animalSlots": [{ "id": "crane-wade", "uv": [0.52, 0.32], "act": "graze" }, { "id": "crane-display", "uv": [0.65, 0.6], "act": "display" }, { "id": "crane-rest", "uv": [0.75, 0.8], "act": "sit" }]
     },
     {
       "id": "H20-takin", "district": "D2", "species": ["羚牛"], "bounds": { "x0": -50, "x1": -39, "z0": 26, "z1": 37 }, "publicSide": "x1", "viewingPath": "P112-highlands-walk", "focus": [-37.25, 31.5],
@@ -217,7 +217,7 @@
       "ground": [{ "kind": "rock-grass", "rect": [-49.5, -39.5, 26.5, 36.5] }],
       "serviceGate": { "side": "x0", "center": [-50, 33], "width": 2.2, "access": "staff" },
       "objects": [{ "type": "rock-slope", "at": [-45, 32], "scale": 2.6 }, { "type": "pine", "at": [-47.5, 28.5], "height": 5.2 }, { "type": "hay-rack", "at": [-41, 34] }],
-      "animalSlots": [{ "id": "takin-high", "uv": [0.35, 0.65], "act": "graze" }, { "id": "takin-feed", "uv": [0.8, 0.7], "act": "eat" }, { "id": "takin-rest", "uv": [0.55, 0.25], "act": "lie" }]
+      "animalSlots": [{ "id": "takin-high", "uv": [0.35, 0.65], "act": "graze" }, { "id": "takin-feed", "uv": [0.85, 0.798182], "face": 3.58, "act": "eat" }, { "id": "takin-rest", "uv": [0.55, 0.25], "act": "lie" }]
     },
     {
       "id": "H21-snow-leopard", "district": "D2", "species": ["雪豹"], "bounds": { "x0": -34, "x1": -24, "z0": 26, "z1": 37 }, "publicSide": "x0", "viewingPath": "P112-highlands-walk", "focus": [-35.75, 31.5],
@@ -225,7 +225,7 @@
       "ground": [{ "kind": "rock-scree", "rect": [-33.5, -24.5, 26.5, 36.5] }],
       "serviceGate": { "side": "x1", "center": [-24, 34], "width": 1.5, "access": "staff" },
       "objects": [{ "type": "rock-shelf", "at": [-28.5, 32], "height": 2.8 }, { "type": "den", "rect": [-27, -24.5, 35, 36.5] }, { "type": "deadfall-log", "at": [-30.5, 28.5], "yaw": 0.6 }],
-      "animalSlots": [{ "id": "snow-lookout", "uv": [0.58, 0.58], "act": "sit" }, { "id": "snow-den", "uv": [0.85, 0.78], "act": "lie" }, { "id": "snow-prowl", "uv": [0.35, 0.25], "act": "graze" }]
+      "animalSlots": [{ "id": "snow-lookout", "uv": [0.58, 0.58], "act": "sit" }, { "id": "snow-den", "uv": [0.78, 0.886], "act": "lie" }, { "id": "snow-prowl", "uv": [0.45, 0.3], "act": "graze" }]
     },
     {
       "id": "H30-red-panda", "district": "D3", "species": ["小熊猫"], "bounds": { "x0": -34, "x1": -24, "z0": 43, "z1": 52 }, "publicSide": "x1", "viewingPath": "P103-west-zoo-avenue", "focus": [-20.5, 47.5],
@@ -233,7 +233,7 @@
       "ground": [{ "kind": "forest-floor", "rect": [-33.5, -24.5, 43.5, 51.5] }],
       "serviceGate": { "side": "x0", "center": [-34, 49], "width": 1.5, "access": "staff" },
       "objects": [{ "type": "tree-climb", "at": [-28, 47], "height": 4 }, { "type": "rope-bridge", "from": [-31, 48], "to": [-26, 45], "height": 2.1 }, { "type": "nest-box", "at": [-25.5, 50.5], "height": 2.4 }],
-      "animalSlots": [{ "id": "redpanda-tree", "uv": [0.6, 0.45], "act": "climb" }, { "id": "redpanda-feed", "uv": [0.75, 0.75], "act": "eat" }, { "id": "redpanda-rest", "uv": [0.28, 0.55], "act": "lie" }]
+      "animalSlots": [{ "id": "redpanda-tree", "uv": [0.69, 0.47], "act": "climb" }, { "id": "redpanda-feed", "uv": [0.75, 0.75], "act": "eat" }, { "id": "redpanda-rest", "uv": [0.28, 0.55], "act": "lie" }]
     },
     {
       "id": "H31-waterfowl-lake", "district": "D4", "species": ["天鹅", "鸳鸯"], "bounds": { "x0": -16, "x1": -6, "z0": 22, "z1": 36 }, "publicSide": "x1", "viewingPath": "P104-central-conservation-walk", "focus": [-4.2, 29],
@@ -244,7 +244,7 @@
       "publicAccessZones": [{ "id": "PAZ-H31-bridge", "rect": [-9.2, -6, 28.2, 29.8], "gate": "HG-H31-public-01", "owner": "B04-lake-pavilion" }, { "id": "PAZ-H31-pavilion", "rect": [-12.8, -9.2, 27.5, 31.5], "gate": "HG-H31-public-01", "via": "PAZ-H31-bridge", "owner": "B04-lake-pavilion" }],
       "objects": [{ "type": "tea-pavilion", "building": "B04-lake-pavilion" }, { "type": "footbridge", "rect": [-9.2, -6, 28.2, 29.8] }, { "type": "nest-island", "at": [-14, 32.5], "radius": 0.9 }],
       "waterSolids": [[-15.5, -7, 23, 27.5], [-15.5, -7, 31.5, 35], [-15.5, -12.8, 27.5, 31.5], [-9.2, -7, 29.8, 31.5], [-9.2, -7, 27.5, 28.2]],
-      "animalSlots": [{ "id": "swan-open-water", "uv": [0.3, 0.25], "act": "swim" }, { "id": "duck-reeds", "uv": [0.25, 0.8], "act": "swim" }, { "id": "waterfowl-island", "uv": [0.5, 0.55], "act": "preen" }]
+      "animalSlots": [{ "id": "swan-open-water", "uv": [0.3, 0.25], "act": "swim" }, { "id": "duck-reeds", "uv": [0.42, 0.836], "act": "swim" }, { "id": "waterfowl-island", "uv": [0.2, 0.75], "act": "preen" }]
     },
     {
       "id": "H32-family-farm", "district": "D4", "species": ["山羊", "兔子"], "bounds": { "x0": 2, "x1": 16.5, "z0": 22, "z1": 36 }, "publicSide": "x0", "viewingPath": "P104-central-conservation-walk", "focus": [0.2, 29],
@@ -254,7 +254,7 @@
       "publicAccessZones": [{ "id": "PAZ-H32-contact-yard", "rect": [2, 7, 26, 32], "gate": "HG-H32-public-01", "owner": "H32-family-farm" }],
       "serviceGate": { "side": "x1", "center": [16.5, 28], "width": 2, "access": "staff" },
       "objects": [{ "type": "barn", "rect": [11.5, 16, 31, 35.5], "height": 3.5 }, { "type": "handwash", "at": [0.9, 32.8] }, { "type": "hay-bale", "at": [9, 25.5] }, { "type": "rabbit-shelter", "rect": [12, 15.5, 23, 26] }],
-      "animalSlots": [{ "id": "goat-climb", "uv": [0.55, 0.35], "act": "climb" }, { "id": "goat-feed", "uv": [0.7, 0.7], "act": "eat" }, { "id": "rabbit-rest", "uv": [0.82, 0.22], "act": "lie" }]
+      "animalSlots": [{ "id": "goat-climb", "uv": [0.55, 0.35], "act": "climb" }, { "id": "goat-feed", "uv": [0.52, 0.835], "act": "eat" }, { "id": "rabbit-rest", "uv": [0.635, 0.193], "act": "lie" }]
     },
     {
       "id": "H33-golden-monkey", "district": "D3", "species": ["金丝猴"], "bounds": { "x0": 2, "x1": 16.5, "z0": 43, "z1": 52 }, "publicSide": "x0", "viewingPath": "P104-central-conservation-walk", "focus": [0.2, 47.5],
@@ -262,7 +262,7 @@
       "ground": [{ "kind": "forest-rock", "rect": [2.5, 16, 43.5, 51.5] }],
       "serviceGate": { "side": "x1", "center": [16.5, 44], "width": 1.6, "access": "staff" },
       "objects": [{ "type": "climbing-tower", "at": [9, 47.5], "height": 5.5 }, { "type": "rope-network", "rect": [5, 14, 45, 50], "height": 3.2 }, { "type": "heated-shelter", "rect": [13, 16, 49, 51.5] }],
-      "animalSlots": [{ "id": "golden-high", "uv": [0.5, 0.5], "act": "climb" }, { "id": "golden-groom", "uv": [0.35, 0.65], "act": "groom" }, { "id": "golden-feed", "uv": [0.75, 0.35], "act": "eat" }]
+      "animalSlots": [{ "id": "golden-high", "uv": [0.4, 0.4], "act": "climb" }, { "id": "golden-groom", "uv": [0.35, 0.65], "act": "groom" }, { "id": "golden-feed", "uv": [0.214, 0.178], "act": "eat" }]
     },
     {
       "id": "H40-elephant-reserve", "district": "D5", "species": ["亚洲象"], "bounds": { "x0": 24, "x1": 36.5, "z0": -10, "z1": 15 }, "publicSide": "x0", "viewingPath": "P03-east-loop", "focus": [20.2, 2.5],
@@ -279,7 +279,7 @@
       "ground": [{ "kind": "dry-grass", "rect": [42, 49.5, -9.5, 14.5] }, { "kind": "sand", "rect": [42, 46, 7, 14] }],
       "serviceGate": { "side": "x1", "center": [50, 10], "width": 2.8, "access": "staff-animal" },
       "objects": [{ "type": "browse-rack", "at": [47.5, 8], "height": 4.8 }, { "type": "acacia", "at": [45, -2], "height": 5.5 }, { "type": "water-trough", "at": [43.5, 11] }],
-      "animalSlots": [{ "id": "savannah-browse", "uv": [0.7, 0.72], "act": "browse" }, { "id": "savannah-graze", "uv": [0.4, 0.35], "act": "graze" }, { "id": "savannah-drink", "uv": [0.25, 0.8], "act": "drink" }]
+      "animalSlots": [{ "id": "giraffe-browse", "uv": [0.723529, 0.614], "face": -0.05, "act": "browse" }, { "id": "zebra-graze", "uv": [0.33, 0.46], "act": "graze" }, { "id": "antelope-drink", "uv": [0.25, 0.8], "act": "drink" }]
     },
     {
       "id": "H42-rhino", "district": "D5", "species": ["犀牛"], "bounds": { "x0": 24, "x1": 36.5, "z0": 23, "z1": 37 }, "publicSide": "x0", "viewingPath": "P105-east-zoo-avenue", "focus": [20.5, 30],
@@ -287,7 +287,7 @@
       "ground": [{ "kind": "sand-mud", "rect": [24.5, 36, 23.5, 36.5] }],
       "serviceGate": { "side": "x1", "center": [36.5, 34], "width": 2.8, "access": "staff-animal" },
       "objects": [{ "type": "mud-wallow", "rect": [29, 35, 29, 35] }, { "type": "shade-shelter", "rect": [31, 36, 24, 28], "height": 3.6 }, { "type": "scrub-log", "at": [27.5, 27] }],
-      "animalSlots": [{ "id": "rhino-wallow", "uv": [0.68, 0.68], "act": "dust" }, { "id": "rhino-feed", "uv": [0.3, 0.35], "act": "eat" }, { "id": "rhino-rest", "uv": [0.75, 0.2], "act": "lie" }]
+      "animalSlots": [{ "id": "rhino-wallow", "uv": [0.68, 0.68], "act": "dust" }, { "id": "rhino-feed", "uv": [0.328, 0.571], "act": "eat" }, { "id": "rhino-rest", "uv": [0.75, 0.2], "act": "lie" }]
     },
     {
       "id": "H43-lion", "district": "D5", "species": ["狮子"], "bounds": { "x0": 41.5, "x1": 50, "z0": 24, "z1": 37 }, "publicSide": "x0", "viewingPath": "P114-savannah-north", "focus": [40, 30.5],
@@ -295,7 +295,7 @@
       "ground": [{ "kind": "dry-grass-rock", "rect": [42, 49.5, 24.5, 36.5] }],
       "serviceGate": { "side": "x1", "center": [50, 27], "width": 2, "access": "staff-animal" },
       "objects": [{ "type": "kopje", "at": [46, 30], "height": 2.4 }, { "type": "shade-rock", "rect": [47, 49.5, 33, 36.5] }, { "type": "deadfall-log", "at": [44, 25.5], "yaw": 0.9 }],
-      "animalSlots": [{ "id": "lion-lookout", "uv": [0.55, 0.5], "act": "sit" }, { "id": "lion-shade", "uv": [0.8, 0.78], "act": "lie" }, { "id": "lion-prowl", "uv": [0.3, 0.25], "act": "graze" }]
+      "animalSlots": [{ "id": "lion-lookout", "uv": [0.271, 0.477], "act": "sit" }, { "id": "lion-shade", "uv": [0.624, 0.831], "act": "lie" }, { "id": "lion-prowl", "uv": [0.3, 0.25], "act": "graze" }]
     }
   ],
   "buildings": [
@@ -412,9 +412,9 @@
       { "id": "BN105", "at": [-22.2, 47.5], "faceYaw": 1.5707963268, "focus": [-20.65, 47.5] },
       { "id": "BN106", "at": [-9, 20.8], "faceYaw": 3.1415926536, "focus": [-9, 19.65] },
       { "id": "BN107", "at": [6.2, 20.8], "faceYaw": 3.1415926536, "focus": [6.2, 19.65] },
-      { "id": "BN108", "at": [1.25, 47.5], "faceYaw": -1.5707963268, "focus": [0.15, 47.5] },
+      { "id": "BN108", "at": [1.25, 45.2], "faceYaw": -1.5707963268, "focus": [0.15, 45.2] },
       { "id": "BN109", "at": [21.4, -4], "faceYaw": -1.5707963268, "focus": [20.15, -4] },
-      { "id": "BN110", "at": [40.95, 8], "faceYaw": -1.5707963268, "focus": [40.05, 8] },
+      { "id": "BN110", "at": [40.95, 12], "faceYaw": -1.5707963268, "focus": [40.05, 12] },
       { "id": "BN111", "at": [21.4, 28], "faceYaw": -1.5707963268, "focus": [20.65, 28] },
       { "id": "BN112", "at": [40.95, 33], "faceYaw": -1.5707963268, "focus": [40.05, 33] },
       { "id": "BN113", "at": [-14, 20.8], "faceYaw": 3.1415926536, "focus": [-14, 19.65] },
@@ -441,7 +441,7 @@
       { "id": "L126", "at": [-51.65, 61] }, { "id": "L127", "at": [-30, 61] }, { "id": "L128", "at": [23, 61] }, { "id": "L129", "at": [51, 61] }
     ],
     "mapBoards": [
-      { "id": "M100-south-existing", "at": [-16.2, -9], "yaw": 1.5707963268, "tag": "导游图", "thingId": "TH-M100", "focus": [-15.2, -9], "reach": 2 },
+      { "id": "M100-south-existing", "at": [-16.2, -9], "yaw": -1.5707963268, "tag": "导游图", "thingId": "TH-M100", "focus": [-15.2, -9], "reach": 2 },
       { "id": "M101-west-gate", "at": [-54.5, 21.4], "yaw": 0, "tag": "导游图", "thingId": "TH-M101", "focus": [-54.5, 23.2], "reach": 2 },
       { "id": "M102-first-cross", "at": [-5.4, 20.8], "yaw": 1.5707963268, "tag": "导游图", "thingId": "TH-M102", "focus": [-4.2, 19.6], "reach": 2.2 },
       { "id": "M103-conservation-cross", "at": [-5.4, 42.8], "yaw": 1.5707963268, "tag": "导游图", "thingId": "TH-M103", "focus": [-4.2, 41.6], "reach": 2.2 },
@@ -488,7 +488,7 @@
     "wetlandWillows": [
       { "id": "WW101", "at": [-51, -8], "height": 5.2, "owner": "D1" },
       { "id": "WW102", "at": [-51, 9], "height": 5.6, "owner": "D1" },
-      { "id": "WW103", "at": [-23, -4], "height": 5.1, "owner": "D1" },
+      { "id": "WW103", "at": [-23, -5.5], "height": 5.1, "owner": "D1" },
       { "id": "WW104", "at": [-23, 10], "height": 5.4, "owner": "D1" }
     ],
     "highlandPines": [
@@ -513,9 +513,9 @@
       { "id": "GM105", "at": [-2, 40], "label": "保育中心", "color": "green" }, { "id": "GM106", "at": [19, 40], "label": "热带馆", "color": "yellow" }
     ],
     "fingerposts": [
-      { "id": "FP101", "at": [-19, 18], "arms": ["西部湿地", "西部山地", "南门"] }, { "id": "FP102", "at": [-2, 18], "arms": ["湖区", "亲子园", "南门"] },
-      { "id": "FP103", "at": [19, 18], "arms": ["东部草原", "热带馆", "南门"] }, { "id": "FP104", "at": [-19, 40], "arms": ["动物医院", "小熊猫", "西门"] },
-      { "id": "FP105", "at": [-2, 40], "arms": ["保育中心", "金丝猴", "湖区"] }, { "id": "FP106", "at": [19, 40], "arms": ["热带馆", "狮子", "北环路"] }
+      { "id": "FP101", "at": [-20.35, 19.35], "arms": ["西部湿地", "西部山地", "南门"] }, { "id": "FP102", "at": [-3.35, 19.35], "arms": ["湖区", "亲子园", "南门"] },
+      { "id": "FP103", "at": [20.35, 19.35], "arms": ["东部草原", "热带馆", "南门"] }, { "id": "FP104", "at": [-20.35, 41.35], "arms": ["动物医院", "小熊猫", "西门"] },
+      { "id": "FP105", "at": [-3.35, 41.35], "arms": ["保育中心", "金丝猴", "湖区"] }, { "id": "FP106", "at": [20.9, 41.35], "arms": ["热带馆", "狮子", "北环路"] }
     ]
   },
   "routes": {
@@ -525,7 +525,7 @@
       { "id": "R-VIS-FAMILY", "loop": true, "waypoints": [[-2, 18], [-2, 22], [-2, 36], [-2, 40], [19, 40], [19, 53.5], [-2, 53.5], [-19, 53.5], [-19, 40], [-2, 40], [-2, 18]] }
     ],
     "keeperRoutes": [
-      { "id": "R-KEEP-WEST", "actor": "keeper", "access": "staff-shared", "waypoints": [[-38, 44.6], [-37, 44.6], [-35.5, 44.6], [-35.5, 49], [-34, 49], [-31, 49], [-34, 49], [-35.5, 49], [-35.5, 44.6], [-35.5, 40], [-19, 40], [-19, 34], [-24, 34], [-27, 34], [-24, 34], [-19, 34], [-19, 40], [-53.5, 40], [-53.5, 33], [-50, 33], [-47, 33], [-50, 33], [-53.5, 33], [-53.5, 12], [-50, 12], [-49.4, 12], [-50, 12], [-53.5, 12], [-53.5, -5], [-50, -5], [-49.5, -5], [-50, -5], [-53.5, -5], [-53.5, -13.2], [-19, -13.2], [-19, -3], [-24, -3], [-24.5, -3], [-24, -3], [-19, -3], [-19, 12.5], [-24, 12.5], [-27, 12.5], [-24, 12.5], [-19, 12.5], [-19, 40], [-35.5, 40], [-35.5, 44.6], [-37, 44.6], [-38, 44.6]] },
+      { "id": "R-KEEP-WEST", "actor": "keeper", "access": "staff-shared", "waypoints": [[-38, 44.6], [-37, 44.6], [-35.5, 44.6], [-35.5, 49], [-34, 49], [-31, 49], [-34, 49], [-35.5, 49], [-35.5, 44.6], [-35.5, 40], [-19, 40], [-19, 34], [-24, 34], [-27, 34], [-24, 34], [-19, 34], [-19, 40], [-53.5, 40], [-53.5, 33], [-50, 33], [-49.4, 33], [-50, 33], [-53.5, 33], [-53.5, 12], [-50, 12], [-49.4, 12], [-50, 12], [-53.5, 12], [-53.5, -5], [-50, -5], [-49.5, -5], [-50, -5], [-53.5, -5], [-53.5, -13.2], [-19, -13.2], [-19, -3], [-24, -3], [-24.5, -3], [-24, -3], [-19, -3], [-19, 12.5], [-24, 12.5], [-25.4, 11.5], [-24, 12.5], [-19, 12.5], [-19, 40], [-35.5, 40], [-35.5, 44.6], [-37, 44.6], [-38, 44.6]] },
       { "id": "R-KEEP-CENTRAL", "actor": "keeper", "access": "staff-shared", "waypoints": [[-38, 44.6], [-37, 44.6], [-35.5, 44.6], [-35.5, 40], [-19, 40], [-14, 40], [-14, 36], [-14, 40], [-19, 40], [19, 40], [19, 28], [16.5, 28], [14, 28], [16.5, 28], [19, 28], [19, 44], [16.5, 44], [14.5, 44], [16.5, 44], [19, 44], [19, 40], [-19, 40], [-35.5, 40], [-35.5, 44.6], [-37, 44.6], [-38, 44.6]] },
       { "id": "R-KEEP-EAST", "actor": "keeper", "access": "staff-shared", "waypoints": [[-38, 44.6], [-37, 44.6], [-35.5, 44.6], [-35.5, 40], [-19, 40], [19, 40], [53.5, 40], [53.5, 27], [50, 27], [48, 27], [50, 27], [53.5, 27], [53.5, 40], [39, 40], [39, 34], [36.5, 34], [35.5, 34], [36.5, 34], [39, 34], [39, 18], [53.5, 18], [53.5, 10], [50, 10], [47, 10], [50, 10], [53.5, 10], [53.5, 18], [39, 18], [39, 11], [36.5, 11], [33, 11], [36.5, 11], [39, 11], [39, 40], [53.5, 40], [53.5, 59], [50, 59], [53.5, 59], [53.5, 40], [19, 40], [-19, 40], [-35.5, 40], [-35.5, 44.6], [-37, 44.6], [-38, 44.6]] }
     ],
@@ -560,8 +560,8 @@
       { "id": "HT-H20-01", "habitat": "H20-takin", "hz": "羚牛", "position": [-38.45, 1.1, 31.5], "focus": [-37.25, 31.5], "reach": 2.2 },
       { "id": "HT-H21-01", "habitat": "H21-snow-leopard", "hz": "雪豹", "position": [-34.55, 1.1, 31.5], "focus": [-35.75, 31.5], "reach": 2.2 },
       { "id": "HT-H30-01", "habitat": "H30-red-panda", "hz": "小熊猫", "position": [-21.7, 1.1, 47.5], "focus": [-20.5, 47.5], "reach": 2.2 },
-      { "id": "HT-H31-01", "habitat": "H31-waterfowl-lake", "hz": "天鹅", "position": [-5.4, 1.1, 27.8], "focus": [-4.2, 27.8], "reach": 2.2 },
-      { "id": "HT-H31-02", "habitat": "H31-waterfowl-lake", "hz": "鸳鸯", "position": [-5.4, 1.1, 30.2], "focus": [-4.2, 30.2], "reach": 2.2 },
+      { "id": "HT-H31-01", "habitat": "H31-waterfowl-lake", "hz": "天鹅", "position": [-5.4, 1.1, 26.9], "focus": [-4.2, 26.9], "reach": 2.2 },
+      { "id": "HT-H31-02", "habitat": "H31-waterfowl-lake", "hz": "鸳鸯", "position": [-5.4, 1.1, 31.1], "focus": [-4.2, 31.1], "reach": 2.2 },
       { "id": "HT-H32-01", "habitat": "H32-family-farm", "hz": "山羊", "position": [1.4, 1.1, 27.8], "focus": [0.2, 27.8], "reach": 2.2 },
       { "id": "HT-H32-02", "habitat": "H32-family-farm", "hz": "兔子", "position": [1.4, 1.1, 30.2], "focus": [0.2, 30.2], "reach": 2.2 },
       { "id": "HT-H33-01", "habitat": "H33-golden-monkey", "hz": "金丝猴", "position": [1.4, 1.1, 47.5], "focus": [0.2, 47.5], "reach": 2.2 },
@@ -575,7 +575,7 @@
     "requiredPublicThings": [
       { "id": "TH-west-gate", "hz": "西门", "position": [-57.7, 4, 24], "focus": [-55.2, 24], "reach": 2.8 },
       { "id": "TH-tropical", "hz": "热带馆", "position": [25, 3.4, 52], "focus": [23, 52], "reach": 2.5, "transition": "zoo_tropical" },
-      { "id": "TH-conservation", "hz": "保育中心", "position": [-2, 2.2, 55], "focus": [-2, 53.5], "reach": 2.4 },
+      { "id": "TH-conservation", "hz": "保育中心", "position": [-0.5, 2.2, 55], "focus": [-2, 53.5], "reach": 2.4 },
       { "id": "TH-animal-hospital", "hz": "动物医院", "position": [-47, 2.8, 42.5], "focus": [-47, 40], "reach": 2.8, "access": "view-only" }
     ]
   },
