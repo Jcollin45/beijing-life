@@ -115,7 +115,9 @@ FlatFit['corridor'] = A => {
   const ZLOBBY = LF.z0 - R;             // 4.60 — but in front of the shafts this is the north edge
   const XWING0 = LB.x0 - .10 - R;       // -0.80 — west of here the north half opens up
   const XWING1 = LF.x1 + .10 + R;       //  3.80 — and east of here
-  // What this file is allowed to take back off that. The wings get 2.24 m of depth and can afford
+  // What this file is allowed to take back off that. 2.245 m is the legal run at the *open ends*
+  // (x 0.50 and x 5.60 in the swept table at the head of this file), not along a whole wing: at
+  // x -4.70 the west wing is 1.305 m of legal centres, 1.905 m clear. The wings can still afford
   // a parking strip down one side and a shoe strip down the other; the middle strip gets nothing.
   // BAND is what has to survive both, so the two limits are derived from it rather than chosen and
   // hoped over — a bicycle 10 cm further out of the wall than intended is 10 cm off the walkway.
@@ -381,8 +383,10 @@ FlatFit['corridor'] = A => {
   // fluorescent bulkheads that have not been swapped yet.
   //
   // Every fitting sits at z < LIFT.z0 so that none of them is inside a shaft, and the two in the
-  // wings sit deeper into the room than the four in the middle, because the wings are 2.24 m deep
-  // and a lamp on the middle line of a 1.04 m strip lights nothing at the ends.
+  // wings sit deeper into the room than the four in the middle, because the wings open out to
+  // 2.245 m of legal run at their ends — 1.305 m at x -4.70, so not uniformly — while the middle
+  // strip across the working shaft is 1.045 m, and a lamp on the middle line of that lights
+  // nothing at the ends.
   //
   // Power .30 and glow .07, not .52 and .13. At the old figures the plaster across the front of
   // the lift landing clipped to white, and a clipped matte wall is exactly what the post chain's

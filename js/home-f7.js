@@ -338,78 +338,11 @@ FlatFit['f7'] = A => {
   const SF = LF.z0 - .020, SB = LB.z0 - .020;                 // the two shaft faces
   // The shell now builds a real landing on every deck — doors, surround, indicator, call panel,
   // moving leaves and an opening collider. This stand-in stands down rather than double-building.
-  if (!A.shellLanding) (function shafts() {
-    // the working shaft: plaster returns, a steel surround, two leaves shut, an indicator
-    const cx = (LF.x0 + LF.x1) / 2, w = .80, hw = w / 2;
-    box(cx, Y + (2.10 + H) / 2, SF + .06, LF.x1 - LF.x0, H - 2.10, .12, col.wall,
-        { hard: true, gloss: .12, ...MT.plaster });
-    for (const s of [-1, 1])
-      box(cx + s * (hw + .25), Y + 1.05, SF + .06, .50, 2.10, .12, col.wall,
-          { hard: true, gloss: .12, ...MT.plaster });
-    for (const s of [-1, 1])
-      box(cx + s * (hw + .07), Y + 1.10, SF - .01, .14, 2.20, .05, C('#7e868c'),
-          { hard: true, gloss: .58, tag: '电梯', ...MT.metal });
-    box(cx, Y + 2.175, SF - .01, w + .42, .14, .05, C('#7e868c'),
-        { hard: true, gloss: .58, tag: '电梯', ...MT.metal });
-    for (const s of [-1, 1]) {
-      box(cx + s * w / 4, Y + 1.05, SF + .09, w / 2, 2.10, .045, C('#7e868c'),
-          { hard: true, gloss: .34, tag: '电梯', ...MT.metal });
-      box(cx + s * w / 4, Y + 1.05, SF + .065, w / 2 - .05, 2.00, .012, C('#8d959b'),
-          { hard: true, gloss: .34, tag: '电梯' });
-    }
-    // the floor indicator, reading seven
-    box(cx, Y + 2.44, SF - .015, .52, .30, .06, C('#3d4348'),
-        { hard: true, gloss: .34, tag: '电梯' });
-    G(cx, Y + 2.44, SF - .050, PI, '七', { size: .17, color: C('#ff9a4d'), mode: 1, glow: .16 });
-    // the flanks, so the shaft reads as a box and not as a panel leaning on the wall
-    box(LF.x1 + .05, Y + H / 2, (SF + ZN) / 2, .10, H, ZN - SF, col.wall,
-        { hard: true, gloss: .12, ...MT.plaster });
-    // The second shaft, and the pier between the two, as ONE panel — three abutting boxes all
-    // presenting their front face at the same z is three chances to z-fight along a seam. It
-    // stands 25 mm behind the working shaft's jambs, so those read as proud of it.
-    box((LB.x0 - .05 + LF.x0 + .02) / 2, Y + H / 2, SB + .075,
-        (LF.x0 + .02) - (LB.x0 - .05), H, .10, col.wall,
-        { hard: true, gloss: .12, ...MT.plaster });
-    box(LB.x0 - .05, Y + H / 2, (SB + ZN) / 2, .10, H, ZN - SB, col.wall,
-        { hard: true, gloss: .12, ...MT.plaster });
-    box((LB.x0 + LB.x1) / 2, Y + 1.05, SB - .015, 1.02, 2.06, .028, C('#cec7b4'),
-        { hard: true, gloss: .14 });
-    // the notice the second lift has worn for two years
-    box((LB.x0 + LB.x1) / 2, Y + 1.62, SB - .034, .46, .32, .020, col.paper,
-        { hard: true, gloss: .05, ry: .02, tag: '通知' });
-    G((LB.x0 + LB.x1) / 2, Y + 1.71, SB - .046, PI, '此梯检修', { size: .053, gap: .010, color: col.redD });
-    G((LB.x0 + LB.x1) / 2, Y + 1.61, SB - .046, PI, '请乘另一部', { size: .043, gap: .008, color: col.ink });
-    G((LB.x0 + LB.x1) / 2, Y + 1.52, SB - .046, PI, '物业管理处', { size: .034, gap: .007, color: col.grey });
-    // 电梯使用标志 — the inspection certificate in its little frame, which is on the wall beside
-    // every lift in the country and is two metres of otherwise blank plaster's only company.
-    const kx3 = LB.x1 - .32;
-    box(kx3, Y + 1.46, SB - .058, .30, .40, .022, C('#c9a24e'), { hard: true, gloss: .34,
-        tag: '电梯' });
-    box(kx3, Y + 1.46, SB - .072, .25, .35, .006, col.bone, { hard: true, gloss: .12, tag: '电梯' });
-    G(kx3, Y + 1.58, SB - .082, PI, '电梯使用标志', { size: .030, gap: .005, color: col.redD });
-    box(kx3, Y + 1.545, SB - .082, .20, .004, .004, col.redD, { hard: true });
-    G(kx3, Y + 1.48, SB - .082, PI, '检验合格', { size: .036, gap: .007, color: col.ink });
-    G(kx3, Y + 1.40, SB - .082, PI, '有效期至', { size: .026, gap: .005, color: col.grey });
-    G(kx3, Y + 1.34, SB - .082, PI, '二〇二六年五月', { size: .024, gap: .004, color: col.grey });
-    // the dado, carried across the shaft panel so it is not a blank sheet in a banded corridor
-    dado('x', SB + .025, -1, [[LB.x0 - .05, -0.14], [0.94, LF.x0 + .02]]);
-    // trim along the foot of both
-    box(((LB.x0 - .05) + (LF.x1 + .05)) / 2, Y + .065, SB - .045, (LF.x1 - LB.x0) + .10, TRIM, .065,
-        C('#8b8376'), { hard: true, gloss: .18 });
-    // and the collider across the whole back bay
-    stop(LB.x0 - .12, LF.x1 + .12, SB - .04, ZN);
-  })();
+  // The shell builds a real landing on every deck (SHAFT_DECKS, js/world.js:246), so the
+  // stand-in that used to sit here under `if (!shellLanding)` was dead code. Removed 2026-08-09.
 
   // --- the fallback call panel, and the little brass plate somebody screwed on beside it
   const CPX = 3.72, CPZ = SF - .02;
-  if (!A.shellLanding) {
-    box(CPX, Y + 1.12, CPZ, .13, .22, .04, C('#d9d4c8'), { hard: true, gloss: .34, tag: '电梯' });
-    for (const [dy, ch] of [[.045, '▲'], [-.045, '▼']]) {
-      box(CPX, Y + 1.12 + dy, CPZ - .022, .055, .055, .012, C('#ffbe6a'),
-          { hard: true, mode: 1, glow: .16, tag: '电梯' });
-      G(CPX, Y + 1.12 + dy, CPZ - .036, PI, ch, { size: .038, color: C('#4a3316'), gloss: .12 });
-    }
-  }
   box(CPX, Y + 1.40, CPZ - .014, .22, .09, .012, col.brass, { hard: true, gloss: .5 });
   G(CPX, Y + 1.40, CPZ - .026, PI, '七层', { size: .052, gap: .010, color: col.ink });
 

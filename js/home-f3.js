@@ -425,64 +425,8 @@ FlatFit['f3'] = A => {
   // Until then, without it the corridor's north end is an open void with the car swinging past in
   // it. The car never stops here — `goFloor` in js/world.js still collapses every request to deck
   // 0 or 2 — so these doors are shut, which is what a lift that is somewhere else looks like.
-  if (!shellLanding) {
-    const steel = C('#7e868c'), dark = C('#3d4348');
-    for (const sh of [LF, LB]) {
-      // Outward-facing, every one: the corridor is south and west/east of these planes, and a
-      // quad facing into its own shaft is a hole you look through.
-      wall((sh.x0 + sh.x1) / 2, Y + H / 2, sh.z0, sh.x1 - sh.x0, H, PI, C('#c7c0af'), { ...P.plaster });
-      wall(sh.x0, Y + H / 2, (sh.z0 + sh.z1) / 2, sh.z1 - sh.z0, H, -PI / 2, col.wall, { ...P.plaster });
-      wall(sh.x1, Y + H / 2, (sh.z0 + sh.z1) / 2, sh.z1 - sh.z0, H, PI / 2, col.wall, { ...P.plaster });
-      box((sh.x0 + sh.x1) / 2, Y + .065, sh.z0 - .045, sh.x1 - sh.x0, .13, .065, C('#8d8578'),
-          { hard: true, gloss: .20 });
-      // The flanks get the same skirting and dado as every other wall on the floor. Without them
-      // a shaft side is 1.3 x 2.6 m of one flat colour, and the first render of this landing had
-      // exactly that: a grey slab standing in the middle of a corridor that was otherwise painted.
-      for (const [fx, sgn] of [[sh.x0, -1], [sh.x1, 1]]) {
-        box(fx + sgn * .045, Y + .065, (sh.z0 + sh.z1) / 2, .065, .13, sh.z1 - sh.z0, C('#8d8578'),
-            { hard: true, gloss: .20 });
-        dado('z', fx, sgn, [[sh.z0, sh.z1 - .02]]);
-      }
-    }
-    dado('x', LB.z0, -1, [[LB.x0, LB.x1]]);
-    // the working shaft's landing: plaster returns, a steel surround, two shut leaves, the dial
-    const cx = (LF.x0 + LF.x1) / 2, DW = (A.CAR && A.CAR.door) || .80, DH2 = 2.10, zf = LF.z0;
-    box(cx, Y + (DH2 + H) / 2, zf - .06, DW + 1.20, H - DH2, .12, col.wall,
-        { hard: true, gloss: .12, ...P.plaster });
-    for (const s of [-1, 1])
-      box(cx + s * (DW / 2 + .30), Y + DH2 / 2, zf - .06, .60, DH2, .12, col.wall,
-          { hard: true, gloss: .12, ...P.plaster });
-    for (const s of [-1, 1])
-      box(cx + s * (DW / 2 + .07), Y + DH2 / 2 + .05, zf + .01, .14, DH2 + .10, .05, steel,
-          { hard: true, gloss: .62, tag: '电梯', ...P.metal });
-    box(cx, Y + DH2 + .075, zf + .01, DW + .42, .14, .05, steel,
-        { hard: true, gloss: .62, tag: '电梯', ...P.metal });
-    for (const s of [-1, 1]) {
-      box(cx + s * DW / 4, Y + DH2 / 2, zf - .13, DW / 2, DH2, .045, steel,
-          { hard: true, gloss: .34, tag: '电梯', ...P.metal });
-      box(cx + s * DW / 4, Y + DH2 / 2, zf - .105, DW / 2 - .05, DH2 - .10, .012, C('#8d959b'),
-          { hard: true, gloss: .34, tag: '电梯' });
-    }
-    box(cx, Y + DH2 + .34, zf + .015, .52, .30, .06, dark, { hard: true, gloss: .34, tag: '电梯' });
-    G(cx, Y + DH2 + .34, zf - .05, PI, '三', { size: .17, color: C('#ff9a4d'), mode: 1, glow: .16 });
-    // the call panel, and the word for it
-    const px = 3.72, pz = LF.z0 - .02;
-    box(px, Y + 1.12, pz, .13, .22, .04, C('#d9d4c8'), { hard: true, gloss: .34, tag: '电梯' });
-    for (const [dy, ch] of [[.045, '▲'], [-.045, '▼']]) {
-      box(px, Y + 1.12 + dy, pz - .022, .055, .055, .012, C('#ffbe6a'),
-          { hard: true, mode: 1, glow: .16, tag: '电梯' });
-      G(px, Y + 1.12 + dy, pz - .036, PI, ch, { size: .038, color: C('#4a3316'), tag: '电梯' });
-    }
-    TH('电梯', px, Y + 1.52, pz - .10, '按电梯，下楼去。', 'Press for the lift, and go down.',
-       '电 electricity + 梯 ladder. 上楼 is up, 下楼 is down.', px, 4.20, 2.0);
-    // the second shaft, out of service on every deck of this building
-    const bx = (LB.x0 + LB.x1) / 2;
-    box(bx, Y + 1.05, LB.z0 - .022, 1.02, 2.06, .028, C('#c6bfae'), { hard: true, gloss: .14 });
-    box(bx, Y + 1.62, LB.z0 - .040, .44, .30, .020, col.paper, { hard: true, gloss: .05, ry: .03 });
-    G(bx, Y + 1.70, LB.z0 - .052, PI, '此梯停用', { size: .052, gap: .010, color: col.redD });
-    G(bx, Y + 1.60, LB.z0 - .052, PI, '请乘另一部', { size: .042, gap: .008, color: col.ink });
-    G(bx, Y + 1.51, LB.z0 - .052, PI, '物业管理处', { size: .034, gap: .007, color: col.grey });
-  }
+  // The shell builds a real landing on every deck (SHAFT_DECKS, js/world.js:246), so the
+  // stand-in that used to sit here under `if (!shellLanding)` was dead code. Removed 2026-08-09.
 
   // ------------------------------------------------------------------ ceiling services
   // The sprinkler main hugs the flat's wall at z = 3.38, the only line down this landing that is

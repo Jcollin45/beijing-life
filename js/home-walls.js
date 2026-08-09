@@ -162,7 +162,11 @@ const FLAT_PALETTE = {
   woodD:  '#4b3628',    // dark carcass: wardrobe body, bookcase, bed frame, worktop
   woodM:  '#76583e',    // mid carcass: doors, drawer fronts, table tops
   woodL:  '#a7835b',    // pale carcass: shelves, sill, bamboo goods
-  trim:   '#e6ded0',    // painted joinery — the same cream as every door lining
+  // Painted joinery — the same cream as every door lining. 76.1% mean-channel value, not the
+  // 86.3% this entry used to carry: ART.md:67-79 puts white-painted joinery at 0.72–0.78, and
+  // item 394's value pass already moved the rooms' own literals to #cbc4b7. This was the last
+  // copy left forked from them, so the door linings read brighter than the joinery they meet.
+  trim:   '#cbc4b7',
   skirt:  '#cdc4b4',    // skirting and plinth
   accent: '#a43c2c',    // 春联, cushions, the one red in the flat — the shell's own col.red
 };

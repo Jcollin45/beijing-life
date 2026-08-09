@@ -249,48 +249,8 @@ FlatFit['f11'] = A => {
   const DOORW = (A.CAR && A.CAR.door) || .80;
   const LFX = (LF.x0 + LF.x1) / 2, LBX = (LB.x0 + LB.x1) / 2;
 
-  if (!A.shellLanding) {
-    const DOORH = (A.CAR && A.CAR.doorH) || 2.10;
-    const shaftSteel = C('#7e868c'), shaftDark = C('#3d4348');
-    for (const sh of [LF, LB]) {
-      const cx = (sh.x0 + sh.x1) / 2, hw = (sh === LF ? DOORW : .92) / 2;
-      // the shaft box seen from the landing: two flanks and a back, so the eye never finds the void
-      wall(sh.x0, Y + H / 2, (sh.z0 + sh.z1) / 2, sh.z1 - sh.z0, H, PI / 2, C('#b8ae9c'), PL);
-      wall(sh.x1, Y + H / 2, (sh.z0 + sh.z1) / 2, sh.z1 - sh.z0, H, -PI / 2, C('#b8ae9c'), PL);
-      wall(cx, Y + H / 2, sh.z1, sh.x1 - sh.x0, H, PI, C('#7c756a'), PL);
-      // lintel and jambs — 120 mm of wall standing at the front of the shaft
-      box(cx, Y + (DOORH + H) / 2, sh.z0 + .06, hw * 2 + 1.20, H - DOORH, .12, col.wall,
-          { hard: true, gloss: .12, ...MAT.plaster });
-      for (const s of [-1, 1])
-        box(cx + s * (hw + .30), Y + DOORH / 2, sh.z0 + .06, .60, DOORH, .12, col.wall,
-            { hard: true, gloss: .12, ...MAT.plaster });
-      // brushed steel surround, 20 mm proud of the plaster
-      for (const s of [-1, 1])
-        box(cx + s * (hw + .07), Y + DOORH / 2 + .05, sh.z0 - .01, .14, DOORH + .10, .05, shaftSteel,
-            { hard: true, gloss: .50, tag: '电梯', ...MAT.metal });
-      box(cx, Y + DOORH + .075, sh.z0 - .01, hw * 2 + .42, .14, .05, shaftSteel,
-          { hard: true, gloss: .50, tag: '电梯', ...MAT.metal });
-      // the floor indicator over the doors
-      box(cx, Y + DOORH + .34, sh.z0 - .015, .52, .30, .06, shaftDark,
-          { hard: true, gloss: .34, tag: '电梯' });
-      G(cx, Y + DOORH + .34, sh.z0 - .05, PI, sh === LF ? '十一' : '－',
-        { size: .15, gap: .012, color: C('#ff9a4d'), mode: 1, glow: .16, tag: '电梯' });
-    }
-    // The second shaft is simply shut on every residential floor.
-    const zf = LB.z0;
-    box(LBX, Y + 1.03, zf + .10, .96, 2.02, .05, C('#8d959b'),
-        { hard: true, gloss: .30, ...MAT.metal });
-    box(LBX, Y + 1.03, zf + .066, .90, 1.94, .012, C('#9aa2a8'), { hard: true, gloss: .28 });
-
-    // The fallback call panel keeps older shell implementations usable.
-    const CPX = 3.72, CPZ = LF.z0 - .02;
-    box(CPX, Y + 1.12, CPZ, .13, .22, .04, C('#d9d4c8'), { hard: true, gloss: .34, tag: '电梯' });
-    for (const [dy, ch] of [[.045, '▲'], [-.045, '▼']]) {
-      box(CPX, Y + 1.12 + dy, CPZ - .022, .055, .055, .012, C('#ffbe6a'),
-          { hard: true, mode: 1, glow: .16, tag: '电梯' });
-      G(CPX, Y + 1.12 + dy, CPZ - .036, PI, ch, { size: .038, color: C('#4a3316'), tag: '电梯' });
-    }
-  }
+  // The shell builds a real landing on every deck (SHAFT_DECKS, js/world.js:246), so the
+  // stand-in that used to sit here under `if (!shellLanding)` was dead code. Removed 2026-08-09.
 
   // F11's corridor finish and notice remain authored here even when the shell owns the hardware.
   for (const sh of [LF, LB]) {
