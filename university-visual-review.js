@@ -67,10 +67,11 @@ function pngStats(file){
 }
 
 async function capture(file){
-  // Throw away the first frames after travel so camera easing, material upload, and cutaway state
-  // have settled before the review image is recorded.
-  for(let i=0;i<3;i++){await send('Page.captureScreenshot',{format:'png',fromSurface:true});await sleep(80);}
-  const shot=await send('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false});
+  // Travel already waits for camera easing and material upload. Encoding three additional full
+  // PNGs per view made the software-WebGL runner spend minutes on images we discarded and could
+  // eventually stall DevTools; one final surface capture is the actual review evidence.
+  await sleep(220);
+  const shot=await send('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false},60000);
   const target=path.join(OUTPUT_DIR,file);fs.writeFileSync(target,Buffer.from(shot.data,'base64'));
   return pngStats(target);
 }
@@ -133,6 +134,7 @@ async function main(){
 
   const report=[];
   for(const view of views){
+    console.log(`[${report.length+1}/${views.length}] ${view.building}/F${view.level}/${view.suffix}`);
     const result=await evaluate(`(async()=>{try{
       const at=${JSON.stringify(view.at)},mode=${JSON.stringify(view.mode)};
       window.__game.setPlace(${JSON.stringify(view.place)},at||undefined);
@@ -166,9 +168,13 @@ async function main(){
     const image=await capture(file);
     if(!image.healthy)throw new Error(`${file}: screenshot is blank or visually degenerate: ${JSON.stringify(image)}`);
     report.push({...view,...result,file,image});
+    fs.writeFileSync(path.join(OUTPUT_DIR,'report.json'),JSON.stringify({
+      source:process.env.GITHUB_SHA||'local',complete:false,views:report.length,report,
+      errors:runtimeErrors.slice(0,20),
+    },null,2)+'\n');
   }
   const errors=runtimeErrors.filter(text=>!/favicon|autoplay|Download the React/i.test(text));
-  const output={source:process.env.GITHUB_SHA||'local',views:report.length,report,errors:errors.slice(0,20)};
+  const output={source:process.env.GITHUB_SHA||'local',complete:true,views:report.length,report,errors:errors.slice(0,20)};
   fs.writeFileSync(path.join(OUTPUT_DIR,'report.json'),JSON.stringify(output,null,2)+'\n');
   console.log(JSON.stringify({views:report.length,buildings:[...new Set(report.map(r=>r.buildingId))],
     floors:[...new Set(report.map(r=>`${r.buildingId}/F${r.level}`))].length,
