@@ -230,7 +230,7 @@ CampusFits.register('east', 40, kit => {
   const clinicThing=thing('校医院', 29.55, 3.20, 31, '校医院可以看病。',
     'The campus clinic can treat you.',
     '医院 is a hospital or clinic; 看病 is to see a doctor.', { focus:[27.4,31], reach:2.6 });
-  clinicThing.exit={place:'campus_clinic_f1',at:{x:-3,z:2.5,yaw:Math.PI/2}};
+  clinicThing.exit={place:'campus_clinic_f1',at:{x:-5.2,z:2.5,yaw:Math.PI/2}};
 
   // ---------------------------------------------------------------- compact basketball court
   flat(36, .012, 13, 14, 8, held(col.paveD, S.court),

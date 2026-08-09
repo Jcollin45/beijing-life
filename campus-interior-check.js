@@ -40,6 +40,20 @@ check('game registers blueprint places',/Object\.assign\(PLACES,\s*CampusInterio
 const renderedPrefabCases=new Set([...coreJs.matchAll(/case\s+'(PF-[A-Z0-9-]+)'/g)].map(m=>m[1]));
 const primitiveFallbacks=plan.prefabCatalog.map(p=>p.id).filter(id=>id!=='PF-WALL-RUN'&&!renderedPrefabCases.has(id));
 check('every furniture prefab has a composed renderer',primitiveFallbacks.length===0,primitiveFallbacks.join(','));
+const allFixtures=plan.buildings.flatMap(b=>b.floorsPlan.flatMap(f=>
+  f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects||[])));
+const prefabSpecs=new Map(plan.prefabCatalog.map(p=>[p.id,p]));
+const minimumDetailedParts=new Map([
+  ['PF-BIN',4],['PF-TOILET',6],['PF-BASIN',7],['PF-HANDWASH',7],
+  ['PF-LAB-SINK',8],['PF-EYEWASH',11],['PF-STOOL',13],['PF-SHOWER',9],
+]);
+const architecturalSlabLanguage=/wall|panel|datum|raft|ceiling|floor|rug|mat|runner|line|route|field|inset|marker|curtain|blind|window|glass|glazed|glazing|mirror|sill|headboard|pinboard|rail|divider|partition|curb|drain|grille|threshold|jamb|portal|reveal|canopy|inlay|turning|approach|privacy|identity|feature|acoustic|tactile|welcome|backdrop|circuit|calibration|alignment|work grid|aisle|wheelchair|dining bay/i;
+const furnitureOrEquipmentLanguage=/speaker|side table|tea table|medicine stock|electrical cabinet|coat-hook|\bdesk\b|\bchair\b|\bbench\b|\bcounter\b|\bshelf\b|\blocker\b|\bbed\b|\bsofa\b|\bstool\b|\bkiosk\b|\bappliance\b/i;
+const slabMisuse=allFixtures.filter(o=>o.prefab==='PF-WALL-RUN'&&(
+  (furnitureOrEquipmentLanguage.test(o.label)&&!/headboard|pinboard/i.test(o.label))||
+  !architecturalSlabLanguage.test(`${o.label} ${o.purpose}`)));
+check('wall-run slabs are architectural layers only',slabMisuse.length===0,
+  slabMisuse.slice(0,12).map(o=>o.id).join(','));
 check('eight buildings',counts.buildings===8,counts.buildings);
 check('28 floors',counts.floors===28,counts.floors);
 check('at least the 198 canonical programmed rooms',counts.rooms>=198,counts.rooms);
@@ -47,6 +61,30 @@ check('room count matches generated blueprint',counts.rooms===plan.totals.rooms,
 check('fixture count matches generated blueprint',counts.fixtures===plan.totals.fixtureInstances,`${counts.fixtures}/${plan.totals.fixtureInstances}`);
 check('all canonical plus clinic-alias place keys',keys.length===31,keys.length);
 check('28 unique Lazy floor builders',builders.size===28,builders.size);
+const stairDefects=[];
+for(const b of plan.buildings.filter(b=>b.floors>1))for(const f of b.floorsPlan){
+  const stairs=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects||[]).filter(o=>o.prefab==='PF-STAIR');
+  const requiredSeparation=Math.max(6,Math.hypot(b.localBounds[1]-b.localBounds[0],b.localBounds[3]-b.localBounds[2])/3);
+  let separation=0;
+  for(let i=0;i<stairs.length;i++)for(let j=i+1;j<stairs.length;j++)
+    separation=Math.max(separation,Math.hypot(stairs[i].at[0]-stairs[j].at[0],stairs[i].at[2]-stairs[j].at[2]));
+  if(stairs.length<2||separation<requiredSeparation)
+    stairDefects.push(`${b.id}/F${f.level}:${stairs.length} stairs/${separation.toFixed(2)}m<${requiredSeparation.toFixed(2)}m`);
+}
+check('multi-storey floors have two remote protected stairs',stairDefects.length===0,stairDefects.slice(0,12).join(','));
+const stairSafetyDefects=[];
+for(const b of plan.buildings.filter(b=>b.floors>1))for(const f of b.floorsPlan){
+  const all=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects||[]);
+  for(const stair of all.filter(o=>o.prefab==='PF-STAIR'))for(const required of ['PF-EXIT-SIGN','PF-EMERGENCY-LIGHT']){
+    const matching=all.filter(o=>o.prefab===required);
+    const nearest=Math.min(...matching.map(o=>Math.hypot(o.at[0]-stair.at[0],o.at[2]-stair.at[2])));
+    const linkedAtDoor=matching.some(o=>o.id.startsWith(`${stair.id}/LOCAL-`));
+    if(!linkedAtDoor&&(!Number.isFinite(nearest)||nearest>3.001))
+      stairSafetyDefects.push(`${stair.id}:${required}:${nearest.toFixed(2)}m`);
+  }
+}
+check('every protected stair has local exit marking and emergency light',stairSafetyDefects.length===0,
+  stairSafetyDefects.slice(0,12).join(','));
 
 // A 0.20 m lattice is fine enough to sample a 0.90 m clear door with a 0.30 m player radius;
 // a 0.30 m lattice can alias a valid opening completely depending on the building origin.
@@ -97,6 +135,13 @@ for(const [name,build] of builders){
   check(`${name} finite furniture shadows`,scene&&scene.shadows.every(s=>s.m&&[...s.m].every(Number.isFinite)&&Number.isFinite(s.a)));
   check(`${name} valid collision bodies`,scene&&scene.solids.every(s=>
     [s.x0,s.x1,s.z0,s.z1].every(Number.isFinite)&&s.x1>s.x0&&s.z1>s.z0));
+  const fixtureBodies=scene?scene.solids.filter(s=>s.fixtureId):[],bodyOverlaps=[];
+  for(let i=0;i<fixtureBodies.length;i++)for(let j=i+1;j<fixtureBodies.length;j++){
+    const a=fixtureBodies[i],b=fixtureBodies[j];
+    if(Math.min(a.x1,b.x1)-Math.max(a.x0,b.x0)>.01&&Math.min(a.z1,b.z1)-Math.max(a.z0,b.z0)>.01)
+      bodyOverlaps.push(`${a.fixtureId}<>${b.fixtureId}`);
+  }
+  check(`${name} collision bodies do not overlap`,bodyOverlaps.length===0,bodyOverlaps.slice(0,8).join(','));
   check(`${name} valid camera blockers`,scene&&scene.blockers.every(s=>
     [s.x0,s.x1,s.z0,s.z1,s.top].every(Number.isFinite)&&s.x1>s.x0&&s.z1>s.z0));
   check(`${name} finite authored lights`,scene&&scene.lights.every(l=>
@@ -112,6 +157,14 @@ for(const [name,build] of builders){
 
   const b=plan.buildings.find(q=>q.id===scene.buildingId),f=scene.blueprintFloor;
   const fixtureRows=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects);
+  const bodyIds=new Set(fixtureBodies.map(s=>s.fixtureId));
+  const missingBodies=fixtureRows.filter(o=>{
+    const p=prefabSpecs.get(o.prefab);
+    return p&&p.anchor==='floor'&&o.size[1]>.20&&o.collision!=='none'&&
+      !['PF-EXTINGUISHER','PF-BIN','PF-LIFT'].includes(o.prefab)&&!bodyIds.has(o.id);
+  });
+  check(`${name} physical floor fixtures receive collision bodies`,missingBodies.length===0,
+    missingBodies.slice(0,8).map(o=>o.id).join(','));
   const fixtureIds=fixtureRows.map(o=>o.id);
   const rendered=new Set(scene.props.map(p=>p.tag).filter(Boolean));
   const missing=fixtureIds.filter(id=>!rendered.has(id));
@@ -132,6 +185,10 @@ for(const [name,build] of builders){
   const singlePrimitive=fixtureRows.filter(o=>o.prefab!=='PF-WALL-RUN'&&(partCounts.get(o.id)||0)<2);
   check(`${name} has no single-primitive furniture or equipment`,singlePrimitive.length===0,
     singlePrimitive.slice(0,8).map(o=>`${o.id}:${o.prefab}:${partCounts.get(o.id)||0}`).join(','));
+  const underDetailed=fixtureRows.filter(o=>minimumDetailedParts.has(o.prefab)&&
+    (partCounts.get(o.id)||0)<minimumDetailedParts.get(o.prefab));
+  check(`${name} sanitary and safety prefabs retain detailed compositions`,underDetailed.length===0,
+    underDetailed.slice(0,8).map(o=>`${o.id}:${partCounts.get(o.id)||0}/${minimumDetailedParts.get(o.prefab)}`).join(','));
   const [x0,x1,z0,z1]=b.localBounds;
   check(`${name} spawn inside floor envelope`,scene.spawn.x>=x0&&scene.spawn.x<=x1&&scene.spawn.z>=z0&&scene.spawn.z<=z1,JSON.stringify(scene.spawn));
   const blocked=scene.solids.some(s=>!s.open&&scene.spawn.x>s.x0-.20&&scene.spawn.x<s.x1+.20&&scene.spawn.z>s.z0-.20&&scene.spawn.z<s.z1+.20);
@@ -154,8 +211,30 @@ for(const b of plan.buildings){
     const level=scene.blueprintFloor.level;
     check(`${b.id}/F${level} upward route`,level===b.floors||scene.things.some(t=>t.hz==='上楼'&&t.exit));
     check(`${b.id}/F${level} downward route`,level===1||scene.things.some(t=>t.hz==='下楼'&&t.exit));
+    const verticalCount=scene.blueprintFloor.rooms.flatMap(r=>r.contents).concat(scene.blueprintFloor.sharedObjects||[])
+      .filter(o=>o.prefab==='PF-LIFT'||o.prefab==='PF-STAIR').length;
+    const expectedVerticalLinks=verticalCount*((level<b.floors?1:0)+(level>1?1:0));
+    const actualVerticalLinks=scene.things.filter(t=>(t.hz==='上楼'||t.hz==='下楼')&&t.exit).length;
+    check(`${b.id}/F${level} exposes every lift and protected stair`,actualVerticalLinks===expectedVerticalLinks,
+      `${actualVerticalLinks}/${expectedVerticalLinks}`);
   }
 }
+
+const sceneByPlace=new Map();
+for(const [,scene] of scenes)sceneByPlace.set(vm.runInContext(
+  `CampusInteriors.placeKey(${JSON.stringify(scene.buildingId)},${scene.blueprintFloor.level})`,context),scene);
+const walkByScene=new Map(),verticalLandingDefects=[];
+for(const [,source] of scenes)for(const t of source.things.filter(t=>t.exit&&t.exit.at&&sceneByPlace.has(t.exit.place))){
+  const target=sceneByPlace.get(t.exit.place),at=t.exit.at,b=plan.buildings.find(q=>q.id===target.buildingId);
+  const finite=[at.x,at.z,at.yaw].every(Number.isFinite);
+  const inside=finite&&at.x>=b.localBounds[0]&&at.x<=b.localBounds[1]&&at.z>=b.localBounds[2]&&at.z<=b.localBounds[3];
+  const clear=inside&&!target.solids.some(s=>!s.open&&at.x>s.x0-.30&&at.x<s.x1+.30&&at.z>s.z0-.30&&at.z<s.z1+.30);
+  let walk=walkByScene.get(target);if(!walk){walk=walkMap(target,b);walkByScene.set(target,walk);}
+  const connected=clear&&walk.points.some(([x,z])=>Math.hypot(x-at.x,z-at.z)<=.32);
+  if(!connected)verticalLandingDefects.push(`${source.buildingId}/F${source.blueprintFloor.level}->${t.exit.place}@${JSON.stringify(at)}`);
+}
+check('every authored vertical route lands clear and connected',verticalLandingDefects.length===0,
+  verticalLandingDefects.slice(0,12).join(','));
 
 const totalProps=scenes.reduce((n,[,s])=>n+s.props.length,0);
 const maxProps=scenes.reduce((best,[name,s])=>s.props.length>best.props?{name,props:s.props.length}:best,{name:'',props:0});

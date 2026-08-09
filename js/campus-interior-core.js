@@ -64,12 +64,6 @@ const CampusInteriors = (() => {
       B05:'M-OAK-DARK',B06:'M-LAB-BLUE',B07:'M-WALL-GREEN',B08:'M-BRASS'})[building.id]||'M-OAK';
     const lit=[],lights=[];
     let liveLights=0;
-    const doorClearances=floor.rooms.flatMap(room=>(room.doors||[]).map(d=>{
-      const vertical=d.side==='east'||d.side==='west',half=d.width/2+.32,depth=1.35;
-      return vertical?{x0:d.at[0]-depth,x1:d.at[0]+depth,z0:d.at[2]-half,z1:d.at[2]+half,id:d.id}:
-        {x0:d.at[0]-half,x1:d.at[0]+half,z0:d.at[2]-depth,z1:d.at[2]+depth,id:d.id};
-    }));
-
     const opts = (materialId, extra={}) => {
       // Rounded furniture must use Build's soft-box mesh; `hard:true` forces the old sharp cube
       // and silently ignores the radius. Architectural pieces without a radius stay crisp.
@@ -105,10 +99,8 @@ const CampusInteriors = (() => {
       // tolerance used by hand-built rooms: it prevents a visually clear 0.90–1.20 m doorway
       // from becoming impassable when the player's radius is added to both the wall and a desk.
       const body={x0:x-sw*.40,x1:x+sw*.40,z0:z-sd*.40,z1:z+sd*.40};
-      // Door swings and their 1.35 m approach rectangles are hard keep-clear zones.  A fixture
-      // whose decorative footprint clips that zone remains visible but does not receive a body
-      // collider; this is preferable to an invisible navigation failure in a data-heavy room.
-      if(f.prefab!=='PF-LIFT'&&doorClearances.some(k=>body.x1>k.x0&&body.x0<k.x1&&body.z1>k.z0&&body.z0<k.z1))return;
+      // Never hide a bad layout by silently dropping its collider. Door and route envelopes are
+      // enforced by the blueprint spacing gate, and the runtime flood-fill verifies the result.
       const s=solid(body.x0,body.x1,body.z0,body.z1);
       s.fixtureId=f.id;
     };
@@ -375,9 +367,11 @@ const CampusInteriors = (() => {
     }
 
     const collide=/BED|TABLE|DESK|COUNTER|BENCH|BOOK|SHELF|CABINET|LOCKER|RANGE|FRIDGE|FREEZER|LAB-|FUME|ROBOT|MICRO|EXAM|PHARM|CCTV|WARDROBE|STAIR|TOILET|BASIN|SHOWER|LAUNDRY|WAIT-CHAIRS|LECTURE-SEAT|SELF-CHECK|DIRECTORY/;
+    const nonBodyFloorPrefabs=new Set(['PF-EXTINGUISHER','PF-BIN','PF-LIFT']);
     function renderFixture(f) {
       const p=prefab(f.prefab),size=f.size||p.size,[w,h,d]=size,y=f.at[1]-base;
-      if(f.collision!=='none'&&collide.test(f.prefab)) bodySolid(f,w*.9,d*.9);
+      const physicalFloor=p.anchor==='floor'&&h>.20&&!nonBodyFloorPrefabs.has(f.prefab);
+      if(f.collision!=='none'&&(collide.test(f.prefab)||physicalFloor)) bodySolid(f,w*.9,d*.9);
       if(p.anchor==='floor'&&f.collision!=='none'&&h>.20){
         const c=Math.abs(Math.cos(f.yaw||0)),s=Math.abs(Math.sin(f.yaw||0));
         shade(f.at[0],f.at[2],(c*w+s*d)*.92,(s*w+c*d)*.92,.16,.022);
@@ -424,8 +418,15 @@ const CampusInteriors = (() => {
         case 'PF-CHAIR': case 'PF-LECTURE-SEAT': renderChair(f,w,h,d); break;
         case 'PF-BENCH': renderBench(f,w,h,d); break;
         case 'PF-STOOL':
-          cyl(f.at[0],y+h*.64,f.at[2],w*.42,.08,C0(f.material),opts(f.material,{tag:f.id}));
-          cyl(f.at[0],y+h*.30,f.at[2],.035,h*.58,C0('M-STEEL-DARK'),opts('M-STEEL-DARK',{tag:f.id})); break;
+          localCyl(f,0,y+h*.68,0,w*.40,.10,f.material,{gloss:.08});
+          localCyl(f,0,y+h*.34,0,.035,h*.58,'M-STAINLESS',{gloss:.42});
+          localBall(f,0,y+h*.13,0,.09,.055,.09,'M-STEEL-DARK',{gloss:.28});
+          for(let i=0;i<5;i++){
+            const a=i*Math.PI*2/5,dx=Math.sin(a)*w*.24,dz=Math.cos(a)*d*.24;
+            localBox(f,dx,y+h*.09,dz,w*.42,.035,.035,'M-STEEL-DARK',{ry:a,round:.012});
+            localBall(f,Math.sin(a)*w*.40,y+h*.055,Math.cos(a)*d*.40,.035,.035,.035,'M-STEEL-DARK',{gloss:.32});
+          }
+          break;
         case 'PF-WAIT-CHAIRS':
           for(let i=-1;i<=1;i++){const q={...f,id:`${f.id}/${i}`,at:[...f.at]};[q.at[0],q.at[2]]=rotated(f.at[0],f.at[2],i*w/3,0,f.yaw||0);renderChair(q,w/3*.82,h,d*.85);}
           localBox(f,0,y+.34,0,w,.07,.08,'M-STEEL-DARK'); break;
@@ -447,11 +448,18 @@ const CampusInteriors = (() => {
           renderCabinet(f,w,h,d,2,1,'M-OAK-DARK');
           localBox(f,0,y+h+.03,-d*.08,w*.94,.10,d*.82,f.material);
           localBox(f,w*.24,y+h+.22,-d*.18,.34,.26,.05,'M-SCREEN',{glow:.12}); break;
-        case 'PF-MEETING-TABLE': case 'PF-ART-TABLE': case 'PF-PREP-TABLE': renderTable(f,w,h,d); break;
+        case 'PF-MEETING-TABLE': case 'PF-SIDE-TABLE': case 'PF-ART-TABLE': case 'PF-PREP-TABLE': renderTable(f,w,h,d); break;
         case 'PF-COMPUTER-DESK': case 'PF-LANGUAGE-DESK': case 'PF-OFFICE-DESK': case 'PF-DORM-DESK': renderWorkstation(f,w,h,d); break;
         case 'PF-LAB-BENCH': case 'PF-MICROSCOPE': case 'PF-ROBOTICS': renderWorkstation(f,w,h,d,true); break;
         case 'PF-BOOKCASE': case 'PF-BOOKSTACK': renderShelf(f,w,h,d,true); break;
         case 'PF-SHELF': case 'PF-TRAY-RACK': case 'PF-SHOE-RACK': case 'PF-MUSIC-RACK': renderShelf(f,w,h,d,false); break;
+        case 'PF-SPEAKER':
+          localBox(f,0,y,0,w*.92,h*.96,d*.92,'M-STEEL-DARK',{round:.045,bevel:.018});
+          localBox(f,0,y,-d*.49,w*.78,h*.84,.025,f.material,{round:.035,bevel:.010});
+          localBall(f,0,y-h*.19,-d*.54,w*.27,h*.18,.018,'M-STEEL-DARK',{gloss:.18});
+          localBall(f,0,y+h*.20,-d*.54,w*.17,h*.11,.018,'M-STEEL-DARK',{gloss:.18});
+          localBox(f,w*.31,y+h*.35,-d*.555,.035,.035,.015,'M-SCREEN',{round:.012,glow:.16});
+          localBox(f,0,y+h*.54,d*.38,w*.34,.12,d*.18,'M-STEEL-DARK',{round:.018}); break;
         case 'PF-CIRC-DESK': case 'PF-SERVICE-COUNTER': case 'PF-PHARMACY': case 'PF-CASHIER':
           renderCounter(f,w,h,d,f.prefab==='PF-PHARMACY'); break;
         case 'PF-SELF-CHECK': renderKiosk(f,w,h,d); break;
@@ -538,8 +546,10 @@ const CampusInteriors = (() => {
           } break;
         case 'PF-WATER': renderWaterStation(f,w,h,d); break;
         case 'PF-BIN':
-          cyl(f.at[0],y+h*.48,f.at[2],w*.46,h*.88,C0(f.material),opts(f.material,{tag:f.id}));
-          cyl(f.at[0],y+h*.94,f.at[2],w*.49,h*.08,C0('M-STEEL-DARK'),opts('M-STEEL-DARK',{tag:f.id})); break;
+          localCyl(f,0,y+h*.48,0,w*.45,h*.88,f.material,{gloss:.24});
+          localCyl(f,0,y+h*.93,0,w*.48,h*.08,'M-STEEL-DARK',{gloss:.35});
+          localBox(f,0,y+.04,-d*.40,w*.28,.06,d*.16,'M-STEEL-DARK',{round:.020});
+          localBox(f,0,y+h*.54,-d*.465,w*.42,h*.16,.018,'M-WALL-WHITE',{round:.018}); break;
         case 'PF-AC':
           localBox(f,0,y,0,w,h,d,'M-WALL-WHITE');
           for(let i=-2;i<=2;i++)localBox(f,i*w*.15,y-h*.20,-d*.52,w*.10,.025,.02,'M-STEEL-DARK');
@@ -555,12 +565,40 @@ const CampusInteriors = (() => {
           localBox(f,0,y+.76,d*.35,w*.96,.16,d*.24,'M-WALL-GREEN');
           for(const dx of [-w*.37,w*.37])for(const dz of [-d*.30,d*.30])localBox(f,dx,y+.24,dz,.055,.48,.055,'M-STEEL-DARK'); break;
         case 'PF-TOILET':
-          localBox(f,0,y+.27,0,w,.40,d,'M-CERAMIC'); localBox(f,0,y+.58,d*.28,w*.72,.40,d*.30,'M-CERAMIC'); break;
+          localBall(f,0,y+.21,-d*.05,w*.34,.19,d*.36,'M-CERAMIC',{gloss:.34});
+          localBall(f,0,y+.39,-d*.10,w*.46,.15,d*.40,'M-CERAMIC',{gloss:.40});
+          localBall(f,0,y+.505,-d*.10,w*.43,.025,d*.37,'M-WALL-WHITE',{gloss:.24});
+          localBox(f,0,y+.60,d*.30,w*.70,.34,d*.26,'M-CERAMIC',{round:.055,bevel:.018,gloss:.36});
+          localBox(f,0,y+.79,d*.30,w*.74,.045,d*.30,'M-WALL-WHITE',{round:.025,gloss:.32});
+          localBall(f,w*.22,y+.78,d*.17,.035,.018,.035,'M-STAINLESS',{gloss:.55});
+          if(f.grabRails){
+            localBox(f,w*.45,y+.68,d*.08,.035,.035,d*.60,'M-SAFETY-YELLOW',{round:.012});
+            localBox(f,w*.45,y+.53,d*.35,.035,.34,.035,'M-SAFETY-YELLOW',{round:.012});
+          }
+          break;
         case 'PF-BASIN': case 'PF-HANDWASH': case 'PF-LAB-SINK':
-          localBox(f,0,y+h*.56,0,w,h*.35,d,'M-CERAMIC'); localBox(f,0,y+h*.78,d*.28,.06,h*.34,.06,'M-STAINLESS'); break;
+          {
+            const lab=f.prefab==='PF-LAB-SINK',hand=f.prefab==='PF-HANDWASH',ceramic=lab?'M-STAINLESS':'M-CERAMIC';
+            localBox(f,0,y+h*.53,d*.13,w*(lab ? .98 : .34),h*(lab ? .58 : .48),d*(lab ? .88 : .36),lab?'M-STEEL-DARK':'M-WALL-WHITE',{round:.035,bevel:.014});
+            localBall(f,0,y+h*.68,-d*.04,w*(lab ? .42 : .45),h*.115,d*(lab ? .38 : .43),ceramic,{gloss:.42});
+            localBall(f,0,y+h*.70,-d*.04,w*(lab ? .29 : .32),h*.075,d*(lab ? .27 : .30),'M-STEEL-DARK',{gloss:.38});
+            localCyl(f,0,y+h*.72,-d*.04,.022,.018,'M-STAINLESS',{gloss:.55});
+            localCyl(f,0,y+h*.87,d*.25,.026,h*.30,'M-STAINLESS',{gloss:.52});
+            localBox(f,0,y+h*.99,d*.12,.052,.052,d*.30,'M-STAINLESS',{round:.016});
+            localBox(f,hand?w*.28:-w*.30,y+h*.91,d*.39,w*.16,h*.18,d*.08,hand?'M-WALL-WHITE':'M-LAB-BLUE',{round:.018});
+            if(lab)localBox(f,w*.36,y+h*.72,0,w*.18,.035,d*.72,'M-STAINLESS',{round:.014});
+          }
+          break;
         case 'PF-SHOWER':
-          localBox(f,0,y+.035,0,w,.07,d,'M-TILE-DARK'); localBox(f,w*.47,y+h/2,0,.05,h,d,'M-GLASS',{alpha:.38});
-          localBox(f,0,y+h*.82,d*.44,.05,.05,.05,'M-STAINLESS'); break;
+          localBox(f,0,y+.035,0,w,.07,d,'M-TILE-DARK',{round:.025,bevel:.012});
+          localBox(f,w*.47,y+h/2,0,.04,h*.96,d,'M-GLASS',{alpha:.38,round:.010});
+          localBox(f,0,y+h/2,d*.47,w,h*.96,.04,'M-GLASS',{alpha:.30,round:.010});
+          localBox(f,-w*.34,y+h*.51,d*.40,.045,h*.78,.045,'M-STAINLESS',{round:.014});
+          localBox(f,-w*.34,y+h*.88,d*.22,.045,.045,d*.38,'M-STAINLESS',{round:.014});
+          localCyl(f,-w*.34,y+h*.87,d*.06,w*.13,.035,'M-STAINLESS',{gloss:.46});
+          localBox(f,-w*.34,y+h*.49,d*.38,w*.20,.16,.035,'M-STEEL-DARK',{round:.030});
+          localCyl(f,0,y+.065,0,w*.10,.018,'M-STEEL-DARK',{gloss:.32});
+          localBox(f,w*.34,y+h*.68,-d*.42,.06,.12,.06,'M-BRASS',{round:.018}); break;
         case 'PF-PROJECTOR':
           localBox(f,0,y+.22,0,.035,.44,.035,'M-STEEL-DARK');
           localBox(f,0,y,0,w,h,d,'M-WALL-WHITE');
@@ -602,8 +640,17 @@ const CampusInteriors = (() => {
           localBox(f,w*.07,y-.02,-d*.50,w*.24,.020,.018,'M-SAFETY-RED',{rz:.55,round:.007});
           localBall(f,0,y,-d*.52,.035,.035,.018,'M-BRASS',{gloss:.42}); break;
         case 'PF-EYEWASH':
-          cyl(f.at[0],y+h/2,f.at[2],.045,h,C0('M-SAFETY-YELLOW'),opts('M-SAFETY-YELLOW',{tag:f.id}));
-          localBox(f,0,y+h*.92,0,w,.08,d,f.material); break;
+          localCyl(f,0,y+h*.47,0,.045,h*.90,'M-SAFETY-YELLOW',{gloss:.24});
+          localCyl(f,0,y+h*.43,0,w*.29,.09,'M-STAINLESS',{gloss:.38});
+          localCyl(f,0,y+h*.46,0,w*.23,.035,'M-SCREEN',{gloss:.22});
+          for(const dx of [-w*.16,w*.16]){
+            localBox(f,dx,y+h*.53,0,.035,h*.13,.035,'M-STAINLESS',{round:.010});
+            localBall(f,dx,y+h*.59,0,.055,.035,.055,'M-SAFETY-YELLOW',{gloss:.22});
+          }
+          localBox(f,0,y+h*.91,0,w*.72,.045,.045,'M-SAFETY-YELLOW',{round:.014});
+          localCyl(f,w*.31,y+h*.88,0,w*.14,.045,'M-STAINLESS',{gloss:.40});
+          localBox(f,w*.24,y+h*.28,0,.035,h*.25,.035,'M-SAFETY-YELLOW',{round:.010,rz:-.42});
+          localBox(f,0,y+.025,0,w*.70,.05,d*.70,'M-STEEL-DARK',{round:.025}); break;
         case 'PF-CCTV-DESK':
           renderTable(f,w,h,d,'M-OAK-DARK'); for(const dx of [-.65,-.22,.22,.65])localBox(f,dx,y+h+.27,.05,.36,.30,.05,'M-SCREEN',{glow:.12}); break;
         case 'PF-KEY-CABINET':
@@ -613,6 +660,24 @@ const CampusInteriors = (() => {
             localBox(f,-w*.34+col*w*.17,y-h*.30+row*h*.20,-d*.55,.035,.055,.018,
               (row+col)%3?'M-BRASS':'M-SAFETY-RED',{round:.010});
           localBox(f,w*.42,y,-d*.57,.025,h*.25,.018,'M-STAINLESS',{round:.008}); break;
+        case 'PF-COAT-RAIL':
+          localBox(f,0,y,0,w,.14,d*.52,f.material,{round:.025,bevel:.012});
+          for(let i=0;i<5;i++){
+            const x=-w*.40+i*w*.20;
+            localBox(f,x,y,-d*.30,.028,h*.58,.035,'M-BRASS',{round:.009,rx:-.12});
+            localBox(f,x,y-h*.22,-d*.43,.028,.12,d*.24,'M-BRASS',{round:.009,rx:.38});
+            localBox(f,x,y+h*.20,-d*.39,.028,.10,d*.18,'M-BRASS',{round:.009,rx:-.28});
+          }
+          localBox(f,-w*.43,y,0,.045,.22,d*.74,'M-STEEL-DARK',{round:.010});
+          localBox(f,w*.43,y,0,.045,.22,d*.74,'M-STEEL-DARK',{round:.010}); break;
+        case 'PF-ELECTRICAL-CABINET':
+          localBox(f,0,y,0,w,h,d,'M-STEEL-DARK',{round:.018,bevel:.012});
+          localBox(f,0,y,-d*.48,w*.88,h*.91,.025,'M-STEEL',{round:.012,bevel:.008});
+          for(let row=0;row<4;row++)for(let col=0;col<3;col++)
+            localBox(f,-w*.25+col*w*.25,y-h*.29+row*h*.18,-d*.55,w*.16,h*.075,.018,
+              row===0?'M-SAFETY-YELLOW':'M-STEEL-DARK',{round:.008});
+          localBox(f,w*.40,y,-d*.575,.025,h*.22,.018,'M-STAINLESS',{round:.008});
+          localBox(f,-w*.27,y+h*.36,-d*.575,w*.25,h*.12,.018,'M-SAFETY-YELLOW',{round:.010}); break;
         case 'PF-DOOR-SINGLE': case 'PF-DOOR-DOUBLE':
           localBox(f,0,y+h/2,0,w,h,d,'M-STEEL-DARK',{round:.018,bevel:.010});
           localBox(f,0,y+h*.49,-d*.20,w*.88,h*.92,d*.70,f.material,{round:.014,alpha:f.prefab==='PF-DOOR-DOUBLE'?.48:undefined});
@@ -664,7 +729,8 @@ const CampusInteriors = (() => {
       t.exit={place:'campus',at:{x:p.campusReturn[0],z:p.campusReturn[1],yaw:p.campusReturn[2]}};
     }
 
-    const nav=allObjects(floor).find(o=>o.prefab==='PF-LIFT')||allObjects(floor).find(o=>o.prefab==='PF-STAIR');
+    const navObjects=allObjects(floor).filter(o=>o.prefab==='PF-LIFT'||o.prefab==='PF-STAIR');
+    const nav=navObjects.find(o=>o.prefab==='PF-LIFT')||navObjects[0];
     const navAt=nav?[nav.at[0],nav.at[2]]:[CX,CZ];
     // Find a real body-clear landing in this already-built scene.  An authored lift anchor is the
     // centre of the car and therefore cannot itself be a spawn; circulation rectangles supply the
@@ -685,28 +751,38 @@ const CampusInteriors = (() => {
       const good=candidates.filter(([x,z])=>clearAt(x,z));
       const at=good[0]||[CX,CZ,0]; return {x:at[0],z:at[1],yaw:at[2]};
     };
-    const navApproach=()=>{
+    const navApproach=(targetAt=navAt,onFloor=floor,useRuntimeClearance=true)=>{
       const candidates=[];
-      for(const route of floor.circulation||[]){
+      for(const route of onFloor.circulation||[]){
         const [a,b,c,d]=route.bounds,pad=Math.min(.42,(b-a)/2,(d-c)/2);
-        const px=clamp(navAt[0],a+pad,b-pad),pz=clamp(navAt[1],c+pad,d-pad);
+        const px=clamp(targetAt[0],a+pad,b-pad),pz=clamp(targetAt[1],c+pad,d-pad);
         candidates.push([px,pz],[(a+b)/2,(c+d)/2],[px,(c+d)/2],[(a+b)/2,pz]);
       }
-      candidates.sort((u,v)=>Math.hypot(u[0]-navAt[0],u[1]-navAt[1])-Math.hypot(v[0]-navAt[0],v[1]-navAt[1]));
-      const at=candidates.find(([x,z])=>clearAt(x,z))||Object.values(arrivalHere());
+      candidates.sort((u,v)=>Math.hypot(u[0]-targetAt[0],u[1]-targetAt[1])-Math.hypot(v[0]-targetAt[0],v[1]-targetAt[1]));
+      const at=(useRuntimeClearance?candidates.find(([x,z])=>clearAt(x,z)):candidates[0])||Object.values(arrivalHere());
       return{x:at[0],z:at[1]};
     };
-    const navLanding=navApproach();
-    if(floor.level<building.floors){
-      const t=thing('上楼',navAt[0]-.45,1.15,navAt[1],'上楼去下一层。','Go up to the next floor.','上 up + 楼 floor.',
-        {focus:[navLanding.x,navLanding.z],reach:1.8});
-      // Omit `at`: the destination floor computes its own collision-checked landing when built.
-      t.exit={place:placeKey(building.id,floor.level+1)};
-    }
-    if(floor.level>1){
-      const t=thing('下楼',navAt[0]+.45,1.15,navAt[1],'下楼去前一层。','Go down to the previous floor.','下 down + 楼 floor.',
-        {focus:[navLanding.x,navLanding.z],reach:1.8});
-      t.exit={place:placeKey(building.id,floor.level-1)};
+    for(const vertical of navObjects){
+      const verticalAt=[vertical.at[0],vertical.at[2]],landing=navApproach(verticalAt);
+      const via=vertical.prefab==='PF-LIFT'?'电梯':'安全楼梯',viaEn=vertical.prefab==='PF-LIFT'?'lift':'protected stair';
+      const destinationAt=targetLevel=>{
+        const targetFloor=building.floorsPlan.find(q=>q.level===targetLevel);
+        const suffix=vertical.id.replace(/^B\d+\/F\d+\//,'');
+        const targetVertical=targetFloor&&allObjects(targetFloor).find(q=>q.id.replace(/^B\d+\/F\d+\//,'')===suffix);
+        const targetAt=targetVertical?[targetVertical.at[0],targetVertical.at[2]]:verticalAt;
+        const targetLanding=targetFloor?navApproach(targetAt,targetFloor,false):landing;
+        return{x:targetLanding.x,z:targetLanding.z,yaw:Math.atan2(targetAt[0]-targetLanding.x,targetAt[1]-targetLanding.z)};
+      };
+      if(floor.level<building.floors){
+        const t=thing('上楼',verticalAt[0]-.34,1.15,verticalAt[1],`从${via}上楼。`,`Go up via this ${viaEn}.`,'上 up + 楼 floor.',
+          {focus:[landing.x,landing.z],reach:1.8});
+        t.exit={place:placeKey(building.id,floor.level+1),at:destinationAt(floor.level+1)};
+      }
+      if(floor.level>1){
+        const t=thing('下楼',verticalAt[0]+.34,1.15,verticalAt[1],`从${via}下楼。`,`Go down via this ${viaEn}.`,'下 down + 楼 floor.',
+          {focus:[landing.x,landing.z],reach:1.8});
+        t.exit={place:placeKey(building.id,floor.level-1),at:destinationAt(floor.level-1)};
+      }
     }
 
     // Preserve the two original showcase rooms as optional rooms reached from their blueprint
@@ -732,13 +808,25 @@ const CampusInteriors = (() => {
     const publicPortal=portals.find(p=>p.id===entryPortalId)||portals[0];
     function publicArrival(p) {
       const [sx,,sz,yaw]=p.localSpawn;
+      // Stay in the authored entrance room/route that contains the threshold. Without this
+      // boundary, a long clear ray can pass through an internal doorway and place the player in
+      // an unrelated room (the compact B08 vestibule previously admitted the WC as a candidate).
+      const entryZone=[...floor.rooms,...(floor.circulation||[])]
+        .filter(q=>sx>=q.bounds[0]&&sx<=q.bounds[1]&&sz>=q.bounds[2]&&sz<=q.bounds[3])
+        .sort((a,b)=>(a.bounds[1]-a.bounds[0])*(a.bounds[3]-a.bounds[2])-
+          (b.bounds[1]-b.bounds[0])*(b.bounds[3]-b.bounds[2]))[0];
+      const staysInEntryZone=(x,z)=>{
+        if(!entryZone)return true;
+        const [a,b,c,d]=entryZone.bounds,pad=Math.max(.05,Math.min(.32,(b-a)/2-.05,(d-c)/2-.05));
+        return x>=a+pad&&x<=b-pad&&z>=c+pad&&z<=d-pad;
+      };
       // The blueprint point is the vestibule threshold.  A third-person camera needs another
       // pace behind it, so arrive farther along the same accessible line when that point is clear.
       for(const distance of [3.6,3.2,2.8,2.4,2.0,1.6,1.2,.8,.4,0]){
         for(const side of [0,.8,-.8,1.2,-1.2]){
           const x=sx+Math.sin(yaw)*distance+Math.cos(yaw)*side;
           const z=sz+Math.cos(yaw)*distance-Math.sin(yaw)*side;
-          if(x>x0+.45&&x<x1-.45&&z>z0+.45&&z<z1-.45&&clearAt(x,z))return{x,z,yaw};
+          if(x>x0+.45&&x<x1-.45&&z>z0+.45&&z<z1-.45&&staysInEntryZone(x,z)&&clearAt(x,z))return{x,z,yaw};
         }
       }
       return{x:sx,z:sz,yaw};
