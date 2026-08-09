@@ -41,7 +41,7 @@ const ZooArtInfrastructure = (() => {
       bambooD: tone('bambooD', '#5e7a33'),
       willow: tone('willow', '#6d8f45'),
       steelD: tone('steelD', '#7b8288'),
-      soil: tone('soil', '#5b4937'),
+      soil: tone('soil', '#6d583d'),
     });
 
     const props = [];
@@ -149,7 +149,6 @@ const ZooArtInfrastructure = (() => {
       shrub(-33.18, 20.54, .46, .34, .20, P.leafD);
       box(-29.30, .21, 20.58, 1.12, .42, .50, P.brick);
       shrub(-29.30, 20.63, .46, .34, .20, P.leafL);
-      box(-33.66, 1.38, 20.65, .18, 2.18, .16, P.timberD);
     });
 
     // B03 repeats the same civic vocabulary at a wider scale while keeping the x=45..47 apron and
@@ -161,7 +160,6 @@ const ZooArtInfrastructure = (() => {
       shrub(43.22, 20.54, .48, .35, .20, P.leafD);
       box(48.78, .21, 20.58, 1.18, .42, .50, P.brick);
       shrub(48.78, 20.63, .48, .35, .20, P.leafL);
-      box(49.46, 1.38, 20.65, .18, 2.18, .16, P.timberD);
     });
 
     // B04: substantial ridge, fascia and west-side timber screens enrich the lakeside pavilion.
@@ -169,8 +167,14 @@ const ZooArtInfrastructure = (() => {
     section('B04-LAKE-PAVILION', () => {
       box(-11.00, 4.34, 29.50, 2.60, .12, .16, P.roofD);
       finial(-11.00, 4.68, 29.50, .42, .58, .42, P.roofD);
-      box(-12.62, 1.66, 28.42, .16, 2.42, 1.02, P.timberD);
-      box(-12.62, 1.66, 30.58, .16, 2.42, 1.02, P.timberD);
+      // Open lattice bays replace the two opaque metre-wide slabs on the shore-facing elevation.
+      // Rounded uprights and one recessed rail preserve the pavilion rhythm without hiding the
+      // counter, birds or water behind solid brown panels.
+      for (const z of [28.42, 30.58]) {
+        trunk(-12.62, 1.66, z - .30, .07, 2.42, .07, P.timberD);
+        trunk(-12.62, 1.66, z + .30, .07, 2.42, .07, P.timberD);
+        box(-12.62, 1.68, z, .14, .11, .72, P.timber);
+      }
       box(-11.00, 3.66, 31.38, 3.10, .22, .16, P.timber);
       box(-11.00, 3.66, 27.62, 3.10, .22, .16, P.timber);
     });
@@ -228,24 +232,22 @@ const ZooArtInfrastructure = (() => {
       trunk(34.00,2.00,47.30,.28,4.00,.28,P.timberD);
       trunk(42.50,2.25,57.00,.30,4.50,.30,P.timberD);
       trunk(37.60,1.70,58.20,.25,3.40,.25,P.timber);
-      canopy(34.00,3.75,47.30,1.70,1.10,1.40,P.leafD);
-      canopy(35.20,4.10,47.00,1.40,.90,1.20,P.leaf);
-      canopy(42.50,4.25,57.00,2.00,1.20,1.60,P.leafD);
-      canopy(44.00,4.55,56.60,1.55,.95,1.40,P.leafL);
-      canopy(37.50,3.20,58.20,1.40,.90,1.25,P.leaf);
-      canopy(36.40,3.45,58.00,1.10,.75,1.00,P.leafL);
-      shrub(30.15,47.25,.78,.55,.88,P.leafD);
-      shrub(46.35,57.35,.82,.58,.92,P.leafL);
+      canopy(34.00,3.75,47.30,2.10,1.30,1.72,P.leafD);
+      canopy(35.20,4.10,47.00,1.72,1.02,1.42,P.leaf);
+      canopy(42.50,4.25,57.00,2.35,1.38,1.92,P.leafD);
+      canopy(44.00,4.55,56.60,1.82,1.08,1.62,P.leafL);
+      canopy(37.50,3.20,58.20,1.68,1.02,1.48,P.leaf);
+      canopy(36.40,3.45,58.00,1.32,.88,1.18,P.leafL);
+      shrub(30.15,47.25,1.02,.72,1.12,P.leafD);
+      shrub(46.35,57.35,1.04,.74,1.16,P.leafL);
+      shrub(33.65,56.90,1.02,1.02,1.12,P.leafD);
     });
 
-    // Three junction verges receive the same low brick-and-plant marker.  Each is placed in a
-    // diagonal corner beyond both intersecting path envelopes and away from mapped civic fixtures.
+    // Three junction verges receive loose, low planting in diagonal corners beyond both path
+    // envelopes.  Omitting redundant brick troughs keeps these route edges soft and uncluttered.
     section('JUNCTION-VERGES', () => {
-      box(-22.66, .16, 20.74, 1.08, .32, .58, P.brick);
       shrub(-22.66, 20.76, .46, .29, .22, P.willow);
-      box(4.95, .16, 20.74, .70, .32, .58, P.brick);
       shrub(4.95, 20.76, .28, .29, .22, P.willow);
-      box(.96, .16, 42.76, .78, .32, .54, P.brick);
       shrub(.96, 42.77, .32, .27, .20, P.willow);
     });
 

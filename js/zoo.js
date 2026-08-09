@@ -625,9 +625,12 @@ const Zoo = Lazy('Zoo', () => {
   // round garden. Monochrome stone keeps the mascot from being mistaken for a panda loose outside
   // its yard; the ring of seasonal colour is the part meant to catch the eye from the station.
   function entranceGarden(cx, cz) {
-    cyl(cx, .15, cz, 1.48, .30, col.conc,
-      { tag: '动物园', gloss: G.matte, ...MAT.concF });
-    cyl(cx, .34, cz, 1.27, .16, col.grassD, { tag: '动物园', gloss: .10 });
+    // Flattened ellipsoids keep the same footprint and collider as the former stacked cylinders,
+    // but give the arrival bed a weathered, planted edge instead of two perfect drum-shaped tiers.
+    ball(cx, .16, cz, 1.48, .16, 1.43, col.conc,
+      { tag: '动物园', gloss: G.matte, mode: 10, ...MAT.concF });
+    ball(cx, .34, cz, 1.27, .10, 1.18, col.grassD,
+      { tag: '动物园', gloss: .10, mode: 10 });
 
     // A seated stone panda, facing the gate (-z).
     ball(cx, .68, cz + .02, .30, .37, .27, col.stoneL,
@@ -652,13 +655,20 @@ const Zoo = Lazy('Zoo', () => {
     // Flowers are kept as broad low clumps, not dozens of individual stems: at entrance distance
     // the colour mass is what reads, and the shared ball mesh keeps the garden cheap to draw.
     const petals = [col.pink, col.purple, col.white];
-    for (let i = 0; i < 6; i++) {
-      const a = i / 6 * Math.PI * 2 + (i % 2) * .14, r = 1.68 + (i % 2) * .10;
+    // Six clumps retain the original budget and clearances, but uneven angles, radii and footprints
+    // stop the foreground planting reading as beads placed on a mathematical circle.
+    const flowerRing = [
+      [-2.78, 1.69, .34, .24], [-1.70, 1.80, .29, .36], [-.63, 1.65, .39, .25],
+      [ .30, 1.77, .31, .35], [ 1.46, 1.66, .37, .27], [ 2.54, 1.76, .30, .34],
+    ];
+    for (let i = 0; i < flowerRing.length; i++) {
+      const [a, r, rx, rz] = flowerRing[i];
       const x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
-      ball(x, .20 + (i % 3) * .025, z, .30, .16, .30, col.leafM,
-        { gloss: .08, mode: 15 });
-      ball(x, .34 + (i % 2) * .025, z, .16, .11, .16, petals[i % petals.length],
-        { gloss: .14, mode: 15 });
+      ball(x, .19 + (i % 3) * .020, z, rx, .15, rz, col.leafM,
+        { gloss: .08, mode: 15, ry: a * .37 });
+      ball(x + Math.sin(a + .65) * .035, .32 + (i % 2) * .025,
+        z + Math.cos(a + .65) * .035, rx * .52, .10, rz * .52,
+        petals[i % petals.length], { gloss: .14, mode: 15, ry: -.28 * a });
     }
     shade(cx, cz, 4.3, 4.3, .30);
     solid(cx - 1.52, cx + 1.52, cz - 1.52, cz + 1.52);
@@ -1167,7 +1177,7 @@ const Zoo = Lazy('Zoo', () => {
       for (const s of [-1, 1])
         cyl(MPX + s * 1.18, .82, MPZ, .06, 1.64, col.steelD,
           { tag: '导游图', gloss: G.metal });
-      const mapBacking = box(MPX, 1.78, MPZ, 3.05, 2.02, .10, col.white,
+      const mapBacking = box(MPX, 1.78, MPZ, 3.05, 2.02, .10, col.cream,
         { tag: '导游图', hard: true, gloss: .22 });
       box(MPX, 1.68, MPZ - .06, 2.79, 1.60, .02, col.grassD,
         { tag: '导游图', hard: true, mode: 1 });
@@ -1175,9 +1185,12 @@ const Zoo = Lazy('Zoo', () => {
         { size: .14, gap: .040, color: col.charcoal, mode: 1, tag: '导游图' });
       glyphs(MPX + 1.15, 2.58, MPZ - .08, Math.PI, '北',
         { size: .13, gap: 0, color: col.red, mode: 1, tag: '导游图' });
-      box(MPX, 2.82, MPZ - .10, 1.45, .10, .34, col.charcoal,
-        { tag: '导游图', hard: true, gloss: .24 });
-      litten(box(MPX, 2.76, MPZ - .24, 1.20, .035, .12, C('#ffe6ae'),
+      // A rounded green cap ties this freestanding board to the gate and panda-house roofs. It
+      // replaces the small black lamp brick at the same prop count, with the warm strip recessed
+      // beneath it so the diagram remains the focus.
+      capsule(MPX, 2.82, MPZ - .10, .10, 3.22, .15, col.roofGD,
+        { tag: '导游图', rz: Math.PI / 2, gloss: .22, ...MAT.roof });
+      litten(box(MPX, 2.76, MPZ - .24, 2.34, .035, .10, C('#ffe6ae'),
         { tag: '导游图', hard: true, mode: 1, glow: .06 }), .70);
       const mapLamp = light(MPX, 2.66, MPZ - .34, [1.00, .88, .67], .48, 2.8);
 

@@ -25,10 +25,10 @@ const ZooArtEast = (() => {
 
     const color = typeof C === 'function' ? C : value => value;
     const P = Object.freeze({
-      redEarth: color('#8a6545'),
-      redEarthDark: color('#6f5038'),
-      dust: color('#b48b5f'),
-      dryGrass: color('#8a8753'),
+      redEarth: color('#95714f'),
+      redEarthDark: color('#78563e'),
+      dust: color('#b99a70'),
+      dryGrass: color('#92915d'),
       straw: color('#a79a63'),
       sand: color('#b9a06f'),
       mud: color('#6b583c'),
@@ -159,10 +159,10 @@ const ZooArtEast = (() => {
       // Broad overlapping earth lenses keep the reserve warm without drawing a ruler-straight
       // red rectangle over the canonical grass.  At art LOD range the underlying substrate now
       // returns gradually around an irregular edge rather than changing the whole pen at once.
-      patch('H40', add, 29.25, 1.70, 5.10, 8.00, P.redEarth,
-        { gloss: .045 });
-      patch('H40', add, 32.20, 6.00, 3.70, 7.80, P.redEarthDark,
-        { gloss: .055, y:.029 });
+      patch('H40', add, 29.25, 1.70, 4.65, 6.80, P.redEarth,
+        { gloss: .045, ry:.08 });
+      patch('H40', add, 32.20, 6.00, 3.10, 5.60, P.redEarthDark,
+        { gloss: .055, y:.029, ry:-.10 });
       // H40's canonical pool already owns this water plane; a second near-identical quad made the
       // surface flicker and read as a blue tile laid over the basin.
       patch('H40', add, 28.25, 6.55, 1.70, 1.40, P.dust,

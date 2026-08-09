@@ -1045,10 +1045,13 @@ const ZooExpansion = (() => {
       const habitat = habitats.get(rec.habitat);
       const accent = DISTRICT_ACCENT[habitat.district] || P.green;
       const facts = BOARD_FACTS[rec.hz] || [`${rec.hz}需要安静环境`, `请在参观时保持距离`];
-      const p = mark(box(x, y, z, 1.82, 1.28, .12, P.charcoal,
+      // A rounded enamel plaque on one district-colour pedestal keeps the full interpretation
+      // area without placing a black rectangular slab across every animal sightline.  It uses the
+      // same two-prop budget as the former backing/strip pair and remains the tagged pick target.
+      const p = mark(ball(x, y, z, .91, .64, .065, P.charcoal,
         { tag: rec.hz, hard: true, gloss: .10, ry: yaw }), rec.id);
-      box(x, y + .58, z, 1.92, .11, .16, accent,
-        { tag: rec.hz, hard: true, gloss: .18, ry: yaw });
+      cyl(x, .23, z, .075, .46, accent,
+        { tag: rec.hz, hard: true, gloss: .18 });
       const c = Math.cos(yaw), s = Math.sin(yaw);
       const point = (u, v, d = .072) => [x + c * u + s * d, y + v, z - s * u + c * d];
       const write = (u, v, text, size, color = P.cream, gap = size * .12) => {
@@ -1095,8 +1098,8 @@ const ZooExpansion = (() => {
         `这里是${rec.hz}的生活区。`, `This is the ${rec.hz} habitat.`,
         `The interpretation board and viewing position are compiled from ${rec.habitat}.`,
         { tag: rec.hz, focus: rec.focus, reach: rec.reach }, rec.id);
-      // The backing and district strip remain as the distant silhouette; relief, facts and small
-      // type collapse at the plan's 28 m sign-detail threshold.
+      // The plaque and district pedestal remain as the distant silhouette; relief, facts and
+      // small type collapse at the plan's 28 m sign-detail threshold.
       p.zooLodMax=42;
       if(props[propStart+1])props[propStart+1].zooLodMax=42;
       props.slice(propStart + 2).forEach(p => { p.zooLodMax = 28; });
@@ -1151,11 +1154,19 @@ const ZooExpansion = (() => {
             { hard: true, gloss: .52, ...MAT.steel });
         }
       } else {
-        p = box(x, h / 2, z, w, h, d, P.brick,
-          { hard: true, gloss: .08, ...MAT.brick });
+        // Match the two civic hubs to their authored material descriptions.  Treating every
+        // opaque shell as red brick made B02 and B03 read as oversized habitat sheds in the
+        // northbound views; rendered masonry and warm stone retain the identical wall rectangles,
+        // solids and stable IDs while giving each public building its intended scale and purpose.
+        const rendered = b.id === 'B02-west-restroom';
+        const stoneHub = b.id === 'B03-east-rest-hub';
+        const wallColor = rendered ? P.render : stoneHub ? P.rock : P.brick;
+        const wallMaterial = rendered || stoneHub ? MAT.concrete : MAT.brick;
+        p = box(x, h / 2, z, w, h, d, wallColor,
+          { hard: true, gloss: rendered ? .06 : .08, ...wallMaterial });
         box(x, h * .70, z,
           side[0] === 'x' ? t + .025 : w, .13,
-          side[0] === 'z' ? t + .025 : d, P.timberD,
+          side[0] === 'z' ? t + .025 : d, rendered ? P.tile : P.timberD,
           { hard: true, gloss: .14, ...MAT.timber });
       }
       mark(p, id); solid(...rect); blocker(...rect, h + .3);
@@ -1461,8 +1472,13 @@ const ZooExpansion = (() => {
       const counter = b.rooms.find(r => r.id === 'tea-counter');
       if (counter) {
         const [cx, cz] = center(counter.rect), [cw, cd] = dims(counter.rect);
-        box(cx, 1.03, cz, cw, 1.05, cd, P.timberD,
+        // Keep the exact counter footprint for collision, but lower the cabinetry and cap it with
+        // a distinct serving top.  From the west shore this reads as furniture beneath the open
+        // pavilion rather than another full-height timber wall.
+        box(cx, .66, cz, cw, .66, cd, P.timberD,
           { hard: true, gloss: .16, ...MAT.timber });
+        box(cx, 1.03, cz, cw + .14, .12, cd + .14, P.timber,
+          { hard: true, gloss: .18, ...MAT.timber });
         solid(...counter.rect);
       }
       const seating = b.rooms.find(r => r.id === 'seating');
@@ -1470,6 +1486,8 @@ const ZooExpansion = (() => {
         const [sx, sz] = center(seating.rect);
         box(sx, .93, sz, .82, .10, 1.55, P.timber,
           { hard: true, gloss: .16, ...MAT.timber });
+        cyl(sx, .46, sz, .085, .88, P.timberD,
+          { gloss: .16, ...MAT.timber });
       }
       counts.buildings++;
     }
@@ -1642,11 +1660,13 @@ const ZooExpansion = (() => {
         { tag, hard: true, gloss: .16, ry: yaw, ...MAT.timber }), rec.id);
       // `faceYaw` points from the seat toward the exhibit/focus; the backrest belongs behind it.
       const [bx, bz] = atLocal(0, -.25);
-      box(bx, .87, bz, 1.50, .72, .10, P.timber,
+      // A lower back rail preserves the exact scheduled seat and collision envelope without the
+      // billboard-like timber slab that dominated the highlands forecourt view.
+      box(bx, .84, bz, 1.50, .42, .10, P.timber,
         { tag, hard: true, gloss: .16, ry: yaw, ...MAT.timber });
       for (const u of [-.58, .58]) {
         const [lx, lz] = atLocal(u, .02);
-        box(lx, .25, lz, .10, .50, .42, P.steelD,
+        box(lx, .25, lz, .09, .44, .30, P.steelD,
           { tag, hard: true, gloss: .44, ry: yaw, ...MAT.steel });
       }
       const ex = plan.objectScheduleContract.benches.bodyHalfExtents;
@@ -1866,17 +1886,22 @@ const ZooExpansion = (() => {
     });
     plan.wayfinding.fingerposts.forEach(rec => {
       const [x, z] = rec.at;
-      mark(cyl(x, 1.28, z, .075, 2.56, P.steelD,
+      mark(cyl(x, 1.40, z, .070, 2.80, P.steelD,
         { gloss: .52, ...MAT.steel }), rec.id);
       rec.arms.forEach((label, i) => {
         const yaw = i === 0 ? Math.PI / 2 : i === 1 ? -Math.PI / 2 : Math.PI;
-        const y = 2.12 - i * .36, nx = Math.sin(yaw), nz = Math.cos(yaw);
-        const district=armDistrict[label],armColor= district ?
-          districtColors[plan.wayfinding.districtColors[district]] : P.tile;
-        box(x + nx * .44, y, z + nz * .44, 1.24, .28, .08, armColor,
+        const y = 2.48 - i * .30, nx = Math.sin(yaw), nz = Math.cos(yaw),
+          tx=Math.cos(yaw),tz=-Math.sin(yaw),district=armDistrict[label],
+          armColor=district?districtColors[plan.wayfinding.districtColors[district]]:P.gold,
+          ax=x+nx*.36,az=z+nz*.36;
+        // Deep green keeps the compact arms cohesive; one narrow district-colour end tab repeats
+        // the canonical wayfinding identity without turning the whole sign into a route barrier.
+        box(ax, y, az, 1.00, .22, .065, P.tile,
           { hard: true, gloss: .16, ry: yaw });
-        glyphs(x + nx * .486, y, z + nz * .486, yaw, label,
-          { size: .105, gap: .012, color: P.cream, mode: 1 });
+        box(ax+tx*.43,y,az+tz*.43,.12,.22,.068,armColor,
+          {hard:true,gloss:.18,ry:yaw});
+        glyphs(x + nx * .402, y, z + nz * .402, yaw, label,
+          { size: .092, gap: .010, color: P.cream, mode: 1 });
       });
       // Fingerposts are visual-only and the blueprint places them in the paved junction verge,
       // diagonally clear of both crossing route centrelines and the labelled ground medallion.

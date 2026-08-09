@@ -108,8 +108,13 @@ const ZooArtWest = (() => {
 
     function reed(code, add, x, z, height, width = .20, dark = false) {
       inside(code, x, z, width / 2, width / 2);
-      return add(taper(x, height / 2, z, width, height, width,
-        dark ? P.reedDark : P.reed, { mode: 15, gloss: .035 }), VEGETATION_LOD);
+      // A narrow, gently leaning blade reads as marsh growth; the former square-section upright
+      // repeated as a row of green stakes in the long wetland view. This remains one prop per clump.
+      const leanX = Math.sin(x * 1.73 + z * .91) * .050;
+      const leanZ = Math.cos(x * .83 - z * 1.37) * .042;
+      return add(taper(x, height / 2, z, width * .72, height, width * .46,
+        dark ? P.reedDark : P.reed,
+        { mode: 15, gloss: .035, rx: leanZ, rz: leanX }), VEGETATION_LOD);
     }
 
     function pine(code, add, x, z, height, spread) {
@@ -128,14 +133,17 @@ const ZooArtWest = (() => {
       // irregular bank wear; a second full rectangle made the habitat look like a tiled basin.
       surface('H10', add, -43.12, -5.15, .46, 6.05, P.waterEdge,
         { mode: 16, gloss: .24, ry: -.025, y: .040 });
-      patch('H10', add, -41.55, -4.95, 1.04, 2.72, P.wetEarth, { ry: .08 });
+      // Pull the irregular bank skin toward the public edge. Its curved outline now breaks the
+      // canonical rock-bank rectangle while remaining behind the barrier and clear of every otter.
+      patch('H10', add, -40.30, -4.95, .72, 2.60, P.wetEarth, { ry: .035 });
       patch('H10', add, -47.75, -3.45, .74, .23, P.mud, { ry: .18, gloss: .08 });
       // H10/OPS01 owns the feed position at (-42,-7.3); keep its silhouette unobstructed.
       stone('H10', add, -40.65, -2.55, .50, .30, .38, P.scree);
       reed('H10', add, -48.15, -7.45, 1.05, .22, true);
       reed('H10', add, -47.35, -2.25, .84, .18);
-      reed('H10', add, -43.62, -7.72, .92, .20);
-      reed('H10', add, -43.48, -2.38, 1.12, .22, true);
+      // Paired near-bank blades frame the viewing window instead of forming another mid-pool row.
+      reed('H10', add, -40.08, -7.72, .92, .20);
+      reed('H10', add, -40.10, -2.38, 1.12, .22, true);
       stone('H10', add, -41.25, -7.95, .34, .20, .27, P.screeLight);
       patch('H10', add, -40.45, -6.15, .28, .70, P.mud, { ry: -.10, gloss: .07 });
     }

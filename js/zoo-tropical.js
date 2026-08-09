@@ -362,56 +362,91 @@ const ZooTropical = Lazy('ZooTropical', () => {
     for (const o of S.objects) {
       const [x,y,z]=o.at;
       if (o.type === 'desk') {
-        const dx=-10.46,dz=1.40,yaw=o.yaw||0,nx=Math.sin(yaw),nz=Math.cos(yaw);
-        box(dx,.55,dz,1.45,1.0,.62,col.trunk,
+        const dx=-10.46,dz=1.40,yaw=o.yaw||0,nx=Math.sin(yaw),nz=Math.cos(yaw),
+          tx=Math.cos(yaw),tz=-Math.sin(yaw);
+        // An open framed concierge desk reads from both directions through the entry glass.  The
+        // old waist-high cuboid presented a featureless brown wall to arriving visitors even
+        // though its working face correctly served the interior side.
+        box(dx,.13,dz,1.38,.14,.56,col.trunkD,
           {hard:true,ry:yaw,...tagged(o.id,'服务台'),mat:'wood',matScale:.7,matAmt:.34});
-        box(dx,1.09,dz,1.57,.10,.74,col.cream,{hard:true,ry:yaw,tag:'服务台'});
-        box(dx+nx*.322,.69,dz+nz*.322,1.12,.46,.035,col.trunkD,
-          {hard:true,ry:yaw,tag:'服务台',mat:'wood',matScale:.6,matAmt:.28});
-        glyphs(dx+nx*.345,.72,dz+nz*.345,yaw,'服务台',
-          {size:.13,color:col.cream,mode:1,tag:'服务台'});
+        for(const s of [-1,1])
+          taper(dx+tx*s*.56,.56,dz+tz*s*.56,.18,.78,.48,col.trunk,
+            {hard:true,ry:yaw,tag:'服务台',blueprintId:o.id+'/G0'+(s<0?1:2),
+              mat:'wood',matScale:.7,matAmt:.34});
+        box(dx,1.04,dz,1.57,.10,.70,col.cream,
+          {hard:true,ry:yaw,tag:'服务台',blueprintId:o.id+'/G03'});
+        // The working fascia faces into the house; a matching slim arrival-side fascia makes the
+        // back intentional without pretending there are two separate service counters.
+        for(const [side,label] of [[1,'服务台'],[-1,'导览']]){
+          box(dx+nx*side*.288,.67,dz+nz*side*.288,1.10,.44,.035,col.trunkD,
+            {hard:true,ry:yaw,tag:'服务台',mat:'wood',matScale:.6,matAmt:.28});
+          glyphs(dx+nx*side*.312,.70,dz+nz*side*.312,yaw,label,
+            {size:.13,color:col.cream,mode:1,tag:'服务台'});
+        }
+        // A small live planter breaks the counter silhouette while staying wholly inside its
+        // canonical collision footprint.
+        cyl(dx+tx*.48,1.15,dz+tz*.48,.10,.20,col.teal,{tag:'服务台',gloss:.18});
+        for(let i=0;i<3;i++){
+          const a=-.65+i*.65;
+          capsule(dx+tx*.48+Math.sin(a)*.08,1.36,dz+tz*.48+Math.cos(a)*.08,
+            .045,.38,.08,i===1?col.leafL:col.leaf,{mode:15,ry:a,rz:a*.35,tag:'服务台'});
+        }
         markThing(thing('服务台',dx,.9,dz,'在服务台领取热带馆导览。','Pick up a Tropical House guide.',
           '服务台 is an information desk.',{focus:[-9.55,1.40],reach:2}), 'TH-'+o.id);
         solid(-10.83,-10.09,.61,2.19);
       } else if (o.type === 'map-board') {
-        for(const s of [-1,1]) cyl(x,.82,z+s*.62,.05,1.64,col.steel,{tag:'导游图'});
-        box(x,1.55,z, .10,1.75,1.55,col.teal,{hard:true,tag:'导游图',blueprintId:o.id});
-        glyphs(x-.06,2.12,z,o.yaw,'热带馆导游图',{size:.14,color:col.white,mode:1,tag:'导游图'});
+        for(const s of [-1,1]) cyl(x,.84,z+s*.68,.045,1.68,col.steel,{tag:'导游图'});
+        // Frame the plan instead of mounting it on one oversized opaque teal slab.  The map is
+        // double-sided: arriving visitors and people already inside see the same useful plan.
+        box(x,2.20,z,.10,.18,1.52,col.teal,
+          {hard:true,tag:'导游图',blueprintId:o.id,gloss:.14});
+        box(x,.99,z,.10,.12,1.52,col.teal,
+          {hard:true,tag:'导游图',blueprintId:o.id+'/G01',gloss:.14});
+        for(const s of [-1,1]) box(x,1.57,z+s*.71,.10,1.15,.10,col.teal,
+          {hard:true,tag:'导游图',blueprintId:o.id+'/G0'+(s<0?2:3),gloss:.14});
         const yaw=o.yaw||0,nx=Math.sin(yaw),nz=Math.cos(yaw),tx=Math.cos(yaw),tz=-Math.sin(yaw);
-        const point=(u,v,d=.064)=>[x+tx*u+nx*d,v,z+tz*u+nz*d];
-        const panel=point(0,1.48,.058);
-        box(panel[0],panel[1],panel[2],1.25,.94,.014,col.cream,
-          {hard:true,ry:yaw,tag:'导游图',mode:1,gloss:.10});
         const bw=bounds.x1-bounds.x0,bd=bounds.z1-bounds.z0,sx=.044,sy=.039;
         const mapU=wx=>(wx-(bounds.x0+bounds.x1)/2)*sx;
         const mapY=wz=>1.48+(wz-(bounds.z0+bounds.z1)/2)*sy;
-        const mapRect=(r,fill,d=.070)=>{
-          const q=point(mapU((r[0]+r[1])/2),mapY((r[2]+r[3])/2),d);
-          return box(q[0],q[1],q[2],Math.max(.018,(r[1]-r[0])*sx),
-            Math.max(.014,(r[3]-r[2])*sy),.012,fill,
-            {hard:true,ry:yaw,tag:'导游图',mode:1,gloss:.08});
-        };
-        S.paths.forEach(p=>mapRect(p.rect,col.pathD,.071));
         const roomColor={T00:col.gold,T01:col.croc,T02:col.blue,T03:col.orange,
           T04:col.pink,T05:col.purple,T06:col.leaf};
         const roomLabel={T00:'入口',T01:'鳄',T02:'鲟',T03:'蛇',T04:'蝶',T05:'蝠',T06:'中庭'};
-        S.rooms.forEach(room=>{
-          const stem=room.id.slice(0,3),q=mapRect(room.rect,roomColor[stem]||col.leaf,.074);
-          const p=point(mapU((room.rect[0]+room.rect[1])/2),
-            mapY((room.rect[2]+room.rect[3])/2),.082);
-          glyphs(p[0],p[1],p[2],yaw,roomLabel[stem]||room.label,
-            {size:stem==='T06'?.043:.050,gap:.004,color:col.white,mode:1,tag:'导游图'});
-        });
-        const here=point(mapU(S.spawn.at[0]),mapY(S.spawn.at[1]),.086);
-        ball(here[0],here[1],here[2],.045,.045,.018,col.red,{tag:'导游图',mode:1,gloss:.16});
-        const out=point(mapU(S.exit.at[0]),mapY(S.exit.at[1]),.086);
-        box(out[0],out[1],out[2],.075,.055,.016,col.orange,
-          {hard:true,ry:yaw,tag:'导游图',mode:1});
-        const north=point(.48,1.91,.083);
-        glyphs(north[0],north[1],north[2],yaw,'北',{size:.065,gap:0,color:col.red,mode:1,tag:'导游图'});
-        const legend=point(-.33,1.02,.083);
-        glyphs(legend[0],legend[1],legend[2],yaw,'红点:您在这里  橙色:出口',
-          {size:.045,gap:.002,color:col.charcoal,mode:1,tag:'导游图'});
+        const drawFace=side=>{
+          const point=(u,v,d=.064)=>[x+tx*u+nx*d*side,v,z+tz*u+nz*d*side];
+          const panel=point(0,1.48,.058);
+          box(panel[0],panel[1],panel[2],1.25,.94,.014,col.cream,
+            {hard:true,ry:yaw,tag:'导游图',mode:1,gloss:.10});
+          const mapRect=(r,fill,d=.070)=>{
+            const q=point(mapU((r[0]+r[1])/2),mapY((r[2]+r[3])/2),d);
+            return box(q[0],q[1],q[2],Math.max(.018,(r[1]-r[0])*sx),
+              Math.max(.014,(r[3]-r[2])*sy),.012,fill,
+              {hard:true,ry:yaw,tag:'导游图',mode:1,gloss:.08});
+          };
+          S.paths.forEach(p=>mapRect(p.rect,col.pathD,.071));
+          S.rooms.forEach(room=>{
+            const stem=room.id.slice(0,3);mapRect(room.rect,roomColor[stem]||col.leaf,.074);
+            const p=point(mapU((room.rect[0]+room.rect[1])/2),
+              mapY((room.rect[2]+room.rect[3])/2),.082);
+            glyphs(p[0],p[1],p[2],yaw,roomLabel[stem]||room.label,
+              {size:stem==='T06'?.043:.050,gap:.004,color:col.white,mode:1,tag:'导游图'});
+          });
+          const here=point(mapU(S.spawn.at[0]),mapY(S.spawn.at[1]),.086);
+          ball(here[0],here[1],here[2],.045,.045,.018,col.red,
+            {tag:'导游图',mode:1,gloss:.16});
+          const out=point(mapU(S.exit.at[0]),mapY(S.exit.at[1]),.086);
+          box(out[0],out[1],out[2],.075,.055,.016,col.orange,
+            {hard:true,ry:yaw,tag:'导游图',mode:1});
+          const north=point(.48,1.91,.083);
+          glyphs(north[0],north[1],north[2],yaw,'北',
+            {size:.065,gap:0,color:col.red,mode:1,tag:'导游图'});
+          const legend=point(-.33,1.02,.083);
+          glyphs(legend[0],legend[1],legend[2],yaw,'红点:您在这里  橙色:出口',
+            {size:.045,gap:.002,color:col.charcoal,mode:1,tag:'导游图'});
+          const title=point(0,2.20,.064);
+          glyphs(title[0],title[1],title[2],yaw,'热带馆导游图',
+            {size:.12,color:col.white,mode:1,tag:'导游图'});
+        };
+        drawFace(1);drawFace(-1);
         markThing(thing('导游图',x,1.6,z,'看看热带馆导游图。','Look at the Tropical House map.',
           '六个展区围绕雨林中庭。',{focus:[-9.1,-2.2],reach:2.1}), 'TH-'+o.id);
       } else if (o.type === 'waterfall') {
