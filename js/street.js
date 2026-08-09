@@ -1629,7 +1629,11 @@ const Street = Lazy('Street', () => {
     // walk into this one, so the frontage has to read as an entrance and not a picture of one:
     // a door you can see through at the near end, and the room beyond it lit from inside.
     const RST = -7.0;
-    box(RST, 1.62, ez + .06, 5.00, 3.24, .26, col.render,
+    // The frontage stops at 3.10, which is where 超市's white surround stops, so the fascia band
+    // above sits on one line across both. At 3.24 it stood 14 cm proud of its neighbour for no
+    // reason anybody could name from the alley, and the board over it had to start higher to clear
+    // it — which is where the two boards' 46 cm of disagreement came from in the first place.
+    box(RST, 1.55, ez + .06, 5.00, 3.10, .26, col.render,
       { hard: true, mode: 14, gloss: .26, ...RENDER });
     // The tiled stallriser every small Chinese shopfront has. Small wall tile, so the repeat is
     // the tile: .30 m rather than the render's 2.6, which is the difference between a tiled
@@ -1638,11 +1642,16 @@ const Street = Lazy('Street', () => {
       { hard: true, gloss: .32, ...WTILE });
     // No white backing behind the glass: pane() already gives it the sky by day and a lit room
     // by night, and an emissive white sheet on top of that turned both windows into glare.
+    // Window head at 2.66, which is 超市's head (its own head rail is at 2.56..2.76) and its door
+    // transom. Sill unchanged at 0.75, on the tiled stallriser. Two shopfronts on one wall whose
+    // openings stopped 30 cm apart was the other half of what made this row read as scattered:
+    // the eye lines up the tops of holes in a wall long before it reads what is written above
+    // them. The mullions run 9 cm below the sill and 3 cm past the head, as they did.
     for (const gx of [-1.55, -.15])
-      pane(box(RST + gx, 1.55, ez + .25, 1.28, 1.60, .05, col.glassDay,
+      pane(box(RST + gx, 1.705, ez + .25, 1.28, 1.91, .05, col.glassDay,
         { hard: true, mode: 1, gloss: G.glass, tag: '餐馆' }), .97);
     for (const mx of [-2.22, -.88, .52])
-      box(RST + mx, 1.52, ez + .28, .09, 1.72, .10, col.steel, { hard: true, gloss: G.metal });
+      box(RST + mx, 1.675, ez + .28, .09, 2.03, .10, col.steel, { hard: true, gloss: G.metal });
     // the doorway itself, at the +x end, standing open behind its strip curtain. A deep dark
     // reveal and red jambs separate it from the windows; the warm interior is set farther back
     // so the curtain now reads as something you can walk through instead of an opaque panel.
@@ -2144,11 +2153,23 @@ const Street = Lazy('Street', () => {
     // doorway, where it hung straight across the view of the door you come out of.
     // Kept over the south half of the alley. Strung down the middle it hung a metre in front
     // of the camera in every view along the hutong.
+    // Both lines are in the RESIDENTIAL half of the hutong now, and that is a rule, not a taste:
+    // a line hangs at y 2.4 .. 3.0 across the middle of the alley, one and a half metres in front
+    // of the camera in every view along it, and the fascia band the shops now share starts at
+    // 3.12. So washing over a shopfront is washing over its name — the second line used to sit at
+    // x 16.3..18.7, dead centre of 五金电器's 6.4 m board at 14.6..21.0, and js/street-alley.js's
+    // third line sat at 2.86..6.06 in front of 幸福超市 and the 夜市 gateway. From the pavement
+    // you could not read either sign.
+    //
+    // West of x -9.5 there is no shopfront on either side, which is where the three of them go:
+    // -24.0..-21.6, -19.6..-16.4 (that one in street-alley.js) and -14.6..-10.7. It also reads
+    // as a real street — the washing end of a hutong and the trading end of it are not the same
+    // fifty metres.
     capsule(-12.4, 3.08, 1.55, .016, 6.0, .016, col.steel, { rz: Math.PI / 2 + .05, gloss: .3 });
     washing(-14.6, 3.04, 1.58, 6, -.012, '衣服');
-    // a second, shorter line towards the east end
-    capsule(17.6, 2.99, 1.70, .016, 4.2, .016, col.steel, { rz: Math.PI / 2 - .04, gloss: .3 });
-    washing(16.3, 2.95, 1.66, 4, .01);
+    // a second, shorter line at the west end
+    capsule(-22.7, 2.99, 1.70, .016, 4.2, .016, col.steel, { rz: Math.PI / 2 - .04, gloss: .3 });
+    washing(-24.0, 2.95, 1.66, 4, .01);
     // Six shirts, two pairs of trousers and a towel strung over the alley, and no word on any of
     // them. 衣服 is in the dictionary and was reachable nowhere in the district — the flat teaches
     // it off the wardrobe, so a player who never opened the wardrobe never met it.

@@ -479,11 +479,16 @@
     // dark, which is the only thing that makes the other two read as washing rather than bunting.
     open();
     (() => {
+      // At x -19.6, not 2.86. This line hung across the alley at y 2.4..3.0 directly in front of
+      // 幸福超市's frontage and the 夜市 gateway — a metre and a half from the camera in the one
+      // view where you read the shop's name, which since the fascia datum landed starts at 3.12
+      // and was completely covered by it. street.js moved its two for the same reason; all three
+      // are west of x -9.5 now, where the hutong has no shopfront on either side.
       const y = 3.02, z = 1.62, first = P.length;
-      cap(4.60, y + .06, z, .016, 4.60, .016, col.steel, { rz: Math.PI / 2 - .025, gloss: .30 });
+      cap(-18.00, y + .06, z, .016, 4.60, .016, col.steel, { rz: Math.PI / 2 - .025, gloss: .30 });
       const kinds = [C('#e7e3d8'), C('#7f96a8'), C('#a8695c'), C('#6f8f8c'), C('#c9c2ae')];
       for (let i = 0; i < 5; i++) {
-        const x = 2.86 + i * .80, c = kinds[i];
+        const x = -19.60 + i * .80, c = kinds[i];
         const O = { mode: 7, gloss: G.fabric, round: .02, ry: ((i * 7) % 5 - 2) * .04, tag: '衣服' };
         if (i % 2) {
           box(x, y - .40, z, .44, .76, .05, c, O);                 // a towel or a sheet
