@@ -1979,7 +1979,7 @@
         var plan = plans[0], contents = plans[1], university = plans[2];
         if (!plan || plan.schema !== 'chinesegame.zoo-expansion/v1' || plan.revision !== 2)
           throw new Error('unexpected schema or revision');
-        if (!contents || contents.schema !== 'chinesegame.zoo-contents/v1' || contents.revision !== 1 ||
+        if (!contents || contents.schema !== 'chinesegame.zoo-contents/v1' || contents.revision !== 2 ||
             !contents.parent || contents.parent.geometryHash !== plan.geometryHash)
           throw new Error('unexpected contents schema, revision or parent hash');
         if (!university || !university.meta ||

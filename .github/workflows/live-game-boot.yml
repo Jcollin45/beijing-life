@@ -6,6 +6,7 @@ on:
     paths:
       - index.html
       - ZOO-EXPANSION-BLUEPRINT.json
+      - ZOO-PENS-BUILDINGS-BLUEPRINT.json
       - js/**
       - .bootcheck.js
       - live-game-boot-check.js
