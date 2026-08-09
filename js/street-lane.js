@@ -406,14 +406,14 @@
     // ux ± (w/2 − 0.40) with a 0.20 m radius) and at most 0.95 m off the frontage, so the lane's
     // clear run is untouched: 5.40 m, exactly what it was.
 
-    // 面包房 — the crates the morning's bread came out in, stacked and not yet taken in.
+    // 面包房 — the crates the morning's bread came out in, stacked and not yet taken in. x 42.84
+    // .. 43.46, which is the clear window between its west planter (42.20..42.60) and the sacks.
     for (let i = 0; i < 3; i++)
-      box(44.32 + (i % 2) * .04, .09 + i * .15, -11.98, .62, .14, .42,
+      box(43.15 + (i % 2) * .04, .09 + i * .15, -11.98, .62, .14, .42,
         C(i === 1 ? '#8c6b3f' : '#a3814e'), { hard: true, gloss: .18 });
-    ball(44.28, .60, -12.02, .17, .09, .12, C('#c89a58'), { gloss: .14 });
-    ball(44.46, .60, -11.94, .13, .08, .10, C('#b8843f'), { gloss: .14 });
-    box(43.10, .34, -12.06, .46, .68, .26, C('#8a8378'), { hard: true, gloss: .20 });  // flour sacks
-    ball(43.10, .74, -12.06, .23, .13, .14, C('#ded5c0'), { gloss: .12 });
+    ball(43.30, .60, -12.02, .15, .08, .11, C('#c89a58'), { gloss: .14 });
+    box(43.70, .34, -12.06, .46, .68, .26, C('#8a8378'), { hard: true, gloss: .20 });  // flour sacks
+    ball(43.70, .74, -12.06, .23, .13, .14, C('#ded5c0'), { gloss: .12 });
 
     // 花店 — three zinc buckets between the planters, and a tiered stand against the glass. The
     // one shop on this lane whose stock IS the shopfront.
@@ -429,22 +429,21 @@
       ball(46.16 + (i % 3) * .44, .40 + Math.floor(i / 3) * .32, -12.13,
         .12, .12, .10, C(['#c0485a', '#e0a63a', '#8a4a7a'][i % 3]), { mode: 15, gloss: .14 });
 
-    // 奶茶店 — the crate of empties and the 保温箱 the milk arrives in.
+    // 奶茶店 — the crate of empties, east of the door line (its stiles are at 52.24 and 53.16).
     for (let i = 0; i < 2; i++)
-      box(53.40, .13 + i * .27, -6.38, .56, .26, .40, C('#3d6f8c'), { hard: true, gloss: .22 });
+      box(53.45, .13 + i * .27, -6.38, .56, .26, .40, C('#3d6f8c'), { hard: true, gloss: .22 });
     for (let i = 0; i < 6; i++)
-      cyl(53.20 + (i % 3) * .20, .48, -6.48 + Math.floor(i / 3) * .18, .048, .16,
+      cyl(53.25 + (i % 3) * .20, .48, -6.48 + Math.floor(i / 3) * .18, .048, .16,
         C('#dfe8ee'), { gloss: .34 });
-    box(52.00, .28, -6.42, .58, .56, .44, C('#e4e0d4'), { hard: true, gloss: .26 });
-    box(52.00, .58, -6.42, .60, .05, .46, C('#b03a2e'), { hard: true, gloss: .30 });
 
-    // 书店 — the trestle of remainders every bookshop in this city puts out, and a spinner.
-    box(55.95, .36, -6.40, 1.10, .05, .44, C('#7a6a4a'), { hard: true, gloss: G.wood });
-    for (const s of [-.48, .48])
-      box(55.95 + s, .18, -6.40, .05, .36, .40, C('#6b5a44'), { hard: true, gloss: G.wood });
-    for (let i = 0; i < 8; i++)
-      box(55.52 + (i % 4) * .29, .42 + Math.floor(i / 4) * .05, -6.44 + (i % 2) * .10,
-        .22, .045, .30, C(['#9c3a30', '#2f5f8c', '#c8a24a', '#3d7a5a'][i % 4]),
+    // 书店 — the trestle of remainders every bookshop in this city puts out, and a spinner. West
+    // of the door stile at 56.04 and east of its planter's 55.40, which is a 0.64 m window.
+    box(55.72, .36, -6.40, .60, .05, .44, C('#7a6a4a'), { hard: true, gloss: G.wood });
+    for (const s of [-.24, .24])
+      box(55.72 + s, .18, -6.40, .05, .36, .40, C('#6b5a44'), { hard: true, gloss: G.wood });
+    for (let i = 0; i < 6; i++)
+      box(55.50 + (i % 3) * .22, .42 + Math.floor(i / 3) * .05, -6.44 + (i % 2) * .10,
+        .18, .045, .30, C(['#9c3a30', '#2f5f8c', '#c8a24a'][i % 3]),
         { hard: true, gloss: .24 });
     cyl(57.25, .55, -6.42, .022, 1.10, STEEL, { gloss: G.metal });
     for (let i = 0; i < 4; i++)
@@ -454,9 +453,10 @@
 
     // ---- A6. Two 立牌 on the lane, one per side. Standing boards rather than folding A-frames,
     // because `glyphs` takes a yaw and nothing else — chalk written across a board leaning back
-    // 9° would be chalk floating in front of it. Both are in the unreachable strip: the bakery's
-    // reaches z -11.73 against a body limit of -11.60, the tea shop's -6.68 against -6.80. No
-    // collider on either, and the 3.35 m floor in the item is therefore not approached.
+    // 9° would be chalk floating in front of it. Both stand in the unreachable strip and their
+    // legs kick back TOWARD the frontage, not out into the lane: the bakery's nearest face to the
+    // walkable band is z -11.93 against a body limit of -11.60, the tea shop's -6.48 against
+    // -6.80. No collider on either, so the item's 3.35 m floor is not approached.
     const easel = (ex, ez, nn, tint) => {
       box(ex, .74, ez, .58, 1.06, .045, C('#2b2f33'), { hard: true, gloss: .26 });
       box(ex, 1.30, ez, .62, .07, .06, tint, { hard: true, gloss: .28 });
@@ -468,7 +468,7 @@
       glyphs(ex, .60, ez + nn * .026, yawOf(nn), '新到',
         { size: .13, gap: .03, color: tint, mode: 1, lift: .006 });
     };
-    easel(43.55, -11.95, 1, C('#e0a63a'));
+    easel(44.40, -11.95, 1, C('#e0a63a'));
     easel(51.95, -6.46, -1, C('#e8b4c0'));
 
     // ---- B2. A delivery. One 三轮车 in the district outside the alley's 超市, and none here.
@@ -496,22 +496,21 @@
         { hard: true, gloss: .18 });
     solid(49.30, 51.70, -12.60, -10.62);
 
-    // ---- B3. Bins. The lane had none. Both stand in the unreachable strip against a frontage,
-    // 0.46 m deep: the south one reaches z -11.78 against a body limit of -11.60, the north one
-    // -6.62 against -6.80, and neither touches the shopfront band whose faces are at -12.26 and
-    // -6.14. National colours, and the pair a street corner actually gets.
-    [[47.75, -12.01, 1, '#3d7a4a', '#a4392f', '可回收物', '其他垃圾'],
-     [50.75, -6.39, -1, '#3d7a4a', '#585d63', '可回收物', '其他垃圾']].forEach(
-      ([bx, bz, nn, hexA, hexB, la, lb]) => {
-        [[-.28, hexA, la], [.28, hexB, lb]].forEach(([dx, hex, lab]) => {
-          box(bx + dx, .38, bz, .52, .76, .46, C(hex), { hard: true, gloss: .30 });
-          box(bx + dx, .79, bz, .55, .06, .49, C('#2f3338'), { hard: true, gloss: .34 });
-          box(bx + dx, .82, bz + nn * .04, .30, .04, .22, C('#1b1e21'), { hard: true, gloss: .20 });
-          glyphs(bx + dx, .44, bz + nn * .238, yawOf(nn), lab,
-            { size: .085, gap: .018, color: C('#f0efe8'), mode: 1, lift: .006 });
-        });
-        cyl(bx, .48, bz - nn * .02, .028, .96, C('#6a7076'), { gloss: G.metal });
-      });
+    // ---- B3. Bins. The lane had none. Two, as a pair, which is how this city puts them out —
+    // 可回收物 beside 其他垃圾 — and they go on the north side because that is the only place on
+    // this lane with room. The south frontage from x 48.00 east is 大超市, whose mass face is at
+    // z -11.60, i.e. **exactly** on the body limit: there is no unreachable strip in front of the
+    // hypermarket at all, and a bin there would be the second collider in the lane. The window
+    // between the mall's east edge (50.20) and 奶茶店's west planter (51.20) is 1.00 m, which
+    // takes two at 0.46. Each is 0.46 deep at z -6.39, so -6.62..-6.16: clear of the body limit
+    // at -6.80 by 0.18 m and of the shopfront band's face at -6.14 by 0.02.
+    [[50.47, '#3d7a4a', '可回收物'], [50.95, '#585d63', '其他垃圾']].forEach(([bx, hex, lab]) => {
+      box(bx, .38, -6.39, .46, .76, .46, C(hex), { hard: true, gloss: .30 });
+      box(bx, .79, -6.39, .49, .06, .49, C('#2f3338'), { hard: true, gloss: .34 });
+      box(bx, .82, -6.43, .26, .04, .20, C('#1b1e21'), { hard: true, gloss: .20 });
+      glyphs(bx, .44, -6.622, Math.PI, lab,
+        { size: .078, gap: .016, color: C('#f0efe8'), mode: 1, lift: .006 });
+    });
 
     // ---- B6. Pavement wear. Six flat quads, no collider, and the lane stops reading as new
     // tile. The alley has puddles and made-good patches; this is the same argument.
@@ -525,11 +524,11 @@
     // ---- C4. 店猫. The alley has two and the trading half had none. Asleep on the bakery's
     // crates, which are the warmest thing on this pavement at four in the afternoon. One prop
     // group, no tick: a cat that breathes is a per-frame write for an object 40 cm across.
-    ball(44.30, .61, -11.98, .21, .13, .15, C('#c98d4e'), { mode: 15, gloss: .10 });
-    ball(44.12, .66, -12.00, .10, .09, .09, C('#d69a58'), { mode: 15, gloss: .10 });
+    ball(43.13, .61, -11.98, .21, .13, .15, C('#c98d4e'), { mode: 15, gloss: .10 });
+    ball(42.95, .66, -12.00, .10, .09, .09, C('#d69a58'), { mode: 15, gloss: .10 });
     for (const s of [-1, 1])
-      ball(44.12 + s * .05, .74, -12.00, .035, .045, .02, C('#9a6a38'), { mode: 15, gloss: .10 });
-    cap(44.44, .60, -11.90, .035, .30, .035, C('#b8813f'), { ry: .7, rz: 1.2, gloss: .10 });
+      ball(42.95 + s * .05, .74, -12.00, .035, .045, .02, C('#9a6a38'), { mode: 15, gloss: .10 });
+    cap(43.27, .60, -11.90, .035, .30, .035, C('#b8813f'), { ry: .7, rz: 1.2, gloss: .10 });
 
     // ---------------------------------------------------------------- the gateway at the mouth
     // A 步行街 in this city is announced. Two piers and a beam across the entrance with the
@@ -549,27 +548,29 @@
     if (typeof light === 'function') light(LX0 + 1.8, 4.0, LZC, [1.0, .82, .58], .34, 9.0);
 
     // ---- B5. Clutter at the mouth, so the lane reads from the crossing as somewhere to go
-    // rather than as a gap in a parade. A 导览牌 on the north lip and a chained stanchion line on
-    // the south, both tucked behind the piers in the unreachable strip. The mouth's clear width
-    // is the gap between the two piers' own colliders — z -11.70 to -6.70, **5.00 m** — and
-    // nothing here is a collider, so it stays 5.00 m against the item's 4.00 m floor.
-    box(42.35, 1.02, -6.50, .68, 1.44, .09, C('#2f3a44'), { hard: true, gloss: .28 });
-    box(42.35, 1.78, -6.50, .74, .10, .13, REDD, { hard: true, gloss: .26 });
-    for (const s of [-1, 1])
-      cyl(42.35 + s * .28, .16, -6.50, .034, .32, C('#5a6068'), { gloss: G.metal });
-    glyphs(42.35, 1.28, -6.50 - .052, Math.PI, '新天地步行街',
+    // rather than as a gap in a parade. The mouth's clear width is the gap between the two piers'
+    // own colliders — z -11.70 to -6.70, **5.00 m** — and nothing added here is a collider, so it
+    // stays 5.00 m against the item's 4.00 m floor.
+    //
+    // The 导览牌 is mounted ON the north pier's lane-facing side rather than standing beside it,
+    // and that is a measurement rather than a preference: the pier is a 1.10 × 0.90 mass at
+    // x 41.60..42.70, z -6.70..-5.80, and a freestanding board anywhere in front of it either
+    // stands inside the pier or stands inside 北京新天地, whose own frontage runs to z -6.94 from
+    // x 43.00 east. There is no gap between the two. Hung on the pier at z -6.74 it is 0.26 m
+    // clear of where the pier's own `solid` holds the body.
+    box(42.15, 1.10, -6.74, .70, 1.50, .07, C('#2f3a44'), { hard: true, gloss: .28 });
+    box(42.15, 1.89, -6.74, .76, .10, .11, REDD, { hard: true, gloss: .26 });
+    glyphs(42.15, 1.44, -6.777, Math.PI, '新天地步行街',
       { size: .155, gap: .035, color: C('#e8dfc6'), mode: 1, lift: .006 });
-    glyphs(42.35, .86, -6.50 - .052, Math.PI, '面包房花店',
-      { size: .10, gap: .028, color: C('#b9c2ca'), mode: 1, lift: .006 });
-    glyphs(42.35, .66, -6.50 - .052, Math.PI, '奶茶店书店',
-      { size: .10, gap: .028, color: C('#b9c2ca'), mode: 1, lift: .006 });
-    for (const px of [42.02, 42.86, 43.70]) {                       // 隔离桩 and the chain
-      cyl(px, .43, -11.94, .042, .86, C('#b03a2e'), { gloss: .30 });
+    glyphs(42.15, .96, -6.777, Math.PI, '面包房花店',
+      { size: .105, gap: .028, color: C('#b9c2ca'), mode: 1, lift: .006 });
+    glyphs(42.15, .74, -6.777, Math.PI, '奶茶店书店',
+      { size: .105, gap: .028, color: C('#b9c2ca'), mode: 1, lift: .006 });
+    for (const px of [42.68, 43.98]) {                              // 隔离桩, and the chain slung
+      cyl(px, .43, -11.94, .042, .86, C('#b03a2e'), { gloss: .30 });   // between them
       ball(px, .89, -11.94, .055, .06, .055, C('#dfe3e6'), { gloss: G.metal });
-      cyl(px, .74, -11.94, .026, .10, C('#dfe3e6'), { gloss: G.metal });
     }
-    for (const cx2 of [42.44, 43.28])
-      cyl(cx2, .58, -11.94, .014, .84, C('#8b9095'), { rz: Math.PI / 2, gloss: G.metal });
+    cyl(43.33, .74, -11.94, .014, 1.30, C('#8b9095'), { rz: Math.PI / 2, gloss: G.metal });
 
     // ---- B4. 共享单车 at the lane's mouth. They bank up outside a 步行街 in this city and
     // street-cycles.js:937 already put a rack on the east kerb; nothing marked the lane's own
@@ -643,4 +644,81 @@
       s.p.m = open ? HIDDEN : M.trs(s.x, s.top - s.h / 2, s.z, 0, s.wid, s.h, .05);
     }
   };
+
+  // ---------------------------------------------------------------- the lane's cast (C1–C3)
+  //
+  // SIX, and six is a ceiling rather than a target: the district already carries 32 people and
+  // .audit.js:327 records it as fill-rate bound, so this is the one item on the storefront list
+  // whose constraint is a number and not a taste. Two shopkeepers who stand, two people walking
+  // it end to end, and two in a queue at 大超市 for the two hours a queue is plausible. Between
+  // 10:00 and 21:00 there are four in the lane at any moment and six in the evening.
+  //
+  // `window.StreetCast` and not `addNPC`: js/game.js is an IIFE and `addNPC`, `initNPC`,
+  // `makeLook` and `TEMPERAMENT` are all closure-private. game.js:1408 folds this array into
+  // `NPCS` before the roster is initialised, and this file loads before game.js. On `window`
+  // rather than as a bare `const` because nine district files share one lexical scope and a
+  // second `const StreetCast` is not one broken district, it is the whole game failing to boot.
+  // See the long note at the top of js/street-alley.js, which is where the pattern is written up.
+  //
+  // Facing: the body's forward is (sin yaw, cos yaw), so yaw 0 looks along +z and π along -z —
+  // the same convention as this file's glyphs, and the reason a shopkeeper on the SOUTH frontage
+  // faces 0 and one on the NORTH faces π. Both are looking into the lane.
+  (function addLanePeople() {
+    const CAST = (window.StreetCast = window.StreetCast || []);
+
+    // ---- C3. A shopkeeper in a doorway, one per side. `spots`, not a patrol: a shopkeeper
+    // stands. Both are in the 1.00 m unreachable strip, so you can never end up inside one.
+    CAST.push({
+      hz: '老板娘', place: 'street', temper: 'genial', speed: .78,
+      look: { skin:'#e0b48c', hair:'#3a322c', hairStyle:'bun', top:'#e8e2d6', pants:'#3a4148',
+              shoe:'#d8d2c0', sleeve:'short', collar:'polo', apron:'#8a6a3f',
+              tall:0.93, wide:1.04, headScale:1.00, age:0.44, faceSeed:401 },
+      spots: [{ h0: 6.8, h1: 19.8, at: [43.70, -11.72], face: 0, act: 'vend' }],
+    });
+    CAST.push({
+      hz: '老板', place: 'street', temper: 'steady', speed: .76,
+      look: { skin:'#cba078', hair:'#8e877e', hairStyle:'short', top:'#4f6a80', pants:'#333a42',
+              shoe:'#3a3f45', sleeve:'long', collar:'shirt', glasses:true,
+              tall:1.00, wide:1.02, headScale:1.01, stoop:0.11, age:0.71, faceSeed:403 },
+      spots: [{ h0: 9.8, h1: 21.8, at: [56.50, -6.55], face: Math.PI, act: 'read' }],
+    });
+
+    // ---- C1. Two on routes, end to end. `hours` + `patrol` is 豆豆's own pattern (data.js:135).
+    // The two lines are z -9.60 and -8.55, which clear the 三轮车 at -11.10 and the mall's door
+    // planters at -8.12 by 0.43 m — NPCs are drawn and never collided, but a person walking
+    // through a planter still looks like one.
+    CAST.push({
+      hz: '路人', place: 'street', temper: 'brisk', speed: 1.06,
+      look: { skin:'#dcae86', hair:'#241f1c', hairStyle:'ponytail', top:'#b8455a', pants:'#39414d',
+              shoe:'#e8e2d6', sleeve:'short', bag:'shoulder', bagColor:'#5a4a3c',
+              tall:0.95, wide:0.96, headScale:1.00, age:0.31, faceSeed:409 },
+      hours: [10.0, 21.0], patrol: [[42.60, -9.60], [57.40, -9.05]],
+    });
+    CAST.push({
+      hz: '路人', place: 'street', temper: 'bored', speed: 0.88,
+      look: { skin:'#c89468', hair:'#2b2320', hairStyle:'short', top:'#5c6248', pants:'#2f3742',
+              shoe:'#d64f3f', sleeve:'half', collar:'polo', pack:true, packColor:'#3f6350',
+              tall:1.02, wide:1.06, headScale:1.01, stoop:0.05, age:0.38, faceSeed:411 },
+      hours: [10.0, 21.0], patrol: [[57.20, -8.55], [42.80, -8.95]],
+    });
+
+    // ---- C2. 排队. The word exists at the breakfast stall and nowhere else on this street, and
+    // it is one of the most useful on it. Two at the hypermarket's west door between half five
+    // and half seven, which is the hour a Beijing supermarket actually has a queue at its door.
+    // Same shape as the stall's: a `spots` window, so outside it they are off the street entirely
+    // rather than standing in a line nobody is joining.
+    [[-11.05, 'patient', { skin:'#d3a179', hair:'#b0aba2', hairStyle:'perm', top:'#4f7a68',
+                           pants:'#3a4148', shoe:'#dfd8ca', sleeve:'short', collar:'polo',
+                           bag:'tote', bagColor:'#9c8a6a',
+                           tall:0.89, wide:1.11, headScale:0.98, stoop:0.12, age:0.77,
+                           faceSeed:419 }, undefined],
+     [-10.55, 'bored',   { skin:'#e3b58b', hair:'#2b2320', hairStyle:'tousled', top:'#3f6f8c',
+                           pants:'#414954', shoe:'#e9e2d5', sleeve:'short',
+                           tall:0.98, wide:0.98, headScale:1.02, age:0.34, faceSeed:421 },
+      'phone'],
+    ].forEach(([qz, temper, look, act]) => CAST.push({
+      hz: '顾客', place: 'street', temper, speed: 0.82, look,
+      spots: [{ h0: 17.5, h1: 19.5, at: [52.10, qz], face: Math.PI, act }],
+    }));
+  })();
 })();
