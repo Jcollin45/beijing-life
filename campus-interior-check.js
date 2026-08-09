@@ -26,6 +26,7 @@ const counts=vm.runInContext('CampusInteriors.counts',context);
 const keys=vm.runInContext('Object.keys(CampusInteriors.places)',context);
 const entryHtml=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
 const gameJs=fs.readFileSync(path.join(ROOT,'js/game.js'),'utf8');
+const coreJs=fs.readFileSync(path.join(ROOT,'js/campus-interior-core.js'),'utf8');
 const manifestMatch=entryHtml.match(/var FILES\s*=\s*\[([\s\S]*?)\];/);
 const manifestFiles=manifestMatch?[...manifestMatch[1].matchAll(/'([^']+)'/g)].map(m=>m[1]):[];
 check('blueprint schema',plan.meta.schema==='chinesegame.university-interiors/v1',plan.meta.schema);
@@ -36,9 +37,13 @@ check('interior consumer loads before game',manifestFiles.indexOf('campus-interi
   manifestFiles.indexOf('campus-interior-core')<manifestFiles.indexOf('game'));
 check('runtime contract requires CampusInteriors',/\['CampusInteriors',\s*'places placeKey buildFloor validate'\]/.test(entryHtml));
 check('game registers blueprint places',/Object\.assign\(PLACES,\s*CampusInteriors\.places\)/.test(gameJs));
+const renderedPrefabCases=new Set([...coreJs.matchAll(/case\s+'(PF-[A-Z0-9-]+)'/g)].map(m=>m[1]));
+const primitiveFallbacks=plan.prefabCatalog.map(p=>p.id).filter(id=>id!=='PF-WALL-RUN'&&!renderedPrefabCases.has(id));
+check('every furniture prefab has a composed renderer',primitiveFallbacks.length===0,primitiveFallbacks.join(','));
 check('eight buildings',counts.buildings===8,counts.buildings);
 check('28 floors',counts.floors===28,counts.floors);
-check('198 rooms',counts.rooms===198,counts.rooms);
+check('at least the 198 canonical programmed rooms',counts.rooms>=198,counts.rooms);
+check('room count matches generated blueprint',counts.rooms===plan.totals.rooms,`${counts.rooms}/${plan.totals.rooms}`);
 check('fixture count matches generated blueprint',counts.fixtures===plan.totals.fixtureInstances,`${counts.fixtures}/${plan.totals.fixtureInstances}`);
 check('all canonical plus clinic-alias place keys',keys.length===31,keys.length);
 check('28 unique Lazy floor builders',builders.size===28,builders.size);
@@ -69,23 +74,64 @@ function walkMap(scene,b,step=.20,radius=.30){
 }
 
 const scenes=[];
+function renderedPartOutsideFixture(part,fixture,tolerance=.09){
+  const m=part.m;if(!m)return false;
+  const yaw=fixture.yaw||0,c=Math.cos(yaw),s=Math.sin(yaw),u=[c,-s],v=[s,c];
+  const rel=[m[12]-fixture.at[0],m[14]-fixture.at[2]];
+  const centreU=rel[0]*u[0]+rel[1]*u[1],centreV=rel[0]*v[0]+rel[1]*v[1];
+  // A transformed unit primitive has three half-extent columns. Project all three on each
+  // fixture axis so rotated/tilted rails and ellipsoids are checked as rigorously as boxes.
+  const radius=axis=>.5*(
+    Math.abs(m[0]*axis[0]+m[2]*axis[1])+
+    Math.abs(m[4]*axis[0]+m[6]*axis[1])+
+    Math.abs(m[8]*axis[0]+m[10]*axis[1]));
+  return Math.abs(centreU)+radius(u)>fixture.size[0]/2+tolerance||
+    Math.abs(centreV)+radius(v)>fixture.size[2]/2+tolerance;
+}
 for(const [name,build] of builders){
   let scene;
   try{scene=build();}catch(error){failures.push(`${name} builds — ${error.stack||error}`);continue;}
   scenes.push([name,scene]);
   check(`${name} public contract`,scene&&Array.isArray(scene.props)&&Array.isArray(scene.things)&&Array.isArray(scene.solids));
+  check(`${name} finite render transforms`,scene&&scene.props.every(p=>p.m&&[...p.m].every(Number.isFinite)));
+  check(`${name} finite furniture shadows`,scene&&scene.shadows.every(s=>s.m&&[...s.m].every(Number.isFinite)&&Number.isFinite(s.a)));
+  check(`${name} valid collision bodies`,scene&&scene.solids.every(s=>
+    [s.x0,s.x1,s.z0,s.z1].every(Number.isFinite)&&s.x1>s.x0&&s.z1>s.z0));
+  check(`${name} valid camera blockers`,scene&&scene.blockers.every(s=>
+    [s.x0,s.x1,s.z0,s.z1,s.top].every(Number.isFinite)&&s.x1>s.x0&&s.z1>s.z0));
+  check(`${name} finite authored lights`,scene&&scene.lights.every(l=>
+    [l.x,l.y,l.z,l.power,l.radius,...l.col].every(Number.isFinite)&&l.radius>0));
   check(`${name} finite spawn`,scene&&scene.spawn&&Number.isFinite(scene.spawn.x)&&Number.isFinite(scene.spawn.z),JSON.stringify(scene&&scene.spawn));
   check(`${name} room zones`,scene&&scene.zones&&scene.zones.length>=scene.blueprintFloor.rooms.length,scene&&scene.zones&&scene.zones.length);
   check(`${name} fixture prop ceiling`,scene&&scene.props.length<2600,scene&&scene.props.length);
+  const rounded=scene&&scene.props.filter(p=>p.mesh==='softBox').length;
+  check(`${name} contains rounded furniture geometry`,rounded>=6,rounded);
   check(`${name} navigation targets exist`,scene&&scene.things.filter(t=>t.exit).every(t=>
     ['campus','classroom','library'].includes(t.exit.place)||keys.includes(t.exit.place)),
     scene&&scene.things.filter(t=>t.exit&&!['campus','classroom','library'].includes(t.exit.place)&&!keys.includes(t.exit.place)).map(t=>t.exit.place).join(','));
 
   const b=plan.buildings.find(q=>q.id===scene.buildingId),f=scene.blueprintFloor;
-  const fixtureIds=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects).map(o=>o.id);
+  const fixtureRows=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects);
+  const fixtureIds=fixtureRows.map(o=>o.id);
   const rendered=new Set(scene.props.map(p=>p.tag).filter(Boolean));
   const missing=fixtureIds.filter(id=>!rendered.has(id));
   check(`${name} renders every blueprint fixture`,missing.length===0,missing.slice(0,8).join(','));
+  const fixturesBySpecificity=[...fixtureRows].sort((a,b)=>b.id.length-a.id.length);
+  const outside=[],partCounts=new Map();
+  for(const part of scene.props){
+    // Glyph atlas quads deliberately float a few millimetres in front of their backing plate and
+    // are typographic annotation, not furniture/collision geometry.
+    if(!part.tag||part.mesh==='quad')continue;
+    const fixture=fixturesBySpecificity.find(o=>part.tag===o.id||part.tag.startsWith(`${o.id}/`));
+    if(fixture){
+      partCounts.set(fixture.id,(partCounts.get(fixture.id)||0)+1);
+      if(renderedPartOutsideFixture(part,fixture))outside.push(`${fixture.id}:${part.mesh}`);
+    }
+  }
+  check(`${name} rendered parts stay in fixture footprints`,outside.length===0,[...new Set(outside)].slice(0,8).join(','));
+  const singlePrimitive=fixtureRows.filter(o=>o.prefab!=='PF-WALL-RUN'&&(partCounts.get(o.id)||0)<2);
+  check(`${name} has no single-primitive furniture or equipment`,singlePrimitive.length===0,
+    singlePrimitive.slice(0,8).map(o=>`${o.id}:${o.prefab}:${partCounts.get(o.id)||0}`).join(','));
   const [x0,x1,z0,z1]=b.localBounds;
   check(`${name} spawn inside floor envelope`,scene.spawn.x>=x0&&scene.spawn.x<=x1&&scene.spawn.z>=z0&&scene.spawn.z<=z1,JSON.stringify(scene.spawn));
   const blocked=scene.solids.some(s=>!s.open&&scene.spawn.x>s.x0-.20&&scene.spawn.x<s.x1+.20&&scene.spawn.z>s.z0-.20&&scene.spawn.z<s.z1+.20);

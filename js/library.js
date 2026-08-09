@@ -118,36 +118,33 @@ const Library = Lazy('Library', () => {
     shade(cx, cz, 2.3, 1.1, .20);
   }
 
-  // A fitted side-wall bay: back, stiles, crown, seven shelf boards, readable spines and a
-  // classification plate.  Keeping the cases in 2.15 m modules makes the end panels and gaps
-  // legible from the entrance instead of producing one featureless wall-sized box.
+  // A backless, human-scale side-wall bay.  The plaster wall remains visible between open oak
+  // uprights, so six bays read as furniture rather than as repeated box walls.  Book blocks are
+  // deliberately grouped: enough variation to feel stocked without hundreds of tiny props.
   function shelfBay(sx, zc, label, seed) {
-    const wallX=sx*(RX-.10), shelfX=sx*(RX-.34), faceX=sx*(RX-.63);
+    const shelfX=sx*(RX-.34), faceX=sx*(RX-.63);
     const OAK={mat:'wood',matScale:.62,matAmt:.48};
-    box(wallX,1.92,zc,.08,3.72,2.20,col.shelfD,{hard:true,gloss:G.wood,...OAK});
-    for(const ez of [-1,1]) box(shelfX,1.92,zc+ez*1.07,.54,3.78,.07,col.shelfD,
+    for(const ez of [-1,1]) box(shelfX,1.31,zc+ez*1.07,.54,2.50,.07,col.shelfD,
       {hard:true,gloss:G.wood,...OAK});
-    box(shelfX,.12,zc,.56,.20,2.12,col.shelfD,{hard:true,gloss:G.wood,...OAK});
-    box(shelfX,3.76,zc,.58,.16,2.18,col.shelfL,{hard:true,gloss:G.wood,...OAK});
+    box(shelfX,.11,zc,.56,.18,2.12,col.shelfD,{hard:true,gloss:G.wood,...OAK});
+    box(shelfX,2.56,zc,.58,.12,2.18,col.shelfL,{hard:true,gloss:G.wood,...OAK});
     const palette=[col.red,col.blue,col.teal,col.green,col.gold,col.cream,col.binder,col.charcoal];
-    for(let row=0;row<7;row++) {
-      const sy=.23+row*.50;
+    for(let row=0;row<5;row++) {
+      const sy=.20+row*.52;
       box(shelfX,sy,zc,.58,.035,2.08,col.shelf,{hard:true,gloss:G.wood,...OAK});
-      if(row===6) continue;
-      let bz=zc-.95,j=0;
-      while(bz<zc+.88) {
-        const bw=.055+((seed*7+row*11+j*5)%5)*.013;
+      if(row===4) continue;
+      for(let j=0;j<9;j++) {
+        const bw=.11+((seed*7+row*11+j*5)%4)*.018;
         const bh=.23+((seed*3+row*7+j*2)%5)*.035;
-        box(faceX,sy+.025+bh/2,bz+bw/2,.11,bh,bw,palette[(seed+row*3+j)%palette.length],
+        const bz=zc-.84+j*.205;
+        box(faceX,sy+.025+bh/2,bz,.11,bh,bw,palette[(seed+row*3+j)%palette.length],
           {hard:true,gloss:.18});
-        bz+=bw+.018+((seed+row+j)%3)*.008; j++;
       }
-      // A warm concealed strip gives each shelf a readable leading edge at night.
-      if(row===2||row===5) litten(box(faceX-sx*.015,sy+.055,zc,.025,.018,1.98,col.lampGlow,
+      if(row===1||row===3) litten(box(faceX-sx*.015,sy+.055,zc,.025,.018,1.98,col.lampGlow,
         {hard:true,mode:1,glow:.07}),.35);
     }
-    box(faceX-sx*.015,3.48,zc,.035,.34,1.26,col.navy,{hard:true,gloss:.26});
-    for(const g of glyphs(faceX-sx*.038,3.48,zc,sx>0?-Math.PI/2:Math.PI/2,label,
+    box(faceX-sx*.015,2.73,zc,.035,.30,1.16,col.navy,{hard:true,gloss:.26});
+    for(const g of glyphs(faceX-sx*.038,2.73,zc,sx>0?-Math.PI/2:Math.PI/2,label,
       {size:.105,gap:.025,color:col.goldL,mode:1,tag:'书架'})) litten(g,.25);
     shade(shelfX,zc,.7,2.25,.16);
   }
@@ -263,9 +260,10 @@ const Library = Lazy('Library', () => {
     // A 90 cm board on the front panel and the same on the counter — a joinery counter, and
     // at that scale the grain runs the length of it rather than repeating every hand's width.
     const CTR = { mat: 'wood', matScale: .90, matAmt: .44 };
-    // A ribbed oak service wall and blue/brass fascia frame the desk from the first camera view.
-    for(let i=0;i<13;i++) box(CX-1.38+i*.23,1.65,-RZ+.14,.10,2.72,.08,
-      i%2?col.woodD:col.shelfL,{hard:true,gloss:G.wood,mat:'wood',matScale:.46,matAmt:.42});
+    // One oak datum and a mounted fascia frame the service point without building another wall
+    // out of repeated boxes behind it.
+    box(CX,2.68,-RZ+.14,3.0,.10,.08,col.woodD,
+      {hard:true,gloss:G.wood,mat:'wood',matScale:.62,matAmt:.42});
     wallPlate(CX,3.20,-RZ+.105,0,'借还书处 · CIRCULATION',2.95,'借书处');
     box(CX, .52, CZ, 1.80, .04, .70, col.woodL, { hard: true, gloss: G.wood, ...CTR });
     box(CX, .48, CZ - .30, 1.74, .96, .04, col.woodD, { hard: true, gloss: G.wood, ...CTR });
@@ -342,7 +340,6 @@ const Library = Lazy('Library', () => {
     flat(3.92,.008,4.70,2.05,1.20,col.floorL,
       {mode:7,gloss:G.fabric,mat:'fabric',matScale:.40,matAmt:.34});
     loungeBench(3.92,4.78);
-    wallPlate(3.92,1.11,RZ-.12,0,'校园阅读窗',1.58,'书架');
 
     // ================================================================ 门 the exit (-z wall)
     const dz = -RZ + .10;
@@ -375,8 +372,7 @@ const Library = Lazy('Library', () => {
     // the three room-length luminous slabs, so ceiling depth and furniture grouping are visible.
     const ceilingModules=[
       [-2.40,-4.42,2.65,.82],[1.80,-4.15,2.75,.78],
-      [-2.10,-.45,2.85,1.02],[2.10,1.45,2.85,1.02],[-2.10,3.55,2.85,1.02],
-      [3.92,4.48,2.05,.78],
+      [-2.10,-.45,2.70,.92],[2.10,1.45,2.70,.92],[-2.10,3.55,2.70,.92],
     ];
     for(const [lx,lz,lw,ld] of ceilingModules) {
       box(lx,H-.12,lz,lw,.10,ld,col.acoustic,

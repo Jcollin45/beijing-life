@@ -56,6 +56,7 @@
     "campus:check": "node .campuscheck.js",
     "campus:static": "node campus-static-check.js",
     "campus:interiors:blueprint": "node tools/generate-university-interiors-blueprint.js",
+    "campus:interiors:spacing": "node tools/audit-university-interior-spacing.js",
     "campus:interiors": "node campus-interior-check.js",
     "perf": "node .perfcheck.js",
     "save": "node .savecheck.js",

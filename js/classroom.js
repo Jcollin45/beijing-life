@@ -226,13 +226,15 @@ const Classroom = Lazy('Classroom', () => {
 
     // ================================================================ 学生桌 the desks
     // Three rows of shared desks down the room, facing the board. The first is the 上课 seat.
-    desk(-1.6, .6); desk(1.6, .6);
-    desk(-1.6, -.6); desk(1.6, -.6);
-    desk(-1.6, -1.8); desk(1.6, -1.8);
+    // 1.50 m row pitch leaves 0.91 m behind the last stools and 1.50 m between the front desk
+    // edge and the podium.  The 1.80 m centre aisle remains the primary accessible route.
+    desk(-1.6, .55); desk(1.6, .55);
+    desk(-1.6, -.95); desk(1.6, -.95);
+    desk(-1.6, -2.45); desk(1.6, -2.45);
     // The seminar interaction resolves to the inner stool at the front-left desk.
-    thing('学生桌', 0, .74, .6, '研讨课认真听，也要发言。', 'Listen and take part in the seminar.',
+    thing('学生桌', 0, .74, .55, '研讨课认真听，也要发言。', 'Listen and take part in the seminar.',
       '研讨课 is a seminar. 学生 student + 桌 table.',
-      { focus: [0, .6 - 1.1], reach: 1.8 });
+      { focus: [0, .55 - 1.1], reach: 1.8 });
 
     // ================================================================ 门 the corridor door (+z, east end)
     const dz = RZ - .10;
@@ -390,7 +392,7 @@ const Classroom = Lazy('Classroom', () => {
       { focus: [SGX - .20, RZ - .95], reach: 2.0 });
 
     // ================================================================ 书包 backpacks on desks
-    for (const [bx, bz, bc] of [[1.6, 1.2, col.blue], [1.6, 0, col.teal], [-1.6, -1.2, col.green]]) {
+    for (const [bx, bz, bc] of [[1.6, .55, col.blue], [1.6, -.95, col.teal], [-1.6, -2.45, col.green]]) {
       box(bx + .40, .44, bz - .46, .16, .04, .14, bc, { hard: true, gloss: .28 });  // main body
       box(bx + .40, .52, bz - .48, .12, .14, .10, bc, { hard: true, gloss: .26 });  // top flap
       capsule(bx + .40, .56, bz - .44, .008, .18, .008, col.woodD, { rx: .20, gloss: .18 });  // strap
@@ -450,7 +452,7 @@ const Classroom = Lazy('Classroom', () => {
   return B.finish({
     setNight, tick, RX, RZ, H, WIN, OUT,
     // The inner stool at the front-left desk, facing the board (+z).
-    SEAT_AT: [-1.6 + .36, .6 - .46], SEAT_FACE: 0, SEAT_Y: .46,
+    SEAT_AT: [-1.6 + .36, .55 - .46], SEAT_FACE: 0, SEAT_Y: .46,
     label: '教室', labelK: '教室 · seminar classroom',
     indoor: true, cutaway: true, near: .05, far: 40, expose: 1,
     spawn: { x: DX - .50, z: RZ - 1.10, yaw: Math.PI * 1.02 },
