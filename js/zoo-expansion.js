@@ -1048,7 +1048,7 @@ const ZooExpansion = (() => {
       // A rounded enamel plaque on one district-colour pedestal keeps the full interpretation
       // area without placing a black rectangular slab across every animal sightline.  It uses the
       // same two-prop budget as the former backing/strip pair and remains the tagged pick target.
-      const p = mark(ball(x, y, z, .91, .64, .065, P.charcoal,
+      const p = mark(ball(x, y, z, .78, .54, .055, P.tile,
         { tag: rec.hz, hard: true, gloss: .10, ry: yaw }), rec.id);
       cyl(x, .23, z, .075, .46, accent,
         { tag: rec.hz, hard: true, gloss: .18 });
@@ -1071,27 +1071,27 @@ const ZooExpansion = (() => {
         capsule(q[0], q[1], q[2], sx, sy, .035, color,
           { tag:rec.hz, gloss:.14, ry:yaw, rz });
       };
-      orb(-.62, .13, .245, .245, P.cream, .078);
+      orb(-.52, .10, .205, .205, P.cream, .068);
       const birds = /火烈鸟|丹顶鹤|天鹅|鸳鸯/.test(rec.hz);
       const large = /河马|亚洲象|犀牛/.test(rec.hz);
       const cats = /雪豹|狮子/.test(rec.hz);
       if (birds) {
-        orb(-.63, .10, .14, .10, accent); stem(-.54, .25, .035, .30, accent, -.18);
-        orb(-.49, .39, .065, .065, accent); stem(-.69, -.03, .025, .25, P.steelD);
+        orb(-.53, .08, .115, .085, accent); stem(-.46, .20, .030, .25, accent, -.18);
+        orb(-.40, .32, .055, .055, accent); stem(-.58, -.04, .022, .21, P.steelD);
       } else if (large) {
-        orb(-.66, .10, .18, .13, accent); orb(-.46, .16, .10, .10, accent);
-        stem(-.75, -.04, .035, .23, accent); stem(-.57, -.05, .035, .23, accent);
-        if (rec.hz === '亚洲象') stem(-.39, .05, .035, .25, accent, -.22);
+        orb(-.55, .08, .15, .11, accent); orb(-.37, .14, .085, .085, accent);
+        stem(-.62, -.04, .030, .20, accent); stem(-.48, -.04, .030, .20, accent);
+        if (rec.hz === '亚洲象') stem(-.31, .04, .030, .21, accent, -.22);
       } else {
-        orb(-.66, .10, .18, .115, accent); orb(-.45, .18, .09, .09, accent);
-        stem(-.73, -.03, .032, .22, accent); stem(-.56, -.03, .032, .22, accent);
-        if (cats) { orb(-.50, .28, .035, .045, accent); orb(-.40, .28, .035, .045, accent); }
+        orb(-.55, .08, .15, .10, accent); orb(-.37, .15, .075, .075, accent);
+        stem(-.61, -.04, .028, .19, accent); stem(-.48, -.04, .028, .19, accent);
+        if (cats) { orb(-.41, .23, .030, .038, accent); orb(-.33, .23, .030, .038, accent); }
       }
-      write(.24, .34, rec.hz, .18, P.cream, .035);
-      write(.24, .15, PINYIN[rec.hz] || rec.hz, .060, P.white, .009);
-      write(.24, .035, ENGLISH[rec.hz] || rec.hz, .052, P.white, .008);
-      write(.12, -.20, facts[0], .072, P.cream, .012);
-      write(.12, -.39, facts[1], .072, P.cream, .012);
+      write(.18, .28, rec.hz, .16, P.cream, .030);
+      write(.18, .11, PINYIN[rec.hz] || rec.hz, .054, P.white, .008);
+      write(.18, .00, ENGLISH[rec.hz] || rec.hz, .047, P.white, .007);
+      write(.08, -.18, facts[0], .065, P.cream, .010);
+      write(.08, -.34, facts[1], .065, P.cream, .010);
       // The tagged backing is pickable, but intentionally visual-only. Mixed habitats place two
       // boards beside one narrow public gate; a full-width body for each would seal that gate.
       localThing(rec.hz, rec.position,
