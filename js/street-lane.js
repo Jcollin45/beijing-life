@@ -576,6 +576,16 @@
       { size: .105, gap: .028, color: C('#b9c2ca'), mode: 1, lift: .006 });
     glyphs(42.15, .74, -6.777, Math.PI, '奶茶店书店',
       { size: .105, gap: .028, color: C('#b9c2ca'), mode: 1, lift: .006 });
+    // The same pier's WEST face, which is the one B5's acceptance test actually looks at: from the
+    // west footway at (26, -9) the board above is edge-on and reads as a dark line. Verified on
+    // the live site — the gateway beam carries from the crossing and the 导览牌 does not, so the
+    // mouth gets a second plate facing the crossing. Yaw -PI/2 faces (-1, 0, 0).
+    box(41.55, 2.30, -6.25, .07, 1.16, .84, C('#2f3a44'), { hard: true, gloss: .28 });
+    box(41.55, 2.96, -6.25, .11, .10, .90, REDD, { hard: true, gloss: .26 });
+    glyphs(41.51, 2.42, -6.25, -Math.PI / 2, '新天地步行街',
+      { size: .135, gap: .03, color: C('#e8dfc6'), mode: 1, lift: .006 });
+    glyphs(41.51, 2.06, -6.25, -Math.PI / 2, '面包房花店书店',
+      { size: .095, gap: .022, color: C('#b9c2ca'), mode: 1, lift: .006 });
     for (const px of [42.68, 43.98]) {                              // 隔离桩, and the chain slung
       cyl(px, .43, -11.94, .042, .86, C('#b03a2e'), { gloss: .30 });   // between them
       ball(px, .89, -11.94, .055, .06, .055, C('#dfe3e6'), { gloss: G.metal });
