@@ -275,14 +275,24 @@ StreetFit['civic'] = S => {
   // body was pushed 0.50 m off it every time, which is a door you can never quite stand at. The
   // spot goes 0.80 m north of the door instead, where the pavement is clear, and the leaf is
   // 1.41 m away on the diagonal: well inside the thing's 2.4 m reach.
-  const PHZ = -3.70, PHDOOR = -2.90, PHSTAND = -2.10;
+  // MIRRORED onto the corner block's east elevation, flush with 北京银行 — see
+  // STREET-BLUEPRINT.md and sheet A02. Every x in this section is reflected about x = 31.99, so
+  // the shopfront glass lands at 23.52 where the bank's is at 23.515 and the two read as one
+  // elevation; the glyph yaws turn from -PI/2 to +PI/2 and the two rz values negate, because that
+  // is what a reflection in x does to a rotation about z.
+  //
+  // z -6.90 .. -3.60, which is the 3.30 m bay north of the bank: 0.20 m to the branch at -7.10,
+  // 0.55 m to the block's own corner at -3.05. The standing spot is at x 24.68, east of the
+  // 24.30 the road zone's clampMove holds the body at, and the whole frontage sits in the 0.88 m
+  // strip in front of it that the body can never enter — so nothing here needs a collider either.
+  const PHZ = -5.25, PHDOOR = -4.45, PHSTAND = -3.65;
   const PT = { tag: '药店' };
   const ph = S.things.find(t => t.hz === '药店');
   if (ph && ph.exit && ph.exit.at) {
-    ph.pos = [40.60, 3.34, PHZ];
-    ph.focus = [39.30, PHSTAND];
+    ph.pos = [23.38, 3.34, PHZ];
+    ph.focus = [24.68, PHSTAND];
     ph.reach = 2.4;
-    ph.exit.at.x = 39.30; ph.exit.at.z = PHSTAND; ph.exit.at.yaw = -Math.PI / 2;
+    ph.exit.at.x = 24.68; ph.exit.at.z = PHSTAND; ph.exit.at.yaw = Math.PI / 2;
   }
 
   // The shell of the unit. A back wall and two jambs with a head over them, NOT one solid block:
@@ -290,23 +300,23 @@ StreetFit['civic'] = S => {
   // with a depth to it or the glazing reads as a stain on a wall. Same move the office lobby
   // makes forty lines up in street.js, and for the same reason.
   const PMAT = { mat: 'plaster', matScale: 2.60, matAmt: .14 };
-  box(41.30, 2.10, PHZ, .60, 4.20, 3.30, col.render, { hard: true, gloss: G.paint, ...PMAT, ...PT });
+  box(22.68, 2.10, PHZ, .60, 4.20, 3.30, col.render, { hard: true, gloss: G.paint, ...PMAT, ...PT });
   for (const s of [-1, 1])
-    box(40.72, 2.10, PHZ + s * 1.50, .76, 4.20, .30, col.render,
+    box(23.26, 2.10, PHZ + s * 1.50, .76, 4.20, .30, col.render,
       { hard: true, gloss: G.paint, ...PMAT, ...PT });
-  box(40.72, 3.90, PHZ, .76, .60, 3.30, col.render, { hard: true, gloss: G.paint, ...PMAT, ...PT });
-  box(40.60, .08, PHZ, .30, .16, 3.00, col.stoneD, { hard: true, gloss: .26, ...PT });   // threshold
+  box(23.26, 3.90, PHZ, .76, .60, 3.30, col.render, { hard: true, gloss: G.paint, ...PMAT, ...PT });
+  box(23.38, .08, PHZ, .30, .16, 3.00, col.stoneD, { hard: true, gloss: .26, ...PT });   // threshold
 
   // ---- the fascia and the name. Green, because a chemist's fascia in this city is green, with
   // the light bar under it that is what actually makes one legible at ten at night.
-  box(40.60, 3.34, PHZ, .26, .74, 3.06, RXD, { hard: true, gloss: .26, ...PT });
-  glyphs(40.46, 3.42, PHZ - .52, -Math.PI / 2, '药店',
+  box(23.38, 3.34, PHZ, .26, .74, 3.06, RXD, { hard: true, gloss: .26, ...PT });
+  glyphs(23.52, 3.42, PHZ - .52, Math.PI / 2, '药店',
     { size: .46, gap: .16, color: C('#f4fff8'), mode: 1, lift: .014, tag: '药店' });
-  glyphs(40.46, 3.04, PHZ - .52, -Math.PI / 2, '24小时',
+  glyphs(23.52, 3.04, PHZ - .52, Math.PI / 2, '24小时',
     { size: .150, gap: .05, color: C('#bfe8cf'), mode: 1, lift: .014, tag: '药店' });
-  glyphs(40.46, 3.34, PHZ + .86, -Math.PI / 2, '中西药',
+  glyphs(23.52, 3.34, PHZ + .86, Math.PI / 2, '中西药',
     { size: .215, gap: .07, color: C('#dff4e8'), mode: 1, lift: .014, tag: '药店' });
-  emis(box(40.60, 2.92, PHZ, .26, .06, 3.00, RXL, { hard: true, mode: 1, glow: .05, ...PT }), .55);
+  emis(box(23.38, 2.92, PHZ, .26, .06, 3.00, RXL, { hard: true, mode: 1, glow: .05, ...PT }), .55);
 
   // ---- the green cross. The one sign that is identical everywhere and that is read at fifty
   // metres without being read. Two crossed boxes on a bracket off the frontage: a closed box has
@@ -317,80 +327,80 @@ StreetFit['civic'] = S => {
   // on the north jamb instead — the side the body can actually reach, since the mouth seals the
   // pavement south of it — with the bracket buried in the jamb the way a real one is.
   const CZ0 = PHZ + 1.35;
-  box(40.62, 3.05, CZ0, .44, .09, .09, col.steelD, { hard: true, gloss: G.metal, ...PT });
-  box(40.22, 3.05, CZ0, .17, .84, .17, C('#f4fff8'), { hard: true, gloss: .22, ...PT });
-  box(40.22, 3.05, CZ0, .19, .26, .84, C('#f4fff8'), { hard: true, gloss: .22, ...PT });
-  emis(box(40.215, 3.05, CZ0, .21, .70, .21, RX, { hard: true, mode: 1, glow: .10, ...PT }), .85);
-  emis(box(40.215, 3.05, CZ0, .23, .21, .70, RX, { hard: true, mode: 1, glow: .10, ...PT }), .85);
-  lamps.push(light(40.05, 3.05, CZ0, [.42, 1.0, .62], .50, 4.4));
+  box(23.36, 3.05, CZ0, .44, .09, .09, col.steelD, { hard: true, gloss: G.metal, ...PT });
+  box(23.76, 3.05, CZ0, .17, .84, .17, C('#f4fff8'), { hard: true, gloss: .22, ...PT });
+  box(23.76, 3.05, CZ0, .19, .26, .84, C('#f4fff8'), { hard: true, gloss: .22, ...PT });
+  emis(box(23.765, 3.05, CZ0, .21, .70, .21, RX, { hard: true, mode: 1, glow: .10, ...PT }), .85);
+  emis(box(23.765, 3.05, CZ0, .23, .21, .70, RX, { hard: true, mode: 1, glow: .10, ...PT }), .85);
+  lamps.push(light(23.93, 3.05, CZ0, [.42, 1.0, .62], .50, 4.4));
 
   // ---- the window, and what is in it. A chemist's window is three shelves of boxes and nothing
   // else, and the boxes are how you tell one from an optician's without reading the sign.
   const WZ = PHZ - .72;
-  emis(box(40.94, 1.40, WZ, .05, 2.30, 1.40, C('#a9bcae'),
+  emis(box(23.04, 1.40, WZ, .05, 2.30, 1.40, C('#a9bcae'),
     { hard: true, mode: 1, glow: .03, ...PT }), .30);
   const BOXC = [C('#c8492f'), C('#2f6fa8'), C('#d9b13f'), C('#4f8f52'), C('#b4573f'), C('#3f7f86')];
   for (let sh = 0; sh < 3; sh++) {
-    box(40.74, .70 + sh * .62, WZ, .34, .035, 1.30, C('#d8d2c2'), { hard: true, gloss: .22, ...PT });
+    box(23.24, .70 + sh * .62, WZ, .34, .035, 1.30, C('#d8d2c2'), { hard: true, gloss: .22, ...PT });
     for (let i = 0; i < 6; i++) {
       const c = BOXC[(i * 5 + sh * 2) % BOXC.length];
-      box(40.74, .84 + sh * .62, WZ - .54 + i * .216, .17, .24, .15, c,
+      box(23.24, .84 + sh * .62, WZ - .54 + i * .216, .17, .24, .15, c,
         { hard: true, gloss: .24, ...PT });
     }
   }
-  box(40.46, 1.40, WZ, .04, 2.28, 1.34, col.glassDay,
+  box(23.52, 1.40, WZ, .04, 2.28, 1.34, col.glassDay,
     { hard: true, mode: 1, alpha: .50, gloss: G.glass, ...PT });
   // the frame round it: sill, head and two mullions, standing 20 mm proud of the glass
-  box(40.44, .14, WZ, .26, .26, 1.48, col.charcoal, { hard: true, gloss: .28, ...PT });
-  box(40.44, 2.66, WZ, .26, .22, 1.48, col.charcoal, { hard: true, gloss: .28, ...PT });
+  box(23.54, .14, WZ, .26, .26, 1.48, col.charcoal, { hard: true, gloss: .28, ...PT });
+  box(23.54, 2.66, WZ, .26, .22, 1.48, col.charcoal, { hard: true, gloss: .28, ...PT });
   for (const s of [-1, 1])
-    box(40.44, 1.40, WZ + s * .72, .26, 2.52, .13, col.charcoal, { hard: true, gloss: .28, ...PT });
+    box(23.54, 1.40, WZ + s * .72, .26, 2.52, .13, col.charcoal, { hard: true, gloss: .28, ...PT });
 
   // ---- the door, two leaves with pull bars, at the north end where the body can reach it.
   // The lit panel behind it is not enough on its own: a 2.2 x 1.24 m sheet of emissive with two
   // clear leaves in front of it is a lightbox, not a shop, and after dark it blew out into a
   // white slab. So there is a room behind the door — a counter across it and two runs of shelf
   // over that, which is what you actually see through a chemist's door at night.
-  emis(box(41.00, 1.16, PHDOOR, .05, 2.20, 1.24, C('#a9bcae'),
+  emis(box(22.98, 1.16, PHDOOR, .05, 2.20, 1.24, C('#a9bcae'),
     { hard: true, mode: 1, glow: .03, ...PT }), .24);
-  box(40.82, .46, PHDOOR - .06, .26, .92, .84, C('#c2bcae'), { hard: true, gloss: .26, ...PT });
-  box(40.82, .935, PHDOOR - .06, .30, .05, .88, C('#8d8579'), { hard: true, gloss: .30, ...PT });
+  box(23.16, .46, PHDOOR - .06, .26, .92, .84, C('#c2bcae'), { hard: true, gloss: .26, ...PT });
+  box(23.16, .935, PHDOOR - .06, .30, .05, .88, C('#8d8579'), { hard: true, gloss: .30, ...PT });
   for (const sy of [1.42, 1.82]) {
-    box(40.90, sy, PHDOOR + .34, .20, .035, .82, C('#d8d2c2'), { hard: true, gloss: .22, ...PT });
+    box(23.08, sy, PHDOOR + .34, .20, .035, .82, C('#d8d2c2'), { hard: true, gloss: .22, ...PT });
     for (let i = 0; i < 4; i++)
-      box(40.90, sy + .13, PHDOOR + .05 + i * .19, .13, .21, .13, BOXC[(i * 3 + (sy > 1.6 ? 1 : 0)) % BOXC.length],
+      box(23.08, sy + .13, PHDOOR + .05 + i * .19, .13, .21, .13, BOXC[(i * 3 + (sy > 1.6 ? 1 : 0)) % BOXC.length],
         { hard: true, gloss: .24, ...PT });
   }
   for (const s of [-1, 1]) {
-    box(40.48, 1.16, PHDOOR + s * .33, .035, 2.16, .60, col.glassDay,
+    box(23.5, 1.16, PHDOOR + s * .33, .035, 2.16, .60, col.glassDay,
       { hard: true, mode: 1, alpha: .52, gloss: G.glass, ...PT });
-    cap(40.43, 1.06, PHDOOR + s * .12, .022, .78, .022, col.steel, { gloss: G.metal, ...PT });
+    cap(23.55, 1.06, PHDOOR + s * .12, .022, .78, .022, col.steel, { gloss: G.metal, ...PT });
   }
-  box(40.46, 1.16, PHDOOR, .09, 2.34, .07, col.charcoal, { hard: true, gloss: .30, ...PT });
+  box(23.52, 1.16, PHDOOR, .09, 2.34, .07, col.charcoal, { hard: true, gloss: .30, ...PT });
   for (const s of [-1, 1])
-    box(40.46, 1.16, PHDOOR + s * .70, .09, 2.34, .12, col.charcoal, { hard: true, gloss: .30, ...PT });
-  box(40.46, 2.38, PHDOOR, .09, .12, 1.52, col.charcoal, { hard: true, gloss: .30, ...PT });
+    box(23.52, 1.16, PHDOOR + s * .70, .09, 2.34, .12, col.charcoal, { hard: true, gloss: .30, ...PT });
+  box(23.52, 2.38, PHDOOR, .09, .12, 1.52, col.charcoal, { hard: true, gloss: .30, ...PT });
 
   // the plates beside it: the state-insurance plate, and the shopfront-tidiness notice that is
   // screwed to every business on every street in this city
-  box(40.42, 1.72, PHDOOR + .92, .04, .36, .27, C('#1b4f86'), { hard: true, gloss: .30, ...PT });
-  glyphs(40.395, 1.72, PHDOOR + .92, -Math.PI / 2, '医保定点',
+  box(23.56, 1.72, PHDOOR + .92, .04, .36, .27, C('#1b4f86'), { hard: true, gloss: .30, ...PT });
+  glyphs(23.585, 1.72, PHDOOR + .92, Math.PI / 2, '医保定点',
     { size: .072, gap: .012, color: SIGNW, mode: 1, vertical: true, lift: .008, tag: '药店' });
-  box(40.42, 1.28, PHDOOR + .92, .04, .22, .21, C('#d8d2c2'), { hard: true, gloss: .24, ...PT });
-  glyphs(40.395, 1.28, PHDOOR + .92, -Math.PI / 2, '门前三包',
+  box(23.56, 1.28, PHDOOR + .92, .04, .22, .21, C('#d8d2c2'), { hard: true, gloss: .24, ...PT });
+  glyphs(23.585, 1.28, PHDOOR + .92, Math.PI / 2, '门前三包',
     { size: .043, gap: .006, color: INK, mode: 1, lift: .008, tag: '药店' });
 
   // ---- the queue rail: two chrome posts and a strap making a short lane at the door, which is
   // what every counter in this country grows the moment two people are at it.
   for (const dz of [-.64, .10]) {
-    cyl(40.14, .48, PHDOOR + dz, .045, .96, col.steel, { gloss: G.metal, ...PT });
-    cyl(40.14, .024, PHDOOR + dz, .13, .04, col.steelD, { gloss: .34, ...PT });
+    cyl(23.84, .48, PHDOOR + dz, .045, .96, col.steel, { gloss: G.metal, ...PT });
+    cyl(23.84, .024, PHDOOR + dz, .13, .04, col.steelD, { gloss: .34, ...PT });
   }
-  box(40.14, .88, PHDOOR - .27, .035, .05, .72, C('#9c2f26'), { hard: true, gloss: .26, ...PT });
+  box(23.84, .88, PHDOOR - .27, .035, .05, .72, C('#9c2f26'), { hard: true, gloss: .26, ...PT });
   // and the camera over it, which every one of these has
-  box(40.50, 3.92, CZ0 + .12, .18, .14, .50, col.render, { hard: true, gloss: G.paint });
-  box(40.24, 3.88, CZ0 + .12, .34, .13, .13, C('#d8d5cc'), { hard: true, rz: -.22, gloss: .30 });
-  cyl(40.06, 3.84, CZ0 + .12, .065, .10, C('#1a1d20'), { rz: Math.PI / 2, gloss: .44 });
+  box(23.48, 3.92, CZ0 + .12, .18, .14, .50, col.render, { hard: true, gloss: G.paint });
+  box(23.74, 3.88, CZ0 + .12, .34, .13, .13, C('#d8d5cc'), { hard: true, rz: .22, gloss: .30 });
+  cyl(23.92, 3.84, CZ0 + .12, .065, .10, C('#1a1d20'), { rz: -Math.PI / 2, gloss: .44 });
   pool(39.95, PHZ - .40, 2.6, 4.4, .26, C('#bff0d2'));
 
   // ============================================================ 公司 the office's ground plane
