@@ -87,20 +87,20 @@ FlatFit['second'] = A => {
   // Deliberately cheaper and greyer than the master bedroom's. This is the room that got the
   // furniture the living room replaced.
   const K = {
-    wall:    C('#d3ccbc'), ceil: C('#ece9de'),
+    wall:    C('#d3ccbc'), ceil: C('#ceccc2'),
     // Was #4a3628 / #78593f / #a8845c — the flat's three woods restated a unit or two off, which
     // is drift rather than a choice. FLAT_PALETTE (js/home-walls.js) holds the one set.
     woodD:   C(FLAT_PALETTE.woodD), woodM: C(FLAT_PALETTE.woodM), woodL: C(FLAT_PALETTE.woodL),
     ply:     C('#c1a077'), lam: C('#cbb896'),
-    white:   C('#ece9de'), cream: C('#e3d8c3'), linen: C('#d3ccbc'),
+    white:   C('#ceccc2'), cream: C('#e3d8c3'), linen: C('#d3ccbc'),
     card:    C('#b39a72'), cardD: C('#a7835b'), tape: C('#c8a877'),
     steel:   C('#aeb5bb'), steelD: C('#79818a'), chrome: C('#bfc6cb'),
-    black:   C('#171a1f'), char: C('#2e343b'), plastic: C('#ced2ce'),
+    black:   C('#171a1f'), char: C('#2e343b'), plastic: C('#c6c9c6'),
     jade:    C('#3f7564'), jadeL: C('#69a08a'), red: C('#a43c2c'), rust: C('#8a4a3c'),
     blue:    C('#3d6484'), navy: C('#2b3a4d'), sky: C('#c4dbea'),
     bag:     C('#84a8bf'), bagG: C('#8ba892'),
     warm:    C('#ffe9c2'), screen: C('#3b5468'), ink: C('#2b2620'),
-    paper:   C('#e6ded0'), gold: C('#c9a049'),
+    paper:   C('#cbc4b7'), gold: C('#c9a049'),
   };
   const G = { matte: .05, wood: .20, paint: .14, fabric: .03, metal: .55, plastic: .30 };
   // Material settings, repeated rather than reached for, so this file stands on its own. `matAmt`
@@ -131,7 +131,10 @@ FlatFit['second'] = A => {
   // Built as boxes rather than as two quads because it is 100 mm thick and both of its faces are
   // seen from rooms in this file — a wall you can walk round the end of has to have an end.
   if (A.partitions !== false) {
-    const P = { hard: true, mode: 4, gloss: .10, ...PLASTER };
+    // `partition: true` — the walls-down setting in js/game.js (SET.wallsOff, via `hiddenProp`).
+    // This file stood the x -2.60 wall before js/home-walls.js existed, so the flag has to be set
+    // here too or the flat drops nine partitions and keeps one. Drawing only; `stop` is untouched.
+    const P = { hard: true, mode: 4, gloss: .10, ...PLASTER, partition: true };
     box(X1, Y(H / 2), (Z0 + DZ0) / 2, PT, H, DZ0 - Z0, K.wall, P);            // south of the door
     box(X1, Y(H / 2), (DZ1 + Z1) / 2, PT, H, Z1 - DZ1, K.wall, P);            // north of it
     box(X1, Y((DTOP + H) / 2), (DZ0 + DZ1) / 2, PT, H - DTOP, DZ1 - DZ0, K.wall, P); // header
@@ -139,15 +142,19 @@ FlatFit['second'] = A => {
   }
   // The lining and architrave of the doorway, on both faces. A cased opening with no lining is
   // the single clearest tell that a wall is a slab with a hole punched in it.
+  // The lining is part of the wall for walls-down purposes: an architrave surviving a partition
+  // that has gone is the "skirting floating in front of a wall that had been taken" fault the
+  // cutaway band comment in js/game.js records, reintroduced by a setting instead of by a number.
+  const CASE = { hard: true, gloss: G.paint, partition: true };
   for (const zj of [DZ0, DZ1]) {
     const s = zj === DZ0 ? 1 : -1;
-    box(X1, Y(DTOP / 2), zj + s * .022, PT + .004, DTOP, .044, K.cream, { hard: true, gloss: G.paint });
+    box(X1, Y(DTOP / 2), zj + s * .022, PT + .004, DTOP, .044, K.cream, CASE);
     for (const fx of [PF - .010, PB + .010])
-      box(fx, Y(DTOP / 2 + .02), zj + s * .034, .020, DTOP + .04, .068, K.white, { hard: true, gloss: G.paint });
+      box(fx, Y(DTOP / 2 + .02), zj + s * .034, .020, DTOP + .04, .068, K.white, CASE);
   }
-  box(X1, Y(DTOP + .022), (DZ0 + DZ1) / 2, PT + .004, .044, DZ1 - DZ0, K.cream, { hard: true, gloss: G.paint });
+  box(X1, Y(DTOP + .022), (DZ0 + DZ1) / 2, PT + .004, .044, DZ1 - DZ0, K.cream, CASE);
   for (const fx of [PF - .010, PB + .010])
-    box(fx, Y(DTOP + .034), (DZ0 + DZ1) / 2, .020, .068, DZ1 - DZ0 + .136, K.white, { hard: true, gloss: G.paint });
+    box(fx, Y(DTOP + .034), (DZ0 + DZ1) / 2, .020, .068, DZ1 - DZ0 + .136, K.white, CASE);
 
   // ---- the leaf, hinged on the north jamb and standing open into the bedroom, because a spare
   // room's door is open unless somebody is sleeping in it. rotY(a) sends +z to (sin a, cos a), so

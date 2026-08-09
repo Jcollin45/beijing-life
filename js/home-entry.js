@@ -99,8 +99,8 @@ FlatFit['entry'] = A => {
     slab   : C('#bbb29f'),   // the cabinet top, a pale stone
     tile   : C('#8d8579'),   // the drop-zone floor
     tileD  : C('#7c756d'),
-    cream  : C('#e6ded0'),
-    white  : C('#e8ebe7'),
+    cream  : C('#cbc4b7'),
+    white  : C('#c4c6c3'),
     steel  : C('#a4a9ac'),
     chrome : C('#bfc6cb'),
     brass  : C('#b3873c'),
@@ -118,7 +118,7 @@ FlatFit['entry'] = A => {
     // joinery instead of as something stuck on.
     paper  : C('#bf2f26'),
     paperD : C('#96231d'),
-    mirror : C('#c6d6dc'),
+    mirror : C('#bbcad0'),
     coir   : C('#4a4038'),   // the doormat
     coirL  : C('#655648'),
     jade   : C('#3f7564'),
@@ -196,7 +196,11 @@ FlatFit['entry'] = A => {
   //
   // Colour and material come off `A.col`/`A.MAT` rather than this file's own palette, so the two
   // faces are the same plaster as the rest of the flat instead of nearly the same.
-  const PL = { ...A.MAT.plaster };
+  // `partition: true` marks these two quads as interior wall for the walls-down setting in
+  // js/game.js (SET.wallsOff, read through `hiddenProp`). The 玄关's south and east faces are
+  // partitions, not shell — the building's own envelope is js/world.js's and keeps you enclosed
+  // with the walls down. Drawing only: `A.stop` below is untouched.
+  const PL = { ...A.MAT.plaster, partition: true };
   A.wall(3.90, F + CH / 2, 1.612, 2.60, CH, 0, A.col.wall, PL);            // south, faces +z
   A.wall(5.188, F + CH / 2, 2.40, 1.60, CH, -Math.PI / 2, A.col.wall, PL); // east,  faces -x
   // Solid, both of them. The only way out of the 玄关 on the inside is west into the 走道 — that
@@ -481,7 +485,7 @@ FlatFit['entry'] = A => {
   // Outdoor shoes in the open recess, which is what the recess is for. They face out because that
   // is how a shoe lands when it is kicked off, and because the toe is the readable end.
   pair(SH_LEATHER, 3.12, LZ - .02, F + .022, -Math.PI / 2, C('#2b2620'), c.walnut, '鞋');
-  pair(SH_TRAINER, 3.58, LZ - .02, F + .022, -Math.PI / 2 + .12, C('#e6ded0'), C('#b23a2b'), '鞋');
+  pair(SH_TRAINER, 3.58, LZ - .02, F + .022, -Math.PI / 2 + .12, C('#cbc4b7'), C('#b23a2b'), '鞋');
   pair(SH_FLAT,    4.02, LZ - .02, F + .022, -Math.PI / 2 - .10, C('#7a3f52'), C('#3a2a1e'), '鞋');
 
   // ---- what lives on top of a 鞋柜, which is never nothing.
@@ -554,8 +558,8 @@ FlatFit['entry'] = A => {
   // step over coming in, and this one, for indoor shoes, which never leaves the room.
   A.flat(3.06, F + .040, 2.60, .52, .68, C('#5f6b63'), { mode:7, gloss:G.cloth, ...Mcloth });
   A.flat(3.06, F + .043, 2.60, .46, .62, C('#6e7475'), { mode:7, gloss:G.cloth, ...Mcloth });
-  pair(SH_SLIPPER, 3.02, 2.42, F + .046, Math.PI, C('#c8503c'), C('#e6ded0'), '鞋', .125);
-  pair(SH_SLIPPER, 3.02, 2.78, F + .046, Math.PI + .08, C('#3f6f8c'), C('#e6ded0'), '鞋', .125);
+  pair(SH_SLIPPER, 3.02, 2.42, F + .046, Math.PI, C('#c8503c'), C('#cbc4b7'), '鞋', .125);
+  pair(SH_SLIPPER, 3.02, 2.78, F + .046, Math.PI + .08, C('#3f6f8c'), C('#cbc4b7'), '鞋', .125);
 
   // A shallow tray of just-removed outdoor shoes in front of the cabinet — the overflow, which is
   // what a real entry looks like on a Tuesday.
@@ -658,7 +662,7 @@ FlatFit['entry'] = A => {
   A.cyl(UX, F + .415, UZ, .118, .026, C('#3a5a60'), { gloss:.56, tag: '雨伞' });
   A.cyl(UX, F + .012, UZ, .120, .024, C('#3a5a60'), { gloss:.40, tag: '雨伞' });
   A.glyph(UX - .118, F + .24, UZ, -Math.PI / 2, '雨',
-    { size:.085, color:C('#d3e2e2'), gloss:.30, lift:.006, tag: '雨伞' });
+    { size:.085, color:C('#b4c1c1'), gloss:.30, lift:.006, tag: '雨伞' });
   const brolly = (dx, dz, lean, col, colD) => {
     const rx = lean * .35, rz = -lean * .55;
     A.cap(UX + dx, F + .58, UZ + dz, .046, .880, .046, col,
@@ -719,7 +723,7 @@ FlatFit['entry'] = A => {
   // says the door downstairs is locked and somebody has to buzz you through it.
   A.box(4.70, F + 1.28, 3.176, .086, .130, .016, c.white, { hard:true, gloss:.26 });
   for (const s of [-1, 1])
-    A.box(4.70 + s * .020, F + 1.28, 3.164, .030, .052, .012, C('#e6ded0'), { hard:true, gloss:.30 });
+    A.box(4.70 + s * .020, F + 1.28, 3.164, .030, .052, .012, C('#cbc4b7'), { hard:true, gloss:.30 });
 
   A.box(4.98, F + 1.46, 3.174, .150, .230, .022, c.white, { hard:true, gloss:.28 });
   A.box(4.98, F + 1.50, 3.158, .112, .130, .012, C('#2a2e33'), { hard:true, mode:1, glow:.04, gloss:.60 });

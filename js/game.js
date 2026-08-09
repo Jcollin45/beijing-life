@@ -1487,6 +1487,12 @@ const SET = { sens: 1, clock: 1, assist: false, fps: true, speech: true, ambienc
   // 3.2 flashes per second on a lit floor in the darkest room in the mall, over the 3/s
   // photosensitivity line, and no setting existed to turn it down.
   motion: 'auto',
+  // Walls down, the way a doll's house is played with. Only the flat's interior partitions carry
+  // the `partition` flag, so the building's own envelope, the floor, the ceiling, the furniture
+  // and the player all stay — you are still enclosed, you can just see in. It is a drawing
+  // setting and nothing else: `hiddenProp` is consulted from the three paint loops only, and the
+  // colliders come from `A.stop`, which this never touches. A wall you cannot see still stops you.
+  wallsOff: false,
   // Not a setting about playing the game — a setting about testing it. It lives here rather than
   // in the save so that wiping the save does not silently switch it off mid-session, and so that
   // it survives the reload you do twenty times an hour while working on a scene.
@@ -1698,6 +1704,7 @@ function syncSettings() {
   $('#setSpeech').classList.toggle('on', SET.speech);
   $('#setAmbience').classList.toggle('on', SET.ambience);
   $('#setFps').classList.toggle('on', SET.fps);
+  $('#setWalls').classList.toggle('on', SET.wallsOff);
 }
 
 function bindRange(id, key, after) {
@@ -1723,6 +1730,12 @@ bindToggle('#setSpeech', 'speech');
 // as a street to one person is a noise to another — so it gets its own toggle rather than being
 // tuned until nobody minds it.
 bindToggle('#setAmbience', 'ambience', () => applyAmbience());
+// Walls down. Nothing to apply — the next frame reads SET.wallsOff through hiddenProp — but the
+// panel is over a frozen frame, so say what changed rather than leaving the player to unpause and
+// guess. `bindToggle` already saves it, so it survives the reload like every other setting.
+bindToggle('#setWalls', 'wallsOff', () => {
+  toast(SET.wallsOff ? '墙壁隐藏 · walls down' : '墙壁显示 · walls up');
+});
 bindToggle('#setFps', 'fps');
 
 // Throwing away every word you have met is the one thing in here you cannot undo, so it asks
@@ -1846,6 +1859,15 @@ addEventListener('keydown', e => {
   if (e.key === 'p' || e.key === 'P') {
     Perf.cycle();
     toast(`画质 · quality: ${Perf.auto ? '自动 auto' : Perf.q.en}`);
+    return;
+  }
+  // V drops the flat's walls, the way a doll's house opens. Paired with the toggle in the pause
+  // menu rather than replacing it — the menu is where a player finds it, the key is how they use
+  // it once they know. V is free: nothing else in the game claims it.
+  if (e.key === 'v' || e.key === 'V') {
+    e.preventDefault();
+    SET.wallsOff = !SET.wallsOff; saveSettings(); syncSettings();
+    toast(SET.wallsOff ? '墙壁隐藏 · walls down' : '墙壁显示 · walls up');
     return;
   }
   // Escape closes whatever is open, one thing at a time, and pauses the game once nothing is.
@@ -2319,6 +2341,14 @@ function hiddenProp(p) {
   // so cutting those walls away was never doing useful work. This restores what the shell had
   // before camera rooms existed. Nothing that does not set the flag can reach this line.
   if (p.nocut) return false;
+  // Walls down. The flag is set where the partitions are built — js/home-walls.js, and the two
+  // room files that stood their own wall before that module existed — so this is a set the room
+  // authors named, not a shape this function guesses at. That matters because the alternative
+  // (anything tall and thin) takes wardrobes and bookcases with it, and because a tag cannot be
+  // used here at all: tags are scene-wide across twelve decks, so `墙` on deck 7 and `墙` on
+  // deck 2 average their group centre into the middle of the shaft. A per-prop boolean has no
+  // centre to average. Nothing outside the flat sets it, so no other place can be affected.
+  if (SET.wallsOff && p.partition) return true;
   // A tag group only gets to speak for a prop when the whole group fits inside the room being
   // cut. `build.js:280` keys tagBox by tag alone and one Build.scene covers all twelve decks of
   // the tower, so a word reused per floor — 门, 窗户, 沙发, 电梯, 邻居 and eight more, 99 of 272

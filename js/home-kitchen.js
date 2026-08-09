@@ -26,7 +26,7 @@ FlatFit['kitchen'] = A => {
   const top = Y + .925;
 
   const K = {
-    floor: C('#9a8069'), grout: C('#98948a'), wall: C('#e6ded0'),
+    floor: C('#9a8069'), grout: C('#98948a'), wall: C('#cbc4b7'),
     tile: C('#bcb8ac'), tileAlt: C('#b0b4ab'),
     cabinet: C('#bcb8ac'), cabinetD: C('#b5a78f'), kick: C('#655f57'),
     counter: C('#6e7475'), counterEdge: C('#4a5856'),
@@ -38,9 +38,9 @@ FlatFit['kitchen'] = A => {
     // The kitchen's own two timbers were #ad8557 and #765536, a set nothing else in the flat has.
     // Fitted units are the same board as the wardrobe: FLAT_PALETTE (js/home-walls.js).
     garlic: C('#cdc4b4'), wood: C(FLAT_PALETTE.woodL), woodD: C(FLAT_PALETTE.woodM),
-    bamboo: C('#c8a877'), white: C('#c8c7c1'), lit: C('#f2f0e9'), porcelain: C('#ced2ce'),
+    bamboo: C('#c8a877'), white: C('#c8c7c1'), lit: C('#f2f0e9'), porcelain: C('#c6c9c6'),
     blue: C('#3f6f8c'), oil: C('#c49332'), soy: C('#3a2a1e'),
-    glass: C('#afc6cd'), water: C('#bde4ee'), paper: C('#d3ccbc'),
+    glass: C('#afc6cd'), water: C('#aed2dc'), paper: C('#d3ccbc'),
   };
   // -------------------------------------------------------------------------- the material kit
   // This room used to spread `A.MAT` straight through, and A.MAT is the *shell's* kit: its tile

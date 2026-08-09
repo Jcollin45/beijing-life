@@ -10,12 +10,26 @@
 // The seven are the ones a zoo is actually visited for and the ones whose names a beginner wants
 // first: 熊猫, 老虎, 大象, 长颈鹿, 猴子, 企鹅, 孔雀. Each has an enclosure, a sign with its name on
 // it, and something to do at the rail. The animals themselves are not built here — they are rows in
-// the NPC roster in game.js, drawn by the animal rig in figure.js, so they walk about, turn to look
+// the NPC roster in data.js, drawn by the animal rig in figure.js, so they walk about, turn to look
 // at you and keep their own hours. What this file owns is where they can be and what you see them
 // over.
 //
 // Outdoors, so no room shell and no window: the renderer puts a sky dome over it and takes the sun
 // off the clock, the same way it does the hutong and the park.
+//
+// Pen bounds live outside the lazy builder because data.js needs them to schedule the animals at
+// boot. Keeping this small table eager avoids constructing the entire 1,500-prop scene just to read
+// seven rectangles.
+const ZOO_PENS = Object.freeze({
+  penguin:  Object.freeze({ x0: -6.0, x1:  0.0, z0: -11.0, z1: -5.5, face: 'z0' }),
+  giraffe:  Object.freeze({ x0:  5.0, x1: 14.0, z0: -11.0, z1: -5.5, face: 'z0' }),
+  panda:    Object.freeze({ x0: -16.0, x1: -8.0, z0: -2.5, z1:  4.0, face: 'x1' }),
+  aviary:   Object.freeze({ x0: -4.0, x1:  2.0, z0: -2.5, z1:  4.0, face: 'z0' }),
+  elephant: Object.freeze({ x0:  6.0, x1: 16.0, z0: -2.5, z1:  4.0, face: 'x0' }),
+  monkey:   Object.freeze({ x0: -13.0, x1: -5.0, z0:  7.0, z1: 13.5, face: 'z0' }),
+  tiger:    Object.freeze({ x0:  1.0, x1: 10.0, z0:  7.0, z1: 13.5, face: 'z0' }),
+});
+
 const Zoo = Lazy('Zoo', () => {
   const col = {
     grass: C('#5c7442'), grassD: C('#4a6136'), grassL: C('#6b8449'),
@@ -39,99 +53,23 @@ const Zoo = Lazy('Zoo', () => {
     green: C('#2f7a4f'), greenD: C('#215c3a'),
     yellow: C('#d9b02f'), orange: C('#cf7a2b'), pink: C('#c4657a'), purple: C('#7a5f96'),
     plastic: C('#c5453a'), ice: C('#c8dbe2'),
-    // ---- the same colours again, pre-divided by the gain of the material that goes on them.
-    //
-    // A tiling material multiplies the colour by the texture over a fixed mid grey, and the
-    // library's textures are nothing like that mid grey (the figures are tabulated under `MAT`
-    // below). So the surfaces that keep a strongly-signed material are painted a shade that is
-    // *wrong on its own* and correct once the texture is on it: the rendered walls are dropped
-    // a step because plaster brightens by 38%, the roofs are lifted a step because roof tile is
-    // a dark photograph and takes a quarter off, and the timber is desaturated toward olive
-    // because the wood map is strongly red and puts the warmth back.
-    //
-    // Written out as their own entries rather than applied to the originals because most of
-    // these colours are used in both places: `trunkL` is a bench slat with a material on it and
-    // a tree trunk without one, and a tree that has been pre-divided for a texture it never gets
-    // is a grey tree. The concrete pair is deliberately only three-quarters compensated — a
-    // sunlit concrete wall is genuinely lighter than the flat grey the room used to paint.
-    // Kept deliberately below the mathematically-neutral compensation: in the open zoo the full
-    // plaster/concrete gain clipped whole habitat walls toward white and erased their shape.
-    render: C('#aba495'),                                     // cream ÷ plaster, sun-safe
-    roofR:  C('#7b8186'), roofRD: C('#63696e'),               // grey pantile ÷ rooftile
-    roofG:  C('#497a62'), roofGD: C('#3b6652'), copingR: C('#7a7f84'), // green pantile pair, coping
-    conc:   C('#716d67'), concL: C('#817d76'), concD: C('#57534d'),   // stone trio ÷ concrete
-    timber: C('#555145'), timberD: C('#433e34'),              // trunk pair ÷ wood, and a step
-                                                              // darker again: the normal map
-                                                              // lifts the planks past the sum
-    brickR: C('#97725e'),                                     // paveR ÷ brick
+    // Material aliases keep textured and untextured uses independent while sharing the authored
+    // palette. The shader normalises every source texture by its measured mean, so these should be
+    // the colours we actually want on screen—no per-texture brightness compensation is needed.
+    render: C('#e6dcc6'),
+    roofR:  C('#6b7075'), roofRD: C('#565b60'),
+    roofG:  C('#3f6a55'), roofGD: C('#31543f'), copingR: C('#31543f'),
+    conc:   C('#918c83'), concL: C('#a8a29a'), concD: C('#6f6a62'),
+    timber: C('#74604a'), timberD: C('#5b4a38'),
+    brickR: C('#a2705a'),
   };
   const G = { matte: .05, wood: .20, paint: .16, metal: .58, glass: .80, fabric: .04 };
 
-  // ---- 材质 the tiling surface materials.
-  //
-  // These are read triplanar in world space, so a wall and the path in front of it share a grain
-  // and nothing in this file needs a UV. Two numbers decide whether they help or hurt.
-  //
-  // `matScale` is one repeat in metres, and it has to be the real size of the thing being
-  // imitated or the surface changes size instead of gaining texture: a paving slab is 60–70 cm,
-  // a brick course is about 90, a panel of poured concrete is metres. Get it wrong by a factor
-  // of three and a wall reads as a scale model of a wall.
-  //
-  // `matAmt` is how far the photograph may pull the painted colour about, and it is the thing
-  // that goes wrong. Past about .5 the colour stops being the scene's colour and every surface
-  // drifts toward the average grey-brown of somebody else's photograph — a zoo whose paths,
-  // walls and roofs were all separately chosen ends up one tone. Everything here sits between
-  // .28 and .38: high on the ground, which is the one surface you look straight down at and the
-  // one that should be worn, and low on everything a colour was actually picked for.
-  //
-  // Grouped rather than written inline because the batcher keys on the exact pair: two paths
-  // that differ only in a matScale of .70 against .71 are two draw calls instead of one.
-  //
-  // ---- and one wrinkle that belongs to this room and to no other in the game.
-  //
-  // The zoo is the only scene that is not built lazily. js/data.js reads `Zoo.PENS` while it is
-  // still being *parsed*, so that the animal roster can put seven species inside the enclosures
-  // this file draws — and reading any property of a `Lazy` proxy is what builds it. So the whole
-  // zoo is constructed during data.js, which is several script tags before js/game.js runs
-  // `R.init` and there is a GL context to make a texture in.
-  //
-  // Handing `mat: 'paving'` to a shape therefore does not work here the way it works in every
-  // other scene: `Build.finish` resolves the name to a GL texture object on the spot, that call
-  // reaches a renderer with no context, and the game never starts at all. It is a completely
-  // silent trap — the code is identical to the code that works in js/diner.js.
-  //
-  // So the names are held back. A shape carries only the two numbers, which is enough for the
-  // batcher to keep materials apart, and the textures are hung on the props by `dressMaterials`
-  // below on the first frame the room is actually drawn. The one thing that joins the two halves
-  // is `matScale`, so no two materials may share one — `surf` refuses to let them.
-  const MATBY = new Map();                    // matScale -> the material's name in js/assets.js
-  function surf(name, matScale, matAmt) {
-    const seen = MATBY.get(matScale);
-    if (seen && seen !== name)
-      throw new Error(`zoo: ${seen} and ${name} both want matScale ${matScale}; ` +
-                      'the deferred lookup keys on it, so they have to differ');
-    MATBY.set(matScale, name);
-    return { matScale, matAmt };
-  }
-  // ---- and the thing that has to be measured rather than guessed.
-  //
-  // The shader does `base *= mix(1, t / 0.22, matAmt)`. That 0.22 is a fixed reference: a texture
-  // whose mean linear value happens to be 0.22 leaves the colour where the scene put it, and
-  // every other texture in the library multiplies it. They are nowhere near each other, and the
-  // means are worth writing down because nothing in the API hints at them:
-  //
-  //     metal    4.43×      concrete 2.19×      brick    1.76 / 0.88 / 0.61  (reddens)
-  //     plaster  2.35×      paving   1.41 / 1.26 / 0.72   wood 2.79 / 1.52 / 0.73  (reddens)
-  //     steel    1.02×      rooftile 0.14×
-  //
-  // So `matAmt` is not a texture-strength dial, it is a brightness dial as well, and the two
-  // cannot be separated. At the .28–.50 that reads as texture, `metal` at .28 doubles whatever
-  // colour it is given — the aviary's dark steel posts came out as white strip lights — and
-  // `rooftile` at .32 takes a roof down to three quarters. The fixes are both here rather than
-  // in the numbers: `metal` is replaced by `steel`, which is the one material in the library
-  // that is neutral and therefore adds ribbing without touching the colour at all, and the
-  // colours of the surfaces that keep a strongly-signed material are pre-divided by its gain
-  // (`col.render`, `col.roof*` below) so that what lands on screen is the tone that was chosen.
+  // Tiling is world-space. Keep repeats close to the real material size and strength restrained;
+  // the scene's palette should lead, with the texture adding wear rather than replacing colour.
+  // Build.finish defers unresolved material names until a GL context exists, so the zoo can use
+  // the same material path as every other scene.
+  const surf = (mat, matScale, matAmt) => ({ mat, matScale, matAmt });
   const MAT = {
     path:   surf('paving',   .70,  .38),   // the loop and the cross paths
     plaza:  surf('paving',   .52,  .34),   // smaller slabs inside the gate
@@ -176,15 +114,7 @@ const Zoo = Lazy('Zoo', () => {
   // in the panda yard and the aviary's in the penguin pool. Both read as "too far away" from every
   // angle no matter where you stand, which is the least debuggable symptom in the whole engine, and
   // the fix is geometric: a gap wide enough to stand in.
-  const PENS = {
-    penguin:  { x0: -6.0, x1:  0.0, z0: -11.0, z1: -5.5, face: 'z0' },
-    giraffe:  { x0:  5.0, x1: 14.0, z0: -11.0, z1: -5.5, face: 'z0' },
-    panda:    { x0: -16.0, x1: -8.0, z0: -2.5, z1:  4.0, face: 'x1' },
-    aviary:   { x0: -4.0, x1:  2.0, z0: -2.5, z1:  4.0, face: 'z0' },
-    elephant: { x0:  6.0, x1: 16.0, z0: -2.5, z1:  4.0, face: 'x0' },
-    monkey:   { x0: -13.0, x1: -5.0, z0:  7.0, z1: 13.5, face: 'z0' },
-    tiger:    { x0:  1.0, x1: 10.0, z0:  7.0, z1: 13.5, face: 'z0' },
-  };
+  const PENS = ZOO_PENS;
   // The middle of a pen, and a point on the visitor side of its rail that a body can stand on.
   // Every label in the file takes its focus from `at`, which is the check that stops a `thing`
   // being unreachable — the commonest way a new room comes out broken.
@@ -203,33 +133,6 @@ const Zoo = Lazy('Zoo', () => {
     enrichmentParts.push({ p, m0: new Float32Array(p.m) });
     p.fixed = true; p.cx = cx; p.cy = cy; p.cz = cz; p.r = r;
     return p;
-  }
-
-  // The other half of the note above `MAT`: hang the actual textures on the props, once, on the
-  // first frame the zoo is drawn. By then js/game.js has a renderer, which is the whole reason
-  // this is not done where every other scene does it.
-  //
-  // Patching a prop is enough on its own for the plain draw path, which reads `p.mat` fresh
-  // every frame. The instanced path does not — it reads one shared options object per batch —
-  // so the batch is patched too, and that is only correct because a batch cannot straddle two
-  // materials: `Build.finish` keys batches on `matScale` and `matAmt` among other things, and
-  // `surf` guarantees every material in this room has a `matScale` of its own.
-  let dressed = false;
-  function dressMaterials() {
-    if (dressed || typeof Assets === 'undefined' || !Assets.material) return;
-    dressed = true;
-    for (const p of B.props) {
-      if (p.mat || p.matScale === undefined) continue;
-      const name = MATBY.get(p.matScale);
-      if (!name) continue;
-      // Null for a material that never downloaded, and a scene that gets null simply keeps the
-      // flat colour it was already painted — a failed texture must not be a missing wall.
-      const t = Assets.material(name);
-      if (!t) continue;
-      const n = Assets.materialNormal(name);
-      p.mat = t; if (n) p.nrm = n;
-      if (p.batch) { p.batch.opt.mat = t; if (n) p.batch.opt.nrm = n; }
-    }
   }
 
   // 猴山 is the one place in this room where the floor is not at zero, and `liftAt` is what says so.
@@ -354,6 +257,10 @@ const Zoo = Lazy('Zoo', () => {
     const hz = Math.abs(Math.sin(ry)) * .84 + Math.abs(Math.cos(ry)) * .38;
     solid(cx - hx, cx + hx, cz - hz, cz + hz);
     shade(cx, cz, 2.0, 1.0, .24);
+    thing('长椅', cx + Math.sin(ry) * .9, .95, cz + Math.cos(ry) * .9,
+      '坐在长椅上休息一下。', 'Sit on the bench and rest a while.',
+      '长 long + 椅 chair. 休息 is to rest.',
+      { focus: [cx + Math.sin(ry) * 1.2, cz + Math.cos(ry) * 1.2], reach: 1.9 });
   }
 
   // 垃圾桶 a bin. Placed on the centre of a run of benches rather than in the gap between two
@@ -372,15 +279,23 @@ const Zoo = Lazy('Zoo', () => {
   // to read after recognising the animal. English is deliberately tiny and terse: it confirms
   // meaning without competing with the headword. Keeping all copy in this table also makes it
   // impossible for a habitat call to acquire the wrong species' panel when pens move later.
-  const PANEL_INFO = {
-    '熊猫':   { en: 'PANDA',    facts: [['爱吃竹子', 'BAMBOO'], ['一天吃很久', 'ALL DAY']] },
-    '老虎':   { en: 'TIGER',    facts: [['条纹各不同', 'STRIPES'], ['白天爱睡觉', 'SLEEPS']] },
-    '大象':   { en: 'ELEPHANT', facts: [['鼻子能喝水', 'TRUNK'], ['喜欢洗泥浴', 'MUD']] },
-    '长颈鹿': { en: 'GIRAFFE',  facts: [['脖子非常长', 'LONG NECK'], ['爱吃高处叶子', 'BROWSE']] },
-    '猴子':   { en: 'MONKEY',   facts: [['住在猴山上', 'HILL'], ['喜欢互相理毛', 'GROOMING']] },
-    '企鹅':   { en: 'PENGUIN',  facts: [['擅长游泳', 'SWIMS'], ['走路摇摇摆摆', 'WADDLES']] },
-    '孔雀':   { en: 'PEACOCK',  facts: [['雄鸟会开屏', 'DISPLAY'], ['尾羽五彩缤纷', 'TAIL FAN']] },
-  };
+  const HABITATS = [
+    { key:'penguin', name:'企鹅', en:'PENGUIN', accent:col.blue,
+      facts:[['擅长游泳', 'SWIMS'], ['走路摇摇摆摆', 'WADDLES']] },
+    { key:'giraffe', name:'长颈鹿', en:'GIRAFFE', accent:col.gold,
+      facts:[['脖子非常长', 'LONG NECK'], ['爱吃高处叶子', 'BROWSE']] },
+    { key:'panda', name:'熊猫', en:'PANDA', accent:col.green,
+      facts:[['爱吃竹子', 'BAMBOO'], ['一天吃很久', 'ALL DAY']] },
+    { key:'aviary', name:'孔雀', en:'PEACOCK', accent:col.purple,
+      facts:[['雄鸟会开屏', 'DISPLAY'], ['尾羽五彩缤纷', 'TAIL FAN']] },
+    { key:'elephant', name:'大象', en:'ELEPHANT', accent:col.teal,
+      facts:[['鼻子能喝水', 'TRUNK'], ['喜欢洗泥浴', 'MUD']] },
+    { key:'monkey', name:'猴子', en:'MONKEY', accent:col.red,
+      facts:[['住在猴山上', 'HILL'], ['喜欢互相理毛', 'GROOMING']] },
+    { key:'tiger', name:'老虎', en:'TIGER', accent:col.orange,
+      facts:[['条纹各不同', 'STRIPES'], ['白天爱睡觉', 'SLEEPS']] },
+  ];
+  const HABITAT_BY_NAME = new Map(HABITATS.map(h => [h.name, h]));
 
   // A tiny relief portrait assembled from the same batched balls, capsules and boxes used by the
   // rest of the zoo. A handful of broad shapes beats a detailed decal here: the silhouette survives
@@ -391,12 +306,12 @@ const Zoo = Lazy('Zoo', () => {
     const orb = (u, y, rx, ry, rz, color, d = .098, o = {}) => {
       const [x, yy, z] = point(u, y, d);
       return ball(x, yy, z, rx, ry, rz, color,
-        { tag: name, gloss: .12, mode: 15, ry: yaw, ...o });
+        { tag: name, gloss: .12, ry: yaw, ...o });
     };
     const stem = (u, y, sx, sy, sz, color, d = .105, rz = 0) => {
       const [x, yy, z] = point(u, y, d);
       return capsule(x, yy, z, sx, sy, sz, color,
-        { tag: name, gloss: .12, mode: 15, ry: yaw, rz });
+        { tag: name, gloss: .12, ry: yaw, rz });
     };
     const mark = (u, y, w, h, color, d = .132, rz = 0) => {
       const [x, yy, z] = point(u, y, d);
@@ -473,12 +388,12 @@ const Zoo = Lazy('Zoo', () => {
   // stood. The wider face grows along the path, not across it, so the player's clear route is
   // unchanged even at the two east/west-facing habitats.
   function plaque(px, pz, yaw, name, accent = col.greenD) {
-    const c = Math.cos(yaw), s = Math.sin(yaw), info = PANEL_INFO[name];
+    const c = Math.cos(yaw), s = Math.sin(yaw), info = HABITAT_BY_NAME.get(name);
     const point = (u, y, d = .057) => [px + c * u + s * d, y, pz - s * u + c * d];
     for (const o of [-.76, .76])
       cyl(px + c * o, .53, pz - s * o, .038, 1.06, col.steelD,
         { tag: name, gloss: G.metal, ...MAT.rail });
-    box(px, 1.36, pz, 2.22, 1.28, .080, col.charcoal,
+    box(px, 1.36, pz, 2.22, 1.28, .080, col.greenD,
       { tag: name, hard: true, ry: yaw, gloss: .24, ...MAT.metal });
 
     // One coloured cap and two tiny bullets continue the habitat colour without sacrificing the
@@ -582,11 +497,15 @@ const Zoo = Lazy('Zoo', () => {
     // The dry moat: a dark sunken band just inside the wall on the public side, which is what
     // keeps the animal off the rail without a cage. Drawn, not modelled — the eye reads the tone
     // change as depth and the collider does the rest.
-    const M0 = 1.10;
-    if (p.face === 'z0') flat(cx, .009, z0 + M0 / 2, w, M0, col.mudD, { mode: 10, gloss: .10 });
-    if (p.face === 'z1') flat(cx, .009, z1 - M0 / 2, w, M0, col.mudD, { mode: 10, gloss: .10 });
-    if (p.face === 'x0') flat(x0 + M0 / 2, .009, cz, M0, d, col.mudD, { mode: 10, gloss: .10 });
-    if (p.face === 'x1') flat(x1 - M0 / 2, .009, cz, M0, d, col.mudD, { mode: 10, gloss: .10 });
+    const M0 = 1.10, moatColor = o.moatColor || col.mudD;
+    const moatOpt = { mode: o.moatMode === undefined ? 10 : o.moatMode,
+                      gloss: o.moatGloss === undefined ? .10 : o.moatGloss };
+    if (o.moat !== false) {
+      if (p.face === 'z0') flat(cx, .009, z0 + M0 / 2, w, M0, moatColor, moatOpt);
+      if (p.face === 'z1') flat(cx, .009, z1 - M0 / 2, w, M0, moatColor, moatOpt);
+      if (p.face === 'x0') flat(x0 + M0 / 2, .009, cz, M0, d, moatColor, moatOpt);
+      if (p.face === 'x1') flat(x1 - M0 / 2, .009, cz, M0, d, moatColor, moatOpt);
+    }
 
     // The wall, all four sides. Low on the public side so you can see over it, and higher round
     // the back where it is doing the actual containing.
@@ -601,13 +520,13 @@ const Zoo = Lazy('Zoo', () => {
       // Poured concrete at a 1.75 m repeat for the wall, and a finer 95 cm one for the coping
       // that caps it — the same material at two scales is what tells the eye they are two
       // different pours, which is the only thing distinguishing them now that both are grey.
-      box(sx, h / 2, sz, sw, h, sd, col.conc,
+      box(sx, h / 2, sz, sw, h, sd, o.wallColor || col.conc,
         { ...T, hard: true, gloss: G.matte, ...MAT.conc });
       // The public coping matches the habitat panel: one restrained band of colour is enough to
       // turn seven near-identical concrete rectangles into seven places you can navigate by eye.
       box(sx, h + .045, sz, sw + .10, .09, sd + .10, pub && o.accent ? o.accent : col.concL,
         { ...T, hard: true, gloss: .18, ...MAT.concF });
-      if (!pub) continue;
+      if (!pub || o.rail === false) continue;
       // The handrail: uprights every 1.6 m and two rails, running along whichever axis this side
       // lies on. A rail is the one thing that gives the barrier a human scale to read it against.
       const along = k[0] === 'z' ? 'x' : 'z';
@@ -629,6 +548,33 @@ const Zoo = Lazy('Zoo', () => {
     if (o.blockTop) blocker(x0 - .28, x1 + .28, z0 - .28, z1 + .28, o.blockTop);
   }
 
+  // A small paved pause point makes the intended viewing position readable before the prompt
+  // appears. Habitat color is repeated as a narrow rail-side line and as a pair of animal tracks;
+  // neither creates collision, so the full path width remains accessible.
+  function viewingBay(h) {
+    const p = PENS[h.key], [x, z] = at(p, 1.22);
+    const horizontal = p.face[0] === 'z';
+    const len = horizontal ? p.x1 - p.x0 : p.z1 - p.z0;
+    const span = Math.min(4.2, Math.max(2.6, len - 2.4));
+    flat(x, .012, z, horizontal ? span : .82, horizontal ? .82 : span, col.pathD,
+      { mode: 9, gloss: .11, ...MAT.path });
+    const [rx, rz] = at(p, .76);
+    flat(rx, .017, rz, horizontal ? span : .13, horizontal ? .13 : span, h.accent,
+      { gloss: .20 });
+
+    const toward = p.face === 'z0' ? [0, 1] : p.face === 'z1' ? [0, -1]
+                  : p.face === 'x0' ? [1, 0] : [-1, 0];
+    const side = [toward[1], -toward[0]];
+    for (const [u, v] of [[-.18, -.16], [.18, .18]]) {
+      const px = x + side[0] * u + toward[0] * v;
+      const pz = z + side[1] * u + toward[1] * v;
+      cyl(px, .030, pz, .105, .018, h.accent, { gloss: .16 });
+      for (const toe of [-.085, 0, .085])
+        cyl(px + toward[0] * .14 + side[0] * toe, .032,
+          pz + toward[1] * .14 + side[1] * toe, .036, .020, h.accent, { gloss: .16 });
+    }
+  }
+
   // ---- 迎宾花园 the first thing on the axis from the gate.
   //
   // The entrance previously looked across a rectangle of empty grass at the back of a concrete
@@ -643,23 +589,23 @@ const Zoo = Lazy('Zoo', () => {
 
     // A seated stone panda, facing the gate (-z).
     ball(cx, .96, cz + .02, .55, .68, .48, col.stoneL,
-      { tag: '动物园', gloss: .12, mode: 15 });
+      { tag: '动物园', gloss: .12 });
     ball(cx, 1.52, cz - .06, .47, .45, .43, col.stoneL,
-      { tag: '动物园', gloss: .12, mode: 15 });
+      { tag: '动物园', gloss: .12 });
     for (const s of [-1, 1]) {
       ball(cx + s * .37, 1.82, cz - .05, .18, .18, .15, col.stoneD,
-        { tag: '动物园', gloss: .12, mode: 15 });
+        { tag: '动物园', gloss: .12 });
       ball(cx + s * .19, 1.58, cz - .43, .13, .18, .055, col.stoneD,
-        { tag: '动物园', gloss: .10, mode: 15, rz: s * .24 });
+        { tag: '动物园', gloss: .10, rz: s * .24 });
       capsule(cx + s * .45, 1.02, cz - .01, .14, .68, .14, col.stoneD,
         { tag: '动物园', gloss: .10, rz: s * .32 });
       ball(cx + s * .37, .54, cz - .12, .29, .25, .38, col.stoneD,
-        { tag: '动物园', gloss: .10, mode: 15 });
+        { tag: '动物园', gloss: .10 });
     }
     ball(cx, 1.40, cz - .47, .25, .16, .10, col.stone,
-      { tag: '动物园', gloss: .12, mode: 15 });
+      { tag: '动物园', gloss: .12 });
     ball(cx, 1.45, cz - .565, .075, .055, .035, col.charcoal,
-      { tag: '动物园', gloss: .20, mode: 15 });
+      { tag: '动物园', gloss: .20 });
 
     // Flowers are kept as broad low clumps, not dozens of individual stems: at entrance distance
     // the colour mass is what reads, and the shared ball mesh keeps the garden cheap to draw.
@@ -674,6 +620,10 @@ const Zoo = Lazy('Zoo', () => {
     }
     shade(cx, cz, 4.3, 4.3, .30);
     solid(cx - 1.52, cx + 1.52, cz - 1.52, cz + 1.52);
+    thing('动物园', cx, 2.05, cz - .85, '先从熊猫花园开始逛吧。',
+      'Start the zoo walk at the panda garden.',
+      '动物 animal + 园 garden. The round garden is the entrance landmark.',
+      { focus: [cx, cz - 2.2], reach: 2.4 });
   }
 
   function build() {
@@ -682,35 +632,33 @@ const Zoo = Lazy('Zoo', () => {
     // park is — the whole place is a route past a series of things — so the paving is laid as one
     // wide loop rather than as a set of spurs.
     flat(0, 0, 0, RX * 2 + 10, RZ * 2 + 10, col.grass, { mode: 17, gloss: .08 });
-    // The paving material goes on top of mode 9 rather than instead of it: mode 9 is what cuts
-    // the slab joints and takes the sun, and the texture is what puts the wear inside each slab.
-    // A 70 cm repeat is a real municipal slab, and it is the number that keeps the path reading
-    // as a path — at two metres the same texture becomes a stain rather than a paving pattern.
-    // the entrance plaza, then the loop: south, west, north, east
+    // Public circulation is light stone; the outer keeper/perimeter route is one step darker so it
+    // does not compete with the exhibit circuit. Two lanes wrap the round entrance garden and a
+    // south spine closes the former grass gap between the lower pens.
     flat(GX, .006, -RZ + 3.2, 9.0, 6.4, col.paveR, { mode: 9, gloss: .12, ...MAT.plaza });
     flat(0, .006, -13.2, RX * 2 - 4.0, 2.4, col.path, { mode: 9, gloss: .10, ...MAT.path });
-    flat(-19.0, .006, 0.0, 3.0, RZ * 2 - 6.0, col.path, { mode: 9, gloss: .10, ...MAT.path });
-    flat(19.0, .006, 0.0, 3.0, RZ * 2 - 6.0, col.path, { mode: 9, gloss: .10, ...MAT.path });
-    flat(0, .006, 14.4, RX * 2 - 4.0, 2.6, col.path, { mode: 9, gloss: .10, ...MAT.path });
-    // and the cross paths between the three rows of enclosures, which are the ones you actually
-    // walk on: they are what the labels' focus points sit in.
+    flat(-19.0, .006, 0.0, 3.0, RZ * 2 - 6.0, col.pathD, { mode: 9, gloss: .10, ...MAT.path });
+    flat(19.0, .006, 0.0, 3.0, RZ * 2 - 6.0, col.pathD, { mode: 9, gloss: .10, ...MAT.path });
+    flat(0, .006, 14.4, RX * 2 - 4.0, 2.6, col.pathD, { mode: 9, gloss: .10, ...MAT.path });
     flat(0, .006, -4.0, RX * 2 - 6.0, 2.6, col.path, { mode: 9, gloss: .10, ...MAT.path });
     flat(0, .006, 5.5, RX * 2 - 6.0, 2.6, col.path, { mode: 9, gloss: .10, ...MAT.path });
     flat(-6.5, .006, 0.7, 2.4, 10.0, col.path, { mode: 9, gloss: .10, ...MAT.path });
     flat(4.0, .006, 0.7, 2.4, 10.0, col.path, { mode: 9, gloss: .10, ...MAT.path });
-    // Red inset courts mark the four decisions in the loop. Four fixed quads do more for
-    // wayfinding than another forest of signposts, and they leave every centimetre walkable.
-    for (const [ix, iz] of [[-6.5,-4.0],[4.0,-4.0],[-6.5,5.5],[4.0,5.5]]) {
-      flat(ix, .011, iz, 1.70, 1.70, col.brickR,
-        { tag: '动物园', mode: 9, gloss: .12, ...MAT.brick });
-      cyl(ix, .025, iz, .22, .028, col.gold,
-        { tag: '动物园', gloss: G.metal });
+    flat(GX - 2.55, .007, -6.80, 2.2, 5.8, col.path, { mode: 9, gloss: .10, ...MAT.path });
+    flat(GX + 2.55, .007, -6.80, 2.2, 5.8, col.path, { mode: 9, gloss: .10, ...MAT.path });
+    flat(4.0, .007, -8.65, 2.0, 9.1, col.path, { mode: 9, gloss: .10, ...MAT.path });
+
+    // Compact color medallions mark decisions without turning each junction into another plaza.
+    for (const [ix, iz, accent] of [[-6.5,-4.0,col.green], [4.0,-4.0,col.purple],
+                                    [-6.5,5.5,col.red], [4.0,5.5,col.orange]]) {
+      cyl(ix, .025, iz, .42, .030, col.brickR, { gloss: .16, ...MAT.brick });
+      cyl(ix, .045, iz, .25, .024, accent, { gloss: .20 });
+      cyl(ix, .060, iz, .075, .020, col.gold, { gloss: G.metal });
     }
-    // joints in the plaza paving
-    for (let i = -4; i <= 4; i++) {
-      flat(GX + i * 1.05, .008, -RZ + 3.2, .04, 6.4, col.pathD, { gloss: .08 });
-      flat(GX, .008, -RZ + 3.2 + i * .78, 9.0, .04, col.pathD, { gloss: .08 });
-    }
+    // A tactile/visual guide leads from the gate to the map split, stopping before the garden.
+    for (let i = 0; i < 9; i++)
+      flat(GX, .014, -14.65 + i * .58, .18, .30, col.gold, { gloss: .16 });
+    for (const h of HABITATS) viewingBay(h);
     entranceGarden(GX, -7.45);
 
     // ================================================================ 熊猫馆 the panda house
@@ -718,7 +666,8 @@ const Zoo = Lazy('Zoo', () => {
     // along the back wall, a climbing frame of logs, and a tiled pavilion the animals go inside.
     // Faced east, onto the wide path down the west side.
     const PA = PENS.panda;
-    pen(PA, { tag: '熊猫', ground: col.grassD, back: 1.15, accent: col.green });
+    pen(PA, { tag: '熊猫', ground: col.grassD, back: 1.15, accent: col.green,
+              wallColor: col.concD });
     bamboo(PA.x0 + 1.4, PA.z0 + 1.6, 9, 3.6);
     bamboo(PA.x0 + 1.2, PA.z1 - 1.5, 8, 3.9);
     bamboo(PA.x0 + 3.6, PA.z1 - 1.0, 6, 3.3);
@@ -766,8 +715,8 @@ const Zoo = Lazy('Zoo', () => {
       solid(lx - .40, lx + .40, lz - 1.25, lz + 1.25);
     }
     plaque(PA.x1 + 1.05, PA.z0 + 1.20, Math.PI / 2, '熊猫', col.green);
-    thing('熊猫', PA.x1 - 1.0, 1.30, (PA.z0 + PA.z1) / 2, '熊猫在吃竹子。',
-      'The panda is eating bamboo.',
+    thing('熊猫', PA.x1 - 1.0, 1.30, (PA.z0 + PA.z1) / 2, '熊猫馆里种了很多竹子。',
+      'The panda house is planted with lots of bamboo.',
       '熊 bear + 猫 cat. 大熊猫 is the giant panda; 竹子 is the bamboo it lives on.',
       { focus: at(PA, 2.0), reach: 2.8 });
 
@@ -776,7 +725,7 @@ const Zoo = Lazy('Zoo', () => {
     // path, so you meet it after the monkeys rather than from the gate.
     const TI = PENS.tiger;
     pen(TI, { tag: '老虎', ground: col.grassD, back: 1.45, blockTop: 2.2,
-              accent: col.orange });
+              accent: col.orange, wallColor: col.concD });
     // Two low back-corner outcrops frame the cat instead of swallowing it. The old 22-block
     // piles sat directly on both afternoon sleeping marks; a tiger lying in its habitat became a
     // pair of ears behind concrete. Keep the middle three metres completely open to the rail.
@@ -796,8 +745,8 @@ const Zoo = Lazy('Zoo', () => {
         .030, .70, .030, i % 2 ? col.willow : col.willowL, { gloss: .10, rz: (rnd() - .5) * .3 });
     }
     plaque(TI.x1 - 1.70, TI.z0 - 1.05, Math.PI, '老虎', col.orange);
-    thing('老虎', (TI.x0 + TI.x1) / 2, 1.40, TI.z0 + .6, '老虎在睡觉，别吵它。',
-      'The tiger is asleep. Do not wake it.',
+    thing('老虎', (TI.x0 + TI.x1) / 2, 1.40, TI.z0 + .6, '老虎白天常常在这里睡觉。',
+      'The tiger often sleeps here during the day.',
       '老虎 tiger — 老 here is not "old", it is just what the word is. 东北虎 is the Siberian one.',
       { focus: at(TI, 2.2), reach: 2.8 });
 
@@ -806,7 +755,7 @@ const Zoo = Lazy('Zoo', () => {
     // in dust is not an elephant. Faced west, onto the middle of the map.
     const EL = PENS.elephant;
     pen(EL, { tag: '大象', ground: col.sandD, groundMode: 10, back: 1.70, blockTop: 2.4,
-              accent: col.teal });
+              accent: col.teal, wallColor: col.sandD });
     flat(EL.x1 - 3.0, .010, (EL.z0 + EL.z1) / 2, 4.20, 3.40, col.mud, { mode: 10, gloss: .28 });
     // A wet centre and soft rim turn the old brown rectangle into a wallow. These are visual only;
     // the whole pen already owns collision, and the elephant can keep walking straight through it.
@@ -817,7 +766,7 @@ const Zoo = Lazy('Zoo', () => {
     for (const [ox, oz, sx, sz] of [[-1.55,-.78,.75,.34],[1.42,-.76,.66,.30],
                                      [-1.48,.82,.62,.32],[1.50,.78,.72,.34]])
       ball(EL.x1 - 3.0 + ox, .10, (EL.z0 + EL.z1) / 2 + oz, sx, .12, sz, col.mudD,
-        { gloss: .14, mode: 15 });
+        { gloss: .14 });
     rocks(EL.x1 - 1.35, EL.z1 - .95, 1.15, 1.05, 4);
     // the shelter: an open-sided tiled roof on four heavy piers, tall enough to walk an elephant in
     {
@@ -845,8 +794,8 @@ const Zoo = Lazy('Zoo', () => {
         { gloss: .28 }), ex, 2.18, ez, 1.45);
     }
     plaque(EL.x0 - 1.05, EL.z0 + 1.25, -Math.PI / 2, '大象', col.teal);
-    thing('大象', EL.x0 + .8, 2.20, (EL.z0 + EL.z1) / 2, '大象用鼻子喝水。',
-      'The elephant drinks with its trunk.',
+    thing('大象', EL.x0 + .8, 2.20, (EL.z0 + EL.z1) / 2, '大象会用鼻子喝水。',
+      'Elephants can drink with their trunks.',
       '大 big + 象 elephant. 鼻子 is the trunk — the same word as a nose.',
       { focus: at(EL, 2.0), reach: 2.8 });
 
@@ -855,7 +804,7 @@ const Zoo = Lazy('Zoo', () => {
     // the enclosure its scale: a deck at 3.4 m that people stand on to be level with the head.
     const GI = PENS.giraffe;
     pen(GI, { tag: '长颈鹿', ground: col.sand, groundMode: 10, back: 1.90, blockTop: 2.6,
-              accent: col.gold });
+              accent: col.gold, wallColor: col.sandD, moatColor: col.sandD });
     for (const [tx, tz] of [[GI.x0 + 2.2, GI.z1 - 1.6], [GI.x1 - 2.0, GI.z1 - 2.0]]) {
       capsule(tx, 1.70, tz, .17, 3.40, .17, col.trunkL, { gloss: G.wood });
       for (let i = 0; i < 5; i++) {
@@ -910,7 +859,8 @@ const Zoo = Lazy('Zoo', () => {
     // in: they will not cross water and they do not need a roof. Faced south.
     const MO = PENS.monkey;
     pen(MO, { tag: '猴子', ground: col.concD, groundMode: 10, back: 1.25,
-              groundMat: MAT.conc, accent: col.red });
+              groundMat: MAT.conc, accent: col.red, wallColor: col.concD,
+              moatColor: col.waterD, moatMode: 16, moatGloss: .50 });
     // the moat, all the way round the island rather than only on the public side
     flat((MO.x0 + MO.x1) / 2, .010, (MO.z0 + MO.z1) / 2,
       MO.x1 - MO.x0 - 1.2, MO.z1 - MO.z0 - 1.2, col.water, { mode: 16, gloss: .52 });
@@ -947,7 +897,8 @@ const Zoo = Lazy('Zoo', () => {
     // two black birds somewhere in it. A penguin pool is wet grey rock, and the birds are the only
     // white thing in it.
     pen(PE, { tag: '企鹅', ground: col.concD, groundMode: 10, back: 1.05, front: .43,
-              groundMat: MAT.conc, accent: col.blue });
+              groundMat: MAT.conc, accent: col.blue, wallColor: col.stoneL,
+              moatColor: col.waterD, moatMode: 16, moatGloss: .54 });
     flat((PE.x0 + PE.x1) / 2 + .4, .010, (PE.z0 + PE.z1) / 2 + .6, 4.40, 3.60, col.water,
       { mode: 16, gloss: .60 });
     rocks(PE.x0 + 1.3, PE.z1 - 1.1, 1.15, .82, 5);
@@ -969,7 +920,7 @@ const Zoo = Lazy('Zoo', () => {
     // would hide the bird, which is the whole point of the building.
     const AV = PENS.aviary;
     pen(AV, { tag: '孔雀', ground: col.grassL, back: .70, front: .55,
-              accent: col.purple });
+              accent: col.purple, wallColor: col.concD, moat: false, rail: false });
     {
       const cx = (AV.x0 + AV.x1) / 2, cz = (AV.z0 + AV.z1) / 2;
       const rw = (AV.x1 - AV.x0) / 2, rd = (AV.z1 - AV.z0) / 2, H = 4.20;
@@ -1015,8 +966,8 @@ const Zoo = Lazy('Zoo', () => {
       blocker(AV.x0 - .3, AV.x1 + .3, AV.z0 - .3, AV.z1 + .3, 4.6);
     }
     plaque(AV.x1 - 1.30, AV.z0 - 1.05, Math.PI, '孔雀', col.purple);
-    thing('孔雀', (AV.x0 + AV.x1) / 2, 1.50, AV.z0 + .6, '孔雀开屏了，快看。',
-      'The peacock has opened its tail. Quick, look.',
+    thing('孔雀', (AV.x0 + AV.x1) / 2, 1.50, AV.z0 + .6, '孔雀开屏的时候真漂亮。',
+      'A peacock is beautiful when it fans its tail.',
       '孔雀 peacock. 开屏 — to open the screen — is what it is called when it fans its tail.',
       { focus: at(AV, 2.0), reach: 2.6 });
 
@@ -1053,7 +1004,7 @@ const Zoo = Lazy('Zoo', () => {
         { tag: '动物园', gloss: G.metal });
       cyl(lx, 3.15, lz, .23, .12, col.gold, { tag: '动物园', gloss: G.metal });
       litten(ball(lx, 2.88, lz, .25, .30, .25, col.red,
-        { tag: '动物园', gloss: .22, mode: 15 }), .38);
+        { tag: '动物园', gloss: .22 }), .38);
       cyl(lx, 2.59, lz, .18, .07, col.gold, { tag: '动物园', gloss: G.metal });
       capsule(lx, 2.39, lz, .018, .34, .018, col.redL,
         { tag: '动物园', gloss: .12 });
@@ -1111,27 +1062,62 @@ const Zoo = Lazy('Zoo', () => {
     {
       const MPX = GX - 4.2, MPZ = -RZ + 2.2;
       for (const s of [-1, 1])
-        cyl(MPX + s * .80, .80, MPZ, .06, 1.60, col.steelD, { tag: '导游图', gloss: G.metal });
-      box(MPX, 1.75, MPZ, 2.10, 1.35, .10, col.white, { tag: '导游图', hard: true, gloss: .22 });
-      box(MPX, 1.70, MPZ - .06, 1.86, 1.10, .02, col.grassL,
+        cyl(MPX + s * 1.18, .82, MPZ, .06, 1.64, col.steelD,
+          { tag: '导游图', gloss: G.metal });
+      box(MPX, 1.78, MPZ, 3.05, 2.02, .10, col.white,
+        { tag: '导游图', hard: true, gloss: .22 });
+      box(MPX, 1.68, MPZ - .06, 2.79, 1.60, .02, col.grassD,
         { tag: '导游图', hard: true, mode: 1 });
-      glyphs(MPX, 2.28, MPZ - .08, Math.PI, '导游图',
-        { size: .15, gap: .05, color: col.charcoal, mode: 1, tag: '导游图' });
-      // The seven pens, drawn on the board where they actually are. Scaled off `PENS`, so the map
-      // cannot go out of date the way a hand-drawn one would the first time a pen moves.
-      for (const k in PENS) {
-        const p = PENS[k];
-        const u = ((p.x0 + p.x1) / 2) / (RX * 2) * 1.70;
-        const v = ((p.z0 + p.z1) / 2) / (RZ * 2) * 1.00;
-        box(MPX - u, 1.62 - v, MPZ - .08, (p.x1 - p.x0) / (RX * 2) * 1.70,
-          (p.z1 - p.z0) / (RZ * 2) * 1.00, .01, col.orange,
+      glyphs(MPX - .18, 2.60, MPZ - .08, Math.PI, '动物园导游图',
+        { size: .14, gap: .040, color: col.charcoal, mode: 1, tag: '导游图' });
+      glyphs(MPX + 1.15, 2.58, MPZ - .08, Math.PI, '北',
+        { size: .13, gap: 0, color: col.red, mode: 1, tag: '导游图' });
+      box(MPX, 2.82, MPZ - .10, 1.45, .10, .34, col.charcoal,
+        { tag: '导游图', hard: true, gloss: .24 });
+      litten(box(MPX, 2.76, MPZ - .24, 1.20, .035, .12, C('#ffe6ae'),
+        { tag: '导游图', hard: true, mode: 1, glow: .06 }), .70);
+      light(MPX, 2.66, MPZ - .34, [1.00, .88, .67], .48, 2.8);
+
+      const mapW = 2.52, mapH = 1.04, mapY = 1.64;
+      const mapX = x => MPX - x / (RX * 2) * mapW;
+      const mapZ = z => mapY + z / (RZ * 2) * mapH;
+      const mapLine = (x, z, w, d) => box(mapX(x), mapZ(z), MPZ - .078,
+        w / (RX * 2) * mapW, d / (RZ * 2) * mapH, .012, col.cream,
+        { tag: '导游图', hard: true, mode: 1 });
+
+      // The same circulation hierarchy as the ground: perimeter, cross paths, entrance fork.
+      mapLine(0, -13.2, 40, 2.4); mapLine(0, -4.0, 38, 2.6);
+      mapLine(0, 5.5, 38, 2.6); mapLine(0, 14.4, 40, 2.6);
+      mapLine(-19, 0, 3, 26); mapLine(19, 0, 3, 26);
+      mapLine(-6.5, .7, 2.4, 10); mapLine(4, -4.0, 2.2, 19);
+      mapLine(GX - 2.55, -6.8, 2.2, 5.8); mapLine(GX + 2.55, -6.8, 2.2, 5.8);
+
+      // Habitat blocks share the colors used on their rails, bays and interpretation panels.
+      for (const h of HABITATS) {
+        const p = PENS[h.key], cx = (p.x0 + p.x1) / 2, cz = (p.z0 + p.z1) / 2;
+        box(mapX(cx), mapZ(cz), MPZ - .092, (p.x1 - p.x0) / (RX * 2) * mapW,
+          (p.z1 - p.z0) / (RZ * 2) * mapH, .014, h.accent,
           { tag: '导游图', hard: true, mode: 1 });
+        glyphs(mapX(cx), mapZ(cz), MPZ - .105, Math.PI, h.name,
+          { size: .055, gap: .006, color: col.white, mode: 1, tag: '导游图' });
       }
-      solid(MPX - .95, MPX + .95, MPZ - .25, MPZ + .25);
+
+      // Gate marker and legend. Position and words make the map usable without relying on color.
+      const hereX = mapX(GX), hereY = mapZ(-RZ + 1.2);
+      box(hereX, hereY, MPZ - .112, .11, .11, .018, col.red,
+        { tag: '导游图', hard: true, mode: 1 });
+      glyphs(MPX - .58, .96, MPZ - .08, Math.PI, '您在这里',
+        { size: .075, gap: .016, color: col.white, mode: 1, tag: '导游图' });
+      box(MPX - 1.15, .96, MPZ - .08, .10, .10, .015, col.red,
+        { tag: '导游图', hard: true, mode: 1 });
+      glyphs(MPX + .70, .96, MPZ - .08, Math.PI, '无障碍路线',
+        { size: .064, gap: .012, color: col.cream, mode: 1, tag: '导游图' });
+
+      solid(MPX - 1.45, MPX + 1.45, MPZ - .25, MPZ + .25);
       thing('导游图', MPX, 2.05, MPZ - .30, '先看看导游图，再决定去哪儿。',
         'Look at the map first, then decide where to go.',
         '导游 guide + 图 map. Every park and zoo has one at the gate.',
-        { focus: [MPX, MPZ - 1.5], reach: 2.0 });
+        { focus: [MPX, MPZ - 1.25], reach: 2.0 });
     }
 
     // ---- 小卖部 the kiosk, back against the south wall and serving north.
@@ -1183,17 +1169,10 @@ const Zoo = Lazy('Zoo', () => {
         const t = (i + .5) / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
         if (horiz && az < 0 && x > GX - 3.6 && x < GX + 3.6) continue;
         const w = len / n;
-        // Brick at a 90 cm repeat, which is roughly four courses of Chinese 240 mm brick and
-        // therefore reads as brick rather than as a pattern. It runs across the grey sections
-        // too: the alternation was always meant to be render over brick and not two materials,
-        // and the same texture under both colours is what makes that legible.
-        //
-        // Only the red is pre-divided. Brick's gain is (1.26, 0.96, 0.87) — it barely lifts and
-        // slightly reddens, which on the red is enough to want cancelling and on the grey is the
-        // whole point: a grey panel warmed by the brick behind it is one weathered wall, and two
-        // colours that have each been corrected back to exactly what they started as is two.
-        box(x, 1.10, z, horiz ? w : .40, 2.20, horiz ? .40 : w,
-          i % 3 ? col.brickR : col.stoneD, { hard: true, gloss: G.matte, ...MAT.brick });
+        // One continuous brick wall is quieter and more civic than the old alternating patchwork.
+        // The repeated green-grey coping supplies rhythm without turning the perimeter into stripes.
+        box(x, 1.10, z, horiz ? w : .40, 2.20, horiz ? .40 : w, col.brickR,
+          { hard: true, gloss: G.matte, ...MAT.brick });
         box(x, 2.28, z, horiz ? w : .56, .16, horiz ? .56 : w, col.copingR,
           { hard: true, gloss: .18, ...MAT.coping });
       }
@@ -1218,28 +1197,30 @@ const Zoo = Lazy('Zoo', () => {
     tree(-19.0, -9.0, 6.0); tree(-19.2, 8.4, 6.2); tree(-19.0, 13.6, 5.6);
     tree(19.2, -9.4, 5.8); tree(19.0, 8.0, 6.0); tree(19.2, 13.4, 5.8);
     tree(-2.0, 9.6, 5.4); tree(-2.4, 14.6, 5.8); tree(13.0, 14.6, 6.0);
-    tree(-16.0, -13.4, 5.4); tree(13.6, -13.6, 5.6); tree(2.2, -8.2, 5.0);
+    tree(-20.3, -11.8, 5.4); tree(13.6, -13.6, 5.6); tree(2.2, -8.2, 5.0);
     // and a low hedge along the outside of the loop path, which is what separates path from lawn
     const HEDGE = [col.leafD, col.leafU, col.leafM];
-    for (let i = 0; i < 26; i++) {
-      const t = i / 25, hy = .40 + (i % 4) * .03;
-      box(-17.4 + t * 34.8, hy, -15.0, 1.20, hy * 2, .70,
-        HEDGE[i % 3], { gloss: .10, mode: 15, round: .12 });
+    // Keep the gate, station, ticket queue and kiosk frontage visually open. The old unbroken row
+    // crossed the entrance and made visitors walk through opaque hedge blocks on arrival.
+    for (const [x0, x1] of [[-2.0, 4.2], [8.1, 17.4]]) {
+      const n = Math.max(2, Math.ceil((x1 - x0) / 1.18));
+      for (let i = 0; i < n; i++) {
+        const x = x0 + (i + .5) * (x1 - x0) / n, hy = .40 + (i % 4) * .03;
+        box(x, hy, -15.45, (x1 - x0) / n + .05, hy * 2, .70,
+          HEDGE[i % 3], { gloss: .10, mode: 15, round: .12 });
+      }
     }
 
     // ================================================================ the small stuff
     // Benches facing the enclosures, bins beside half of them, and the lamps. This is the layer
     // that makes the place feel visited rather than laid out, and it is the one that has to be
     // kept out of the gaps between pens — a 2 m gap with a bin in it is not a way through.
-    bench(-9.4, -5.6, Math.PI); bench(-1.6, -13.0, Math.PI);
-    bench(9.6, -13.0, Math.PI); bench(-19.0, -2.4, -Math.PI / 2);
-    bench(-19.0, 3.0, -Math.PI / 2); bench(19.0, -2.0, Math.PI / 2);
-    bench(-5.6, 14.4, 0); bench(12.4, 14.4, 0);
-    thing('长椅', -1.6, .95, -13.9, '坐在长椅上休息一下。', 'Sit on the bench and rest a while.',
-      '长 long + 椅 chair. 休息 is to rest.',
-      { focus: [-1.6, -14.2], reach: 1.9 });
-    for (const [bx, bz] of [[-7.6, -13.0], [4.0, -13.0], [-19.0, .4], [19.0, .6],
-                            [-3.4, 14.4], [-11.0, -5.6]])
+    bench(-9.4, -5.65, 0); bench(-1.6, -14.65, 0);
+    bench(9.6, -14.65, 0); bench(-20.35, -2.4, Math.PI / 2);
+    bench(-20.35, 3.0, Math.PI / 2); bench(20.35, -2.0, -Math.PI / 2);
+    bench(-5.6, 15.15, Math.PI); bench(12.4, 15.15, Math.PI);
+    for (const [bx, bz] of [[-7.6, -14.75], [4.0, -14.75], [-20.35, .4], [20.35, .6],
+                            [-3.4, 15.15], [-11.0, -5.75]])
       bin(bx, bz);
     // lamps on the loop, warm at night.
     //
@@ -1251,8 +1232,8 @@ const Zoo = Lazy('Zoo', () => {
     // ramp now lives in `setNight` with the panels. `light` is the third: the real point light
     // that makes the paving, the wall behind it and the person standing under it actually
     // respond. Outdoors the engine switches these with the sun, so they are off all day.
-    for (const [lx, lz] of [[GX - 5.6, -RZ + 4.6], [-19.0, -6.0], [-19.0, 10.0],
-                            [19.0, -6.0], [19.0, 10.0], [0, 14.4], [0, -13.4]]) {
+    for (const [lx, lz] of [[GX - 5.6, -RZ + 4.6], [-20.55, -6.0], [-20.55, 10.0],
+                            [20.55, -6.0], [20.55, 10.0], [0, 15.45], [0, -14.65]]) {
       cyl(lx, 1.90, lz, .075, 3.80, col.charcoal, { gloss: .28 });
       box(lx, 3.92, lz, .46, .18, .46, col.charcoal, { hard: true, gloss: .28 });
       litten(box(lx, 3.78, lz, .38, .10, .38, C('#ffe6ae'),
@@ -1266,22 +1247,24 @@ const Zoo = Lazy('Zoo', () => {
 
     // ---- 地铁站 the way back to the line, at the west end of the entrance plaza
     const MX = GX - 7.2, MZ = -RZ + 1.30;
+    const ST = { tag: '地铁站' };
     flat(MX, .006, MZ + .4, 3.6, 3.4, col.path, { mode: 9, gloss: .10, ...MAT.path });
-    flat(MX, .012, MZ + .70, 2.10, 1.70, col.black, { gloss: .08 });
+    flat(MX, .012, MZ + .70, 2.10, 1.70, col.black, { ...ST, gloss: .08 });
     for (let i = 0; i < 6; i++)
       box(MX, .016, MZ + .06 + i * .22 - i * i * .012, 1.84, .01, .055,
         i < 3 ? col.kerb : col.stoneD, { hard: true, gloss: .14 });
     for (const s of [-1, 1]) {
       box(MX + s * 1.14, .48, MZ + .70, .16, .96, 1.80, col.conc,
-        { hard: true, gloss: G.matte, ...MAT.conc });
+        { ...ST, hard: true, gloss: G.matte, ...MAT.conc });
       box(MX + s * 1.14, .98, MZ + .70, .22, .07, 1.86, col.concL,
-        { hard: true, gloss: .20, ...MAT.concF });
+        { ...ST, hard: true, gloss: .20, ...MAT.concF });
       box(MX + s * 1.20, 1.30, MZ + 1.64, .13, 2.60, .13, col.steelD,
         { hard: true, gloss: G.metal, ...MAT.rail });
     }
     box(MX, 2.62, MZ + 1.06, 2.86, .12, 2.00, col.concL,
-      { hard: true, gloss: G.paint, ...MAT.concF });
-    box(MX, 2.40, MZ + .08, 2.86, .34, .10, col.blueSign, { hard: true, gloss: .26 });
+      { ...ST, hard: true, gloss: G.paint, ...MAT.concF });
+    box(MX, 2.40, MZ + .08, 2.86, .34, .10, col.blueSign,
+      { ...ST, hard: true, gloss: .26 });
     for (const g of glyphs(MX + .32, 2.40, MZ + .02, Math.PI, '地铁站',
         { size: .20, gap: .05, color: col.white, mode: 1 })) litten(g, .9);
     cyl(MX - .94, 2.40, MZ + .01, .145, .03, col.white,
@@ -1302,7 +1285,7 @@ const Zoo = Lazy('Zoo', () => {
     shade(MX, MZ + .6, 3.4, 2.6, .28);
     thing('地铁站', MX, 2.92, MZ - .30, '坐地铁回去吧。', "Let's take the subway back.",
       '地铁 subway + 站 stop. The line runs from here back into town.',
-      { focus: [MX, MZ - 1.55], reach: 2.4 }).station = '动物园';
+      { focus: [MX + 2.05, MZ - .05], reach: 2.4 }).station = '动物园';
   }
 
   build();
@@ -1312,7 +1295,6 @@ const Zoo = Lazy('Zoo', () => {
   // enclosures read as the whole zoo shaking. Animals and keepers now provide the living motion,
   // while the elephant enrichment keeps one slow, weighty pendulum animation.
   function tick(t) {
-    dressMaterials();
     const wind = typeof Weather !== 'undefined' && Weather.now ? Weather.now.wind : .18;
     const a = Math.sin(t * .47 + .8) * (.018 + wind * .045) + Math.sin(t * .91) * .007;
     const c = Math.cos(a), s = Math.sin(a);
@@ -1330,9 +1312,6 @@ const Zoo = Lazy('Zoo', () => {
     }
   }
   function setNight(k) {
-    // Both frame hooks, because game.js calls this one first and a room that is already dark
-    // when you walk into it should not spend a frame in flat colour.
-    dressMaterials();
     const soft = k * k * (3 - 2 * k);
     for (const { p, k: kk } of litProps)
       p.glow = (p.glow0 === undefined ? (p.glow0 = p.glow || 0) : p.glow0) + soft * kk * .34;

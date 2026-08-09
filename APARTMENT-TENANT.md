@@ -250,3 +250,19 @@ point, and a floor slab or ceiling judged by its centre is culled from any room 
 straddle it. `js/world.js` set `nocut` **zero times**, so nine of flat 202's ten rooms deleted the
 whole floor when the eye stepped outside a wall. **Any location that adds camera rooms must set
 `nocut: true` on its floor, ceilings and shell in the same change.**
+
+## A harness sweep is not a look
+
+Verified 2026-08-09, on the live site: the cutaway failure the owner reported was **still present in
+production** after two rounds of fixes that every local sweep called clean. Standing in the 玄关 and
+dragging the camera twice put 70% of the screen behind blank plaster with the player hidden, and
+world labels — 热水壶, 茶, 钥匙, 鞋柜 — rendered *on top of* that wall, for objects on its far side.
+
+The reason no harness caught it: **a sweep parks the camera where the author expected it to be.**
+The 书房 orbit test passed honestly; the corridor/entry seam was never in any shot list. A camera
+bug lives in the angles nobody thought to write down, which is exactly the set a scripted sweep
+cannot contain.
+
+So: harnesses prove the things they assert, and nothing else. When the question is *how it looks*,
+walk it on `https://jcollin45.github.io/beijing-life/` — push, wait about a minute for the build,
+then drag the camera around like a player would. Name the origin in any claim you make.

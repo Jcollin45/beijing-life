@@ -12,11 +12,11 @@ FlatFit['bath'] = A => {
   const Y = Number.isFinite(A.y0) ? A.y0 : 3.10;
   const X0 = -1.40, X1 = 2.20, Z0 = -5.00, Z1 = -2.20;
   const K = {
-    floor:C('#bfc5bd'), grout:C('#98a09a'), tile:C('#dfe3e4'), tile2:C('#d3e2e2'),
-    trim:C('#718d8a'), porcelain:C('#ece9de'), porcelainD:C('#ced2ce'),
-    steel:C('#aeb5bb'), chrome:C('#c6d6dc'), steelD:C('#6e7475'),
-    glass:C('#bcd6dd'), water:C('#bde4ee'), wood:C('#987153'), woodD:C('#684a37'),
-    white:C('#e8ebe7'), cream:C('#e6ded0'), blue:C('#4d8298'), teal:C('#4d8a82'),
+    floor:C('#bfc5bd'), grout:C('#98a09a'), tile:C('#bfc3c4'), tile2:C('#b4c1c1'),
+    trim:C('#718d8a'), porcelain:C('#ceccc2'), porcelainD:C('#c6c9c6'),
+    steel:C('#aeb5bb'), chrome:C('#bbcad0'), steelD:C('#6e7475'),
+    glass:C('#b6d0d6'), water:C('#aed2dc'), wood:C('#987153'), woodD:C('#684a37'),
+    white:C('#c4c6c3'), cream:C('#cbc4b7'), blue:C('#4d8298'), teal:C('#4d8a82'),
     red:C('#a44a35'), yellow:C('#d5ae4d'), green:C('#5c8a58'), pink:C('#c88391'),
     charcoal:C('#2e343b'), cloth:C('#78a3a3'), cloth2:C('#d59a72'), soil:C('#76583e'),
   };
@@ -112,7 +112,7 @@ FlatFit['bath'] = A => {
   cap(VX-.22,Y+.49,VZ-.257,.025,.22,.025,K.chrome,{rz:PI/2,...CHROME,gloss:.62,tag: '洗手池'});
   box(VX,Y+.825,VZ,.82,.070,.52,K.porcelain,{hard:true,gloss:.46,tag: '洗手池'});
   ball(VX,Y+.842,VZ,.24,.080,.18,K.porcelainD,{gloss:.42,tag: '洗手池'});
-  ball(VX,Y+.858,VZ,.19,.055,.135,C('#e8ebe7'),{gloss:.46,tag: '洗手池'});
+  ball(VX,Y+.858,VZ,.19,.055,.135,C('#c4c6c3'),{gloss:.46,tag: '洗手池'});
   cyl(VX,Y+.865,VZ,.022,.025,K.steelD,{...CHROME,gloss:.60,tag: '洗手池'});
   cyl(VX,Y+.96,VZ-.19,.026,.22,K.chrome,{...CHROME,gloss:.70,tag: '洗手池'});
   cap(VX,Y+1.065,VZ-.12,.022,.17,.022,K.chrome,{rx:PI/2,...CHROME,gloss:.70,tag: '洗手池'});
@@ -166,7 +166,7 @@ FlatFit['bath'] = A => {
   ball(TX,Y+.425,TZ,.165,.026,.215,K.porcelainD,{gloss:.40,tag: '马桶'});
   const lid=[
     ball(TX,Y+.455,TZ,.25,.027,.305,K.white,{gloss:.48,tag: '马桶'}),
-    ball(TX,Y+.469,TZ,.205,.020,.250,C('#e8ebe7'),{gloss:.42,tag: '马桶'}),
+    ball(TX,Y+.469,TZ,.205,.020,.250,C('#c4c6c3'),{gloss:.42,tag: '马桶'}),
   ];
   if(A.mover&&M&&M.rotZ) A.mover('lid',lid,v=>pivot(TX-.23,Y+.45,TZ,M.rotZ(1.42*v)));
   box(-1.25,Y+.56,TZ,.25,.58,.48,K.porcelain,{hard:true,gloss:.45,tag: '马桶'});

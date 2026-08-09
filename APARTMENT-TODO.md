@@ -2959,6 +2959,16 @@ board was written, because the gate and the harness found things no item owned.*
 
 ---
 
+517. `[ ]` Arm the harness watchdog at **gate acquisition**, not at the first Chrome spawn.
+   `.harness-env.js:57` takes the slot; `:75-76` arms the hard deadline only when a Chrome process
+   appears. A harness that dies or hangs *before* the browser comes up — the observed
+   `Error: devtools never came up` at `.bootcheck.js:28`, seen twice on 2026-08-09 — therefore holds
+   a slot with **no deadline armed at all**. The watchdog cannot cover its own precondition. Arm a
+   shorter launch deadline at acquisition and let the existing long one take over once Chrome is up.
+    @check `node -e "const s=require('fs').readFileSync('.harness-env.js','utf8').replace(/\/\/.*$/gm,'');const a=s.indexOf('acquireSync');const d=s.indexOf('armDeadline');process.exit(a>=0&&d>=0&&d<a?0:1)"`
+
+---
+
 ## Dispatch lanes (no two lanes touch the same file)
 
 | Lane | Items | Files owned |

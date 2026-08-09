@@ -5,7 +5,7 @@
 // of a classic script, which puts them in the same global lexical scope game.js sees — so moving
 // them changed no name and no call site.
 //
-// Load order is the one dependency. `Zoo.PENS` and `Shop.GOODS` are read while these literals are
+// Load order is the one dependency. `ZOO_PENS` and `Shop.GOODS` are read while these literals are
 // built, so this file goes after every scene file and immediately before game.js in the loader.
 //
 //   NPCS    the neighbours
@@ -802,10 +802,10 @@ const NPCS = [
   //
   // `animal` names the species in the `ANIMALS` table and switches both the pose and the draw.
   // `spots` work exactly as they do for people: somewhere to be between two hours. What differs is
-  // that the coordinates come out of `Zoo.PENS` instead of being written down, so an animal cannot
+  // that the coordinates come out of `ZOO_PENS` instead of being written down, so an animal cannot
   // end up standing in its own enclosure wall when a pen moves.
   ...(() => {
-    const P2 = Zoo.PENS;
+    const P2 = ZOO_PENS;
     // A point inside a pen, given as a fraction of the way across it. Kept well off the walls: an
     // elephant is three metres wide and a spot on the boundary puts half of it through the brick.
     const inPen = (p, u, v) => [p.x0 + (p.x1 - p.x0) * u, p.z0 + (p.z1 - p.z0) * v];
@@ -988,7 +988,9 @@ const NPCS = [
   // Human NPCs follow these targets continuously, so the short gate stops matter — without them a
   // keeper would take the diagonal shortcut through a concrete corner and spoil the whole story.
   {
-    hz: '饲养员', name: '陈师傅', py: 'Chén shīfu', place: 'zoo', rig: 'chen_zookeeper',
+    hz: '饲养员', name: '陈师傅', py: 'Chén shīfu', storyKey: 'zoo:陈师傅',
+    storyName: '陈师傅 · 动物园',
+    place: 'zoo', rig: 'chen_zookeeper',
     look: { skin:'#c9955f', hair:'#332c28', hairStyle:'bun', top:'#4f6b46', pants:'#3d4a3a',
             shoe:'#4a4038', sleeve:'long', collar:'shirt', cap:'#3f5a3a', hat:'cap',
             // Outdoors all day in a work shirt, and she carries the feed bucket bag from pen to
@@ -1071,7 +1073,7 @@ const NPCS = [
     look:{ skin:'#c89b75',hair:'#b9b5ad',hairStyle:'short',top:'#d8d1bf',pants:'#39414b',
            shoe:'#353a40',sleeve:'short',collar:'polo',vest:'#63705d',glasses:true,
            hat:'sun',hatColor:'#cfc4a8',tall:.92,wide:1.02,stoop:.10,age:.72,faceSeed:443 },
-    spots:[{h0:9,h1:17,at:[-19.0,2.62],face:-Math.PI/2,act:'sit'}] },
+    spots:[{h0:9,h1:17,at:[-20.35,2.62],face:Math.PI/2,act:'sit'}] },
   // The tiger rail has a broad viewing bay here: the interpretation board is two metres west and
   // the route remains open behind him. `phoneStand` supplies the intermittent handset and raised-
   // camera pose without adding a bespoke prop or a permanent high-detail animation.
@@ -2069,9 +2071,6 @@ const USE = {
   //
   // Nothing here costs money except the way in, which is the one economic fact about a zoo: 门票 is
   // fifteen yuan and everything after it is free, so the decision is at the gate and nowhere else.
-  '售票处': { zh:'买门票', py:'mǎi ménpiào', en:'buy a ticket in', secs:3.0, mins:8, pay:-15,
-              gain:{ mood:6 }, pose:{ type:'stand' },
-              done:'十五块，票收好。', doneTr:'Fifteen yuan. Keep hold of the ticket.' },
   '动物园': { zh:'逛动物园', py:'guàng dòngwùyuán', en:'walk the whole zoo', secs:4.6, mins:75,
               gain:{ mood:26, rest:-12, food:-10 }, pose:{ type:'stand' },
               done:'走了一大圈，腿都酸了。',
@@ -2108,10 +2107,6 @@ const USE = {
               gain:{ mood:5 }, pose:{ type:'stand' },
               done:'熊猫在西边，猴山在北边。',
               doneTr:'Pandas to the west, monkey hill to the north.' },
-  '小卖部': { zh:'买瓶水', py:'mǎi píng shuǐ', en:'buy a bottle of water', secs:2.6, mins:6,
-              pay:-4, gain:{ food:10, mood:6, rest:4 }, pose:{ type:'stand' },
-              done:'四块钱一瓶，园里就这个价。',
-              doneTr:'Four yuan a bottle. That is the price inside the gate.' },
   '饲养员': { zh:'说话', py:'shuōhuà', en:'talk to the keeper', secs:2.8, mins:8,
               gain:{ mood:12 }, pose:{ type:'talk' }, talk:true },
 
@@ -2430,6 +2425,18 @@ const USE = {
 //
 // A word can mean a different thing in a different room. This is where that gets said.
 const USE_AT = {
+  // These labels also exist at the railway station and airport. Keeping the zoo versions local
+  // prevents the later global definitions from turning admission into a plane-ticket purchase and
+  // the drinks kiosk into a pot-noodle stall.
+  zoo: {
+    '售票处': { zh:'买门票', py:'mǎi ménpiào', en:'buy a ticket in', secs:3.0, mins:8, pay:-15,
+                gain:{ mood:6 }, pose:{ type:'stand' },
+                done:'十五块，票收好。', doneTr:'Fifteen yuan. Keep hold of the ticket.' },
+    '小卖部': { zh:'买瓶水', py:'mǎi píng shuǐ', en:'buy a bottle of water', secs:2.6, mins:6,
+                pay:-4, gain:{ food:10, mood:6, rest:4 }, pose:{ type:'stand' },
+                done:'四块钱一瓶，园里就这个价。',
+                doneTr:'Four yuan a bottle. That is the price inside the gate.' },
+  },
   // ---- 大堂 the lobby of the block, three metres under the flat. These words only exist down
   // here, so they go in the room rather than in USE: 门 and 镜子 already mean the right thing
   // everywhere and are deliberately left alone, because the lobby's front door is the same verb

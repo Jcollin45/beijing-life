@@ -55,7 +55,7 @@ FlatFit['dining'] = A => {
     // 次卧 had the same three a unit or two off and the 厨房 had two of its own, and nothing said
     // where the right ones lived. FLAT_PALETTE (js/home-walls.js) is now where.
     woodD: C(FLAT_PALETTE.woodD), woodM: C(FLAT_PALETTE.woodM), woodL: C(FLAT_PALETTE.woodL),
-    cream: C('#e6ded0'), white: C('#f2f0e9'), linen: C('#d3ccbc'),
+    cream: C('#cbc4b7'), white: C('#f2f0e9'), linen: C('#d3ccbc'),
     charcoal: C('#2a2e33'), steel: C('#aeb5bb'), grey: C('#838b93'),
     red: C('#a43c2c'), redD: C('#793025'), gold: C('#d19a32'),
     jade: C('#3f7564'), blue: C('#315d73'), porcelain: C('#f8f6f0'),
@@ -228,7 +228,7 @@ FlatFit['dining'] = A => {
   // because it is the napkin.
   {
     const cx = 5.02, cz = -.31, a = -.18, B = { hard:true, gloss:.20, ry:a, tag: '纸巾' };
-    box(cx, TT + .052, cz, .215, .100, .112, C('#dfe3e4'), B);
+    box(cx, TT + .052, cz, .215, .100, .112, C('#bfc3c4'), B);
     box(cx, TT + .052, cz, .223, .034, .120, col.red, B);
     box(cx, TT + .101, cz, .090, .006, .050, col.grey, B);
     ball(cx, TT + .116, cz, .045, .022, .030, C('#f8f6f0'), { gloss:.10, ry:a, tag: '纸巾' });
@@ -267,7 +267,7 @@ FlatFit['dining'] = A => {
     cyl(cx, TT + .026, cz, .098, .052, col.porcelain, { gloss:.36, tag: '剩菜' });
     cyl(cx, TT + .050, cz, .102, .010, col.blue,      { gloss:.34, tag: '剩菜' });
     ball(cx, TT + .046, cz, .092, .030, .092, C('#76583e'), { gloss:.20, tag: '剩菜' });
-    ball(cx, TT + .062, cz, .100, .022, .100, C('#dfe3e4'),
+    ball(cx, TT + .062, cz, .100, .022, .100, C('#bfc3c4'),
          { mode:7, alpha:.34, gloss:.72, tag: '剩菜' });
     th('剩菜', cx, TT + .20, cz, '昨天的剩菜还在桌上。', "Last night's leftovers are still on the table.",
        '剩 shèng left over + 菜 dish. 保鲜膜 bǎoxiānmó is the cling film over it — literally ' +
@@ -347,7 +347,7 @@ FlatFit['dining'] = A => {
     // own precedent — 水果 is taught in the supermarket, where its verb hands fruit to a basket
     // you are not carrying in here.
     cyl(5.80, ST + .030, 1.38, .118, .060, col.porcelain, { gloss:.36 });
-    cyl(5.80, ST + .062, 1.38, .126, .014, C('#e6ded0'), { gloss:.34 });
+    cyl(5.80, ST + .062, 1.38, .126, .014, C('#cbc4b7'), { gloss:.34 });
     for (const [ox, oz, r, hex] of [[-.040, -.018, .040, '#d9853a'], [.038, .012, .038, '#e09a3c'],
                                     [.004, .042, .036, '#8fa63e'], [-.010, -.048, .034, '#b2452f']])
       ball(5.80 + ox, ST + .070 + r * .55, 1.38 + oz, r, r * .86, r, C(hex), { gloss:.26 });
@@ -370,7 +370,7 @@ FlatFit['dining'] = A => {
   {
     const cx = 5.79, cz = -1.34, TOP = Y0 + .880;
     box(cx, Y0 + .440, cz, .360, .880, .340, col.white, { hard:true, gloss:.30, tag: '饮水机' });
-    box(5.598, Y0 + .600, cz, .020, .220, .260, C('#ced2ce'),
+    box(5.598, Y0 + .600, cz, .020, .220, .260, C('#c6c9c6'),
         { hard:true, gloss:.35, tag: '饮水机' });
     for (const [s, hex] of [[-1, '#b8342a'], [1, '#2f6f8f']]) {
       cyl(5.578, Y0 + .600, cz + s * .062, .011, .070, C(hex), { gloss:.50, tag: '饮水机' });
@@ -379,14 +379,14 @@ FlatFit['dining'] = A => {
     }
     box(5.600, Y0 + .500, cz, .078, .016, .260, C('#9aa1a5'),
         { hard:true, gloss:.45, tag: '饮水机' });
-    cyl(cx, TOP + .015, cz, .105, .050, C('#dfe3e4'), { gloss:.34, tag: '饮水机' });
+    cyl(cx, TOP + .015, cz, .105, .050, C('#bfc3c4'), { gloss:.34, tag: '饮水机' });
     cyl(cx, TOP + .070, cz, .045, .070, C('#9fc0c9'), { gloss:.55, alpha:.92, tag: '饮水机' });
     // The bottle, upside down as it is delivered: the taper mesh narrows toward +y, so it is
     // turned over to put the neck at the bottom.
-    taper(cx, TOP + .200, cz, .270, .190, .270, C('#bcd6dd'),
+    taper(cx, TOP + .200, cz, .270, .190, .270, C('#b6d0d6'),
           { rx:Math.PI, gloss:.60, alpha:.90, tag: '饮水机' });
-    cyl(cx, TOP + .490, cz, .135, .400, C('#bcd6dd'), { gloss:.60, alpha:.90, tag: '饮水机' });
-    ball(cx, TOP + .690, cz, .135, .080, .135, C('#bcd6dd'),
+    cyl(cx, TOP + .490, cz, .135, .400, C('#b6d0d6'), { gloss:.60, alpha:.90, tag: '饮水机' });
+    ball(cx, TOP + .690, cz, .135, .080, .135, C('#b6d0d6'),
          { gloss:.60, alpha:.90, tag: '饮水机' });
     shade(cx, cz, .44, .42, .32, Y0 + .020);
     stop(5.58, 6.00, -1.53, -1.15);

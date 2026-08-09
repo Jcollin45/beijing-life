@@ -162,14 +162,14 @@ The building currently makes claims that are not true. These come before new con
     inside the party wall's collider, a consequence of the shell's cut and not of this change.
     @check:slow `node .coffee-overlap.js`
 16. `[x]` Let tenants remove the generic fallback window merchandise. **Done** — the window has
-    three honest states instead of two (js/mall.js:736-741). Nothing registered and the shell dresses
+    three honest states instead of two (`resolveShopWindow`, js/mall.js). Nothing registered and the shell dresses
     it from `WINGOODS`; a function and the tenant dresses it; **`false` or `null` and the tenant has
     declared the window bare and the shell keeps out**. That third state is the one this item wanted:
     before it, a tenant could only *add* to the shell's two plinths of generic goods, never remove
     them, so the jeweller's window had face cream in it and a shop wanting an empty lit case got two
     cartons. `MallFit['<kind>:win']` uses the colon convention so it can never collide with a shop
     kind. The check asserts the opt-out branch survives, not merely that the key is read.
-    @check `rg -q 'const winBare=!winFn&&winReg!==undefined' js/mall.js && rg -q "o.kind\+':win'" js/mall.js`
+    @check `rg -Fq "const key=kind+':win'" js/mall.js && rg -Fq "bare:typeof registered!=='function'" js/mall.js && rg -Fq 'else if(!winBare)' js/mall.js`
 17. `[x]` Per-tenant shopfront glass opacity and gloss. **Done** — js/mall.js:712-714 takes
     `glassAlpha`/`glassGloss` from the shop spec or from the tenant's own file via
     `MallFit['<kind>:glass']`, falling back to the shell default, and js/mall.js:955 is the single

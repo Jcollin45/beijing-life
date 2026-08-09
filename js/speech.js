@@ -214,7 +214,7 @@ const Speech = (() => {
   // Which rooms are rooms. The hutong, the platform and the park are outdoors — the platform is
   // a hard room but it has the station's own reverberation on the announcements already, and a
   // conversation on it is being had a foot away from you.
-  const OUTDOOR = { street: 1, park: 1, campus: 1, metro: 1 };
+  const OUTDOOR = { street: 1, park: 1, zoo: 1, campus: 1, metro: 1 };
   // How much room each place gets. These are not decibels of anything — the impulse responses are
   // normalised to unit energy, so a number here is a scaling on an already-normalised convolution
   // and its useful range depends on how long the response is. What was measured to set them is the
@@ -225,7 +225,8 @@ const Speech = (() => {
   // They were an eighth of this until the impulse normalisation was fixed. Tuned against a reverb
   // that was two hundred times too loud, they had to be tiny; against a correct one they left every
   // room in the game sounding like an anechoic chamber.
-  const WET = { street: 1.10, park: .85, campus: 1.00, metro: 1.80, home: 1.05, shop: 1.35,
+  const WET = { street: 1.10, park: .85, zoo: .90, campus: 1.00, metro: 1.80,
+                home: 1.05, shop: 1.35,
                 diner: 1.35, office: 1.25, rail: 1.85, airport: 1.85, classroom: 1.45,
                 // The deadest room in the game, and by a long way. Every surface in an aircraft
                 // cabin is upholstered, the nearest one is two metres off, and there is a wall of

@@ -235,10 +235,8 @@ const Build = (() => {
         // `rug` push straight into `props` without going through it — which is how the first
         // version of this shipped a string to bindTexture and threw on the first frame. This
         // loop is the one place every prop passes through, whatever built it.
-        // Resolving a material means uploading a texture, which needs a GL context — and some
-        // rooms are built before there is one. `data.js` touches Zoo while it loads, which is
-        // before game.js has called R.init, so a scene that named a material threw on boot and
-        // took the whole game down with it.
+        // Resolving a material means uploading a texture, which needs a GL context. Scene builders
+        // are also used by boot-time registries and tooling, so that context is not guaranteed yet.
         //
         // So resolution is *attempted* here and recorded if it cannot happen yet. Anything left
         // pending is resolved by `resolveMats` below, which the travel code calls on arrival —
@@ -246,7 +244,11 @@ const Build = (() => {
         // means nothing is lost, only deferred.
         if (typeof p.mat === 'string') {
           if (p.matScale === undefined) p.matScale = 1;
-          const t = typeof Assets === 'undefined' ? null : Assets.material(p.mat);
+          // Assets may already have decoded bitmaps while the renderer itself has not been
+          // initialised yet. Upload only when a live GL context exists; otherwise retain the
+          // name for resolveMats() on arrival.
+          const glReady = typeof R !== 'undefined' && !!R.gl;
+          const t = glReady && typeof Assets !== 'undefined' ? Assets.material(p.mat) : null;
           if (t) {
             if (p.nrm === undefined) p.nrm = Assets.materialNormal(p.mat);
             p.mat = t;
@@ -430,7 +432,8 @@ const Build = (() => {
         // as often as you like: it empties its own list, and a room with nothing pending does
         // no work at all.
         resolveMats() {
-          if (!pendingMat.length || typeof Assets === 'undefined') return;
+          if (!pendingMat.length || typeof Assets === 'undefined' ||
+              typeof R === 'undefined' || !R.gl) return;
           for (let i = pendingMat.length - 1; i >= 0; i--) {
             const p = pendingMat[i];
             if (typeof p.mat !== 'string') { pendingMat.splice(i, 1); continue; }

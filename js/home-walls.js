@@ -390,6 +390,14 @@ FlatFit['walls'] = A => {
   // faces, which is the trap that has taken this game down three times. So the openings are sorted
   // and the gaps between them are built as separate boxes.
   function run(w) {
+    // Everything this function builds IS the partition — the slab, its skirting, the head over
+    // each opening and the lining round it — so the flag goes on once here rather than being
+    // repeated in six option objects that would then drift apart. `SET.wallsOff` in js/game.js
+    // reads it through `hiddenProp`, which is a drawing test only: the `A.stop` colliders below
+    // are untouched, so walls down never makes a wall walkable. Shadowing `box` inside `run`
+    // keeps the flag off every other prop this file makes (the door leaves take it separately,
+    // because a leaf left hanging in a doorway that no longer exists is worse than no door).
+    const box = (...a) => { const p = A.box(...a); if (p) p.partition = true; return p; };
     const cuts = w.doors.slice().sort((a, b) => a[0] - b[0]);
     const segs = [];
     let at = w.lo;
@@ -464,6 +472,10 @@ FlatFit['walls'] = A => {
   // sake: an angled leaf needs its position derived through a rotation, and it was a leaf hung at
   // an angle with a box-shaped collider that produced note 4 in the first place.
   function doorLeaf(cx, cz, sx, sz, hx, hz) {
+    // The leaf goes with its wall. Same shadow as in `run` above, for the same reason: a door
+    // standing open in mid-air with no wall to hang from reads as a bug rather than as a doll's
+    // house. The handle is A.cyl and takes the flag on the object after the fact.
+    const box = (...a) => { const p = A.box(...a); if (p) p.partition = true; return p; };
     const tag = '墙' + (++tagN);
     const top = 2.03;                                   // 30 mm under the head, as a leaf hangs
     box(cx, Y + top / 2, cz, sx, top, sz, K.jamb, { hard: true, gloss: .34, tag, ...M_TRIM });
@@ -482,8 +494,9 @@ FlatFit['walls'] = A => {
     }
     // The handle, on the leading stile — the end away from the hinge.
     const dx = along ? Math.sign(cx - hx) : 0, dz = along ? 0 : Math.sign(cz - hz);
-    A.cyl && A.cyl(cx + dx * (L / 2 - .07), Y + 1.03, cz + dz * (L / 2 - .07),
+    const h = A.cyl && A.cyl(cx + dx * (L / 2 - .07), Y + 1.03, cz + dz * (L / 2 - .07),
       .017, .10, K.skirt, { rx: Math.PI / 2, gloss: .52, tag });
+    if (h) h.partition = true;
   }
   // 主卧, hinged on the south jamb of its z 1.90..2.80 opening and standing square open into the
   // bedroom. Checked against every collider that room builds — bed (z -1.40..0.80), both

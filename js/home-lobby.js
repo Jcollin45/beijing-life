@@ -814,6 +814,44 @@ FlatFit['lobby'] = A => {
   // reflection of a wall is.
   A.glow(M.trs(-5.35, GY, MZ, 0, .84, 1, MW), C('#d7dee0'), .076);
 
+  // ================================================================ 楼层表 the floor directory
+  //
+  // The lift's car panel was the only map of this building, which meant the one place you could
+  // read the tower was a place you had already decided where to go. The lobby is the wayfinding
+  // anchor and this is the board that makes it one.
+  //
+  // It sits in the 0.60 m of wall between the letterbox bank (z ..1.20) and the 通知栏 (z 1.80..),
+  // which is the only clear run left on this wall and is why it is a tall narrow board rather
+  // than a wide one — that being the shape a floor list wants anyway.
+  //
+  // **The twelve rows are a numeral and a rule, not twelve lines of text.** Each occupied line
+  // would be four or five glyph quads, so the list as geometry is ~60 props for something read
+  // at two metres; the tenancy of each storey is in the interaction card instead, where it costs
+  // nothing and can be read. That is the standing "UI is cheaper than geometry" rule and this is
+  // the shape it takes on a sign.
+  {
+    const DZ = 1.50, DW = .52, DY = Y + 1.575;
+    A.box(-5.968, DY, DZ, .056, 1.16, DW, boardW, { hard: true, gloss: .14 });
+    A.box(-5.940, DY + .655, DZ, .078, .17, DW + .03, red, { hard: true, gloss: .18 });
+    A.glyph(-5.895, DY + .655, DZ, Math.PI / 2, '楼层表',
+      { size: .092, color: gold, mode: 1, gloss: .18 });
+    // Deck 2 is the flat, so its row is the one picked out — the same "this one is mine" the
+    // letterbox wall does with 202, and the only reason a directory is worth reading twice.
+    for (let i = 0; i < 12; i++) {
+      const ry = DY + .455 - i * .088, floor = i + 1, mine = floor === 2;
+      A.glyph(-5.930, ry, DZ - DW / 2 + .085, Math.PI / 2,
+        ['一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'][i],
+        { size: .046, color: mine ? C('#a8352a') : C('#4a4640'), gloss: .08 });
+      A.box(-5.933, ry, DZ + .085, .006, .010, DW - .29,
+        mine ? C('#a8352a') : C('#9a958c'), { hard: true });
+    }
+    A.th('楼层表', -5.60, DY + .20, DZ, '一楼是门厅，二楼往上都是住户。',
+      'The ground floor is the entrance hall; everything from the second floor up is flats.',
+      '楼层 is a storey and 表 is a table or list, so 楼层表 is the floor directory by the door. ' +
+      '一楼 门厅、门卫室、信箱、快递柜；二楼到十一楼 住户，一层六户；十二楼 天台。',
+      { focus: [-5.00, DZ], reach: 1.6 });
+  }
+
   // ================================================================ 电表箱 the meter bank
   //
   // The two and a half metres of -x wall between the letterboxes and the corner was the last thing

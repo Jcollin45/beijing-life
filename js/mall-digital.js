@@ -1747,7 +1747,8 @@ MallCast.push(
            ['买手机送一个手机壳。', 'Buy the phone and the case comes free.']] },
   // The repair side of the same counter. `work` is the bent-over-a-bench pose, which is the whole
   // of what says 维修 from the other end of the room.
-  { hz:'维修师傅', name:'陈师傅', py:'Chén shīfu', place:'mall', mallFloor:1,
+  { hz:'维修师傅', name:'陈师傅', py:'Chén shīfu', storyName:'陈师傅 · 数码店',
+    place:'mall', mallFloor:1,
     rig:'mall-digital-repair-chen-shifu', temper:'steady',
     look:{ skin:'#d5a077', hair:'#2b2522', hairStyle:'buzz', top:'#586a76', pants:'#2f363d',
       shoe:'#23282d', tall:1.04, wide:1.03, faceSeed:5522 },

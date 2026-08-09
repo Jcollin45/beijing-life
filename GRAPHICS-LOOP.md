@@ -4,6 +4,16 @@ A loop runs a graphics agent against this file. Each iteration picks up where th
 so the brief lives here rather than in the prompt: an iteration that re-derives its own orientation
 has spent its budget before it renders anything.
 
+## Where you look
+
+**The game is read off `https://jcollin45.github.io/beijing-life/`, not localhost** (owner's rule,
+2026-08-09). A frame taken from `serve.py` on :8000 does not count as having seen anything, and
+must not be written into the ledger as though it did. Push, wait about a minute for the Pages
+build, then look — and name the origin in the ledger row.
+
+Local harnesses are unaffected: `.audit.js`, the luminance histogram and every headless check still
+run here, because they never described the live site. It is the *looking* that moved.
+
 ## The goal
 
 Make 北京生活 look better, everywhere, continuously — not one room polished to death while the rest
@@ -16,10 +26,13 @@ working discipline.
 the owner's standing instruction and it is not negotiable by an agent that thinks its shot looks
 nicer.
 
-Where that stands right now, measured: the flat is **GPU-bound at p95 50.6 ms against a 16.7 ms
-target** — 3× over — with gpuMed 22.9 against cpuMed 7.9, and roughly 835 props were added across
-the tower in one day. So for the apartment specifically, **making it cheaper *is* improving the
-graphics**, and a pass that only adds is the wrong pass.
+Where that stands right now: **no valid frame number for the apartment exists.** Every reading taken
+on 2026-08-08 was contaminated — other software on the machine held the same GPU `.fpscheck.js`
+measures, and two runs of an identical scene came out 2× apart (p95 27.7 ms and 58.8 ms at an
+identical prop count). The last defensible comparison is `STATE.md:108`'s 21.1 med / 53.2 p95 at
+22,353 props. The flat is GPU-bound and roughly 835 props were added in a day, so **making it
+cheaper *is* improving the graphics** — but do not quote a number until you take a clean one, and
+quote the load average with it when you do.
 
 `STATE.md` lists frame-rate theories that have already been **disproved**. Read it before forming a
 fifth. In particular, do not answer a frame problem by deleting props wholesale — that one is dead.
@@ -97,7 +110,7 @@ costing about what fourteen checklist items cost, and returned a change it could
 
 - `node .bootcheck.js` — it asks the GPU whether the game actually started, which `node --check`
   cannot. Three lanes have taken the boot overlay up with changes that parsed cleanly.
-- `node .flatcheck.js --full` — currently 154/155, all ten rooms reached, 112/112 interactables. The
+- `node .flatcheck.js --full` — currently **157/157**, all ten rooms reached, **114/114** interactables. The
   flat's geometry was expensive; `clampMove` inflates every collider by the 0.30 m body radius, so a
   prop moved for looks can seal a room.
 - `node .checklist.js --file APARTMENT-TODO.md` — the board only goes up.

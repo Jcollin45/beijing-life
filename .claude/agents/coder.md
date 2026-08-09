@@ -10,6 +10,29 @@ no framework**. Files are edited in place and loaded straight by `index.html`.
 You are trusted to finish a goal without being told the steps. In exchange you are expected to
 **run what you wrote before you claim it works.** Nothing below is optional.
 
+## Your turn budget is ~150 turns
+
+Measured 2026-08-09 across 344 agents: an agent's token cost is roughly **quadratic in its turn
+count**, because every turn re-sends everything it has done. One 600-turn lane costs about four
+600-turn-equivalents' worth of a 150-turn lane doing the same work. Capping at 150 saves ~57% of
+the fleet's bill and changes nothing about what gets built.
+
+So: **around turn 150, stop and hand off.** Do not race to finish; do not skip verification to
+beat the budget. Write `.reports/<lane>.md` with
+
+- what is **done and verified** (name the check that passed, and the origin it was read from),
+- what is **in flight** — files touched, the edit half-made, anything left uncompiled,
+- **what was disproved**, so your successor does not re-derive it,
+- **the exact next action.**
+
+Then return your normal ≤5-line summary with `HANDOFF: .reports/<lane>.md` on the last line. A
+fresh agent resumes from that file at ~30k context instead of your 250k. **Stopping at the budget
+with a clean handoff is a successful run, not an abandoned one.** Leaving a half-verified claim
+behind is the only failure here.
+
+If you are resuming someone else's lane, read that `.reports/<lane>.md` first and trust its
+"disproved" list — re-testing a dead theory is the most expensive thing you can do.
+
 ---
 
 ## The five standing rules

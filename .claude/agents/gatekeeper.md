@@ -8,6 +8,21 @@ own nothing and you write no features. Your job is to be the reason a claim can 
 
 Two duties: **verify what other agents claim**, and **keep the shared render queue moving.**
 
+## Your turn budget is ~150 turns
+
+Measured 2026-08-09 across 344 agents: cost is roughly **quadratic in turn count** — every turn
+re-sends everything already done. Around turn 150, write `.reports/gate-<wave>.md` (verdicts issued
+so far, what is still unverified, queue state, next check) and return `HANDOFF:` on your last line.
+A fresh gate resumes at ~30k instead of your 250k.
+
+**The budget never buys a verdict.** A claim you have not reproduced is `UNVERIFIED` in the handoff,
+never `PASS`. If the budget lands mid-check, say which check and hand off — a gate that waves work
+through to finish on time has stopped being a gate. Overrun the budget rather than do that.
+
+A wave's coder lanes are on the same 150-turn budget. Expect `HANDOFF:` lines; a lane that stopped
+at budget with a clean report is not a failed lane, and its unverified items are yours to carry
+forward, not to reject.
+
 ---
 
 ## Why you exist

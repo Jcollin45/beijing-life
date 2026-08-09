@@ -150,7 +150,7 @@ FlatFit['living'] = A => {
     charcoal: C('#2a2e33'), black: C('#171a1f'), steel: C('#aeb5bb'), grey: C('#838b93'),
     jade: C('#3f7564'), jadeL: C('#69a08a'), gold: C('#d19a32'),
     red: C('#a43c2c'), redD: C('#793025'),
-    sky: C('#c4dbea'), glass: C('#d3e2e2'), clay: C('#7a4a38'), clayL: C('#96573c'),
+    sky: C('#c4dbea'), glass: C('#b4c1c1'), clay: C('#7a4a38'), clayL: C('#96573c'),
     terra: C('#a65e3e'), plant: C('#4b7d43'), plantD: C('#315d32'),
   };
   const G = { matte: .05, wood: .20, paint: .14, fabric: .03, metal: .62, glass: .85 };
@@ -257,106 +257,114 @@ FlatFit['living'] = A => {
 
   // ---- the view.
   //
-  // The horizon sits *below* the middle of the glass, so more than half the opening is sky: from
-  // the sofa you see weather, and it is only walking to the glass that shows you the ground. That
-  // is what fourteen floors up feels like and it costs nothing to place.
+  // **This flat is on deck 2, not deck 14.** The view was first composed for a high floor — the
+  // horizon low in the glass, every near block finished with a pale roof deck and a water tank —
+  // and that is a view looking *down* on a city. Standing in this room you are about 4.7 m above
+  // the courtyard: the whole 小区 is taller than you and you look *up* at it.
   //
-  // The layers then stack the opposite way round to the old hutong window, and the inversion is
-  // the whole trick. Down at street level the near buildings are the tall ones and the far ones
-  // recede into haze below them. Up here the *far* layer is the high one — distant towers are
-  // taller than you and straddle the horizon — while the near blocks sit low in the frame,
-  // because you are above them. Every near block is finished with a pale roof deck and a water
-  // tank or a lift over-run, since a roof is the one surface nobody ever sees from the ground and
-  // everybody sees from up here. Below all of it, at the very bottom of the glass where a thing
-  // directly beneath you belongs, the ring road and a 小区 courtyard with trees in it.
-  const HZ = 1.24;                                  // the horizon, 0.16 under the window's centre
+  // So the horizon is the eye line, a little above the middle of the glass, and the layers stack
+  // the way they do from a low floor:
+  //   · nothing has a visible roof. A roof deck is the one surface you never see from below, and
+  //     it was the loudest single tell that this window was painted from the wrong storey.
+  //   · the near wing and the 板楼 slabs opposite both cross the eye line and run up out of the
+  //     opening, cut off by the window head — which is the read that says "I am near the bottom
+  //     of a tall block", and no amount of horizon nudging replaces it.
+  //   · the distant towers are the *small* layer again, sitting on the horizon in the gaps
+  //     between the slabs, because from down here the neighbours hide most of the city.
+  //   · the ground is close. The courtyard trees come up to just under the eye line rather than
+  //     reading as canopies seen from above, and the road is a strip at the very bottom, seen
+  //     almost edge-on instead of in plan.
+  const HZ = 1.52;                                  // the horizon = the eye line, 0.12 over centre
   let seed = 20240817;
   const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
 
   // A band of smog sitting on the horizon. Beijing's distance is not blue, it is white.
-  box(WX, HZ + .09, Z_HAZE, WHW * 2 + .10, .34, .008, C('#cfe6ef'),
+  box(WX, HZ + .05, Z_HAZE, WHW * 2 + .10, .30, .008, C('#cfe6ef'),
     { hard: true, mode: 1, alpha: .40 });
 
-  // Far layer: small, pale, dense, tops crossing the horizon.
+  // Far layer: the rest of the city, small and pale, sitting *on* the eye line. Mostly hidden
+  // behind the slabs opposite — which is the point, and why it is cheap.
   for (let x = OX0 - .04; x < OX1 + .02;) {
-    const w = .055 + rnd() * .085, h = .05 + rnd() * .21, cx = x + w / 2;
-    far(box(cx, HZ - .10 + h / 2, Z_FAR, w * .96, h, .010, C('#a9bccd'), { hard: true, mode: 1 }));
+    const w = .055 + rnd() * .085, h = .06 + rnd() * .26, cx = x + w / 2, base = HZ - .16;
+    far(box(cx, base + h / 2, Z_FAR, w * .96, h, .010, C('#a9bccd'), { hard: true, mode: 1 }));
     if (rnd() > .58)
-      far(box(cx, HZ - .10 + h + .014, Z_FAR, w * .46, .028, .010, C('#a9bccd'),
+      far(box(cx, base + h + .014, Z_FAR, w * .46, .028, .010, C('#a9bccd'),
         { hard: true, mode: 1 }));
     x += w + .012 + rnd() * .030;
   }
 
-  // Middle distance: the ordinary 板楼 slabs of somebody else's 小区, bases well under the
-  // horizon, a scatter of lit flats up their faces.
+  // Middle distance: the 板楼 slabs of the block opposite, across the courtyard. Bases below you
+  // on the near ground, tops well over the eye line — six or seven storeys seen from the second.
+  // The lit flats run a fixed number of rows so a taller slab costs no more props than a short
+  // one: window pitch scales with the building the same way perspective does.
   for (let x = OX0 - .06; x < OX1 + .02;) {
-    const w = .085 + rnd() * .105, h = .07 + rnd() * .25, cx = x + w / 2, base = 1.00;
+    const w = .110 + rnd() * .130, h = .62 + rnd() * .44, cx = x + w / 2, base = .92;
     near(box(cx, base + h / 2, Z_MID, w * .97, h, .010, C('#6f8a9b'), { hard: true, mode: 1 }));
-    for (let ry = base + .04; ry < base + h - .035; ry += .055)
+    for (let r = 0; r < 4; r++) {
+      const ry = base + .09 + r * (h - .18) / 3;
       for (const c of [-.28, 0, .28]) if (rnd() > .58)
         lit(box(cx + c * w, ry, Z_MIDLIT, .015, .022, .006,
           C(rnd() > .55 ? '#ffd08a' : '#bcd3e2'), { hard: true, mode: 1, glow: .16 }));
+    }
     x += w + .014 + rnd() * .042;
   }
 
-  // Near layer: the blocks you are level with and above. Wider, darker, low in the frame, and
-  // every one of them roofed.
+  // Near layer: the wing of this same 小区 nearest the glass. Fewer and wider than the slabs
+  // behind — closer means bigger in the frame — and they run off the top of the opening. SKY_TOP is
+  // the cap: the frame's head rail spans 2.25..2.34 at Z_FRAME, in front of every city layer, so
+  // a block topping out at 2.28 is cut off by the window head instead of ending on a visible
+  // edge. Anything above 2.34 would be painted on the plaster, because this view is a relief on
+  // the wall and not a hole through it.
+  const SKY_TOP = 2.28;
   let signHost = null;
   for (let x = OX0 - .10; x < OX1 + .04;) {
-    const w = .16 + rnd() * .17, h = .07 + rnd() * .28, cx = x + w / 2, base = .70;
+    const w = .22 + rnd() * .24, h = Math.min(1.10 + rnd() * .46, SKY_TOP - .78),
+          cx = x + w / 2, base = .78;
     near(box(cx, base + h / 2, Z_NEAR, w * .98, h, .012, C('#4e6072'), { hard: true, mode: 1 }));
-    // The roof deck, caught by the sky rather than by a face — so it is the pale edge along the
-    // top of a dark block, which is exactly how a roof reads when you are looking down onto it.
-    near(box(cx, base + h + .011, Z_ROOF, w * 1.00, .022, .012, C('#8ba4b2'),
-      { hard: true, mode: 1 }));
-    // Water tanks, a stair head, the odd aerial.
-    const tanks = 1 + (rnd() > .55 ? 1 : 0);
-    for (let t = 0; t < tanks; t++) {
-      const tx = cx + (rnd() - .5) * w * .62;
-      near(box(tx, base + h + .040, Z_TANK, .030 + rnd() * .026, .034, .010, C('#68808d'),
-        { hard: true, mode: 1 }));
-    }
-    if (rnd() > .60)
-      near(box(cx + w * .34, base + h + .062, Z_TANK, .005, .058, .005, C('#5b6b7c'),
-        { hard: true, mode: 1 }));
-    for (let ry = base + .05; ry < base + h - .04; ry += .062)
+    // No roof deck, no water tanks, no aerial: every one of these is over your head.
+    for (let r = 0; r < 5; r++) {
+      const ry = base + .10 + r * (h - .20) / 4;
       for (const c of [-.32, -.11, .11, .32]) if (rnd() > .52)
         lit(box(cx + c * w, ry, Z_NEARLIT, .019, .026, .006,
           C(rnd() > .48 ? '#ffcf85' : '#cfe0ec'), { hard: true, mode: 1, glow: .18 }));
-    if (h > .20 && (!signHost || h > signHost.h)) signHost = { cx, h, w, base };
+    }
+    if (!signHost || w > signHost.w) signHost = { cx, h, w, base };
     x += w + .020 + rnd() * .055;
   }
 
-  // The rooftop sign every third tower on the ring road carries, on the tallest block below. It
-  // joins the lit-window list so it comes up as the sky goes down; the board behind it stays
-  // dark, being a board.
+  // The lit sign on the wing opposite — hung down the *face*, not stood on a roof, because from
+  // here a roof sign would be a sign you cannot see. It joins the lit-window list so it comes up
+  // as the sky goes down; the board behind it stays dark, being a board.
   if (signHost) {
-    const sy = signHost.base + signHost.h - .052;
-    near(box(signHost.cx, sy, Z_SIGN, Math.min(.058, signHost.w * .40), .105, .006, C('#1d2126'),
-      { hard: true, mode: 1 }));
-    lit(...glyph(signHost.cx, sy, Z_SIGN + .003, 0, '北京',
+    const sy = signHost.base + signHost.h * .62;
+    near(box(signHost.cx + signHost.w * .30, sy, Z_SIGN,
+      Math.min(.058, signHost.w * .26), .105, .006, C('#1d2126'), { hard: true, mode: 1 }));
+    lit(...glyph(signHost.cx + signHost.w * .30, sy, Z_SIGN + .003, 0, '北京',
       { size: .042, gap: .005, vertical: true, lift: .002, mode: 1, glow: .18,
         gloss: G.matte, color: C('#ff8a52') }));
   }
 
-  // The 小区 below: a green courtyard with trees standing in it, seen from above as canopies.
-  box(WX, .700, Z_PARK, WHW * 2 - .10, .080, .008, C('#3e5a44'), { hard: true, mode: 1 });
-  for (let i = 0; i < 9; i++) {
-    const tx = OX0 + .12 + i * ((WHW * 2 - .24) / 8) + (rnd() - .5) * .05;
-    ball(tx, .706 + rnd() * .012, Z_PARK + .003, .022 + rnd() * .012, .016, .006,
+  // The 小区 courtyard, close underneath. The trees come up to just under the eye line — from the
+  // second floor you are level with the crowns, not looking down onto them — and they stand in
+  // front of the slab bases opposite, which is where trees in a courtyard actually are.
+  box(WX, .820, Z_PARK, WHW * 2 - .10, .120, .008, C('#3e5a44'), { hard: true, mode: 1 });
+  for (let i = 0; i < 7; i++) {
+    const tx = OX0 + .16 + i * ((WHW * 2 - .32) / 6) + (rnd() - .5) * .06;
+    ball(tx, .952 + rnd() * .030, Z_PARK + .003, .052 + rnd() * .022, .080, .010,
       C(rnd() > .5 ? '#4b7d43' : '#3d6b3c'), { mode: 1 });
   }
-  // The ring road, at the very bottom of the glass. Traffic on it in both directions: warm beads
-  // going one way, white the other, which at this scale is the only thing a road needs.
-  box(WX, .630, Z_ROAD, WHW * 2 - .04, .052, .008, C('#2e343b'), { hard: true, mode: 1 });
-  box(WX, .630, Z_ROAD + .002, WHW * 2 - .04, .003, .006, C('#5a6068'), { hard: true, mode: 1 });
-  for (let i = 0; i < 26; i++) {
+  // The 小区 road at the very bottom of the glass, seen almost edge-on rather than in plan.
+  // Traffic on it in both directions: warm beads going one way, red the other, which at this
+  // scale is the only thing a road needs.
+  box(WX, .625, Z_ROAD, WHW * 2 - .04, .046, .008, C('#2e343b'), { hard: true, mode: 1 });
+  box(WX, .625, Z_ROAD + .002, WHW * 2 - .04, .003, .006, C('#5a6068'), { hard: true, mode: 1 });
+  for (let i = 0; i < 14; i++) {
     const cx2 = OX0 + .04 + rnd() * (WHW * 2 - .08), up = i % 2 === 0;
-    lit(box(cx2, .630 + (up ? .012 : -.012), Z_CAR, .012, .007, .005,
+    lit(box(cx2, .625 + (up ? .010 : -.010), Z_CAR, .012, .007, .005,
       C(up ? '#ffd9a0' : '#e4553f'), { hard: true, mode: 1, glow: .22 }));
   }
-  // The ground below the road fades out rather than ending on a line.
-  box(WX, .575, Z_ROAD, WHW * 2 - .02, .058, .008, C('#4a5856'), { hard: true, mode: 1 });
+  // The strip of ground between the road and the courtyard wall.
+  box(WX, .578, Z_ROAD, WHW * 2 - .02, .058, .008, C('#4a5856'), { hard: true, mode: 1 });
 
   // ---- the reveal. A 13 cm returned recess, which is what a wall this thick actually has, and
   // what stops the sky reading as a poster taped to the plaster.
@@ -875,13 +883,13 @@ FlatFit['living'] = A => {
 
   // ---- 瓜子 the dish of melon seeds set out for whoever comes, and the two remotes that live on
   // this table because there is nowhere else for them.
-  cyl(TX + .44, TOP + .015, TTZ + .19, .082, .030, C('#ece9de'), { tag: '茶几', gloss: .36 });
+  cyl(TX + .44, TOP + .015, TTZ + .19, .082, .030, C('#ceccc2'), { tag: '茶几', gloss: .36 });
   for (let i = 0; i < 11; i++) {
     const a = i * 2.399, r = .046 * Math.sqrt((i + .5) / 11);
     ball(TX + .44 + Math.cos(a) * r, TOP + .034, TTZ + .19 + Math.sin(a) * r,
       .012, .006, .008, C(i % 3 ? '#5c4a34' : '#6d5940'), { tag: '茶几', ry: a, gloss: .20 });
   }
-  for (const [rx3, rz3, ry3, c] of [[-.52, .20, .42, col.charcoal], [-.50, .05, .30, C('#e6ded0')]]) {
+  for (const [rx3, rz3, ry3, c] of [[-.52, .20, .42, col.charcoal], [-.50, .05, .30, C('#cbc4b7')]]) {
     box(TX + rx3, TOP + .012, TTZ + rz3, .055, .020, .175, c,
       { ry: ry3, tag: '遥控器', hard: true, gloss: .30 });
     box(TX + rx3, TOP + .023, TTZ + rz3, .040, .004, .150,

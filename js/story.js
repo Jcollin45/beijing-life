@@ -90,7 +90,9 @@ const Story = (() => {
 
   let S = fresh();
 
-  const keyOf = n => (n && (n.name || n.hz)) || '';
+  // Names are normally the relationship key. `storyKey` is the narrow escape hatch for two
+  // genuinely different people who share both a surname and workplace title.
+  const keyOf = n => (n && (n.storyKey || n.name || n.hz)) || '';
   const rec = k => (S.who[k] = S.who[k] || { ok: 0, miss: 0, day: 0 });
   const levelOf = ok => {
     let lv = LEVELS[0];
@@ -152,6 +154,8 @@ const Story = (() => {
       const k = keyOf(n);
       if (!k) return null;
       const r = rec(k);
+      if (n.storyName) r.name = n.storyName;
+      else if (!r.name) r.name = n.name || n.hz || k;
       const before = levelOf(r.ok);
       if (ok) r.ok++; else r.miss++;
       r.day = day | 0;
@@ -164,7 +168,8 @@ const Story = (() => {
     // Everybody who has got past the first rung, most-known first — the notebook's list of people.
     people() {
       return Object.entries(S.who)
-        .map(([k, r]) => ({ name: k, ok: r.ok, miss: r.miss, day: r.day, level: levelOf(r.ok) }))
+        .map(([k, r]) => ({ name: r.name || k, ok: r.ok, miss: r.miss,
+                            day: r.day, level: levelOf(r.ok) }))
         .filter(p => p.ok > 0)
         .sort((a, b) => b.ok - a.ok);
     },
@@ -312,7 +317,8 @@ const Story = (() => {
       if (o.who && typeof o.who === 'object')
         for (const [k, r] of Object.entries(o.who))
           if (r && typeof r === 'object')
-            S.who[k] = { ok: r.ok | 0, miss: r.miss | 0, day: r.day | 0 };
+            S.who[k] = { ok: r.ok | 0, miss: r.miss | 0, day: r.day | 0,
+                         name: typeof r.name === 'string' ? r.name.slice(0, 40) : undefined };
       if (o.places && typeof o.places === 'object') S.places = { ...o.places };
       if (o.chDay && typeof o.chDay === 'object') S.chDay = { ...o.chDay };
     },

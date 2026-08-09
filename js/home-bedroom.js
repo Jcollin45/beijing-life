@@ -98,7 +98,7 @@ FlatFit['bedroom'] = function bedroom(A) {
   const rugA    = C('#7d5a52'), rugB  = C('#98705f');
   const wicker  = C('#b39a72'), wickerD = C('#967d58');
   const applianceW = C('#c8c7c1'), applianceG = C('#c8c7c1');
-  const mirrorC = C('#c6d6dc');
+  const mirrorC = C('#bbcad0');
   const G = { matte:.05, wood:.20, paint:.14, fabric:.03, metal:.62 };
 
   // ---------------------------------------------------------------- the material kit
@@ -299,7 +299,7 @@ FlatFit['bedroom'] = function bedroom(A) {
       { rz:Math.PI/2, ry:.5, tag: '床头柜' });
   cap(nsE - .03, .593, nsZ + .03, .011, .075, .011, white,
       { rz:Math.PI/2, ry:-.7, tag: '床头柜' });
-  cyl(nsE - .17, .638, nsZ - .05, .038, .112, C('#d3e2e2'),
+  cyl(nsE - .17, .638, nsZ - .05, .038, .112, C('#b4c1c1'),
       { tag: '杯子', alpha:.40, gloss:.85 });
   cyl(nsE - .17, .614, nsZ - .05, .033, .060, C('#cfe6ef'),
       { tag: '杯子', alpha:.55, gloss:.85 });
@@ -506,7 +506,7 @@ FlatFit['bedroom'] = function bedroom(A) {
   // parallel planes that strobe.
   const acZ = .30;
   box(-2.775, 2.26, acZ, .30, .30, .92, applianceW, { tag: '主卧空调', hard:true, gloss:.24 });
-  box(-2.945, 2.28, acZ, .06, .22, .88, C('#ced2ce'), { tag: '主卧空调', hard:true, gloss:.20 });
+  box(-2.945, 2.28, acZ, .06, .22, .88, C('#c6c9c6'), { tag: '主卧空调', hard:true, gloss:.20 });
   box(-2.950, 2.145, acZ, .09, .045, .84, applianceG,
       { tag: '主卧空调', hard:true, gloss:.22, rz:-.16 });                 // the deflector vane
   box(-2.984, 2.24, acZ + .32, .012, .05, .13, dark, { tag: '主卧空调', hard:true, gloss:.34 });

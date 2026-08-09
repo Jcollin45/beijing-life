@@ -221,7 +221,7 @@ const Assets = (() => {
     //                          flat's fit-out, because deck 2 is built with the scene.
   };
   // The rooms built during boot, whose models therefore cannot arrive late (game.js:PLACES).
-  const BOOT_ROOMS = ['World', 'Street', 'Diner', 'Zoo', 'Metro'];
+  const BOOT_ROOMS = ['World', 'Street', 'Diner', 'Metro'];
 
   // Materials are all fetched at boot and always will be: the eleven of them together are
   // 740 KB after repacking, which is less than one of the models. There is nothing to stream.
