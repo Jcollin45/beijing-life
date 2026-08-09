@@ -76,10 +76,6 @@ const PLACES = { home: World, street: Street, shop: Shop, pharmacy: Pharmacy, ma
                  // The two that are not in Beijing, and the only two you cannot reach on foot
                  // or by subway: 外滩 and 宽窄巷子 are each on the far end of a flight.
                  bund: Shanghai, chengdu: Chengdu };
-// The 28 university floors are registered from the validated JSON blueprint.  Keeping the
-// registry data-driven means a room or fixture coordinate is authored once, in the construction
-// plan, while every floor remains an independent Lazy scene here.
-Object.assign(PLACES, CampusInteriors.places);
 let scene = World, place = 'home';
 
 // ---------------------------------------------------------------- state
@@ -9381,7 +9377,6 @@ const DISTRICT = { officeB1:'商务区',office1:'商务区',office2:'商务区',
                    hotelLift:'商务区',
                    campus: '大学城', classroom:'大学城', library:'大学城', rail: '火车站',
                    park: '公园', zoo: '动物园', zoo_tropical: '动物园', airport: '机场' };
-for (const key of Object.keys(CampusInteriors.places)) DISTRICT[key] = '大学城';
 function hereStation() {
   if (place === 'metro' || place === 'train') return station;
   if (DISTRICT[place]) return DISTRICT[place];

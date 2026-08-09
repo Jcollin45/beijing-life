@@ -1788,14 +1788,6 @@ const USE = {
               gain:{ mood:5 }, pose:{ type:'stand' }, go:'street',
               at: { x: 0.1, z: -1.35, yaw: Math.PI * 0.5 },
               done:'外面是胡同。', doneTr:'Outside is the hutong.' },
-  // Blueprint-driven campus floors use ordinary stair/lift landing things with explicit `.exit`
-  // destinations.  The words supply the action; the picked landing supplies the actual floor.
-  '上楼':   { zh:'上楼', py:'shàng lóu', en:'go up one floor', secs:2.0, mins:2,
-              gain:{}, pose:{ type:'stand' },
-              done:'到了上一层。', doneTr:'You arrive one floor higher.' },
-  '下楼':   { zh:'下楼', py:'xià lóu', en:'go down one floor', secs:2.0, mins:2,
-              gain:{}, pose:{ type:'stand' },
-              done:'到了下一层。', doneTr:'You arrive one floor lower.' },
   '对讲':   { zh:'按对讲', py:'àn duìjiǎng', en:'buzz the intercom', secs:2.2, mins:3,
               gain:{ mood:4 }, pose:{ type:'press' },
               done:'按房号，楼上有人接对讲。',
@@ -2145,9 +2137,6 @@ const USE = {
               secs:2.4, mins:4, gain:{ mood:2 }, pose:{ type:'stand' },
               done:'教学楼在北边，食堂在西边，图书馆在东北边。',
               doneTr:'Teaching is north, the canteen west, and the library northeast.' },
-  '门卫': { zh:'进门卫室', py:'jìn ménwèishì', en:'enter the security room', secs:1.8, mins:2,
-              gain:{}, pose:{ type:'stand' },
-              done:'先登记，再领访客证。', doneTr:'Register first, then collect a visitor badge.' },
   // This is the single authoritative source of 学生证. `studentId` is completed in game.js so
   // cancelling the interaction cannot issue a card and repeat visits can answer differently.
   '学生服务中心': {

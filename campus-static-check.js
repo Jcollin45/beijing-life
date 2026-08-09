@@ -82,7 +82,7 @@ check('canonical spawn', near(contract.spawn.x, -11.4) && near(contract.spawn.z,
 check('seven overlapping walk zones', scene.zones.length === 7, scene.zones.length);
 check('all zones have a light anchor', scene.zones.every(zone =>
   Array.isArray(zone.light) && zone.light.length === 3 && zone.light.every(Number.isFinite)));
-check('33 interactions', scene.things.length === 33, scene.things.length);
+check('32 interactions', scene.things.length === 32, scene.things.length);
 check('178 solids', scene.solids.length === 178, scene.solids.length);
 check('23 camera blockers', scene.blockers.length === 23, scene.blockers.length);
 check('33 authored point lights', scene.lights.length === 33, scene.lights.length);
@@ -93,7 +93,7 @@ check('submitted color-call ceiling', colorCalls <= 220, colorCalls);
 const requiredThings = [
   '教学楼', '教室', '书桌', '打印', '图书馆', '食堂', '售货机', '煎饼', '大学',
   '自行车', '布告板', '篮球场', '宿舍', '地铁站', '校园地图', '学生服务中心',
-  '行政楼', '实验楼', '活动中心', '校医院', '校园快递柜', '门卫', '跑道',
+  '行政楼', '实验楼', '活动中心', '校医院', '校园快递柜', '跑道',
 ];
 for (const label of requiredThings)
   check(`interaction ${label}`, scene.things.some(thing => thing.hz === label));

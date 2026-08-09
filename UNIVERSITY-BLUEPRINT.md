@@ -1,11 +1,9 @@
 # 北京文华大学 · expanded campus masterplan
 
-A build-ready replacement plan for `js/campus.js`. This is the exterior campus plan; every
-building, path, wall run, portal, collision box, repeated object group, and integration change has
-a coordinate or a generation rule. Its implemented interior companion is
-[`UNIVERSITY-INTERIORS-BLUEPRINT.md`](UNIVERSITY-INTERIORS-BLUEPRINT.md), with machine-readable
-geometry in [`UNIVERSITY-INTERIORS-BLUEPRINT.json`](UNIVERSITY-INTERIORS-BLUEPRINT.json). The
-legacy `classroom` and `library` scenes remain available alongside the 28 complete floor scenes.
+A build-ready replacement plan for `js/campus.js`. This is an exterior campus plan, not a loose
+wish list: every building, path, wall run, portal, collision box, repeated object group, and
+integration change has a coordinate or a generation rule. The two existing interior scenes
+(`classroom` and `library`) remain separate places and connect through the portal anchors below.
 
 Read coordinates in metres in the game's existing convention:
 
