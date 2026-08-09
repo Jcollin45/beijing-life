@@ -97,6 +97,19 @@ const requiredThings = [
 ];
 for (const label of requiredThings)
   check(`interaction ${label}`, scene.things.some(thing => thing.hz === label));
+const campusEntries = [
+  ['教室','campus_b01_f1'], ['图书馆','campus_b02_f1'], ['食堂','campus_canteen'],
+  ['宿舍','campus_dorm_f1'], ['行政楼','campus_admin_f1'], ['实验楼','campus_science_f1'],
+  ['活动中心','campus_student_f1'], ['校医院','campus_clinic_f1'], ['门卫','campus_security'],
+];
+for (const [label,destination] of campusEntries)
+  check(`${label} exterior entry destination`,scene.things.some(t=>t.hz===label&&t.exit&&t.exit.place===destination));
+const dataSource=fs.readFileSync(path.join(ROOT,'js/data.js'),'utf8');
+const campusUse=dataSource.match(/\n  campus:\s*\{([\s\S]*?)\n  \},\n  \/\/ ---- 大堂/);
+check('campus-specific entry action table',!!campusUse);
+for(const [label] of campusEntries)
+  check(`${label} has a free campus entry action`,!!campusUse&&new RegExp(`['"]${label}['"]\\s*:`).test(campusUse[1])&&
+    !new RegExp(`['"]${label}['"]\\s*:[^}]*\\bpay\\s*:`).test(campusUse[1]));
 check('four interactive benches', scene.things.filter(t => t.hz === '长椅').length === 4);
 check('five interactive fountains', scene.things.filter(t => t.hz === '饮水机').length === 5);
 check('two interactive study tables', scene.things.filter(t => t.hz === '书桌').length === 2);

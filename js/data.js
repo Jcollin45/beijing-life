@@ -2510,6 +2510,30 @@ const USE_AT = {
     ...ZooExpansion.useRows(ZOO_BLUEPRINT, 'zoo_tropical'),
     ...ZooContents.useRows(ZOO_CONTENTS_BLUEPRINT, 'zoo_tropical', ZOO_BLUEPRINT),
   },
+  // Campus building labels are doors while the player is outdoors.  Several of those same words
+  // deliberately mean something else inside — 食堂 buys a meal, 教室 starts class, 图书馆 opens
+  // the legacy reading scene — so the campus must take first refusal here.  Each exterior thing
+  // supplies its exact `.exit`; these rows only provide the free, usable entrance action.
+  campus: {
+    '教室': { zh:'进教学楼', py:'jìn jiàoxuélóu', en:'enter the teaching building', secs:1.8, mins:2,
+              gain:{}, pose:{type:'stand'}, done:'进教学楼了。', doneTr:'Inside the teaching building.' },
+    '图书馆': { zh:'进图书馆', py:'jìn túshūguǎn', en:'enter the library', secs:1.8, mins:2,
+              gain:{}, pose:{type:'stand'}, done:'进图书馆了。', doneTr:'Inside the library.' },
+    '食堂': { zh:'进食堂', py:'jìn shítáng', en:'enter the canteen', secs:1.8, mins:2,
+              gain:{}, pose:{type:'stand'}, done:'进食堂了。', doneTr:'Inside the canteen.' },
+    '宿舍': { zh:'进宿舍', py:'jìn sùshè', en:'enter the residence', secs:1.8, mins:2,
+              gain:{}, pose:{type:'stand'}, done:'进宿舍了。', doneTr:'Inside the residence.' },
+    '行政楼': { zh:'进行政楼', py:'jìn xíngzhènglóu', en:'enter the administration building', secs:1.8, mins:2,
+              gain:{}, pose:{type:'stand'}, done:'进行政楼了。', doneTr:'Inside the administration building.' },
+    '实验楼': { zh:'进实验楼', py:'jìn shíyànlóu', en:'enter the science building', secs:1.8, mins:2,
+              gain:{}, pose:{type:'stand'}, done:'进实验楼了。', doneTr:'Inside the science building.' },
+    '活动中心': { zh:'进活动中心', py:'jìn huódòng zhōngxīn', en:'enter the student centre', secs:1.8, mins:2,
+              gain:{}, pose:{type:'stand'}, done:'进活动中心了。', doneTr:'Inside the student centre.' },
+    '校医院': { zh:'进校医院', py:'jìn xiàoyīyuàn', en:'enter the campus clinic', secs:1.8, mins:2,
+              gain:{}, pose:{type:'stand'}, done:'进校医院了。', doneTr:'Inside the campus clinic.' },
+    '门卫': { zh:'进门卫室', py:'jìn ménwèishì', en:'enter the security room', secs:1.8, mins:2,
+              gain:{}, pose:{type:'stand'}, done:'进门卫室了。', doneTr:'Inside the security room.' },
+  },
   // ---- 大堂 the lobby of the block, three metres under the flat. These words only exist down
   // here, so they go in the room rather than in USE: 门 and 镜子 already mean the right thing
   // everywhere and are deliberately left alone, because the lobby's front door is the same verb
