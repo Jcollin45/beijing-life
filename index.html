@@ -1858,7 +1858,7 @@
     ['ZooAnimals', 'profiles'], ['ZooExpansion', 'build npcRows useRows validatePlan'],
     ['ZooContents', 'buildOutdoor buildTropical useRows validatePlan'],
     ['ZooTropical', 'things'],
-    ['Campus', 'things'], ['CampusInteriors', 'places placeKey buildFloor validate'], ['Classroom', 'things'],
+    ['Campus', 'things'], ['Classroom', 'things'],
     ['Library', 'things'], ['NightMarket', 'things tick setNight'],
     ['Rail', 'things'],
     ['Airport', 'things NOTICES setDay statusOf checkinOpen gateOf nextFlight noticeOf'],
@@ -1937,25 +1937,11 @@
     Lazy.onstale = show;
     if (missing.length)
       show('a stale or partial build — missing ' + missing.join(', '));
-    // Construction-review deep link.  It is intentionally restricted to the validated campus
-    // interior registry: `?campusInterior=campus_science_f3` opens that floor after normal game
-    // initialisation, making every blueprint deck directly inspectable without a second viewer.
-    if (!missing.length) {
-      var previewParams = new URLSearchParams(location.search);
-      var preview = previewParams.get('campusInterior');
-      if (preview && CampusInteriors.places[preview] && window.__game) {
-        var enter = document.getElementById('start');
-        if (enter) enter.click();
-        var previewX = Number(previewParams.get('x'));
-        var previewZ = Number(previewParams.get('z'));
-        var previewYaw = Number(previewParams.get('yaw'));
-        var previewAt = previewParams.has('x') && previewParams.has('z') &&
-                        Number.isFinite(previewX) && Number.isFinite(previewZ)
-          ? { x:previewX, z:previewZ, yaw:Number.isFinite(previewYaw) ? previewYaw : 0 }
-          : undefined;
-        window.__game.setPlace(preview, previewAt);
-      }
-    }
+    // The campus-interior construction-review deep link lived here and was removed on
+    // 2026-08-09 with the rest of that unfinished feature: it dereferenced CampusInteriors,
+    // a module this build does not ship, so the presence check failed and the game refused
+    // to start. Restore it together with js/campus-interior-core.js, its blueprint JSON and
+    // its entry in the module contract above — in one change, not piecemeal.
   };
   }
 
