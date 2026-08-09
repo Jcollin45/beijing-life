@@ -185,7 +185,10 @@ const Street = Lazy('Street', () => {
   // What the shops on the far side of the road are. Ordinary parade businesses, the sort whose
   // names a learner reads a hundred times before anybody teaches them.
   // Where the pharmacy door ended up, for pharmacy.js to come back out of.
-  let PHARMACY_OUT = null;
+  // The chemist is a building on the WEST footway now (js/street-civic.js), not a unit on the far
+  // parade, so this is a constant rather than something a random shuffle discovers. pharmacy.js
+  // reads it off the scene as `Street.PHARMACY_OUT`; the district reads it off `S`.
+  let PHARMACY_OUT = { x: 24.68, z: -3.65, yaw: Math.PI / 2 };
   // Where you stand after stepping out of your own 单元门. The inbound half of the pair is
   // `HOME_LOBBY_ENTRY` in js/game.js; this is the outbound half, and it is exported so a caller
   // can arrive at the door it left by instead of falling through to the scene default.
@@ -199,11 +202,21 @@ const Street = Lazy('Street', () => {
   const HIDDEN = M.trs(0, -60, 0, 0, .001, .001, .001);
   let stallUp = null;                    // whether the cart is on the pavement right now
   let windK = 0;                         // how hard it is blowing, set from the weather
-  const SHOPNAMES = ['五金店', '理发店', '药店', '便利店', '手机店', '面包房', '干洗店',
+  // 药店 is out of this list too — see TEACH below. A plain unlettered copy across the road from
+  // the real chemist is the same confusion as a pickable one, minus the cursor. Dropping a name
+  // re-deals every later draw from the seeded stream, so the parade's signs move; they are
+  // scenery and they are stable between runs, which is all they ever had to be.
+  const SHOPNAMES = ['五金店', '理发店', '便利店', '手机店', '面包房', '干洗店',
                      '水果店', '文具店', '花店', '茶叶店', '包子铺', '眼镜店', '快递'];
   // Which of those names has already been given a thing. Two of the forty units on the parade get
   // one — see the shop loop for why — and this is what stops the third pharmacy getting one too.
-  const TEACH = ['药店', '面包房'];
+  // 药店 is NOT taught from the parade any more. It used to be one of these forty units, and
+  // js/street-civic.js moved its `thing` across the road to the real shop — which left the unit's
+  // BOARD behind, still lettered 药店 and still pickable, so the same chemist was signed twice,
+  // eighteen metres apart, on opposite sides of the road. That is the exact fault this street was
+  // being cleaned up for. The door is created where the shop is now; the parade teaches 面包房 and
+  // 药店 is taught off a green fascia and a lit cross, which is a better place to learn it anyway.
+  const TEACH = ['面包房'];
   const taught = new Set();
 
   let seed = 0x5eed1;
@@ -2840,21 +2853,11 @@ const Street = Lazy('Street', () => {
           // from across the road. Every other unit on the parade stays untagged and unpickable.
           signTag = name;
           boardProp.tag = name;
-          const say = name === '药店'
-            ? ['药店几点关门？', 'What time does the pharmacy shut?',
-               '药 medicine + 店 shop. 买药 is to buy medicine; 药方 is a prescription.']
-            : ['面包房的面包很新鲜。', 'The bread at the bakery is fresh.',
-               '面包 bread + 房 room, in the sense of a workshop. Not 面 — that is noodles.'];
+          const say = ['面包房的面包很新鲜。', 'The bread at the bakery is fresh.',
+                       '面包 bread + 房 room, in the sense of a workshop. Not 面 — that is noodles.'];
           // Standing spot on the far pavement, clear of the shopfront glazing and the road.
           const th = thing(name, FX - .34, 3.72, sz2, say[0], say[1], say[2],
             { focus: [FX - 2.30, sz2], reach: 2.4 });
-          // 药店 is a door now, not only a sign. Which unit it landed on is decided by the seeded
-          // stream, so where the player comes back out cannot be written down here — it is recorded
-          // as the shop is built and read by pharmacy.js when that room is first constructed.
-          if (name === '药店') {
-            PHARMACY_OUT = { x: FX - 2.30, z: sz2, yaw: -Math.PI / 2 };
-            th.exit = { place: 'pharmacy', at: PHARMACY_OUT };
-          }
         }
         for (const g of B.glyphs(FX - .28, 3.72, sz2, -Math.PI / 2, name,
             { size: gsz, gap: gsz * .16, color: board === col.paintY ? col.charcoal : col.cream,
@@ -3789,6 +3792,7 @@ const Street = Lazy('Street', () => {
     // The shopfront datum, so a district never picks a sign height by eye. See the block comment
     // where these are declared for the clear bands they come out of.
     FASCIA, FASCIAH, BLADE, BLADEH,
+    get PHARMACY_OUT() { return PHARMACY_OUT; },
     // The road's own numbers, so traffic and cycles agree without measuring — and these are now
     // MEASURED off the paint rather than derived from the centre line, because the derived ones
     // were wrong and two districts built against them.

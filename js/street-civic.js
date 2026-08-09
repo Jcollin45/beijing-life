@@ -287,13 +287,16 @@ StreetFit['civic'] = S => {
   // strip in front of it that the body can never enter — so nothing here needs a collider either.
   const PHZ = -5.25, PHDOOR = -4.45, PHSTAND = -3.65;
   const PT = { tag: '药店' };
-  const ph = S.things.find(t => t.hz === '药店');
-  if (ph && ph.exit && ph.exit.at) {
-    ph.pos = [23.38, 3.34, PHZ];
-    ph.focus = [24.68, PHSTAND];
-    ph.reach = 2.4;
-    ph.exit.at.x = 24.68; ph.exit.at.z = PHSTAND; ph.exit.at.yaw = Math.PI / 2;
-  }
+  // The door is CREATED here now, where the shop is, instead of being found on the far parade and
+  // dragged across the road. Dragging it left the parade unit's BOARD behind — still lettered
+  // 药店, still pickable, eighteen metres from the real chemist and on the other side of a
+  // carriageway. street.js no longer letters any parade unit 药店 at all: it is out of both TEACH
+  // and SHOPNAMES, and `PHARMACY_OUT` is a constant on the shell rather than something the seeded
+  // shuffle discovers. pharmacy.js reads the same object off the scene and needs no change.
+  thing('药店', 23.38, 3.34, PHZ,
+    '药店几点关门？', 'What time does the pharmacy shut?',
+    '药 medicine + 店 shop. 买药 is to buy medicine; 药方 is a prescription.',
+    { focus: [24.68, PHSTAND], reach: 2.4 }).exit = { place: 'pharmacy', at: S.PHARMACY_OUT };
 
   // The shell of the unit. A back wall and two jambs with a head over them, NOT one solid block:
   // a block would have nothing to be a window in, and the shop behind the glass has to be a room
