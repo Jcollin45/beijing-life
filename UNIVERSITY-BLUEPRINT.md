@@ -136,11 +136,15 @@ box((x0+x1)/2, 1.10, z, x1-x0, 2.20, .36, held(col.brickD,S.brick),
     { hard:true, mode:11, gloss:G.matte, ...S.brick });
 box((x0+x1)/2, 2.26, z, x1-x0+.10, .12, .46, col.stoneL,
     { hard:true, mode:13, gloss:.18 });
+// insideSign is +1 on south walls and -1 on north walls.
+box((x0+x1)/2, 1.10, z + insideSign*.20, x1-x0, 2.00, .04,
+    held(col.render,S.rend), { hard:true, mode:14, gloss:G.matte, ...S.rend });
 solid(x0, x1, z-.18, z+.18);
 ```
 
-For a vertical run, swap x/z dimensions. Give each wall run its own tag (`围墙-SW`, `围墙-EN`,
-etc.) rather than one campus-wide wall tag. Add a `blocker` with `top=2.45` to the same AABB.
+For a vertical run, swap x/z dimensions and use `insideSign=+1` on west walls / `-1` on east
+walls. Give each wall run its own tag (`围墙-SW`, `围墙-EN`, etc.) rather than one campus-wide wall
+tag. Add a `blocker` with `top=2.45` to the same AABB.
 
 ### 4.2 Exact wall runs
 
@@ -166,6 +170,14 @@ etc.) rather than one campus-wide wall tag. Add a `blocker` with `top=2.45` to t
 
 The wall, gate piers, apron rails, and walk-zone edges must land together. Do not leave a visible
 opening against an invisible clamp.
+
+Side-gate boards are `2.2×.46×.12` m (width/height/depth), centred at y=3.45; the west board is at
+`(-47.88,3.45,20)`, yaw `Math.PI/2`, and the east board at `(47.88,3.45,20)`, yaw
+`-Math.PI/2`. The closed north leaves are steel boxes centred `(33,1.25,66.78)` and
+`(37,1.25,66.78)`, each `4×2.5×.12`; their single collision AABB remains the table value. Every
+apron end rail is a 1.10 m high steel box whose x/z footprint equals its listed solid AABB; centre
+y=.55. Gate-pier mesh footprints and solids are identical. The main truss/name/lion meshes are
+copied without dimensional changes from the existing `campus.js` component.
 
 ---
 
@@ -213,8 +225,11 @@ They are scenery/maintenance lanes, not moving vehicle systems in v2.
 - Jogging centreline: `(-19.0,23.0) → (19.0,23.0) → (19.0,47.0) → (-19.0,47.0) → close`.
   Draw a 0.12 m red line with 0.45 m corner dots and metre marks every 10 m. It is paint only,
   not a collider. One lap is approximately 124 m and teaches `跑步` without consuming more land.
-- Tactile route: a 0.30 m yellow strip from metro spawn `(-11.4,-9.35)` to `(-6.0,-7.5)`, then to
-  the spine at `(-3,-7.5)`, north to the cross promenade and both library/teaching entries.
+- Tactile route: draw a 0.30 m yellow strip through the exact main polyline
+  `(-11.4,-9.35)→(-6,-7.5)→(-3,-7.5)→(-3,4.8)→(-5,4.8)→(-5,8.2)→(-3,8.2)→(-3,50)`;
+  the west detour clears the flag plinth. Branch A continues `(-3,50)→(27.3,50)` to the library;
+  Branch B ends at `(-3,48.4)` for the classroom doors. Use 0.10 m long raised bars every .30 m,
+  y=.014; tactile geometry is visual-only and has no solid.
 
 ---
 
@@ -250,6 +265,21 @@ All multi-storey blocks use these rules unless their own section overrides them:
   blue directory sign, red/gold primary Chinese name.
 - Every public door has a 2.0 m clear waiting rectangle outside its collider and a `thing()` focus
   within that rectangle.
+
+For any entrance that does not override its steps/canopy, let `n` be the outward unit normal and
+`t` the facade direction. Add three visual-only (no `solid`) step boxes at wall offsets
+`.22,.52,.82`, full heights `.18,.12,.06`, widths `doorWidth+.8`, and depth `.34`; their bottoms
+sit at y=0. Add a canopy at wall offset 1.15, y=3.10, full dimensions
+`2.40×.26×(doorWidth+1.0)` with x/z swapped for north/south doors. Its two .18 m square columns sit
+at offset 2.20 and `t=±(doorWidth/2+.35)` and receive `.24×.24` solids. This puts columns beyond the
+2.0 m waiting rectangle. B05 and B06 use the whole default. B01 overrides the whole kit; B02,
+B04, and B07 override the canopy mesh only and retain the default steps/column placement.
+
+Non-public facades use a deterministic bay rule rather than invented windows: for each wall, start
+1.8 m from a corner and step by 3.2 m while at least 1.8 m remains; at each upper floor place a
+`1.75×1.45` window centred `floorBase+1.35` m above that deck. Skip a bay whose centre is within
+1.2 m of an authored entrance, stair tower, sign, case, or service door. Public-facade schedules in
+the building sections override this rule.
 
 ### 6.2 B01 — 第一教学楼
 
@@ -310,7 +340,7 @@ All multi-storey blocks use these rules unless their own section overrides them:
   three steps project to x=28.6.
 - Name `学生宿舍` at `(29.78,3.55,-2)`, yaw `-Math.PI/2`.
 - Parcel lockers: 12 blue/grey doors in a 3 × 4 grid centred `(29.55,1.20,3.5)`; locker solid
-  `x=29.25..29.75,z=1.55..5.45`; interaction focus `(27.8,3.5)`. Delivery trolley parks at
+  `x=29.25..29.75,z=1.55..5.45`; `校园快递柜` focus `(27.8,3.5)`. Delivery trolley parks at
   `(27.8,5.2)` outside the entry line.
 - Two laundry frames on the roof, visible but not interactive. Override the common AC rule with
   exactly six west-facade units at `(bay,floor)=[(0,2),(1,4),(2,1),(3,3),(4,2),(4,5)]`, where
@@ -324,7 +354,8 @@ All multi-storey blocks use these rules unless their own section overrides them:
 - East entrance `(-29,1.55,30)`, 3.20 m wide with a 4.2 m canopy and two stone columns.
 - East facade window bays at z=`[25.5,28.5,31.5,34.5]`, floors `1..3`.
 - Primary sign `行政楼`; blue subordinate board `国际学生中心 / International Student Centre`.
-- Exterior directory at `(-26.8,1.65,27)`, 1.8 × 1.3 m, facing east path.
+- Exterior directory O07 is wall-mounted at `(-28.70,1.65,27)`, size `.16×1.70×1.80` (x/y/z),
+  facing the east path and fully covered by the building body solid.
 - Two flag sockets at `(-27.2,25.5)` and `(-27.2,34.5)`; each has a .24 m square base solid and
   a .05 m radius pole. Flags remain below the roofline and outside the clear entrance rectangle
   `x=-28.8..-26.8,z=28.1..31.9`.
@@ -454,8 +485,21 @@ const CAMPUS_LAMPS = [
 ```
 
 Each pole solid is `x=lx-.13..lx+.13,z=lz-.13..lz+.13`. Lamp pools are 6 m square, alpha 0.30 at
-full night. Gate, canteen, print kiosk, metro, building entrances, and court each add their own
-local light, but only the nearest eight are submitted.
+full night. Every standard calls `B.light(lx,4.40,lz,[1,.88,.66],.95,4.6)`. Add the following
+fixed entrance/task lights; the last two numbers are power and radius and all use `[1,.86,.62]`.
+Only the renderer's nearest eight are submitted.
+
+```js
+const CAMPUS_LOCAL_LIGHTS = [
+  ['main-gate',-3,3.8,-12.2,1.10,5.5], ['metro',-11.4,2.7,-10.2,.90,4.0],
+  ['print',-10.5,2.0,14.5,.70,3.0],    ['canteen',-27.6,3.0,2.5,1.05,5.0],
+  ['dorm',28.5,3.0,-2,.85,4.5],        ['admin',-27.5,3.0,30,.85,4.5],
+  ['science',-26.5,3.0,50,.90,4.8],    ['teaching',-3,3.4,49.5,1.10,5.5],
+  ['student',28.5,3.2,27,.80,4.2],     ['clinic',28.5,3.2,31,.80,4.2],
+  ['library',28.5,3.2,50,1.00,5.0],   ['security',5.9,2.7,-9.5,.70,3.5],
+  ['court',36,4.5,13,1.10,8.0],
+];
+```
 
 ### 7.5 Benches and outdoor study
 
@@ -467,7 +511,7 @@ const CAMPUS_BENCHES = [
   [-16,23.5,0],[15,23.5,0],[-17,30,Math.PI/2],[-17,42,Math.PI/2],
   [17,30,-Math.PI/2],[17,42,-Math.PI/2],[-8,25,0],[11,25,0],
   [24,35.5,-Math.PI/2],[25,54,-Math.PI/2],
-  [28,11,Math.PI/2],[28,15,Math.PI/2],
+  [27,11.5,Math.PI/2],
 ];
 ```
 
@@ -497,17 +541,29 @@ const SORTING_BINS = [
   [-20,-5],[18,-7],[-24.8,10.5],[26,-6.5],[-15,16],[11,23],
   [-25.5,38],[27,42],[-25,58],[25,61.5],[-27,14],[27,7.5],
 ];
-const FIRE_POINTS = [
-  [-28,10], [29,6], [-28,24], [-26,40], [29,23], [29,38], [-21,62], [18,62],
+const FIRE_FIXTURES = [
+  {id:'F01',at:[-28.72,1.25,10], kind:'cabinet-x'}, // canteen east facade
+  {id:'F02',at:[29.72,1.25,6],   kind:'cabinet-x'}, // dorm west facade
+  {id:'F03',at:[-43.18,1.25,30], kind:'cabinet-x'}, // admin west facade
+  {id:'F04',at:[-26,.52,40],     kind:'standpipe'},
+  {id:'F05',at:[43.18,1.25,25],  kind:'cabinet-x'}, // student-centre east facade
+  {id:'F06',at:[29.72,1.25,38.8],kind:'cabinet-x'}, // library west facade
+  {id:'F07',at:[-21,.52,62],     kind:'standpipe'},
+  {id:'F08',at:[18,.52,62],      kind:'standpipe'},
 ];
 ```
 
 - Fountains use the existing teal column, basin, spout, `0.48 × 0.48` solid. The first three and
   the two library/science fountains get the exact `饮水机` anchors below; repeated anchors reuse
   the same action.
-- Each sorting station has four 0.38 m bins in the order `可回收物 / 厨余垃圾 / 有害垃圾 / 其他垃圾`,
-  on a 1.9 × .55 m pad with one combined solid.
-- Fire points are red hydrant cabinets or exterior standpipes kept 0.8 m off through-routes.
+- Each sorting station has four `0.38×0.86×0.48` m bins centred at
+  `x=bx+[-.66,-.22,.22,.66],y=.43,z=bz`, in the order
+  `可回收物 / 厨余垃圾 / 有害垃圾 / 其他垃圾`. Use one combined solid
+  `x=bx-.95..bx+.95,z=bz-.275..bz+.275`; all rows face `-z`.
+- `cabinet-x` is a red wall box `.18×.90×.72` m (x/y/z), already covered by its building body
+  solid; do not add a duplicate solid. `standpipe` is a red 0.14 m radius × 1.04 m cylinder with a
+  chrome cap and exact solid `x=fx-.18..fx+.18,z=fz-.18..fz+.18`. The three standpipes are at
+  least 0.80 m from the nearest through-route edge.
 - Storm drains: place 0.45 m grates at `(-21,-10),(19,-10),(-21,16),(19,16),(-27,47),(27,47),
   (-44,30),(44,30)`. Add two 0.60 m manhole covers at `(-3,-1)` and `(-3,40)`. No solids.
 
@@ -531,21 +587,25 @@ const INTERACTIVE_FOUNTAINS = [
 | `S04` | `(22,20)` | east district board: `宿舍 / 活动中心 / 校医院 / 图书馆` |
 | `S05` | `(-24,49)` | `实验楼 ← / 第一教学楼 →` |
 | `S06` | `(22,49)` | `第一教学楼 ← / 图书馆 →` |
-| `S07` | `(-46,20)` | west-gate campus map, faces east |
-| `S08` | `(46,20)` | east-gate campus map, faces west |
-| `O01` | `(29.5,3.5)` | 12-door parcel locker on dorm facade, `快递柜` interaction |
-| `O02` | `(-10.7,3)` | bicycle charging cabinet, six sockets |
+| `O01` | `(29.55,1.20,3.5)` | 12-door parcel locker; solid `x=29.25..29.75,z=1.55..5.45`; label `校园快递柜` |
+| `O02` | `(-10.7,.90,3)` | `.80×1.80×.45` bicycle charging cabinet; solid is specified in §7.2 |
 | `O03` | `(-26,-3.5)` | animated jianbing cart; solid `x=-27.25..-24.70,z=-4.20..-2.80` |
-| `O04` | `(-28.35,8)` | drinks vending machine, unchanged component recipe |
-| `O05` | `(27.2,27)` | student-centre club notice case |
-| `O06` | `(27.2,31)` | clinic hours/department board |
-| `O07` | `(-26.8,27)` | international-services directory |
-| `O08` | `(27.5,49)` | library returns slot + opening-hours plate |
-| `O09` | `(-25.6,54)` | science innovation display case |
-| `O10` | `(4.8,-9.6)` | guard stool + thermos, outside guard-house solid |
+| `O04` | `(-28.35,1.05,8)` | east-facing vending machine `.72×2.10×.70`; solid `x=-28.72..-27.98,z=7.62..8.38` |
+| `O05` | `(29.70,1.55,27)` | wall-mounted club notice case `.16×1.60×1.60`; no extra solid |
+| `O06` | `(29.70,1.55,31)` | wall-mounted clinic board `.16×1.60×1.60`; no extra solid |
+| `O07` | `(-28.70,1.65,27)` | wall-mounted services directory `.16×1.70×1.80`; no extra solid |
+| `O08` | `(29.70,1.25,49)` | wall-mounted returns/hour plate `.16×1.50×1.20`; no extra solid |
+| `O09` | `(-25.6,1.25,54)` | glass case `1.8×1.8×.7`; solid `x=-26.55..-24.65,z=53.55..54.45` |
+| `O10` | `(5.55,.42,-8.0)` | folding guard stool `.38×.42×.38` + thermos; solid `x=5.36..5.74,z=-8.19..-7.81` |
 
 Wayfinding posts are 2.35 m tall, blue panels with white glyphs, and a `0.22 × 0.22` post solid.
 Signs must be readable from the listed path before any tree crown or bike row.
+
+`S02..S06` face `-z`: one `.12×2.35×.12` post centred at y=1.175 and one arm per slash-separated
+destination. Arm `i` is centred at y=`2.18-i*.34`, size `1.85×.28×.08`; alternate its arrow left
+and right according to the text. Their combined body solid is only the `.22×.22` post AABB. S01
+uses a `3.20×1.80×.18` panel centred `(15,1.55,-2.5)` with the already-listed AABB. The historic
+noticeboard copies the existing three-panel recipe exactly, translated to `(9,-2.5)`.
 
 ### 7.8 Basketball court
 
@@ -554,12 +614,13 @@ Signs must be readable from the listed path before any tree crown or bike row.
   x=38.8..42.0; dotted arcs use 18 small marks per end.
 - Hoops: posts at `(29.65,13)` and `(42.35,13)`, each with a `0.40 × 0.40` solid; backboards face
   inward; rim y=3.05. Put loose ball `(36.2,.13,11.8)`.
-- Sideline benches are the manifest points `(28,11)` and `(28,15)`; keep x=27..29 as a clear run.
+- The single sideline bench is the manifest point `(27,11.5)`; the north-south approach strip
+  `x=27.6..28.9,z=9..17` remains clear.
 - Five low chain-link segments, 2.6 m high and 0.12 m thick: north `x=29..43,z=16.94..17.06`;
   south `x=29..43,z=8.94..9.06`; east `x=42.94..43.06,z=9..17`; west-south
-  `x=28.94..29.06,z=9..11.8`; west-north `x=28.94..29.06,z=14.2..17`. Use those exact AABBs as
-  solids; the west opening `z=11.8..14.2` is a 2.4 m gate.
-- `篮球场` interaction position `(30.6,1.7,13)`, focus `(27.8,13)`, reach 3.0.
+  `x=28.94..29.06,z=9..14.2`; west-north `x=28.94..29.06,z=16.6..17`. Use those exact AABBs as
+  solids; the northwest opening `z=14.2..16.6` is a 2.4 m gate and is clear of the west hoop.
+- `篮球场` interaction position `(29.15,1.7,15.4)`, focus `(27.6,15.4)`, reach 2.2.
 
 ---
 
@@ -595,10 +656,14 @@ for the bicycle canopy, court, study area, benches, or gate; those need walkable
 
 ### 8.3 NPC rule
 
-Generic campus NPC motion is not currently clamped against `scene.solids`. Until a campus route
-solver is added, use timed stationary spots only, or waypoint segments whose swept 0.35 m capsule
-has been checked against this manifest. Do not author free-roaming patrols that can walk through
-the new buildings.
+Generic NPC motion is not clamped against Campus solids, and ordinary timed spots still make a rig
+walk in a straight line when its schedule window changes. Mark the three rows below
+`campusStatic:true` and add a **deferred-snap** branch: when their active spot changes, never hand the
+new coordinate to the generic mover. If Campus is not the current place, immediately set x/z/face
+to the new spot; if Campus is current, retain the old spot and queue the new one until `setPlace`
+leaves Campus. Apply the queued/current spot before Campus is rendered on the next entry. Thus every
+listed coordinate is a stationary 0.35 m clearance disc and no route between spots is implied.
+Free patrols require a later Campus-specific pathfinder over the occupancy grid in §8.4.
 
 ### 8.4 Required automated route check
 
@@ -639,7 +704,7 @@ do not identify as 杨柳胡同.
 | 大学 | `(-3,5.6,-12.4)` | `(-3,-10.4)` |
 | 自行车 | `(-10.3,1.1,5.8)` | `(-8.9,5.8)` |
 | 布告板 | `(9,2.72,-2.8)` | `(9,-4.0)` |
-| 篮球场 | `(30.6,1.7,13)` | `(27.8,13)` |
+| 篮球场 | `(29.15,1.7,15.4)` | `(27.6,15.4)` |
 | 宿舍 | `(29.55,4,-2)` | `(27.4,-2)` |
 | 地铁站 | `(-11.4,2.92,-11.9)` | `(-11.4,-9.15)` |
 | 长椅 | exact `INTERACTIVE_BENCHES` rows in §7.5 | exact focus per row |
@@ -657,11 +722,31 @@ Use distinct global labels; `USE` is keyed by Chinese text across the whole game
 | 实验楼 | focus `(-25.5,50)` | inspect/visit science building; no false portal yet |
 | 活动中心 | focus `(27.4,27)` | see club activities / noticeboard |
 | 校医院 | focus `(27.4,31)` | simple campus-clinic check; no `go` until interior exists |
-| 快递柜 | focus `(27.8,3.5)` | collect a parcel if state has one; otherwise read locker |
+| 校园快递柜 | focus `(27.8,3.5)` | read QR pickup instructions, 2 min; never call the apartment `快递柜` action |
 | 跑道 | focus `(-19,35)` | run one lap, 12 min, rest/food cost and mood gain |
 
 `学生证` closes an existing game loop: the mall cinema already expects a student-ID source. This
 building is its single authoritative source; do not mint the item from multiple campus objects.
+Use this exact durable contract in `game.js`:
+
+```js
+let campusLife = { studentId:false };
+function issueStudentId() {
+  if (!campusLife.studentId) campusLife.studentId = true;
+  if (!mallBought.includes('学生证')) mallBought.push('学生证');
+  saveGame();
+}
+// saveGame blob:
+campusLife: { studentId:!!campusLife.studentId },
+// loadGame, immediately after restoring mallBought:
+campusLife = { studentId:!!s.campusLife?.studentId };
+if (campusLife.studentId && !mallBought.includes('学生证')) mallBought.push('学生证');
+```
+
+The `学生服务中心` USE row calls `issueStudentId()` once and gives an already-issued response on
+repeat. Re-inserting the card after load is the bridge to `CinemaSys.hasStudentId()`, even after
+more than 24 later purchases have pushed it out of the truncated `bought` save list. New Game resets
+`campusLife.studentId=false`; expose it in `__game.state()` for a persistence harness.
 
 ### 9.4 Save migration for the new footprint
 
@@ -686,7 +771,7 @@ the Campus scene is constructed; the canonical spawn itself must never rely on r
 ## 10. NPC and activity anchors
 
 All coordinates below are clear of the planned solids. Existing three people keep their rigs and
-dialogue identities but receive new timed spots.
+dialogue identities, receive new timed spots, and use the deferred-snap contract in §8.3.
 
 ```js
 const CAMPUS_SPOTS = {
@@ -696,12 +781,12 @@ const CAMPUS_SPOTS = {
     {h0:13,h1:17,at:[27.0,50.0],face:Math.PI/2,act:'wait'},
     {h0:17,h1:22,at:[3.0,29.0],face:Math.PI,act:'wait'},
   ],
-  campus_teacher_chen: [
+  'campus-teacher-chen-laoshi': [
     {h0:8,h1:12,at:[-3.0,47.0],face:Math.PI,act:'wait'},
     {h0:12,h1:14,at:[-26.0,30.0],face:-Math.PI/2,act:'wait'},
     {h0:14,h1:18,at:[-8.0,45.0],face:0,act:'wait'},
   ],
-  campus_student_xiaoli: [
+  'campus-student-xiao-li': [
     {h0:8,h1:11,at:[-10.5,13.2],face:Math.PI,act:'wait'},
     {h0:11,h1:12,at:[-24.0,1.0],face:-Math.PI/2,act:'wait'},
     {h0:12,h1:14,at:[36.0,11.0],face:.15*Math.PI,act:'wait'},
@@ -712,8 +797,8 @@ const CAMPUS_SPOTS = {
 ```
 
 Optional v2 crowd anchors, added only after route/performance checks: guard `(4.8,-9.6)`, canteen
-worker `(-27.0,2.5)`, services clerk `(-26.5,27)`, clinic nurse `(27.2,31)`, four student waits at
-`(-8,20),(8,20),(-10,42),(10,42)`. Use timed spots, not free patrols.
+worker `(-27.0,-1.8)`, services clerk `(-24.8,27.8)`, clinic nurse `(26.0,32.5)`, four student waits
+at `(-8,20),(8,20),(-10,42),(10,42)`. They use the same deferred-snap mode, not free patrols.
 
 Narrative corrections required with the move:
 
@@ -773,6 +858,25 @@ fit registry, mirroring the already-proven split patterns elsewhere in the proje
 helper, light/night registries, and fixed constants. Each fit file appends geometry through that
 toolkit and returns optional `tick`/`setNight` callbacks. Load all fit files after `campus.js` and
 before `classroom.js`/`library.js` in `index.html`.
+
+Use this deterministic registry contract before the `Lazy('Campus',...)` declaration:
+
+```js
+const CampusFits = window.CampusFits = {
+  rows: [],
+  register(id, order, build) {
+    if (this.rows.some(r => r.id === id)) throw new Error(`duplicate Campus fit: ${id}`);
+    this.rows.push({id, order, build});
+  },
+};
+// Each fit file: CampusFits.register('boundary', 10, kit => ({tick?,setNight?}));
+```
+
+Inside the Lazy builder, create `kit`, sort a copy with `(a,b)=>a.order-b.order ||
+a.id.localeCompare(b.id)`, call every `build(kit)` exactly once, then compose returned hooks in that
+same order. Campus's `tick(dt)` runs every hook tick; `setNight(n)` runs every night hook and finally
+the shared window/lamp updater. Call `B.finish()` only after every fit has built. Required order IDs:
+`boundary:10, academic:20, west:30, east:40, furniture:50, life:60`.
 
 Shared-file integration changes are serialized after geometry lands:
 
