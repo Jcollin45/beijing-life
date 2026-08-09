@@ -327,8 +327,11 @@ the building sections override this rule.
 - Jianbing cart moves to `(-26.0,1.0,-3.5)`, customer focus `(-24.2,-3.5)`; queue marks run south
   at `(-24.2,-3.5),(-24.2,-4.7),(-24.2,-5.9)`, entirely west of the bicycle shelter pad and
   outside the canteen waiting rectangle `x=-28.8..-26.8,z=.1..4.9`.
-- Rear delivery door at `(-43,1.25,5.5)` opens only visually to the west service lane; bins and
-  gas cages are behind a 1.8 m screen at x=-44.1.
+- Rear delivery door at `(-43,1.25,5.5)` opens only visually to the west service lane. The service
+  screen is centred `(-44.10,1.10,5.5)`, size `.12×2.20×5.0`, solid
+  `x=-44.16..-44.04,z=3..8`. Two locked gas cages at `(-44.55,.75,4.2)` and
+  `(-44.55,.75,6.8)` are `.70×1.50×1.00` each; one combined solid is
+  `x=-44.90..-44.20,z=3.70..7.30`. They leave the western 2.1 m of the visual service lane clear.
 - Body solid: `x=-43.20..-28.80,z=-7.20..12.20`; blocker top 6.20.
 - `食堂` interaction `(-28.55,2.4,2.5)`, focus `(-26.6,2.5)`, reach 2.6.
 
@@ -340,9 +343,10 @@ the building sections override this rule.
   three steps project to x=28.6.
 - Name `学生宿舍` at `(29.78,3.55,-2)`, yaw `-Math.PI/2`.
 - Parcel lockers: 12 blue/grey doors in a 3 × 4 grid centred `(29.55,1.20,3.5)`; locker solid
-  `x=29.25..29.75,z=1.55..5.45`; `校园快递柜` focus `(27.8,3.5)`. Delivery trolley parks at
-  `(27.8,5.2)` outside the entry line.
-- Two laundry frames on the roof, visible but not interactive. Override the common AC rule with
+  `x=29.25..29.75,z=1.55..5.45`; `校园快递柜` focus `(27.8,3.5)`. Delivery trolley centre
+  `(27.8,.48,5.2)`, size `.80×.96×.60`, solid `x=27.40..28.20,z=4.90..5.50`.
+- Two roof laundry frames, centred `(34,19.75,-3)` and `(39,19.75,1)`, are each
+  `2.4×1.4×.08` steel rectangles with three wire lines and no body solid. Override the common AC rule with
   exactly six west-facade units at `(bay,floor)=[(0,2),(1,4),(2,1),(3,3),(4,2),(4,5)]`, where
   bay `0..4` maps to z=`[-7,-4,-1,2,5]` and floor `1..5` maps to y=`floor*3+1.35`.
 - Body solid: `x=29.80..43.20,z=-9.20..7.20`; blocker top 20.0.
@@ -367,8 +371,9 @@ the building sections override this rule.
 ### 6.7 B06 — 科学与创新楼
 
 - Mass: centre `(-35.5,8.10,51)`, size `15 × 16.20 × 22`, four floors at 3.65 m.
-- East entrance `(-28,1.60,50)`, 3.20 m wide; glass stair tower on the northeast corner from
-  z=55..60; blue `实验室` directory beside the door.
+- East entrance `(-28,1.60,50)`, 3.20 m wide; glass stair tower footprint
+  `x=-28.60..-27.55,z=55..60`, height 16.2 m, on the northeast corner; it is covered by the B06
+  body collision and gets no separate solid. Add the blue `实验室` directory beside the door.
 - East facade bays at z=`[42,45.5,49,52.5,56,59.5]`, floors `1..3`; alternate bays use a taller
   lab-window transom. South wall has four ordinary office windows.
 - Roof objects: six exhaust stacks at x=`[-40.5,-38.5,-36.5,-34.5,-32.5,-30.5]`, z=58.5,
@@ -535,7 +540,7 @@ only the western table receives a second `书桌` anchor, reusing the existing s
 
 ```js
 const FOUNTAINS = [
-  [5,-4],[-9,17],[8,23.2],[-18,46.5],[18,46.5],[-24.5,33.5],[27,35.5],[25,13],
+  [4.5,-4.5],[-9,17],[8,23.2],[-18,46.5],[18,46.5],[-24.5,33.5],[27,35.5],[25,13],
 ];
 const SORTING_BINS = [
   [-20,-5],[18,-7],[-24.8,10.5],[26,-6.5],[-15,16],[11,23],
@@ -569,7 +574,7 @@ const FIRE_FIXTURES = [
 
 ```js
 const INTERACTIVE_FOUNTAINS = [
-  { at:[5,.78,-4],     focus:[5,-3.2] },
+  { at:[4.5,.78,-4.5], focus:[4.5,-3.7] },
   { at:[-9,.78,17],    focus:[-9,17.8] },
   { at:[8,.78,23.2],   focus:[8,22.4] },
   { at:[-18,.78,46.5], focus:[-18,47.3] },
@@ -716,14 +721,14 @@ Use distinct global labels; `USE` is keyed by Chinese text across the whole game
 
 | label | coordinate / focus | base behavior |
 |---|---|---|
-| 校园地图 | board `(15,-2.5)`, focus `(15,-4.0)` | read map, 4 min, small mood gain |
-| 学生服务中心 | admin board/door, focus `(-26.6,27)` | obtain persistent `学生证`; repeat visits explain services |
-| 行政楼 | focus `(-26.6,30)` | ask directions / office-hours interaction |
-| 实验楼 | focus `(-25.5,50)` | inspect/visit science building; no false portal yet |
-| 活动中心 | focus `(27.4,27)` | see club activities / noticeboard |
-| 校医院 | focus `(27.4,31)` | simple campus-clinic check; no `go` until interior exists |
-| 校园快递柜 | focus `(27.8,3.5)` | read QR pickup instructions, 2 min; never call the apartment `快递柜` action |
-| 跑道 | focus `(-19,35)` | run one lap, 12 min, rest/food cost and mood gain |
+| 校园地图 | thing `(15,2.55,-2.6)`, focus `(15,-4.0)`, reach 2.2 | read map, 4 min, small mood gain |
+| 学生服务中心 | thing `(-28.62,2.20,27)`, focus `(-26.6,27)`, reach 2.5 | obtain persistent `学生证`; repeat visits explain services |
+| 行政楼 | thing `(-28.75,3.20,30)`, focus `(-26.6,30)`, reach 2.6 | ask directions / office-hours interaction |
+| 实验楼 | thing `(-27.55,3.00,50)`, focus `(-25.5,50)`, reach 2.6 | inspect/visit science building; no false portal yet |
+| 活动中心 | thing `(29.55,3.20,27)`, focus `(27.4,27)`, reach 2.6 | see club activities / noticeboard |
+| 校医院 | thing `(29.55,3.20,31)`, focus `(27.4,31)`, reach 2.6 | simple campus-clinic check; no `go` until interior exists |
+| 校园快递柜 | thing `(29.45,1.20,3.5)`, focus `(27.8,3.5)`, reach 2.2 | read QR pickup instructions, 2 min; never call apartment `快递柜` |
+| 跑道 | thing `(-19,.03,35)`, focus `(-19,35)`, reach 1.2 | run one lap, 12 min, rest/food cost and mood gain |
 
 `学生证` closes an existing game loop: the mall cinema already expects a student-ID source. This
 building is its single authoritative source; do not mint the item from multiple campus objects.

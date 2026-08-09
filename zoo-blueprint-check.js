@@ -137,6 +137,9 @@ for (const [group,list] of Object.entries(bp.planting || {}))
   for (const item of list || []) ownId(item, `planting.${group}`);
 for (const x of bp.animalTransferCrossings || [])
   for (const g of x.interlockedGates || []) ownId(g, `${x.id}.interlockedGates`);
+for (const h of bp.habitats || [])
+  for (const [group,list] of [['publicGates',h.publicGates],['animalGates',h.animalGates]])
+    for (const g of list || []) ownId(g, `${h.id}.${group}`);
 for (const b of bp.buildings || [])
   for (const [group,list] of [['internalDriveAisles',b.internalDriveAisles],
     ['solidSegments',b.solidSegments],['perimeterFence.runs',b.perimeterFence?.runs]])
@@ -214,6 +217,15 @@ for (const h of bp.habitats || []) {
     'HABITAT_BARRIER_ARCHETYPE',h.id,`unknown barrier archetype ${h.barrier?.archetypeId}`);
   assert(h.serviceGate && Array.isArray(h.serviceGate.center) && h.serviceGate.center.length===2,
     'HABITAT_GATE', h.id, 'service gate needs a [x,z] center');
+  for(const g of [h.serviceGate,...(h.publicGates||[]),...(h.animalGates||[])].filter(Boolean)) {
+    const c=g.center, onSide=c&&((g.side==='x0'&&near(c[0],h.bounds.x0))||
+      (g.side==='x1'&&near(c[0],h.bounds.x1))||(g.side==='z0'&&near(c[1],h.bounds.z0))||
+      (g.side==='z1'&&near(c[1],h.bounds.z1)));
+    assert(onSide,'HABITAT_GATE_SIDE',`${h.id}/${g.id||'service'}`,
+      `gate centre ${c} is not on ${g.side}`);
+    assert(g.width>=bp.engineContract.minimumClearOpening,'HABITAT_GATE_WIDTH',
+      `${h.id}/${g.id||'service'}`,`width ${g.width} below minimum`);
+  }
   for (const s of h.animalSlots || []) {
     assert(Array.isArray(s.uv) && s.uv.length===2 && s.uv.every(n=>finite(n)&&n>0&&n<1),
       'ANIMAL_SLOT', `${h.id}/${s.id}`, 'uv must lie strictly inside 0..1');

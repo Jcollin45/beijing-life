@@ -266,3 +266,27 @@ cannot contain.
 So: harnesses prove the things they assert, and nothing else. When the question is *how it looks*,
 walk it on `https://jcollin45.github.io/beijing-life/` — push, wait about a minute for the build,
 then drag the camera around like a player would. Name the origin in any claim you make.
+
+## When headless Chrome will not start
+
+Measured 2026-08-09, after several lanes lost their whole verification window to it. **Do not
+re-derive this.** Symptom: every browser harness dies with `devtools never came up`, or hangs.
+
+What was eliminated, in order: machine load (it fails at 2.3 as readily as at 114); orphaned
+browsers (eleven were reaped, one seventeen minutes old); disk (154 GB free); temp-dir cruft (362
+stale profile dirs cleared); the harness timeout (raised 9 s → 60 s, no change); the headless mode
+(`--headless=new`, `--headless=old` and legacy all fail identically); the binary (Chrome 151 and
+Google Chrome for Testing 151 fail the same way); the macOS application firewall (disabled); and
+port availability (a Python server binds the same range and answers 200).
+
+What is actually happening: **Chrome starts and stays up** — three processes, GPU process, network
+service and viz compositor all initialising in a verbose log — but `--remote-debugging-port` never
+binds and no `DevToolsActivePort` file is written. A `Keychain lookup failed … userCanceledErr`
+appears in stderr; `--use-mock-keychain --password-store=basic` does not fix it.
+
+So it is a host condition below the harness layer, and the practical remedy is a Chrome or machine
+restart, which is the owner's call and not an agent's. **If you meet this, say so and stop.** Pure
+node checks are unaffected — `.homeweek.js`, `.homewirecheck.js`, `.floorusecheck.js`,
+`.roomgate.js`, `.winreg.js`, `.camsweep.js`, `.beamcheck.js`, `.homecastcheck.js` — and the live
+site at `https://jcollin45.github.io/beijing-life/` renders fine in an ordinary browser, which is
+where the game is read from anyway.

@@ -61,7 +61,6 @@
       { "id": "PF-SPAWN-SOUTH", "type": "spawn", "at": [-12, -13.4], "yaw": 0 },
       { "id": "PF-SUBWAY", "type": "building-anchor", "hz": "地铁站", "at": [-19.2, -14.7], "focus": [-17.2, -13.8] },
       { "id": "PF-TICKET", "type": "building-anchor", "hz": "售票处", "at": [-5.6, -14.5], "focus": [-5.6, -12.6] },
-      { "id": "PF-MAP", "type": "fixture-relocation", "hz": "导游图", "from": [-16.2, -13.8], "to": [-16.2, -9], "focus": [-15.2, -9] },
       { "id": "PF-KIOSK", "type": "building-anchor", "hz": "小卖部", "at": [6, -14.95], "focus": [6, -12.8] },
       { "id": "PF-PANDA-GARDEN", "type": "landscape-anchor", "at": [-12, -7.45], "solidHalfSize": 1.52, "approachPaths": ["P09-entry-west-branch", "P10-entry-east-branch"] },
       { "id": "PF-CORE-HABITATS", "type": "collection", "refs": ["H00-penguin", "H01-giraffe", "H02-panda", "H03-peacock", "H04-elephant", "H05-monkey", "H06-tiger"] },
@@ -79,6 +78,7 @@
       { "id": "PF-SG04", "at": [8.3, 13.5], "owner": "H06-tiger" }
     ],
     "relocateForCentralSpine": [
+      { "id": "PF-MAP", "type": "fixture", "hz": "导游图", "from": [-16.2, -13.8], "to": [-16.2, -9], "focus": [-15.2, -9], "reason": "clear the entry plaza and restore the board sight line" },
       { "id": "PF-RELOC-TREE-01", "type": "tree", "from": [-2, 9.6], "to": [-16.2, 9.8], "height": 5.2 },
       { "id": "PF-RELOC-TREE-02", "type": "tree", "from": [-2.4, 14.6], "to": [14.8, 10.8], "height": 5.0 },
       { "id": "PF-RELOC-BIN-01", "type": "bin", "from": [-3.4, 15.15], "to": [16.3, 11.8] },
@@ -156,7 +156,7 @@
   ],
   "habitatBarrierSystem": {
     "sideIdRule": "HW-<habitat-id>-x0|x1|z0|z1; each side is the matching bounds line and spans the other bounds pair.",
-    "openingIdRule": "HG-<habitat-id>-service or HG-<habitat-id>-public-##; subtract centre ± width/2 from visible, keeper-body and camera-blocker runs.",
+    "openingIdRule": "HG-<habitat-id>-service|public-##|animal-##; subtract centre ± width/2 from visible, keeper-body and camera-blocker runs.",
     "playerCollision": "The habitat bounds rectangle is a player-only body solid; it never has a gate cut.",
     "keeperCollision": "Keepers collide with derived perimeter runs, not the player-only rectangle, so declared openings are traversable.",
     "cameraCollision": "Derived perimeter runs use archetype.cameraBlockerTop; zero means no blocker.",
@@ -229,7 +229,7 @@
       "id": "H30-red-panda", "district": "D3", "species": ["小熊猫"], "bounds": { "x0": -34, "x1": -24, "z0": 43, "z1": 52 }, "publicSide": "x1", "viewingPath": "P103-west-zoo-avenue", "focus": [-20.5, 47.5],
       "barrier": { "archetypeId": "BA-FINE-MESH", "public": "2.6m fine dark mesh with planted foreground", "back": "3.0m mesh", "bodySolid": "player-only habitat rectangle", "cameraBlockerTop": 3 },
       "ground": [{ "kind": "forest-floor", "rect": [-33.5, -24.5, 43.5, 51.5] }],
-      "serviceGate": { "side": "x0", "center": [-34, 49], "width": 1.4, "access": "staff" },
+      "serviceGate": { "side": "x0", "center": [-34, 49], "width": 1.5, "access": "staff" },
       "objects": [{ "type": "tree-climb", "at": [-28, 47], "height": 4 }, { "type": "rope-bridge", "from": [-31, 48], "to": [-26, 45], "height": 2.1 }, { "type": "nest-box", "at": [-25.5, 50.5], "height": 2.4 }],
       "animalSlots": [{ "id": "redpanda-tree", "uv": [0.6, 0.45], "act": "climb" }, { "id": "redpanda-feed", "uv": [0.75, 0.75], "act": "eat" }, { "id": "redpanda-rest", "uv": [0.28, 0.55], "act": "lie" }]
     },
@@ -238,6 +238,7 @@
       "barrier": { "archetypeId": "BA-LAKE-EDGE", "public": "0.95m bronze rail at water edge", "back": "planted bank", "bodySolid": "water rectangles only; pavilion and bridge remain walkable", "cameraBlockerTop": 0 },
       "ground": [{ "kind": "water", "rect": [-15.5, -7, 23, 35], "depth": 0.65 }, { "kind": "island", "rect": [-12.8, -9.2, 27.5, 31.5] }],
       "serviceGate": { "side": "z1", "center": [-14, 36], "width": 1.8, "access": "staff" },
+      "publicGates": [{ "id": "HG-H31-public-01", "side": "x1", "center": [-6, 29], "width": 1.6, "access": "public-boardwalk", "owner": "B04-lake-pavilion" }],
       "objects": [{ "type": "tea-pavilion", "building": "B04-lake-pavilion" }, { "type": "footbridge", "rect": [-9.2, -6, 28.2, 29.8] }, { "type": "nest-island", "at": [-14, 32.5], "radius": 0.9 }],
       "waterSolids": [[-15.5, -7, 23, 27.5], [-15.5, -7, 31.5, 35], [-15.5, -12.8, 27.5, 31.5], [-9.2, -7, 29.8, 31.5], [-9.2, -7, 27.5, 28.2]],
       "animalSlots": [{ "id": "swan-open-water", "uv": [0.3, 0.25], "act": "swim" }, { "id": "duck-reeds", "uv": [0.25, 0.8], "act": "swim" }, { "id": "waterfowl-island", "uv": [0.5, 0.55], "act": "preen" }]
@@ -264,6 +265,7 @@
       "barrier": { "archetypeId": "BA-SAVANNAH-MOAT", "public": "2.2m dry moat with low cable rail", "back": "2.4m reinforced wall", "bodySolid": "player-only habitat rectangle", "cameraBlockerTop": 1.2 },
       "ground": [{ "kind": "grass", "rect": [24.5, 36, -9.5, 14.5] }, { "kind": "mud-wallow", "rect": [29, 35, 7, 13] }, { "kind": "pool", "rect": [25.5, 30, -8, -3] }],
       "serviceGate": { "side": "x1", "center": [36.5, 11], "width": 3, "access": "staff-animal" },
+      "animalGates": [{ "id": "HG-H40-animal-01", "side": "x0", "center": [24, 2], "width": 2.4, "access": "animal-transfer", "owner": "X01-elephant-link" }],
       "objects": [{ "type": "shade-shelter", "rect": [31, 36, -8, -1], "height": 4.2 }, { "type": "scrub-post", "at": [27, 6] }, { "type": "feeder", "at": [33, 4] }],
       "animalSlots": [{ "id": "elephant-pool", "uv": [0.28, 0.2], "act": "drink" }, { "id": "elephant-wallow", "uv": [0.72, 0.78], "act": "dust" }, { "id": "elephant-browse", "uv": [0.62, 0.45], "act": "graze" }]
     },
@@ -591,7 +593,7 @@
     { "phase": 2, "name": "Visitor infrastructure", "deliverables": ["west gate", "rest hubs", "water stations", "first aid", "benches/bins/lamps", "maps and signs"] },
     { "phase": 3, "name": "Western districts", "deliverables": ["wetland boardwalk", "otter", "hippo", "flamingo", "crane", "takin", "snow leopard"] },
     { "phase": 4, "name": "Central districts", "deliverables": ["waterfowl lake and bridge", "family farm", "red panda", "golden monkey", "conservation centre"] },
-    { "phase": 5, "name": "Eastern savannah", "deliverables": ["elephant reserve", "mixed savannah", "rhino", "lion", "after-hours transfer corridors"] },
+    { "phase": 5, "name": "Eastern savannah", "deliverables": ["elephant reserve", "mixed savannah", "rhino", "lion", "after-hours elephant transfer corridor"] },
     { "phase": 6, "name": "Tropical House", "deliverables": ["world shell", "separate indoor scene", "six exhibit rooms", "indoor paths", "exit/arrival round trip"] },
     { "phase": 7, "name": "Living systems", "deliverables": ["new animal rigs or compatible species variants", "animal schedules", "keeper routes", "visitor loops", "dialogue", "USE_AT.zoo actions", "vocabulary"] },
     { "phase": 8, "name": "Graphics, optimization and release", "deliverables": ["materials", "district vegetation", "water and night lighting", "LOD and culling", "old-save migration", "full acceptance suite"] }
@@ -613,6 +615,7 @@
     "The Tropical House entrance and exit preserve place, coordinates, yaw, time and ticket state.",
     "The scene stays within prop, batch, solid, blocker and active-light budgets.",
     "Day, dusk, night, rain and four district-wide audit views show no z-fighting, floating objects, opaque path obstructions or mislabeled map orientation.",
-    "Old saves inside the original x=-22..22,z=-16..16 core reload at the identical position unless inside a removed wall solid."
+    "Old saves inside the original x=-22..22,z=-16..16 core reload at the identical position unless inside a removed wall solid.",
+    "The canonical geometry hash matches revision and changes whenever any placement-bearing field changes."
   ]
 }

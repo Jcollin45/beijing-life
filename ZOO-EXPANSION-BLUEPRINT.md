@@ -2,7 +2,9 @@
 
 This is a construction specification, not a mood board. It expands the existing zoo from a
 `44 × 32 m` core to a `116 × 86 m` campus while leaving the current gate, spawn, subway, seven
-habitats, interactions, keeper routes and saved player coordinates exactly where they are.
+habitats, interaction identities and saved player coordinates in their existing scene frame. Four
+core furnishings and the guide map are explicitly relocated where the new central spine requires
+clearance; those moves are listed below rather than hidden in implementation code.
 
 The machine-readable source of truth is
 [`ZOO-EXPANSION-BLUEPRINT.json`](ZOO-EXPANSION-BLUEPRINT.json). If a coordinate in prose ever
@@ -14,7 +16,8 @@ The finished plan contains:
 - the **seven existing habitats**, preserved in place
 - **fourteen new outdoor habitat zones**
 - a separate **six-zone Tropical House** interior
-- three primary north–south walks, three cross avenues, a wetland boardwalk and a staff service ring
+- three primary north–south walks, three cross avenues, a wetland boardwalk and a separated staff
+  service patrol network
 - a conservation centre, animal hospital, quarantine building, feed kitchen, two rest hubs,
   secondary gate, first aid, water stations, maps, seating, bins, lighting and deterministic planting
 
@@ -42,6 +45,9 @@ Precision is `0.01 m` in plan, `0.001 m` vertically and `0.05 m` when sampling r
 use centre coordinates and full dimensions, matching `Build.scene`. The body radius is `0.30 m`.
 No corridor is accepted from its drawn width alone: subtract collider thickness, then another
 `0.60 m` for a body touching both sides.
+
+This document describes blueprint revision **2**. The JSON carries a canonical SHA-256 geometry
+hash; `zoo-blueprint-check.js` recomputes it over every placement-bearing section.
 
 ### Site envelope
 
@@ -127,10 +133,23 @@ constructing the outdoor scene.
 | Spawn | `(-12,-13.4)`, yaw `0` | preserve; Metro arrives here |
 | Subway | centre `(-19.2,-14.7)` | preserve station key `动物园` and its reachable focus |
 | Ticket office | centre `(-5.6,-14.5)` | preserve zoo-local `USE_AT.zoo['售票处']` |
-| Guide map | centre `(-16.2,-13.8)` | redraw it for the larger site; do not move the board |
+| Guide map | current `(-16.2,-13.8)` → new `(-16.2,-9)` | redraw for the larger site; focus `(-15.2,-9)` |
 | Kiosk | centre `(6,-14.95)` | preserve zoo-local `USE_AT.zoo['小卖部']` |
 | Panda garden | centre `(-12,-7.45)`, solid half-size `1.52` | preserve two clear approach branches |
 | Four staff gates | `(-16,.7)`, `(-12,13.5)`, `(16,2.6)`, `(8.3,13.5)` | preserve current keeper-route agreement |
+
+### Required core clearance moves
+
+These five moves are part of the canonical plan. They open P104 from the old north cross while
+preserving every habitat rectangle and the arrival spawn.
+
+| ID | Object | From | To | Reason |
+|---|---|---|---|---|
+| PF-MAP | guide map | `(-16.2,-13.8)` | `(-16.2,-9)` | clear entry paving and restore its sight line |
+| PF-RELOC-TREE-01 | tree | `(-2,9.6)` | `(-16.2,9.8)` | remove trunk from P104 |
+| PF-RELOC-TREE-02 | tree | `(-2.4,14.6)` | `(14.8,10.8)` | clear the P104/P04 threshold |
+| PF-RELOC-BIN-01 | bin | `(-3.4,15.15)` | `(16.3,11.8)` | clear the accessible envelope |
+| PF-RELOC-LAMP-01 | lamp | `(0,15.45)` | `(16.2,9.5)` | clear the accessible envelope |
 
 ### Existing core path rectangles
 
@@ -191,6 +210,10 @@ The west gate is a secondary public arrival, not a replacement entrance. Its spa
 implementation wave; a true ticketed turnstile is a separate saved-state feature and must not be
 quietly invented while moving geometry.
 
+B01 stays entirely inside the site at `x[-58,-55.5] z[19.5,28.5]`. Only its south pier strip
+`z[19.5,20.5]` and north pier strip `z[27.5,28.5]` are solid. The middle passage
+`z[20.5,27.5]` is clear to `y=4.1`; P117 passes beneath the roof.
+
 ---
 
 ## 5. Circulation plan
@@ -199,21 +222,18 @@ quietly invented while moving geometry.
 
 | ID | Centreline | Width | Surface | Role |
 |---|---|---:|---|---|
-| P101 | `(-56,-13.2) → (-20,-13.2)` | 3.6 | paving | west extension of south loop |
-| P102 | `(20,-13.2) → (56,-13.2)` | 3.6 | paving | east extension of south loop |
+| P101 | `(-50.5,-13.2) → (-20,-13.2)` | 3.6 | paving | west extension of south loop |
+| P102 | `(20,-13.2) → (50.5,-13.2)` | 3.6 | paving | east extension of south loop |
 | P103 | `x=-19, z14.4→64` | 4.0 | dark paving | West Zoo Avenue |
-| P104 | `x=-2, z13.5→64` | 5.0 | paving | Central Conservation Walk |
+| P104 | `x=-2, z5.5→64` | 5.0 | paving | continuous Central Conservation Walk from P06 |
 | P105 | `x=19, z14.4→64` | 4.0 | dark paving | East Zoo Avenue |
-| P106 | `z=18, x-54→54` | 4.0 | paving | first cross avenue |
-| P107 | `z=40, x-54→54` | 4.0 | paving | conservation cross avenue |
-| P108 | `z=64, x-54→54` | 4.0 | dark paving | north promenade |
-| P109 | `z=-10.5, x-54→-19` | 3.0 | timber/paving | wetland south connector |
-| P110 | `x=-36.5, z-11→16` | 2.6 | timber | wetland boardwalk |
-| P111 | `z=16.5, x-36.5→-19` | 2.5 | paving | wetland north connector |
+| P106 | `z=18, x-50→50` | 4.0 | paving | first cross avenue; stops inside service lanes |
+| P107 | `z=40, x-50→50` | 4.0 | paving | conservation cross avenue; stops inside service lanes |
+| P108 | `z=64, x-50→50` | 4.0 | dark paving | north promenade |
+| P110 | `x=-36.5, z-13.2→18` | 2.6 | timber | continuous wetland boardwalk |
 | P112 | `x=-36.5, z20→38` | 2.6 | stone | highlands walk |
-| P113 | `z=-12.2, x19→39` | 3.0 | paving | savannah south connector |
 | P114 | `x=39, z20→38` | 2.8 | paving | north savannah walk |
-| P115 | `x=39, z-11→16` | 2.8 | paving | south savannah walk |
+| P115 | `x=39, z-13.2→18` | 2.8 | paving | continuous south savannah walk |
 | P116 | `(19,52) → (25,52)` | 5.0 | red paving | Tropical House forecourt |
 | P117 | `(-57.4,24) → (-36.5,24)` | 4.0 | red paving | west gate approach |
 | P118 | `z=53.5, x-19→19` | 3.0 | paving | conservation centre front walk |
@@ -227,21 +247,28 @@ from the three main avenues to the Tropical House and conservation centre doors.
 
 | ID | Centreline | Width | Purpose |
 |---|---|---:|---|
-| S201 | `x=-53.5, z-11→67` | 2.4 | west service lane |
-| S202 | `x=53.5, z-11→67` | 2.4 | east service lane |
-| S203 | `z=67, x-53.5→53.5` | 2.4 | north service lane |
-| S204 | `z=57, x-53.5→-35` | 2.8 | operations spur |
+| S201 | `x=-53.5, z-11→68.2` | 2.4 | west service lane |
+| S202 | `x=53.5, z-11→68.2` | 2.4 | east service lane |
+| S203 | `z=68.2, x-53.5→53.5` | 2.4 | north service lane |
+| S204 | `z=44.5, x-53.5→-51` | 2.8 | operations entry spur; ends at west gate |
+| S205 | `(53.5,45.5)→(58,45.5)` | 3.5 | east service-gate approach |
+| S206 | `(40,68.2)→(40,70)` | 4.0 | north emergency-gate approach |
 
 These lanes are not public path zones. If the scene retains one large walkable zone, keep them
 closed with compound fences and staff gates; do not rely on a different paving color to enforce
 access.
+
+The only public/service overlap is `CROSS-G02-WEST` at `(-53.5,24)`, where P117 crosses S201. It is
+a `4 m` raised red table with pedestrian priority, a staff stop line and removable bollards. Every
+other public avenue ends at `x=±50`, leaving positive clearance to the service lanes.
 
 ### Network topology
 
 The three old north exits become P103, P104 and P105:
 
 - P103 continues the current west loop at `x=-19`.
-- P104 rises through the `6 m` gap between the existing monkey and tiger pens at `x=-2`.
+- P104 starts on P06 at `(-2,5.5)`, rises through the gap between the existing monkey and tiger
+  pens, and reaches the north promenade without an unpaved break.
 - P105 continues the current east loop at `x=19`.
 
 This is why the old core is preserved rather than re-centred. The new network grows naturally out
@@ -257,20 +284,53 @@ record. No builder may type the rectangle again in `data.js`.
 
 | ID | Headline species | Bounds | Public side / focus | Barrier concept | Service gate |
 |---|---|---|---|---|---|
-| H10 | 水獭 otter | `x[-50,-39] z[-9,-1]` | `x1 / (-37.6,-5)` | low glass + rock bank | `x0 @ z=-5`, 1.8 |
-| H11 | 河马 hippo | `x[-50,-39] z[2,15]` | `x1 / (-37.6,8.5)` | glass + water setback | `x0 @ z=12`, 2.4 |
-| H12 | 火烈鸟 flamingo | `x[-34,-24] z[-9,3.5]` | `x0 / (-35.4,-2.75)` | low mesh + ditch | `x1 @ z=-3`, 1.5 |
-| H13 | 丹顶鹤 crane | `x[-34,-24] z[6,15]` | `x0 / (-35.4,10.5)` | planted rail + flight mesh | `x1 @ z=12.5`, 1.5 |
-| H20 | 羚牛 takin | `x[-50,-39] z[26,37]` | `x1 / (-37.6,31.5)` | stone, rail, dry moat | `x0 @ z=33`, 2.2 |
-| H21 | 雪豹 snow leopard | `x[-34,-24] z[26,37]` | `x0 / (-35.4,31.5)` | rock-framed glass | `x1 @ z=34`, 1.5 |
-| H30 | 小熊猫 red panda | `x[-34,-24] z[43,52]` | `x1 / (-20.8,47.5)` | planted fine mesh | `x0 @ z=49`, 1.4 |
+| H10 | 水獭 otter | `x[-50,-39] z[-9,-1]` | `x1 / (-37.25,-5)` | BA-WET-GLASS | `x0 @ z=-5`, 1.8 |
+| H11 | 河马 hippo | `x[-50,-39] z[2,15]` | `x1 / (-37.25,8.5)` | BA-HIPPO | `x0 @ z=12`, 2.4 |
+| H12 | 火烈鸟 flamingo | `x[-34,-24] z[-9,3.5]` | `x0 / (-35.75,-2.75)` | BA-AVIARY-LOW | `x1 @ z=-3`, 1.5 |
+| H13 | 丹顶鹤 crane | `x[-34,-24] z[6,15]` | `x0 / (-35.75,10.5)` | BA-AVIARY-TALL | `x1 @ z=12.5`, 1.5 |
+| H20 | 羚牛 takin | `x[-50,-39] z[26,37]` | `x1 / (-37.25,31.5)` | BA-HIGHLAND-RAIL | `x0 @ z=33`, 2.2 |
+| H21 | 雪豹 snow leopard | `x[-34,-24] z[26,37]` | `x0 / (-35.75,31.5)` | BA-HIGHLAND-GLASS | `x1 @ z=34`, 1.5 |
+| H30 | 小熊猫 red panda | `x[-34,-24] z[43,52]` | `x1 / (-20.5,47.5)` | BA-FINE-MESH | `x0 @ z=49`, 1.5 |
 | H31 | 天鹅 / 鸳鸯 waterfowl | `x[-16,-6] z[22,36]` | `x1 / (-4.2,29)` | water edge rail | `z1 @ x=-14`, 1.8 |
 | H32 | 山羊 / 兔子 family farm | `x[2,16.5] z[22,36]` | `x0 / (0.2,29)` | timber fence, double gate | `x1 @ z=33`, 2.0 |
 | H33 | 金丝猴 golden monkey | `x[2,16.5] z[43,52]` | `x0 / (0.2,47.5)` | cable mesh + glass bay | `x1 @ z=49`, 1.6 |
 | H40 | 亚洲象 elephant reserve | `x[24,36.5] z[-10,15]` | `x0 / (20.2,2.5)` | dry moat + cable | `x1 @ z=11`, 3.0 |
 | H41 | 斑马 / 羚羊 / 长颈鹿 | `x[41.5,50] z[-10,15]` | `x0 / (40,2.5)` | dry moat + rail | `x1 @ z=10`, 2.8 |
-| H42 | 犀牛 rhino | `x[24,36.5] z[23,37]` | `x0 / (20.8,30)` | concrete dry moat | `x1 @ z=34`, 2.8 |
-| H43 | 狮子 lion | `x[41.5,50] z[23,37]` | `x0 / (40,30)` | overlook glass | `x1 @ z=34`, 2.0 |
+| H42 | 犀牛 rhino | `x[24,36.5] z[23,37]` | `x0 / (20.5,30)` | BA-RHINO-MOAT | `x1 @ z=34`, 2.8 |
+| H43 | 狮子 lion | `x[41.5,50] z[24,37]` | `x0 / (40,30.5)` | BA-BIGCAT-GLASS | `x1 @ z=34`, 2.0 |
+
+### Habitat wall compiler
+
+Every habitat has four derived, labeled boundary runs:
+
+```text
+HW-<habitat>-x0: x=bounds.x0, z=bounds.z0..bounds.z1
+HW-<habitat>-x1: x=bounds.x1, z=bounds.z0..bounds.z1
+HW-<habitat>-z0: z=bounds.z0, x=bounds.x0..bounds.x1
+HW-<habitat>-z1: z=bounds.z1, x=bounds.x0..bounds.x1
+```
+
+Subtract `gate.center ± gate.width/2` from the matching run in visible, keeper-body and camera
+layers. The player uses a separate full habitat rectangle, while keepers use the cut perimeter;
+that distinction keeps public visitors out without sealing staff gates. Generated child IDs are
+stable. H31 additionally cuts `x=-6, z[28.2,29.8]` for its public bridge; H32 cuts
+`x=2, z[28.1,29.9]` for its supervised double gate; H40 cuts `x=24, z[0.8,3.2]` for X01.
+
+| Archetype | Public / back height | Thickness | Camera top | Material family |
+|---|---:|---:|---:|---|
+| BA-WET-GLASS | 1.25 / 1.80 | .12 | 1.40 | glass, stone, dark mesh |
+| BA-HIPPO | 1.45 / 2.00 | .18 | 1.60 | glass, concrete, earth |
+| BA-AVIARY-LOW | .90 / 2.40 | .08 | 0 | dark mesh and planting |
+| BA-AVIARY-TALL | 1.10 / 3.80 | .08 | 3.80 | flight mesh and rail |
+| BA-HIGHLAND-RAIL | 1.15 / 2.00 | .16 | 1.40 | stone, steel, rock |
+| BA-HIGHLAND-GLASS | 2.20 / 3.20 | .14 | 3.20 | glass, rock, mesh |
+| BA-FINE-MESH | 2.60 / 3.00 | .08 | 3.00 | fine mesh and planting |
+| BA-LAKE-EDGE | .95 / .45 | .10 | 0 | bronze rail, planted bank |
+| BA-FAMILY-TIMBER | 1.10 / 1.50 | .14 | 0 | timber |
+| BA-PRIMATE-MESH | 3.80 / 4.20 | .10 | 4.20 | cable mesh and glass |
+| BA-SAVANNAH-MOAT | .95 / 2.40 | .16 | 1.20 | moat, cable, reinforced wall |
+| BA-RHINO-MOAT | 1.10 / 2.20 | .18 | 1.40 | concrete moat and rail |
+| BA-BIGCAT-GLASS | 2.40 / 3.20 | .14 | 3.20 | glass, rock, dark mesh |
 
 ### Habitat-specific fixed objects
 
@@ -314,16 +374,16 @@ island      [-12.8,-9.2] × [27.5,31.5] — walkable
 
 Do not block the full H31 rectangle. That would make the pavilion decorative and unreachable.
 
-### Animal transfer crossings
+### Animal transfer crossing
 
-Two after-hours transfer links make the old large-mammal yards useful as day rooms:
+X01 is the only surface transfer: elephant corridor `x[16,24] z[0.8,3.2]`. Its four interlocked
+gates are at `(16,2)`, `(17.5,2)`, `(20.5,2)` and `(24,2)`, all width `2.4`. Normal state is
+**animal gates closed / P03 public path open**. The game may open it only after closing both public
+crossing shutters and confirming that no player or visitor occupies the corridor.
 
-- X01 elephant: `x[16,24] z[0.8,3.2]`
-- X02 giraffe: `x[14,41.5] z[-8.8,-6.6]`
-
-They cross public paths. Their normal state is **animal gates closed / public path open**. The game
-may only open them after it has closed every public crossing shutter and confirmed no player or
-visitor occupies the corridor. The first implementation may leave them permanently shut.
+The earlier giraffe link was removed because a surface line to H41 crossed H40. H41 receives its
+own roster; any future shared giraffe access must be a separately modeled grade-separated tunnel or
+bridge, never an undeclared corridor through the elephant habitat.
 
 ---
 
@@ -331,14 +391,14 @@ visitor occupies the corridor. The first implementation may leave them permanent
 
 | ID | Building | Footprint | Height | Public entrance |
 |---|---|---|---:|---|
-| B01 | West Gate pavilion | `x[-58.5,-55.5] z[19.5,28.5]` | 4.6 | gate opening at `z=24` |
+| B01 | West Gate pavilion | `x[-58,-55.5] z[19.5,28.5]` | 4.6 | clear passage `z[20.5,27.5]` |
 | B02 | West restroom | `x[-34,-28.5] z[20.7,24.5]` | 3.2 | `(-31.2,20.7)`, width 1.6 |
-| B03 | East rest hub | `x[42,50] z[20.7,22.6]` | 3.2 | `(46,20.7)`, width 2.0 |
+| B03 | East rest hub | `x[42,50] z[20.7,23]` | 3.2 | `(46,20.7)`, width 2.0 |
 | B04 | Lake tea pavilion | `x[-12.8,-9.2] z[27.5,31.5]` | 4.2 | `(-9.2,29)`, width 1.6 |
 | B05 | Conservation west wing | `x[-17,-6] z[55,62]` | 5.2 | `(-11.5,55)`, width 2.2 |
 | B06 | Conservation east wing | `x[2,16.5] z[55,62]` | 5.2 | `(9,55)`, width 2.2 |
 | B06b | Glazed bridge gallery | `x[-6,2] z[58,61]`, `y0=4.2` | 3.0 | connects wings above P104 |
-| B07 | Operations campus | `x[-51,-35] z[42.5,62.5]` | 4.5 max | staff only |
+| B07 | Operations campus | `x[-51,-37] z[42.5,61.5]` | 4.5 max | staff only |
 | B08 | Tropical House | `x[25,50] z[44,62]` | 7.2 | `(25,52)`, width 3.2 |
 
 The bridge has `4.10 m` clear beneath it. Its body solids and blocker begin at `y=4.2`; a ground-
@@ -348,14 +408,29 @@ height AABB across P104 would sever the main route.
 
 | Room | Bounds | Function |
 |---|---|---|
-| Animal hospital | `x[-50,-42] z[46,54.5]` | exam, imaging, treatment and recovery |
-| Quarantine | `x[-50,-42] z[55.5,61.5]` | isolated stalls and airlock |
-| Feed kitchen | `x[-41,-36] z[46,52]` | dry/cold feed preparation |
-| Staff lockers | `x[-41,-36] z[53,56]` | changing, records and break room |
-| Service yard | `x[-41,-36] z[57,61.5]` | cart, bins and deliveries |
+| Animal hospital | `x[-50,-44] z[47,54.5]` | exam, imaging, treatment and recovery |
+| Quarantine | `x[-50,-44] z[55.5,60.5]` | isolated stalls and airlock |
+| Feed kitchen | `x[-43,-40] z[47,52]` | dry/cold feed preparation |
+| Staff lockers | `x[-43,-40] z[53,56]` | changing, records and break room |
+| Service yard | `x[-43,-40] z[57,60.5]` | cart, bins and deliveries |
 
-The compound fence follows `x[-51,-35] z[42.5,62.5]`, is `2.40 m` high and has only two gates:
-west `(-51,57)`, width `3.0`; east `(-35,47)`, width `2.4`.
+The compound fence follows `x[-51,-37] z[42.5,61.5]`, is `2.40 m` high and has two gates: west
+`(-51,44.5)`, width `3.0`, and east `(-37,44.6)`, width `2.4`. Exact labeled fence runs are:
+
+```text
+B07-FW01 x=-51 z42.5..43.0    B07-FW02 x=-51 z46.0..61.5
+B07-FW03 x=-37 z42.5..43.4    B07-FW04 x=-37 z45.8..61.5
+B07-FW05 z=42.5 x-51..-37     B07-FW06 z=61.5 x-51..-37
+```
+
+The internal south vehicle court is `x[-50,-37.3] z[43.2,46]`; the east aisle is
+`x[-39.5,-37.3] z[44.5,60.5]`. Neither overlaps a room. S204 ends at the west gate instead of
+pretending the room footprints are drivable. The east gate opens into a `3 m` court between the
+fence and H30; keeper routes dogleg to `x=-35.5` before turning south.
+
+B06 includes first-aid room `x[2.5,6] z[55.5,58.5]`. Its public fixture is `(4.25,55.2)` with
+focus `(4.25,53.5)` on P118. The animal-hospital viewing window is on B07's south facade at
+`(-47,42.5)` with public focus `(-47,40)` on P107.
 
 ---
 
@@ -386,24 +461,47 @@ main door     x=-13, z[-2,2], width 4.0
 exit door     x=-13, z[5.2,7.2], width 2.0
 service door  x= 13, z[6.0,8.4], width 2.4
 spawn         (-11.5,0), yaw π/2
+exit trigger  (-12.4,6.2), bound to trop-exit
 world return  (23.2,52), yaw π/2
 ```
+
+Wall runs are `TW01 x=-13,z[-10,-2]`, `TW02 x=-13,z[2,5.2]`,
+`TW03 x=-13,z[7.2,10]`, `TW04 x=13,z[-10,6]`, `TW05 x=13,z[8.4,10]`,
+`TW06 z=-10,x[-13,13]`, and `TW07 z=10,x[-13,13]`. Every run is `0.30 m` thick,
+`6.40 m` high, body-solid and a camera blocker to `y=6.40`. Those split east-wall runs are what
+make the service opening physically real.
 
 ### Interior exhibit schedule
 
 | ID | Exhibit | Local bounds | Species | Public focus |
 |---|---|---|---|---|
-| T00 | 热带馆大厅 lobby | `x[-12.7,-8.5] z[-2.5,2.5]` | — | `(-10.2,0)` |
+| T00 | 热带馆大厅 lobby | `x[-12.7,-10] z[-2.5,2.5]` | — | `(-10.2,0)` |
 | T01 | 鳄鱼湿地 | `x[-8,-2] z[-8.5,-3]` | 扬子鳄 | `(-5,-2.1)` |
-| T02 | 长江水族 | `x[2,11.5] z[-8.5,-3]` | 中华鲟, fish | `(6.8,-2.1)` |
+| T02 | 长江水族 | `x[2,7] z[-8.5,-3]` | 中华鲟, fish | `(6.2,-2.1)` |
 | T03 | 爬行动物馆 | `x[-8,-2] z[3,8.5]` | 蛇, 蜥蜴 | `(-5,2.1)` |
-| T04 | 蝴蝶温室 | `x[2,7.5] z[3,8.5]` | 蝴蝶 | `(1.1,5.8)` |
-| T05 | 夜行动物 | `x[8.5,11.5] z[2,8.5]` | 果蝠 | `(7.6,5.2)` |
+| T04 | 蝴蝶温室 | `x[2,7] z[3,8.5]` | 蝴蝶 | `(1.1,5.8)` |
+| T05 | 夜行动物 | `x[9,11.5] z[3,6]` | 果蝠 | `(8.1,4.5)` |
 | T06 | 雨林中庭 | `x[-1,1] z[-8.5,8.5]` | planting/waterfall | `(0,0)` |
 
-Mandatory interior objects are the lobby desk `(-10,1.4)`, map `(-10.5,-2.2)`, waterfall
-`(0,7.4)`, canopy tree `(0,4.8)`, benches `(-8.7,0)` and `(8,0)`, bin `(-9.5,2.8)` and illuminated
-exit sign `(-12.6,6.2)`. Exact y and yaw values are in the JSON.
+### Interior path rectangles
+
+| ID | Local rectangle | Clear width | Connection |
+|---|---|---:|---|
+| TP01 | `x[-12.7,-1] z[-2,2]` | 4.0 | main door to loops/atrium |
+| TP02 | `x[-10,-8] z[-8.5,8.5]` | 2.0 | west loop |
+| TP03 | `x[7,9] z[-8.5,8.5]` | 2.0 | east loop; no aquarium overlap |
+| TP04 | `x[-10,9] z[-3,-1]` | 2.0 | south cross |
+| TP05 | `x[-10,9] z[1,3]` | 2.0 | north cross |
+| TP06 | `x[-2,2] z[-8.5,8.5]` | 4.0 | atrium walk |
+| TP07 | `x[-13,-8] z[5.2,7.2]` | 2.0 | marked exit spur |
+| TS01 | `x[9,13] z[6,8.4]` | 2.4 | staff-only service path |
+
+Rest niches are `TN01 x[-12,-10] z[3.3,5.1]` and
+`TN02 x[9,12] z[-1,1]`. Mandatory interior objects are lobby desk `(-10,1.4)`, map
+`(-10.5,-2.2)`, waterfall `(0,7.4)`, canopy tree `(0,4.8)`, benches `(-11.2,4.2)` and
+`(11.2,0)`, bin `(-10.8,3.6)` and illuminated exit sign `(-12.6,6.2)`. The six species things
+`TTH-T01-01` through `TTH-T05-01` give 蛇 and 蜥蜴 separate boards rather than merging their
+headwords.
 
 ---
 
@@ -421,23 +519,26 @@ adding one tree must not reshuffle every later tree.
 | new outdoor lamps | L101–L129 | 29 | JSON `objectSchedules.lamps` |
 | guide maps | M100–M105 | 6 including existing | JSON `mapBoards` |
 | water stations | WS101–WS105 | 5 | JSON `waterStations` |
-| first aid | FA101 | 1 | `(4,42.3)` |
-| perimeter trees | fixed coordinate triples | 20 | JSON `planting.perimeterTrees` |
-| district trees | fixed coordinate triples | 20 | JSON `planting.districtTrees` |
-| wetland willows | fixed coordinate triples | 4 | JSON `wetlandWillows` |
-| highland pines | fixed coordinate triples | 4 | JSON `highlandPines` |
+| first aid | FA101 | 1 | `(4.25,55.2)` in B06 |
+| accessible route sign | AR101 | 1 | `(3.8,20.8)` |
+| perimeter trees | PT101–PT112 | 12 | JSON `planting.perimeterTrees` |
+| district trees | DT101–DT110 | 10 | JSON `planting.districtTrees` |
+| wetland willows | WW101–WW104 | 4 | JSON `wetlandWillows` |
+| highland pines | HP101–HP104 | 4 | JSON `highlandPines` |
 
 For benches, `faceYaw` means the direction the seated visitor looks. The bench helper must convert
 that to the correct slat/backrest transform and place its interaction focus on the front side. Each
 bench gets its own `thing('长椅', ...)`; no singleton interaction is allowed.
 
-Bins and lamps sit on verges, never on a path centreline. Lamp position is also the authoritative
+Fixture footprints are explicit: bench half-extents `0.75 × 0.28`, bin radius `.22`, lamp radius
+`.16`, map-board half-extents `.50 × .28`, water-station radius `.25`, and accessible-sign
+half-extents `.42 × .24`. Bins and lamps sit on verges, never on a path centreline. Lamp position is also the authoritative
 point for its emissive head, point light, glow pool and narrow body solid. At most **12 outdoor point
 lights** may be active in one frame; the renderer only uses the nearest eight.
 
 ### Planting rules
 
-- Tree triples are `[x,z,height]`.
+- Every tree is `{id, at:[x,z], height, owner}`; anonymous coordinate triples are forbidden.
 - Every trunk gets a `0.56 × 0.56 m` body solid, not a crown-sized collider.
 - Keep a `2.0 m` clear sight cone around every map and a `1.5 m` clear envelope around every focus.
 - Foliage may use wind mode; rocks, lamps, statues, signs and architecture may not.
@@ -463,7 +564,10 @@ or location cue.
 | `(-2,40)` | 保育中心 | 保育中心, 金丝猴, 湖区 |
 | `(19,40)` | 热带馆 | 热带馆, 狮子, 北环路 |
 
-Every new habitat receives one interpretation board at its public focus. The board must provide:
+Every listed species receives its own interpretation board and local thing. Single-species
+habitats have one; H31 has two, H32 has two and H41 has three. Their eighteen explicit records are
+`HT-H10-01` through `HT-H43-01` in JSON, so 天鹅/鸳鸯, 山羊/兔子 and
+斑马/羚羊/长颈鹿 never collapse into one ambiguous tag. Each board must provide:
 
 1. one large Chinese headword;
 2. pinyin;
@@ -477,6 +581,11 @@ Every new habitat receives one interpretation board at its public focus. The boa
 New vocabulary is enumerated in JSON under `interactions.newHeadwords`. Add those rows to
 `vocab.js` before registering their things. New zoo-specific transactions belong inside the
 existing `USE_AT.zoo` object. Do not create a second `zoo:` literal and silently replace the first.
+
+Every M100–M105, WS101–WS105, FA101 and AR101 record carries an explicit `thingId`, focus and
+reach. Repeated visible tags such as `导游图` and `饮水处` are intentional: the complete set of local
+things makes nearest-tag resolution local at every fixture. AR101 uses `无障碍路线` and toggles the
+accessible-route overlay, so that required headword is not orphaned.
 
 ---
 
@@ -499,11 +608,17 @@ them.
 - `R-KEEP-WEST` begins at the operations campus and serves highlands and wetlands.
 - `R-KEEP-CENTRAL` serves the waterfowl dock, family farm and golden monkeys.
 - `R-KEEP-EAST` crosses the conservation avenue and serves rhino, lion and savannah.
-- `R-SERVICE-RING` is a cart loop on S201–S203.
+- `R-SERVICE-PATROL` is an explicit out-and-back cart patrol on S201–S203; it is not falsely marked
+  as a loop.
 
 Keepers may enter habitats only through their declared service gates. Outside the mall, current NPC
 movement is not generally collision-clamped, so every consecutive route segment must itself be
 clear and must approach a gate square-on.
+
+All three keeper routes start in B07's south court at `(-38,44.6)`, pass the east gate
+`(-37,44.6)`, dogleg through `(-35.5,44.6)` and only then turn south to `(-35.5,40)`. Fifteen
+`KFS-*` records define the final keeper-only or timed-shared approach to every habitat/service door;
+there is no route centred on the operations fence.
 
 ### Animal schedules
 
@@ -598,7 +713,7 @@ compiler produces a canonical geometry hash from sorted IDs and quantized numeri
 - Expand the ground and public zone.
 - Remove the three old perimeter runs and their collision.
 - Build W001–W008 and G02–G04.
-- Build P101–P118 and S201–S204 without habitats.
+- Build the canonical 15 public expansion paths and S201–S206 without habitats.
 - Prove both spawns reach every reserved habitat focus.
 
 ### Phase 2 — visitor infrastructure
@@ -622,7 +737,7 @@ compiler produces a canonical geometry hash from sorted IDs and quantized numeri
 ### Phase 5 — eastern savannah
 
 - Build H40–H43 and their large-scale silhouettes.
-- Keep transfer corridors locked until an interlock exists.
+- Keep X01 locked until its four-gate interlock exists; there is no surface giraffe corridor.
 - Add the east keeper and service routes.
 
 ### Phase 6 — Tropical House
@@ -669,6 +784,14 @@ The included `zoo-blueprint-check.js` must fail on every one of these:
 15. a Tropical House exit that returns to the wrong place, coordinate or yaw;
 16. a scene exceeding a prop, batch, solid, blocker or active-light budget;
 17. a geometry hash that changes without a blueprint revision.
+18. a declared path connection whose physical envelopes do not meet;
+19. a visitor-route sample outside player-inset public paving;
+20. an uncontrolled public/service path overlap;
+21. a fixture or tree collar intruding a protected path envelope;
+22. a transfer corridor crossing an unrelated habitat;
+23. a Tropical House path below `2.0 m`, disconnected path, sealed door or room overlap;
+24. a mixed habitat species without its own board/thing record;
+25. a keeper route through an operations room or anywhere other than a declared gate/aisle.
 
 ### Required project checks once implemented
 
