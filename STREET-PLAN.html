@@ -1,0 +1,548 @@
+<title>街 · 施工总图 — Street Construction Set</title>
+
+<style>
+  :root{
+    --paper:#f4f1ea; --ink:#23211d; --ink2:#6b6558; --grid:#d6d0c2; --gridmaj:#bdb5a3;
+    --mass:#cfc8b8; --massline:#8d8574; --zone:#8fb4c9; --road:#b9b3a4; --paint:#e8e2d2;
+    --accent:#c2452f; --accent2:#2f6f8c; --good:#3d7a52; --warn:#b8862f;
+    --card:#fbf9f4; --line:#ddd7c8;
+  }
+  @media (prefers-color-scheme: dark){
+    :root{
+      --paper:#14161a; --ink:#e6e2d8; --ink2:#8f8a7d; --grid:#242830; --gridmaj:#333944;
+      --mass:#2a2f38; --massline:#555d6a; --zone:#2c4d5f; --road:#22262c; --paint:#3a4048;
+      --accent:#e0654c; --accent2:#5fa8cc; --good:#69b083; --warn:#d8a84a;
+      --card:#191c21; --line:#2a2e35;
+    }
+  }
+  :root[data-theme="light"]{
+    --paper:#f4f1ea; --ink:#23211d; --ink2:#6b6558; --grid:#d6d0c2; --gridmaj:#bdb5a3;
+    --mass:#cfc8b8; --massline:#8d8574; --zone:#8fb4c9; --road:#b9b3a4; --paint:#e8e2d2;
+    --accent:#c2452f; --accent2:#2f6f8c; --good:#3d7a52; --warn:#b8862f;
+    --card:#fbf9f4; --line:#ddd7c8;
+  }
+  :root[data-theme="dark"]{
+    --paper:#14161a; --ink:#e6e2d8; --ink2:#8f8a7d; --grid:#242830; --gridmaj:#333944;
+    --mass:#2a2f38; --massline:#555d6a; --zone:#2c4d5f; --road:#22262c; --paint:#3a4048;
+    --accent:#e0654c; --accent2:#5fa8cc; --good:#69b083; --warn:#d8a84a;
+    --card:#191c21; --line:#2a2e35;
+  }
+
+  body{
+    margin:0; background:var(--paper); color:var(--ink);
+    font:15px/1.55 ui-sans-serif,-apple-system,"Segoe UI",Roboto,"Helvetica Neue",sans-serif;
+    -webkit-font-smoothing:antialiased;
+  }
+  .wrap{max-width:1180px; margin:0 auto; padding:32px 20px 80px;}
+  header{border-bottom:2px solid var(--ink); padding-bottom:14px; margin-bottom:8px;}
+  h1{font-size:clamp(22px,3.6vw,32px); margin:0 0 4px; letter-spacing:-.01em;}
+  .sub{color:var(--ink2); font-size:14px; margin:0;}
+  .meta{display:flex; flex-wrap:wrap; gap:8px 22px; margin-top:12px; font-size:12.5px;
+        color:var(--ink2); font-family:ui-monospace,SFMono-Regular,Menlo,monospace;}
+  h2{font-size:19px; margin:44px 0 2px; letter-spacing:-.005em;}
+  h2 .no{font-family:ui-monospace,Menlo,monospace; color:var(--accent); font-size:14px;
+         margin-right:10px; letter-spacing:0;}
+  .cap{color:var(--ink2); font-size:13.5px; margin:2px 0 14px; max-width:74ch;}
+  .sheet{background:var(--card); border:1px solid var(--line); border-radius:6px;
+         overflow-x:auto; padding:10px;}
+  .sheet svg{display:block; min-width:720px;}
+  .key{display:flex; flex-wrap:wrap; gap:6px 20px; margin:12px 2px 0; font-size:12.5px;
+       color:var(--ink2); font-family:ui-monospace,Menlo,monospace;}
+  .key i{display:inline-block; width:16px; height:10px; margin-right:6px; vertical-align:-1px;
+         border:1px solid var(--massline);}
+  table{border-collapse:collapse; width:100%; font-size:13px; margin-top:14px;}
+  th,td{text-align:left; padding:6px 10px; border-bottom:1px solid var(--line); vertical-align:top;}
+  th{font-size:11.5px; text-transform:uppercase; letter-spacing:.07em; color:var(--ink2);
+     border-bottom:1.5px solid var(--ink2);}
+  td.n{font-family:ui-monospace,Menlo,monospace; white-space:nowrap;}
+  .tbl{overflow-x:auto;}
+  .note{border-left:3px solid var(--warn); background:color-mix(in srgb,var(--warn) 8%,transparent);
+        padding:10px 14px; margin:18px 0; font-size:13.5px; border-radius:0 4px 4px 0;}
+  .note b{color:var(--warn);}
+  code{font-family:ui-monospace,Menlo,monospace; font-size:.92em;
+       background:color-mix(in srgb,var(--ink) 8%,transparent); padding:1px 5px; border-radius:3px;}
+  footer{margin-top:56px; padding-top:16px; border-top:1px solid var(--line);
+         color:var(--ink2); font-size:12.5px;}
+</style>
+
+<div class="wrap">
+
+<header>
+  <h1>街 · 施工总图</h1>
+  <p class="sub">Street construction set — the new layout, drawn to scale from the source coordinates</p>
+  <div class="meta">
+    <span>SCENE FRAME · +x EAST · +z NORTH</span>
+    <span>UNITS · METRES</span>
+    <span>BODY RADIUS · 0.30 (clampMove)</span>
+    <span>SHEETS · A01 A02 A03</span>
+  </div>
+</header>
+
+<h2><span class="no">A01</span>District site plan</h2>
+<p class="cap">Everything the street owns, on one sheet, north up. Grey is built mass; blue is
+walkable zone as <code>street.js:3947</code> declares it; red is new work. Hollow triangles are
+doors where they stand today, solid red triangles are where this plan puts them.</p>
+<div class="sheet"><svg id="a01" role="img" aria-label="District site plan"></svg></div>
+<div class="key">
+  <span><i style="background:var(--mass)"></i>built mass</span>
+  <span><i style="background:var(--zone);opacity:.42"></i>walkable zone</span>
+  <span><i style="background:var(--road)"></i>carriageway</span>
+  <span><i style="background:var(--accent);opacity:.32;border-color:var(--accent)"></i>new work</span>
+  <span>▽ existing door</span>
+  <span style="color:var(--accent)">▼ relocated door</span>
+</div>
+
+<h2><span class="no">A02</span>The junction — enlarged</h2>
+<p class="cap">Where the whole plan turns. The corner block already stands at x 12.0–23.4 with a
+blank east elevation onto the road; putting the chemist and the bank on it costs no new mass and
+gives the district its first corner — hardware facing the hutong, civic facing the road.</p>
+<div class="sheet"><svg id="a02" role="img" aria-label="Junction enlargement"></svg></div>
+
+<div class="note">
+  <b>Correction to the blueprint.</b> <code>STREET-BLUEPRINT.md</code> §4.1 put the west-side
+  frontage at x ≈ 26.9. Drawing it exposed the error: 26.9 is hard against the kerb face at 27.58.
+  The building line is <b>x 23.30</b> — the corner block's own east elevation, which already exists
+  as blank wall — and the <code>road</code> zone's <code>x0</code> moves 24.0 → <b>23.35</b> so the
+  body can reach the doors. The bus shelter goes to the kerb at <b>x 26.50</b>, which is where a
+  shelter belongs anyway. 五金电器 no longer moves: it becomes the corner's other face.
+</div>
+
+<h2><span class="no">A03</span>Elevation — the hutong's south frontage</h2>
+<p class="cap">The datum, drawn. Every name board on this wall sits in one band and every 侧招 in
+one band under it, and both are published on the <code>S</code> contract
+(<code>street.js:138</code>) so no district picks a sign height again. Heights in metres above
+paving.</p>
+<div class="sheet"><svg id="a03" role="img" aria-label="South frontage elevation"></svg></div>
+
+<h2><span class="no">A04</span>Door schedule</h2>
+<div class="tbl"><table id="doors">
+  <thead><tr><th>#</th><th>Door</th><th>Now</th><th>New</th><th>Goes to</th><th>Why it moves</th></tr></thead>
+  <tbody></tbody>
+</table></div>
+
+<h2><span class="no">A05</span>Zone schedule</h2>
+<div class="tbl"><table id="zones">
+  <thead><tr><th>Zone</th><th>x</th><th>z</th><th>Clear</th><th>Change</th></tr></thead>
+  <tbody></tbody>
+</table></div>
+
+<footer>
+  Drawn from <code>js/street.js</code>, <code>street-road.js</code>, <code>street-civic.js</code>,
+  <code>street-retail.js</code>, <code>street-alley.js</code>, <code>street-hospital.js</code>,
+  <code>street-hotel.js</code>. Companion to <code>STREET-BLUEPRINT.md</code>.
+</footer>
+
+</div>
+
+<script>
+(function(){
+  const NS='http://www.w3.org/2000/svg';
+  const el=(n,a)=>{const e=document.createElementNS(NS,n);for(const k in a)e.setAttribute(k,a[k]);return e;};
+
+  // ---- a sheet: world -> svg, with the vertical axis flipped so +z / +y reads UP
+  function Sheet(id,o){
+    const s=document.getElementById(id), P=o.ppm, M=o.margin||{l:52,r:22,t:22,b:34};
+    const W=(o.x1-o.x0)*P+M.l+M.r, H=(o.v1-o.v0)*P+M.t+M.b;
+    s.setAttribute('viewBox','0 0 '+W.toFixed(1)+' '+H.toFixed(1));
+    s.setAttribute('width','100%'); s.style.height='auto';
+    const X=x=>M.l+(x-o.x0)*P, Y=v=>M.t+(o.v1-v)*P;
+    const g=n=>{const e=el('g',{});e.setAttribute('data-l',n);s.appendChild(e);return e;};
+    return {s,o,P,X,Y,W,H,g,
+      rect(gr,x0,v0,x1,v1,a){gr.appendChild(el('rect',Object.assign(
+        {x:X(x0),y:Y(v1),width:(x1-x0)*P,height:(v1-v0)*P},a)));},
+      line(gr,x0,v0,x1,v1,a){gr.appendChild(el('line',Object.assign(
+        {x1:X(x0),y1:Y(v0),x2:X(x1),y2:Y(v1)},a)));},
+      text(gr,x,v,t,a){const e=el('text',Object.assign({x:X(x),y:Y(v)},a||{}));e.textContent=t;gr.appendChild(e);},
+      raw(gr,e){gr.appendChild(e);}};
+  }
+
+  const F={fam:'ui-monospace,Menlo,monospace'};
+  const T=(sz,fill,anchor)=>({'font-family':F.fam,'font-size':sz,fill:fill||'var(--ink)',
+                              'text-anchor':anchor||'middle','dominant-baseline':'middle'});
+
+  // ---- grid + rule
+  function grid(S,stepMin,stepMaj,vlabel){
+    const o=S.o,g=S.g('grid');
+    const from=(a,st)=>Math.ceil(a/st)*st;
+    for(let x=from(o.x0,stepMin);x<=o.x1;x+=stepMin)
+      S.line(g,x,o.v0,x,o.v1,{stroke:x%stepMaj===0?'var(--gridmaj)':'var(--grid)','stroke-width':x%stepMaj===0?1:.6});
+    for(let v=from(o.v0,stepMin);v<=o.v1;v+=stepMin)
+      S.line(g,o.x0,v,o.x1,v,{stroke:v%stepMaj===0?'var(--gridmaj)':'var(--grid)','stroke-width':v%stepMaj===0?1:.6});
+    // origin
+    S.line(g,0,o.v0,0,o.v1,{stroke:'var(--ink2)','stroke-width':1,'stroke-dasharray':'6 4'});
+    S.line(g,o.x0,0,o.x1,0,{stroke:'var(--ink2)','stroke-width':1,'stroke-dasharray':'6 4'});
+    const lg=S.g('ticks');
+    for(let x=from(o.x0,stepMaj);x<=o.x1;x+=stepMaj)
+      S.text(lg,x,o.v0,String(x),Object.assign(T(10,'var(--ink2)'),{dy:16}));
+    for(let v=from(o.v0,stepMaj);v<=o.v1;v+=stepMaj)
+      S.text(lg,o.x0,v,String(v),Object.assign(T(10,'var(--ink2)','end'),{dx:-8}));
+    S.text(lg,o.x0,o.v0,'x →',Object.assign(T(10,'var(--ink2)','start'),{dy:30}));
+    S.text(lg,o.x0,o.v1,vlabel||'z ↑',Object.assign(T(10,'var(--ink2)','end'),{dx:-8,dy:-14}));
+  }
+
+  const massA={fill:'var(--mass)',stroke:'var(--massline)','stroke-width':1.1};
+  const zoneA={fill:'var(--zone)','fill-opacity':.30,stroke:'var(--zone)','stroke-width':1,
+               'stroke-dasharray':'5 3'};
+  const newA ={fill:'var(--accent)','fill-opacity':.16,stroke:'var(--accent)','stroke-width':1.4,
+               'stroke-dasharray':'7 4'};
+  const roadA={fill:'var(--road)',stroke:'none'};
+
+  function door(S,gr,x,z,n,neu,dx,dy){
+    const c=neu?'var(--accent)':'var(--ink)';
+    const p=el('path',{d:'M0,-7 L6,4 L-6,4 Z',fill:neu?c:'var(--card)',stroke:c,'stroke-width':1.4,
+      transform:'translate('+S.X(x).toFixed(1)+','+S.Y(z).toFixed(1)+')'});
+    S.raw(gr,p);
+    const t=el('text',{x:S.X(x)+(dx||0),y:S.Y(z)+(dy||-13),'font-family':F.fam,'font-size':10.5,
+      fill:c,'text-anchor':'middle','font-weight':neu?700:400});
+    t.textContent=n; S.raw(gr,t);
+  }
+  function tag(S,gr,x,v,t,c,sz,anchor){
+    S.text(gr,x,v,t,T(sz||10.5,c||'var(--ink)',anchor));
+  }
+  // dimension line with ticks and a centred figure
+  function dim(S,gr,x0,v0,x1,v1,label,off){
+    const c='var(--accent2)';
+    S.line(gr,x0,v0,x1,v1,{stroke:c,'stroke-width':1});
+    const perp=(v0===v1);
+    const t=.34;
+    if(perp){ S.line(gr,x0,v0-t,x0,v0+t,{stroke:c,'stroke-width':1});
+              S.line(gr,x1,v1-t,x1,v1+t,{stroke:c,'stroke-width':1}); }
+    else    { S.line(gr,x0-t,v0,x0+t,v0,{stroke:c,'stroke-width':1});
+              S.line(gr,x1-t,v1,x1+t,v1,{stroke:c,'stroke-width':1}); }
+    S.text(gr,(x0+x1)/2,(v0+v1)/2,label,Object.assign(T(9.5,c),{dy:off===undefined?-6:off}));
+  }
+
+  /* ==========================================================================================
+     A01 — district site plan
+     ========================================================================================== */
+  (function(){
+    const S=Sheet('a01',{x0:-36,x1:62,v0:-16,v1:50,ppm:11.4});
+    grid(S,5,10);
+
+    const m=S.g('mass');
+    // your block, corner block, the two anonymous masses (the north one is the hospital skin)
+    S.rect(m,-16.5,-19,11.5,-2.95,massA);
+    S.rect(m,12.0,-19.15,23.4,-3.05,massA);
+    S.rect(m,10.5,-16,23.2,-14,massA);
+    S.rect(m,10.5,9,23.38,43,massA);
+    // courtyards north of the alley (wall face z 3.74; depth indicative)
+    S.rect(m,-27,3.95,24,11.5,Object.assign({},massA,{'fill-opacity':.55}));
+    // west dead end
+    S.rect(m,-36,-4,-33.4,8,massA);
+    S.rect(m,-33.2,7.2,-23.6,7.62,massA);
+    // far parade + the backstop behind it, split by the new lane
+    S.rect(m,41.6,-16,49,-4,massA);
+    S.rect(m,41.6,4,49,14.55,massA);
+    S.rect(m,41.1,14.55,49,48.65,massA);
+    // the continuous backstop, cut for the lane
+    S.rect(m,49,-16,62,-4,Object.assign({},massA,{'fill-opacity':.45}));
+    S.rect(m,49,4,62,50,Object.assign({},massA,{'fill-opacity':.45}));
+
+    const ml=S.g('masslbl');
+    tag(S,ml,-2.5,-11,'十八号楼  12F  x -16.5 .. 11.5','var(--ink2)',11);
+    tag(S,ml,17.7,-8,'corner blk','var(--ink2)',10);
+    tag(S,ml,17,26,'医院  HOSPITAL','var(--ink2)',12);
+    tag(S,ml,45,32,'酒店  HOTEL','var(--ink2)',12);
+    tag(S,ml,-2,7.6,'courtyards  ·  wall face z 3.74','var(--ink2)',10.5);
+    tag(S,ml,-30,2,'W','var(--ink2)',10);
+    tag(S,ml,45.3,-10,'parade','var(--ink2)',10);
+
+    // ---- roads
+    const r=S.g('road');
+    S.rect(r,27.5,-13.5,37.5,13.5,roadA);
+    [27.80,30.20,32.50,35.10,37.42].forEach(x=>
+      S.line(r,x,-13.5,x,13.5,{stroke:'var(--paint)','stroke-width':x===32.5?2.2:1,
+        'stroke-dasharray':x===32.5?'none':'8 6'}));
+    // crossing + refuge + stop lines
+    S.rect(r,27.5,-2.5,37.5,2.1,{fill:'var(--paint)','fill-opacity':.55,stroke:'none'});
+    S.rect(r,29.3,-3.6,30.2,3.0,{fill:'var(--paint)',stroke:'var(--massline)','stroke-width':.8});
+    S.line(r,27.5,-4.0,32.5,-4.0,{stroke:'var(--paint)','stroke-width':2});
+    S.line(r,32.5,3.6,37.5,3.6,{stroke:'var(--paint)','stroke-width':2});
+
+    // ---- walkable zones as declared
+    const z=S.g('zones');
+    S.rect(z,-27,-2.35,25.5,3.35,zoneA);
+    S.rect(z,-32.2,-3.10,-25.0,6.40,zoneA);
+    S.rect(z,24.0,-13.5,39.8,13.5,zoneA);
+    S.rect(z,23.2,12.8,27.4,42.8,zoneA);
+    S.rect(z,37.35,12.78,40.92,48.25,zoneA);
+    const zl=S.g('zonelbl');
+    tag(S,zl,-6,0.6,'杨柳胡同  ALLEY  5.70 m wide','var(--accent2)',11);
+    tag(S,zl,-28.6,4.6,'西口','var(--accent2)',10);
+    tag(S,zl,32.5,10.6,'朝阳北路','var(--accent2)',10.5);
+    tag(S,zl,25.3,33,'医院 spine','var(--accent2)',9.5);
+    tag(S,zl,39.1,42,'hotel ct','var(--accent2)',9.5);
+
+    // ---- NEW WORK
+    const n=S.g('new');
+    // pedestrian lane east of the road
+    S.rect(n,41.6,-4,60,4,newA);
+    tag(S,S.g('nl'),51,0,'新天地步行街  PEDESTRIAN LANE  18.4 × 8.0','var(--accent)',11);
+    // widened west footway
+    S.rect(n,23.35,-13.5,27.28,13.5,newA);
+    // second crossing
+    S.rect(n,27.5,-11.0,37.5,-8.4,newA);
+    tag(S,S.g('nl'),32.5,-9.7,'2nd crossing','var(--accent)',9.5);
+
+    // ---- doors, existing then relocated
+    const d=S.g('doors');
+    door(S,d,0,-2.95,'D1',0,0,16);
+    door(S,d,-5.45,-2.95,'D2',0,-14,16);
+    door(S,d,9.15,-2.95,'D3',0,12,16);
+    door(S,d,4.60,3.95,'D4',0,-12,-13);
+    door(S,d,19.40,2.30,'D5',0,-2,-13);
+    door(S,d,38.70,-5.20,'D6',0,16,2);
+    door(S,d,41.60,2.20,'D7',0,17,0);
+    door(S,d,41.60,-3.70,'D8',0,17,0);
+    door(S,d,41.60,-9.20,'D9',0,17,0);
+    door(S,d,41.60,6.50,'D10',0,19,0);
+    door(S,d,40.55,-2.20,'D11',0,-17,0);
+    door(S,d,23.38,22.20,'D12',0,-19,0);
+    door(S,d,41.10,28.40,'D13',0,-19,0);
+
+    const dn=S.g('doorsnew');
+    door(S,dn,17.60,3.95,"D4'",1,0,-13);
+    door(S,dn,22.80,2.30,"D5'",1,14,-13);
+    door(S,dn,38.70,-11.60,"D6'",1,17,2);
+    door(S,dn,23.30,-5.30,"D8'",1,-18,0);
+    door(S,dn,47.20,3.60,"D9'",1,0,-13);
+    door(S,dn,54.00,-3.60,"D10'",1,0,16);
+    door(S,dn,23.30,-10.25,"D11'",1,-19,0);
+
+    // ---- dimensions
+    const dm=S.g('dims');
+    dim(S,dm,-27,-4.6,25.5,-4.6,'52.5 m — the hutong');
+    dim(S,dm,27.5,15.6,37.5,15.6,'9.84 m clear kerb to kerb');
+    dim(S,dm,23.35,-15.2,27.28,-15.2,'3.93 west footway',14);
+    dim(S,dm,41.6,-5.6,60,-5.6,'18.4 m lane');
+
+    // ---- title block, in the ground the district does not use
+    const tb=S.g('tb');
+    S.rect(tb,-35.4,16.0,9.5,33.0,{fill:'var(--card)',stroke:'var(--ink)','stroke-width':1.2});
+    S.line(tb,-35.4,29.6,9.5,29.6,{stroke:'var(--ink)','stroke-width':1.2});
+    tag(S,tb,-34.6,31.4,'A01  ·  DISTRICT SITE PLAN  ·  街 · 新总图','var(--ink)',13,'start');
+    const rows=[
+      ['SCALE','1 grid = 5 m   ·   heavy grid = 10 m'],
+      ['FRAME','+x east, +z north. Body forward (sin yaw, cos yaw)'],
+      ['DATUM','FASCIA 3.46 / .68   BLADE 2.55 / .56  (street.js:138)'],
+      ['',''],
+      ['WHY','7 of 13 doors stand on one 27 m line at x 41.60'],
+      ['','block ground floor: no run of face left wider than 1.66 m'],
+      ['','hutong 5.70 m wide, 1.25 m at its narrowest — 6 dance in it'],
+      ['','two frontage orientations in the district, and no corner'],
+      ['','one crossing, z -2.50 .. 2.10'],
+      ['','west footway 27 m long, 2.7 m wide, one bus stop on it'],
+    ];
+    rows.forEach(([k,v],i)=>{
+      const z=28.0-i*1.25;
+      if(k) tag(S,tb,-34.6,z,k,'var(--accent)',9.5,'start');
+      tag(S,tb,-28.6,z,v,'var(--ink2)',9.5,'start');
+    });
+
+    // north arrow + scale bar
+    const na=S.g('na');
+    S.line(na,-34,44,-34,49,{stroke:'var(--ink)','stroke-width':1.6});
+    S.raw(na,el('path',{d:'M0,0 L4,9 L-4,9 Z',fill:'var(--ink)',
+      transform:'translate('+S.X(-34).toFixed(1)+','+S.Y(49).toFixed(1)+')'}));
+    tag(S,na,-34,42.4,'N','var(--ink)',12);
+    S.line(na,-34,38,-24,38,{stroke:'var(--ink)','stroke-width':2});
+    for(let i=0;i<=10;i+=5) S.line(na,-34+i,37.4,-34+i,38.6,{stroke:'var(--ink)','stroke-width':1.4});
+    tag(S,na,-29,36.2,'0        10 m','var(--ink2)',9.5);
+  })();
+
+  /* ==========================================================================================
+     A02 — the junction
+     ========================================================================================== */
+  (function(){
+    const S=Sheet('a02',{x0:8,x1:50,v0:-16,v1:16,ppm:25});
+    grid(S,1,5);
+
+    const m=S.g('mass');
+    S.rect(m,8,-19,11.5,-2.95,massA);
+    S.rect(m,12.0,-19.15,23.4,-3.05,massA);
+    S.rect(m,10.5,9,23.38,16,massA);
+    S.rect(m,8,3.95,24,11.5,Object.assign({},massA,{'fill-opacity':.55}));
+    S.rect(m,41.6,-16,50,-4,massA);
+    S.rect(m,41.6,4,50,16,massA);
+
+    const r=S.g('road');
+    S.rect(r,27.5,-16,37.5,16,roadA);
+    [[27.80,'西侧非机动车道'],[30.20,''],[32.50,''],[35.10,''],[37.42,'']].forEach(([x])=>
+      S.line(r,x,-16,x,16,{stroke:'var(--paint)','stroke-width':x===32.5?2.4:1.2,
+        'stroke-dasharray':x===32.5?'none':'9 7'}));
+    S.rect(r,27.5,-2.5,37.5,2.1,{fill:'var(--paint)','fill-opacity':.6,stroke:'none'});
+    S.rect(r,29.3,-3.6,30.2,3.0,{fill:'var(--paint)',stroke:'var(--massline)','stroke-width':.9});
+    S.line(r,30.14,-16,30.14,-4.2,{stroke:'var(--massline)','stroke-width':1.2,'stroke-dasharray':'3 3'});
+    S.line(r,30.14,3.6,30.14,16,{stroke:'var(--massline)','stroke-width':1.2,'stroke-dasharray':'3 3'});
+    const rl=S.g('roadlbl');
+    tag(S,rl,29.0,13.4,'非机动车道','var(--ink2)',9);
+    tag(S,rl,31.35,13.4,'南行 ↓','var(--ink2)',9);
+    tag(S,rl,33.80,13.4,'北行 ↑','var(--ink2)',9);
+    tag(S,rl,36.26,13.4,'非机动车道','var(--ink2)',9);
+    tag(S,rl,32.5,-0.2,'CROSSING  z -2.50 .. 2.10','var(--ink2)',9.5);
+    tag(S,rl,29.75,-4.6,'安全岛','var(--ink2)',9);
+
+    const z=S.g('zones');
+    S.rect(z,8,-2.35,25.5,3.35,zoneA);
+    S.rect(z,24.0,-16,39.8,16,zoneA);
+
+    // NEW: west footway frontage on the corner block's east elevation
+    const n=S.g('new');
+    S.rect(n,23.35,-16,27.28,16,newA);
+    S.rect(n,27.5,-11.0,37.5,-8.4,newA);
+    S.line(n,23.30,-13.5,23.30,-3.05,{stroke:'var(--accent)','stroke-width':3});
+    S.line(n,23.30,9,23.30,13.5,{stroke:'var(--accent)','stroke-width':3});
+    const nl=S.g('newlbl');
+    tag(S,nl,25.4,-15.0,'NEW east-facing frontage — building line x 23.30','var(--accent)',10);
+    tag(S,nl,32.5,-9.7,'2nd crossing  z -11.00 .. -8.40','var(--accent)',9.5);
+
+    // occupants of the new frontage
+    const o=S.g('occ');
+    S.rect(o,23.30,-7.00,23.95,-3.60,{fill:'var(--accent)','fill-opacity':.3,stroke:'var(--accent)'});
+    S.rect(o,23.30,-13.30,23.95,-7.20,{fill:'var(--accent)','fill-opacity':.3,stroke:'var(--accent)'});
+    S.rect(o,23.30,9.60,23.95,12.80,{fill:'var(--accent)','fill-opacity':.3,stroke:'var(--accent)'});
+    S.line(o,23.95,-5.30,27.9,-5.30,{stroke:'var(--accent)','stroke-width':.7,'stroke-dasharray':'3 3'});
+    S.line(o,23.95,-10.25,27.9,-10.25,{stroke:'var(--accent)','stroke-width':.7,'stroke-dasharray':'3 3'});
+    S.line(o,23.95,11.2,27.9,11.2,{stroke:'var(--accent)','stroke-width':.7,'stroke-dasharray':'3 3'});
+    tag(S,o,28.1,-5.3,'药店  3.40 m bay','var(--accent)',10,'start');
+    tag(S,o,28.1,-10.25,'银行  6.10 m bay','var(--accent)',10,'start');
+    tag(S,o,28.1,11.2,'志愿服务站','var(--accent)',10,'start');
+    // bus shelter to the kerb, newsstand on the footway
+    S.rect(o,26.10,-14.6,27.20,-9.4,{fill:'none',stroke:'var(--accent)','stroke-width':1.4,'stroke-dasharray':'4 3'});
+    S.line(o,27.20,-13.4,31.2,-13.4,{stroke:'var(--accent)','stroke-width':.7,'stroke-dasharray':'3 3'});
+    tag(S,o,31.4,-13.4,'公交车站 → the kerb, x 26.50','var(--accent)',9.5,'start');
+    S.rect(o,25.40,-3.2,26.40,-2.0,{fill:'none',stroke:'var(--accent)','stroke-width':1.4});
+    tag(S,o,26.9,-1.4,'报刊亭','var(--accent)',9.5,'start');
+
+    // the corner: hardware stays on the north elevation
+    const c=S.g('corner');
+    S.line(c,14.6,-3.05,21.0,-3.05,{stroke:'var(--good)','stroke-width':3});
+    tag(S,c,17.8,-3.9,'五金电器 STAYS — the corner’s other face','var(--good)',10);
+
+    const d=S.g('doors');
+    door(S,d,9.15,-2.95,'D3',0,0,16);
+    door(S,d,19.40,2.30,'D5',0,-16,-13);
+    door(S,d,41.60,-3.70,'D8',0,16,0);
+    door(S,d,40.55,-2.20,'D11',0,-16,0);
+    const dn=S.g('doorsnew');
+    door(S,dn,17.60,3.95,"D4'",1,0,-13);
+    door(S,dn,22.80,2.30,"D5'",1,0,16);
+    door(S,dn,23.30,-5.30,"D8'",1,-20,0);
+    door(S,dn,23.30,-10.25,"D11'",1,-20,0);
+    door(S,dn,38.70,-11.60,"D6'",1,17,2);
+
+    const dm=S.g('dims');
+    dim(S,dm,23.35,15.2,27.28,15.2,'3.93 footway  ·  3.38 clear after r=0.30');
+    dim(S,dm,27.5,-15.2,37.5,-15.2,'9.84 carriageway',14);
+    dim(S,dm,12.0,-2.2,23.4,-2.2,'corner block 11.4');
+  })();
+
+  /* ==========================================================================================
+     A03 — elevation, the hutong's south frontage
+     ========================================================================================== */
+  (function(){
+    const S=Sheet('a03',{x0:-17,x1:24,v0:0,v1:6.2,ppm:26,margin:{l:56,r:22,t:20,b:34}});
+    const o=S.o, g=S.g('grid');
+    for(let x=-15;x<=24;x+=5) S.line(g,x,0,x,6.2,{stroke:'var(--grid)','stroke-width':.6});
+    for(let y=1;y<=6;y+=1) S.line(g,-17,y,24,y,{stroke:'var(--grid)','stroke-width':.6});
+    const tk=S.g('ticks');
+    for(let x=-15;x<=20;x+=5) S.text(tk,x,0,String(x),Object.assign(T(10,'var(--ink2)'),{dy:16}));
+    for(let y=1;y<=6;y+=1) S.text(tk,-17,y,y.toFixed(1),Object.assign(T(10,'var(--ink2)','end'),{dx:-8}));
+    S.text(tk,-17,6.1,'y ↑ (m)',Object.assign(T(10,'var(--ink2)','end'),{dx:-8,dy:-14}));
+
+    // ground
+    S.line(S.g('gnd'),-17,0,24,0,{stroke:'var(--ink)','stroke-width':2.4});
+
+    const m=S.g('mass');
+    // the block's elevation, and the corner block east of the 0.5 m joint
+    S.rect(m,-16.5,0,11.5,6.2,Object.assign({},massA,{'fill-opacity':.5}));
+    S.rect(m,12.0,0,23.4,6.2,Object.assign({},massA,{'fill-opacity':.5}));
+    // brick plinth 0..1.40, string course 2.89..3.11, balcony slab 3.82..3.92
+    S.rect(m,-16.5,0,11.5,1.40,{fill:'var(--massline)','fill-opacity':.30,stroke:'none'});
+    S.rect(m,-16.5,2.89,11.5,3.11,{fill:'var(--massline)','fill-opacity':.55,stroke:'none'});
+    S.rect(m,-16.5,3.82,11.5,3.92,{fill:'var(--massline)','fill-opacity':.7,stroke:'none'});
+    S.rect(m,12.0,0,23.4,1.40,{fill:'var(--massline)','fill-opacity':.30,stroke:'none'});
+
+    // the two datum bands
+    const b=S.g('bands');
+    S.rect(b,-17,3.12,24,3.80,{fill:'var(--accent)','fill-opacity':.13,stroke:'var(--accent)',
+      'stroke-width':1.2,'stroke-dasharray':'8 5'});
+    S.rect(b,-17,2.27,24,2.83,{fill:'var(--accent2)','fill-opacity':.13,stroke:'var(--accent2)',
+      'stroke-width':1.2,'stroke-dasharray':'8 5'});
+    const bl=S.g('bandlbl');
+    tag(S,bl,-11.5,4.05,'FASCIA  3.12 – 3.80   (FASCIA 3.46 / FASCIAH .68)','var(--accent)',10.5);
+    tag(S,bl,-11.5,2.02,'侧招 BLADE  2.27 – 2.83   (BLADE 2.55 / BLADEH .56)','var(--accent2)',10.5);
+    tag(S,bl,20.5,3.00,'string course 2.89–3.11','var(--ink2)',9);
+    tag(S,bl,20.5,4.05,'balcony slab 3.82','var(--ink2)',9);
+
+    // shopfronts
+    const f=S.g('front'), fr={fill:'var(--paper)',stroke:'var(--ink)','stroke-width':1.3};
+    const unit=(x0,x1,head,name)=>{
+      S.rect(f,x0,0,x1,head,fr);
+      S.text(f,(x0+x1)/2,head/2,name,T(11,'var(--ink)'));
+      S.text(f,(x0+x1)/2,0,(x1-x0).toFixed(2)+' m',Object.assign(T(9,'var(--ink2)'),{dy:-6}));
+    };
+    unit(-14.90,-13.24,2.36,'修鞋');
+    unit(-13.04,-11.38,2.36,'打印');
+    unit(-11.18,-9.52,2.36,'小卖部');
+    unit(-9.50,-4.50,2.66,'老李面馆');
+    unit(-1.75,1.75,2.82,'单元门');
+    unit(4.50,10.70,2.66,'幸福超市');
+    unit(14.20,21.40,2.90,'五金电器');
+
+    // the boards, sitting in the band
+    const bd=S.g('boards');
+    const board=(cx,w,t)=>{S.rect(bd,cx-w/2,3.12,cx+w/2,3.80,
+      {fill:'var(--accent)','fill-opacity':.5,stroke:'var(--accent)','stroke-width':1.2});
+      S.text(bd,cx,3.46,t,T(11,'var(--paper)'));};
+    board(-7.0,4.60,'老李面馆'); board(7.6,5.00,'幸福超市'); board(17.8,6.40,'五金电器');
+    // the blades
+    const blade=(cx,t)=>{S.rect(bd,cx-.55,2.27,cx+.55,2.83,
+      {fill:'var(--accent2)','fill-opacity':.6,stroke:'var(--accent2)','stroke-width':1.2});
+      S.text(bd,cx,2.55,t,T(9.5,'var(--paper)'));};
+    blade(-3.95,'面馆'); blade(3.05,'超市'); blade(16.62,'五金');
+
+    // the joint between the two buildings
+    S.line(S.g('joint'),11.75,0,11.75,6.2,{stroke:'var(--warn)','stroke-width':1.6,'stroke-dasharray':'5 4'});
+    tag(S,S.g('joint2'),11.75,5.6,'building joint  11.5 | 12.0','var(--warn)',9);
+
+    const dm=S.g('dims');
+    dim(S,dm,-9.50,5.3,-4.50,5.3,'5.00');
+    dim(S,dm,4.50,5.3,10.70,5.3,'6.20');
+    dim(S,dm,14.20,5.3,21.40,5.3,'7.20');
+  })();
+
+  /* ---- schedules ---- */
+  const DOORS=[
+    ['D1','单元门 · your stairwell','0.00, -2.95','—','home','stays. Everything is measured off it.'],
+    ['D2','老李面馆','-5.45, -2.95','—','frontage','stays'],
+    ['D3','幸福超市','9.15, -2.95','—','超市','stays — the shop under your own flat is the point of it'],
+    ['D4','夜市 gateway','4.60, 3.95','17.60, 3.95','nightmarket','a market mouth goes at the END of the hutong, not its middle'],
+    ['D5','地铁站 · 杨柳胡同','19.40, 2.30','22.80, 2.30','metro','a hutong gets its station at its mouth; frees 15.2–21 for D4'],
+    ['D6','地铁站 · 商务区','38.70, -5.20','38.70, -11.60','metro','pairs with the 2nd crossing; stops three transport modes stacking on 10 m'],
+    ['D7','公司 office','41.60, 2.20','—','office','stays — the one thing that should front a main road'],
+    ['D8','药店 pharmacy','41.60, -3.70','23.30, -5.30','pharmacy','onto the corner block’s blank east wall. First east-facing shopfront in the game'],
+    ['D9','北京新天地 mall','41.60, -9.20','47.20, 3.60','mall','a mall entrance wants a plaza, not a kerb'],
+    ['D10','大超市 hypermarket','41.60, 6.50','54.00, -3.60','market','the anchor at the far end, so the lane is worth walking to the end of'],
+    ['D11','银行 bank','40.55, -2.20','23.30, -10.25','bank','a branch goes where the bus stops and the crowd waits'],
+    ['D12','医院 main / 急诊','23.38, 22.20 / 35.55','—','hospital','stays'],
+    ['D13','酒店','41.10, 28.40','—','hotel','stays'],
+  ];
+  const ZONES=[
+    ['alley','-27.0 .. 25.5','-2.35 .. 3.35','5.70 m wide, 1.25 m at its narrowest','unchanged'],
+    ['west','-32.2 .. -25.0','-3.10 .. 6.40','7.2 × 9.5 m','takes 广场舞 and 象棋 — six people cannot dance in a 5.70 m alley'],
+    ['road','24.0 .. 39.8','-13.5 .. 13.5','carriageway 9.84','x0 24.0 → 23.35 so the body reaches the new frontage'],
+    ['hospital-road','23.2 .. 27.4','12.8 .. 42.8','spine on x 25.2','unchanged'],
+    ['hotel-forecourt','37.35 .. 40.92','12.78 .. 48.25','—','unchanged'],
+    ['步行街 (NEW)','41.6 .. 60.0','-4.0 .. 4.0','18.4 × 8.0','new zone. Cut the x 41.6–81.6 backstop into z -70..-4 and 4..70'],
+  ];
+  const fill=(id,rows)=>{const b=document.querySelector('#'+id+' tbody');
+    rows.forEach(r=>{const tr=document.createElement('tr');
+      r.forEach((c,i)=>{const td=document.createElement('td');
+        if(i>=2&&i<=3&&id==='doors') td.className='n';
+        if(i>=1&&i<=2&&id==='zones') td.className='n';
+        td.textContent=c; tr.appendChild(td);});
+      b.appendChild(tr);});};
+  fill('doors',DOORS); fill('zones',ZONES);
+})();
+</script>
