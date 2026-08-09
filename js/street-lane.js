@@ -160,12 +160,20 @@
         { hard: true, mode: 1, gloss: G.glass }), .18);
       emis(box(ux, 1.55, zf + n * .38, w - .9, 2.20, .04, n > 0 ? COOLI : WARMI,
         { hard: true, mode: 1, glow: .04 }), .22);
-      box(ux, FASCIA, zf + n * .26, w, FASCIAH, .18, base, { hard: true, gloss: .30 });
-      const gs = Math.min(FASCIAH * .70, (w - .30) / nm.length * .86);
-      for (const g of glyphs(ux, FASCIA, zf + n * .36, n > 0 ? 0 : Math.PI, nm,
-          { size: gs, gap: gs * .16, color: base === C('#b8862f') ? C('#2a2723') : CREAM,
-            mode: 1, glow: .20, lift: .012 }))
-        emis(g, .55);
+      // Same treatment street.js's `signBoard` now gives every board in the district: a 26 cm box
+      // rather than an 18 cm panel, a drip over it, a lit valance under it, and glyphs at 0.82 of
+      // the panel instead of 0.70. A lane six metres across is read down its length, not across
+      // it, so depth is worth even more here than it is on the alley.
+      box(ux, FASCIA, zf + n * .28, w, FASCIAH, .26, base, { hard: true, gloss: .30 });
+      box(ux, FASCIA + FASCIAH / 2 + .05, zf + n * .32, w + .10, .10, .34, base,
+        { hard: true, gloss: .26 });
+      emis(box(ux, FASCIA - FASCIAH / 2 - .04, zf + n * .42, w - .06, .07, .03, CREAM,
+        { hard: true, mode: 1, glow: .10 }), .70);
+      const gs = Math.min(FASCIAH * .82, (w - .24) / nm.length * .92);
+      for (const g of glyphs(ux, FASCIA, zf + n * .42, n > 0 ? 0 : Math.PI, nm,
+          { size: gs, gap: gs * .14, color: base === C('#b8862f') ? C('#2a2723') : CREAM,
+            mode: 1, glow: .26, lift: .012 }))
+        emis(g, .60);
       for (const s of [-1, 1]) {
         taper(ux + s * (w / 2 - .40), .21, zf + n * .72, .40, .42, .40, C('#8a8378'), { gloss: .22 });
         ball(ux + s * (w / 2 - .40), .52, zf + n * .72, .26, .20, .26, col.greenD,
@@ -191,7 +199,9 @@
       cap(MX + s * .23, 1.46, MZ + MN * 1.44, .026, .46, .026, col.goldL,
         { gloss: G.metal, tag: '购物中心' });
     }
-    box(MX, 5.42, MZ + MN * 1.35, 6.25, 1.12, .16, REDD, { hard: true, gloss: .28, tag: '购物中心' });
+    box(MX, 5.42, MZ + MN * 1.35, 6.25, 1.12, .24, REDD, { hard: true, gloss: .28, tag: '购物中心' });
+    emis(box(MX, 4.82, MZ + MN * 1.48, 6.05, .08, .03, col.goldL,
+      { hard: true, mode: 1, glow: .12, tag: '购物中心' }), .85);
     for (const g of glyphs(MX, 5.42, MZ + MN * 1.46, Math.PI, '北京新天地',
       { size: .50, gap: .16, color: col.goldL, mode: 1, glow: .22, lift: .012, tag: '购物中心' }))
       emis(g, .70);
@@ -227,7 +237,9 @@
       { hard: true, mode: 1, alpha: .62, gloss: G.glass, tag: '大超市' }), .14);
     emis(box(SX, 2.10, SZ + SN * .98, 8.40, 3.60, .05, COOLI,
       { hard: true, mode: 1, glow: .07, tag: '大超市' }), .40);
-    box(SX, 5.05, SZ + SN * 1.10, 9.20, 1.10, .18, REDD, { hard: true, gloss: .26, tag: '大超市' });
+    box(SX, 5.05, SZ + SN * 1.10, 9.20, 1.10, .26, REDD, { hard: true, gloss: .26, tag: '大超市' });
+    emis(box(SX, 4.46, SZ + SN * 1.24, 9.00, .08, .03, C('#f2e4c4'),
+      { hard: true, mode: 1, glow: .12, tag: '大超市' }), .85);
     for (const g of glyphs(SX, 5.05, SZ + SN * 1.22, 0, '大超市',
       { size: .62, gap: .20, color: C('#f2e4c4'), mode: 1, glow: .22, lift: .012, tag: '大超市' }))
       emis(g, .70);

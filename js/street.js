@@ -670,12 +670,27 @@ const Street = Lazy('Street', () => {
   // sign at any distance. It does — but the entire premise of the game is that the street is
   // covered in writing the player is learning, and a shop called ■■ teaches nobody anything.
   function signBoard(x, y, z, w, h, base, ink, text, n = 1, glowK = .9) {
-    box(x, y, z + n * .10, w, h, .16, base, { hard: true, gloss: .30 });
-    box(x, y, z + n * .19, w - .10, h - .10, .02, base, { hard: true, mode: 1 });
-    // Sized to fill the board: as tall as the panel allows, or as wide as the run permits.
-    const size = Math.min(h * .70, (w - .22) / Math.max(1, text.length) * .86);
-    for (const g of B.glyphs(x, y, z + n * .20, n > 0 ? 0 : Math.PI, text,
-        { size, gap: size * .16, color: ink, mode: 1, glow: .25, lift: .015 }))
+    // A 门头 is a BOX, and the depth is most of why one reads from the end of the street. At 16 cm
+    // this was a panel; at 26 it throws a shadow down its own face in raking light and the top
+    // drip catches the sky. The two together are the difference between a sign painted on a wall
+    // and a sign hung off one.
+    box(x, y, z + n * .13, w, h, .26, base, { hard: true, gloss: .30 });
+    box(x, y, z + n * .27, w - .10, h - .10, .02, base, { hard: true, mode: 1 });
+    // A drip over the top and a LIT VALANCE under the bottom. The valance is what a Chinese
+    // shopfront actually has and what this street had none of: a bright horizontal line at the
+    // foot of every board, which at night is the shop's whole outline and by day still reads as
+    // an edge. Emissive, not a light — one lit strip a shop, on a district that is fill-rate
+    // bound, where forty point lights would not be.
+    box(x, y + h / 2 + .05, z + n * .17, w + .10, .10, .34, base, { hard: true, gloss: .26 });
+    litten(box(x, y - h / 2 - .04, z + n * .28, w - .06, .07, .03,
+      [Math.min(1, ink[0] * .55 + .45), Math.min(1, ink[1] * .55 + .45), Math.min(1, ink[2] * .55 + .45)],
+      { hard: true, mode: 1, glow: .10 }), glowK * 1.25);
+    // Sized to fill the board. 0.82 of the panel rather than 0.70, and 0.92 of the run rather than
+    // 0.86: the datum fixed WHERE every sign sits, and the next thing a street needs is for the
+    // writing on them to be big enough to read while you are still deciding whether to cross.
+    const size = Math.min(h * .82, (w - .18) / Math.max(1, text.length) * .92);
+    for (const g of B.glyphs(x, y, z + n * .28, n > 0 ? 0 : Math.PI, text,
+        { size, gap: size * .14, color: ink, mode: 1, glow: .32, lift: .015 }))
       litten(g, glowK);
     lampPools.push(glow(M.trs(x, .03, z + n * 1.6, 0, w + 3.0, 1, 4.2), C('#ffb877'), 0));
     // Shop signage is the other half of this district's night lighting, and on the alley it is
@@ -2832,8 +2847,13 @@ const Street = Lazy('Street', () => {
         // known. The tag cannot be passed at construction because the name is drawn from the random
         // stream *after* the board colour is, and swapping those two `pick` calls round would
         // re-deal every sign and every colour on the parade.
-        const boardProp = box(FX - .16, 3.72, sz2, .20, .84, sw - .30, board,
+        // Deeper, with the same lit valance the alley's boards now carry. The parade is read
+        // across a 9.84 m carriageway; a 20 cm panel at that distance is a colour, not a sign.
+        const boardProp = box(FX - .20, 3.72, sz2, .28, .84, sw - .30, board,
           { hard: true, gloss: .30 });
+        box(FX - .14, 4.19, sz2, .34, .10, sw - .20, board, { hard: true, gloss: .26 });
+        litten(box(FX - .34, 3.26, sz2, .03, .07, sw - .36, col.cream,
+          { hard: true, mode: 1, glow: .10 }), 1.15);
         let signTag;
         // The name of the shop, in characters, not a row of blank cream squares — which is what
         // this was: every business on the far side of the road advertised ■■■. The whole premise
@@ -2855,7 +2875,7 @@ const Street = Lazy('Street', () => {
           if (owed.length && !owed.includes(name) && (nearUnit === 1 || nearUnit >= 3))
             name = owed[0];
         }
-        const span = sw - .70, gsz = Math.min(.54, span / name.length * .84);
+        const span = sw - .70, gsz = Math.min(.64, span / name.length * .92);
         // The first pharmacy and the first bakery on the parade get a thing, so their names can be
         // asked about. The rest stay scenery on purpose.
         //
@@ -2882,7 +2902,7 @@ const Street = Lazy('Street', () => {
           const th = thing(name, FX - .34, 3.72, sz2, say[0], say[1], say[2],
             { focus: [FX - 2.30, sz2], reach: 2.4 });
         }
-        for (const g of B.glyphs(FX - .28, 3.72, sz2, -Math.PI / 2, name,
+        for (const g of B.glyphs(FX - .36, 3.72, sz2, -Math.PI / 2, name,
             { size: gsz, gap: gsz * .16, color: board === col.paintY ? col.charcoal : col.cream,
               mode: 1, glow: .22, lift: .014, tag: signTag }))
           litten(g, .9);
