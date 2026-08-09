@@ -1,6 +1,7 @@
 {
   "schema": "chinesegame.zoo-expansion/v1",
-  "revision": 1,
+  "revision": 2,
+  "geometryHash": "sha256:PENDING",
   "title": "北京动物园扩建总图 / Beijing Zoo Expansion Master Plan",
   "status": "build-ready-blueprint",
   "units": "metres",
@@ -27,7 +28,10 @@
     "canonicalSourceRule": "All coordinates must be compiled from this blueprint or its eventual JS equivalent. Do not duplicate habitat rectangles in data.js.",
     "collisionRule": "Visible walls, body solids and camera blockers use the same opening intervals.",
     "tagRule": "Every tagged prop resolves to a local thing with the same tag; repeated benches each own their own thing and focus.",
-    "routeRule": "Every route segment is sampled against compiled clampMove at its actor radius before release."
+    "routeRule": "Every route segment is sampled against compiled clampMove at its actor radius before release.",
+    "stableChildIdRule": "Ordered child geometry uses <parent-id>/G## for ground layers and <parent-id>/O## for habitat objects; changing order is a geometry revision.",
+    "fixtureThingRule": "Every tagged objectSchedule record carries its own thingId, focus and reach; repeated visible tags therefore resolve to the nearest local thing.",
+    "geometryHashRule": "SHA-256 of the canonical JSON geometry payload defined and recomputed by zoo-blueprint-check.js; coordinates may not change without revision and hash changes."
   },
   "site": {
     "bounds": { "x0": -58, "x1": 58, "z0": -16, "z1": 70 },
@@ -52,21 +56,32 @@
   ],
   "preservation": {
     "keepExact": [
-      "south gate at x=-12,z=-16 and its 7.2m opening",
-      "main spawn at (-12,-13.4)",
-      "subway entrance centred at (-19.2,-14.7)",
-      "ticket office centred at (-5.6,-14.5)",
-      "guide map centred at (-16.2,-13.8)",
-      "kiosk centred at (6.0,-14.95)",
-      "entrance panda garden centred at (-12,-7.45)",
-      "all seven existing habitat rectangles, animal schedules, staff gates and interaction focuses",
-      "all existing core paths, benches, bins and lamps unless an acceptance check finds a collision"
+      { "id": "PF-G01", "type": "gate", "center": [-12, -16], "side": "z0", "range": [-15.6, -8.4], "width": 7.2, "layers": ["visible", "bodySolid", "cameraBlocker"] },
+      { "id": "PF-SPAWN-SOUTH", "type": "spawn", "at": [-12, -13.4], "yaw": 0 },
+      { "id": "PF-SUBWAY", "type": "building-anchor", "hz": "地铁站", "at": [-19.2, -14.7], "focus": [-17.2, -13.8] },
+      { "id": "PF-TICKET", "type": "building-anchor", "hz": "售票处", "at": [-5.6, -14.5], "focus": [-5.6, -12.6] },
+      { "id": "PF-MAP", "type": "fixture-anchor", "hz": "导游图", "at": [-16.2, -13.8], "focus": [-16.2, -12.6] },
+      { "id": "PF-KIOSK", "type": "building-anchor", "hz": "小卖部", "at": [6, -14.95], "focus": [6, -12.8] },
+      { "id": "PF-PANDA-GARDEN", "type": "landscape-anchor", "at": [-12, -7.45], "solidHalfSize": 1.52, "approachPaths": ["P09-entry-west-branch", "P10-entry-east-branch"] },
+      { "id": "PF-CORE-HABITATS", "type": "collection", "refs": ["H00-penguin", "H01-giraffe", "H02-panda", "H03-peacock", "H04-elephant", "H05-monkey", "H06-tiger"] },
+      { "id": "PF-CORE-PATHS", "type": "collection", "refs": ["P00-entry-plaza", "P01-south-loop", "P02-west-loop", "P03-east-loop", "P04-north-loop", "P05-cross-south", "P06-cross-north", "P07-core-west-link", "P08-core-east-link", "P09-entry-west-branch", "P10-entry-east-branch", "P11-giraffe-south-link"] }
     ],
     "remove": [
-      { "id": "demo-north-wall", "geometry": "old wall z=16, x=-22..22", "reason": "opens the heritage core to the expansion" },
-      { "id": "demo-west-wall", "geometry": "old wall x=-22, z=-16..16", "reason": "opens the wetlands connection" },
-      { "id": "demo-east-wall", "geometry": "old wall x=22, z=-16..16", "reason": "opens the savannah connection" },
-      { "id": "demo-old-wall-solids", "geometry": "matching body solids and camera blockers on those three sides", "reason": "visible openings and collision must agree" }
+      { "id": "demo-north-wall", "axis": "x", "at": 16, "range": [-22, 22], "layers": ["visible", "bodySolid", "cameraBlocker"], "reason": "opens the heritage core to the expansion" },
+      { "id": "demo-west-wall", "axis": "z", "at": -22, "range": [-16, 16], "layers": ["visible", "bodySolid", "cameraBlocker"], "reason": "opens the wetlands connection" },
+      { "id": "demo-east-wall", "axis": "z", "at": 22, "range": [-16, 16], "layers": ["visible", "bodySolid", "cameraBlocker"], "reason": "opens the savannah connection" }
+    ],
+    "existingStaffGates": [
+      { "id": "PF-SG01", "at": [-16, 0.7], "owner": "H02-panda" },
+      { "id": "PF-SG02", "at": [-12, 13.5], "owner": "H05-monkey" },
+      { "id": "PF-SG03", "at": [16, 2.6], "owner": "H04-elephant" },
+      { "id": "PF-SG04", "at": [8.3, 13.5], "owner": "H06-tiger" }
+    ],
+    "relocateForCentralSpine": [
+      { "id": "PF-RELOC-TREE-01", "type": "tree", "from": [-2, 9.6], "to": [-16.2, 9.8], "height": 5.2 },
+      { "id": "PF-RELOC-TREE-02", "type": "tree", "from": [-2.4, 14.6], "to": [14.8, 10.8], "height": 5.0 },
+      { "id": "PF-RELOC-BIN-01", "type": "bin", "from": [-3.4, 15.15], "to": [16.3, 11.8] },
+      { "id": "PF-RELOC-LAMP-01", "type": "lamp", "from": [0, 15.45], "to": [16.2, 9.5] }
     ],
     "retainSouthWall": [
       { "x0": -22, "x1": -15.6, "z": -16 },

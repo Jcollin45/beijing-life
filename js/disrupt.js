@@ -216,14 +216,24 @@ const Disrupt = (() => {
   const F9_P = 0.16;               // 新婚 is a weekend, and rare, because it is one wedding
   // Behind the four doors on your own corridor. One per day per door, so 敲门 gets an answer that
   // is about today rather than the same 没有人应 forever.
+  // Item 263. Two of these four are things you *hear* rather than things you find when you knock,
+  // and the flat that hears them is 202 — the same landing, one wall away. That matters because
+  // `noiseAt` below is the only source of neighbour noise a deck-2 sleeper can have: 装修 on ten
+  // and a wedding on nine carry one deck either side and no further, which is physically right and
+  // leaves the player's own bed hearing nothing at all. So the rows that are audible carry a deck,
+  // an hour window and how much of the racket gets through the wall; 做饭 is a smell in the
+  // corridor and 搬东西 is a daytime nuisance, and neither of them costs anybody a night.
   const DOORS = [
     { flat:'201', hz:'电视', py:'diànshì', en:'a television, loud',
+      deck:2, from:20, to:24, noise:0.55,
       note:['门里电视开得很大声。', 'A television is on loud behind the door.'] },
     { flat:'203', hz:'吵架', py:'chǎojià', en:'a row',
+      deck:2, from:21, to:23.5, noise:0.7,
       note:['里面两个人在吵架，你敲了也没人来。', 'Two people are arguing inside; nobody comes.'] },
     { flat:'204', hz:'做饭', py:'zuò fàn', en:'somebody cooking',
       note:['走廊里一股炒菜的味道，是204。', 'The corridor smells of frying — that is 204.'] },
     { flat:'205', hz:'搬东西', py:'bān dōngxi', en:'moving things about',
+      deck:2, from:9, to:18, noise:0.5,
       note:['205在搬东西，箱子堆到门口了。', '205 are shifting boxes; they are stacked to the door.'] },
   ];
 
@@ -410,10 +420,15 @@ const Disrupt = (() => {
       // building one with a spread would allocate two objects per call. This is asked from
       // game.js's fixture tick, so it allocates only when something is actually audible.
       const h = ((minutes % 1440) + 1440) % 1440 / 60;
-      for (const e of [n.f10, n.f9]) {
-        if (!e || h < e.from || h >= e.to) continue;
+      // `n.door` joins the two upstairs events because 201's television and 203's row are on the
+      // player's own landing and are the only neighbour noise deck 2 can hear at all. The
+      // `Number.isFinite(e.deck)` guard is what keeps the silent two out: a row with no deck has
+      // no hour window either, and `h < undefined` is false, so an unguarded loop would count
+      // 做饭 as a drill running twenty-four hours a day.
+      for (const e of [n.f10, n.f9, n.door]) {
+        if (!e || !Number.isFinite(e.deck) || h < e.from || h >= e.to) continue;
         const d = Math.abs((deck | 0) - e.deck);
-        const v = d === 0 ? 1 : d === 1 ? 0.45 : 0;
+        const v = (d === 0 ? 1 : d === 1 ? 0.45 : 0) * (Number.isFinite(e.noise) ? e.noise : 1);
         if (v > loud) { loud = v; why = e; }
       }
       return loud > 0 ? { loud:+loud.toFixed(2), why } : null;

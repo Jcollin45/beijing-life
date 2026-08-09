@@ -761,7 +761,12 @@ the six doors, eleven pairs of shoes, window bay, 消火栓 and e-bike (`home-co
 114. `[ ]` Add the vertical core to `.baseline.json` so prop and draw drift is caught. The lobby,
    the car and the corridor are the three rooms every session passes through, item 51 doubles the
    facade behind them, and none of the three has a recorded count to drift from.
-    @check `node -e "const b=require('/Users/jonahcollins/Desktop/Chinesegame/.baseline.json');const k=Object.keys(b).join(' ');if(!/home|lobby|corridor|lift/i.test(k)){console.error('no apartment row in .baseline.json');process.exit(1)}"`
+   **Check corrected.** It read `Object.keys(b)`, which is only `recorded` and `runs`, so it could
+   never match a room name and never reported the real gap. `runs` is keyed by **harness id**, not
+   by room: it holds 17 entries — `dict boot save places perf figure shop talk station ride seat
+   speech pa music things stay hotel` — and **not one is the apartment's.** The hotel is baselined
+   and the tower is not.
+    @check `node -e "const r=Object.keys(require('./.baseline.json').runs||{});const want=['flat','tower','lift'];const miss=want.filter(w=>!r.includes(w));if(miss.length){console.error('no baseline run for: '+miss.join(', '));process.exit(1)}"`
 
 115. `[x]` Write the four things this section proved into `APARTMENT.md` so the next agent does not
    re-derive them: the booth is unmanned, the lockers are not wired to the courier, there is no
@@ -1976,12 +1981,12 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    elsewhere — and the cast is about to reintroduce exactly that bug in figure form.
     @check `node -e "const s=require('fs').readFileSync('js/game.js','utf8');if(!/n\.deck/.test(s)){console.error('NPCs carry no deck');process.exit(1)}"`
 
-335. `[ ]` Register every new cast member in `art/character-concepts/NPC-ROSTER-82.json` with a
+335. `[x]` Register every new cast member in `art/character-concepts/NPC-ROSTER-82.json` with a
    preset and rig key equal to its manifest id — the one-row rule `.rostercheck.js:1-6` enforces.
    Green now because the tower has added nobody; it fails on the first unregistered resident.
     @check `node .rostercheck.js`
 
-336. `[ ]` Prove each new member's bundle resolves through the real browser manifest and the Python
+336. `[x]` Prove each new member's bundle resolves through the real browser manifest and the Python
    resolver rather than a third filename table (`.castassetcheck.js:1-6`). Same standing: green
    today, and the gate on every rig items 311–325 introduce.
     @check `node .castassetcheck.js`
@@ -2692,7 +2697,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    `电梯` prompt refuses with 等一下 while the car moves (`js/game.js:11090`) — but a refusal is not
    a wait. Show which floor the car is on and how long, in the HUD, while it comes.
     @check `sed "s,//.*,," js/game.js | grep -qE "carComing|liftEta|电梯在"`
-462. `[ ]` The lobby is the wayfinding anchor and is missing its directory. `js/home-lobby.js:689-715`
+462. `[x]` The lobby is the wayfinding anchor and is missing its directory. `js/home-lobby.js:689-715`
    already builds the 信箱 letterbox wall as a readable thing; a 楼层表 beside it, listing all twelve
    storeys and who is on them, is what stops the lift panel being the only map in the building.
     @check `sed "s,//.*,," js/home-lobby.js | grep -q "楼层表"`
@@ -2739,7 +2744,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
 *Owner: lane 4 (`js/vocab.js`), lane 2 (`js/game.js`), lane 6 (`js/assets.js`). Added after the
 board was written, because the gate and the harness found things no item owned.*
 
-471. `[x]` Add the seventeen home-module headwords that `node .dictcheck.js --home` reports missing
+471. `[ ]` Add the seventeen home-module headwords that `node .dictcheck.js --home` reports missing
    from `js/vocab.js` — 鸽子, 杂物, 马扎, 配电箱, 检修口, 储藏 and eleven others — so no authored
    fixture in the tower can raise a silent blank prompt. Found by lane 11; no item on the board
    owned it.
@@ -2751,7 +2756,7 @@ board was written, because the gate and the harness found things no item owned.*
    every boot and only their held props were visible.
     @check `for m in $(grep -ohE "model\('[a-z_0-9]+'" js/home-*.js | sed "s/model('//;s/'//" | sort -u); do awk '/const ROOMS = \{/,/^  \};/' js/assets.js | grep -q "'$m'" || exit 1; done`
 
-473. `[x]` Make the late-arrival gate at `js/game.js:10599-10601` actually fire. `ROOMS` is keyed by
+473. `[ ]` Make the late-arrival gate at `js/game.js:10599-10601` actually fire. `ROOMS` is keyed by
    Lazy module name (`World`), not by place id, so `roomReady('home')` is vacuously true and the
    gate is dead code **for every place in the game** — masked everywhere except home only because
    `warm()` normally wins the race.
@@ -2923,7 +2928,7 @@ board was written, because the gate and the harness found things no item owned.*
     clamping them. Cite `.audit.js:148`.
     @check `node -e "const s=require('fs').readFileSync('.audit.js','utf8');process.exit(/label:.02., deck:2,[^\n]*7.2\]/.test(s) ? 1 : 0)"`
 
-512. `[x]` Review the orbit's pitch range against a 2.60 m ceiling, because the clamp reaches
+512. `[ ]` Review the orbit's pitch range against a 2.60 m ceiling, because the clamp reaches
     1.22 rad and the ceiling limiter answers that with a 1.55 m top-down of the player's head —
     legible as a plan view, never chosen as one. Cite `js/game.js:1906`.
     @check `node -e "const s=require('fs').readFileSync('js/game.js','utf8');const m=s.match(/CAM.tPitch = clamp\(CAM.tPitch \+ dy \* s \* 0.72, ([0-9.]+), ([0-9.]+)\)/);process.exit(m && +m[2] <= 1.05 ? 0 : 1)"`

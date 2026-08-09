@@ -101,6 +101,10 @@ const World = Lazy('World', () => {
   // The ceiling pendant, whose 灯 text has always said it flickers. Held here so `setLamp` can dim
   // the fitting itself; the room's light is a separate matter — see `lampFlicker`.
   const lamp = { shade: null, bulb: null, bulbC: C('#fff0cd') };
+  // The 灯 fixture itself, so its sentence can follow the fault rather than being frozen at the
+  // day the flat was built. `lampSaid` is the state it was last written for, so the per-frame
+  // caller below does three string writes when it changes and none when it does not.
+  let lampThing = null, lampSaid = null;
   const rail = [];              // the shirts hanging in the wardrobe, swapped as you change
   let tvGlow = null;            // the pool of light the screen throws into the room
   let bagThing = null;          // the 袋子 you carry in, and its label
@@ -2759,8 +2763,14 @@ const World = Lazy('World', () => {
     capsule(0,H-.17,-.20,.032,.30,.032,col.charcoal,{ gloss:G.metal });
     lamp.shade = taper(0,H-.36,-.20,.48,.22,.48,col.cream,{ tag:'灯',gloss:.18,glow:.26 });
     lamp.bulb = ball(0,H-.47,-.20,.10,.09,.10,C('#fff0cd'),{ tag:'灯',mode:1,glow:.86 });
-    thing('灯',0,H-.04,-.20,'灯坏了，我得修一下。','The light is broken — I have to fix it.',
+    // Item 316. The sentence used to be the whole of the fault: it said 灯坏了 on the day the
+    // repairman had been and gone, because nothing it could read knew any different. `js/faults.js`
+    // now holds that fact across a reload, so the fixture asks it — the line the player reads is
+    // 报修过 once it has been reported, and stops mentioning the fault at all once it is cleared.
+    lampThing = thing('灯',0,H-.04,-.20,'灯坏了，我得修一下。','The light is broken — I have to fix it.',
       'It flickers. The 房东 says he will send someone 明天.',{focus:[0,-.20],reach:2.2});
+    lampSaid = null;
+    lampFault();
 
     // ================================================================ 洗手间 the bathroom
     // Built last so the shower glass blends over everything behind it.
@@ -3111,9 +3121,37 @@ const World = Lazy('World', () => {
     //
     // Guarded on the module existing, like the lift refusal above: a harness that loads js/world.js
     // without the fault layer gets a steady lamp rather than a throw.
+    lampFault();
     if (typeof Faults === 'undefined' || !Faults.broken('light')) return 1;
     const gate = Math.max(0, Math.sin(t * 0.37) * Math.sin(t * 1.13) - 0.72) / 0.28;
     return 1 - gate * (0.42 + 0.34 * Math.sin(t * 41));
+  }
+
+  // Item 316. Three states, and the fixture has to be able to be in the third one: broken and
+  // unreported, 报修过 and waiting for the visit, and fixed. `isBroken` and `repairDue` are read
+  // off js/faults.js rather than tracked here — this file draws the flat, it does not own its
+  // faults — and `lampSaid` keeps it to one comparison a frame.
+  function lampFault() {
+    if (!lampThing) return;
+    const F = typeof Faults === 'undefined' ? null : Faults;
+    const isBroken = !!(F && F.broken('light'));
+    const repairDue = !!(F && F.reported('light'));
+    const state = !isBroken ? 'ok' : repairDue ? 'due' : 'broken';
+    if (state === lampSaid) return;
+    lampSaid = state;
+    if (state === 'ok') {
+      lampThing.sentence = '灯修好了，屋里亮堂了。';
+      lampThing.tr = 'The light is fixed — the room is bright again.';
+      lampThing.note = '修好 xiū hǎo — 好 on the end of a verb is the thing finished and right.';
+    } else if (state === 'due') {
+      lampThing.sentence = '灯报修过了，说明天来人。';
+      lampThing.tr = 'The light is reported. Someone is coming tomorrow.';
+      lampThing.note = '报修 bàoxiū — to report a fault. 过 says it is already done.';
+    } else {
+      lampThing.sentence = '灯坏了，我得修一下。';
+      lampThing.tr = 'The light is broken — I have to fix it.';
+      lampThing.note = 'It flickers. The 房东 says he will send someone 明天.';
+    }
   }
   function setLamp(k) {
     if (!lamp.bulb) return;

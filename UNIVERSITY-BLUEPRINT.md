@@ -222,7 +222,7 @@ project into paths but never reduce a clear path below 2.0 m.
 | `B05` | 行政楼·国际学生中心 | `-43..-29, 24..36` | 13.60 m / 4 | east; `(-29,30)`, focus `(-26.6,30)` |
 | `B06` | 科学与创新楼 | `-43..-28, 40..62` | 16.20 m / 4 | east; `(-28,50)`, focus `(-25.5,50)` |
 | `B07` | 学生活动中心·校医院 | `30..43, 23..34` | 10.20 m / 3 | west; centre door `(30,27)`, clinic door `(30,31)` |
-| `B08` | 门卫·访客室 | `6.2..12.2, -12.4..-7.0` | 3.20 m / 1 | west/south; service window `(6.2,-9.5)` |
+| `B08` | 门卫·访客室 | `6.4..12.4, -12.4..-7.0` | 3.20 m / 1 | west/south; service window `(6.4,-9.5)` |
 
 ### 6.1 Shared exterior grammar
 
@@ -284,8 +284,8 @@ All multi-storey blocks use these rules unless their own section overrides them:
 - Red vertical fascia `学生食堂` centred `(-28.72,4.25,4.0)`, yaw `Math.PI/2`.
 - Menu board at `(-28.78,1.75,-1.0)`; retain today's four dish/price rows.
 - Vending machine moves to `(-28.35,1.10,8.0)`, focus `(-26.9,8.0)`.
-- Jianbing cart moves to `(-26.0,1.0,1.0)`, customer focus `(-24.4,1.0)`; queue marks run north
-  at `(-24.4,1.0),(-24.4,2.2),(-24.4,3.4)`, entirely west of the bicycle shelter pad.
+- Jianbing cart moves to `(-26.0,1.0,1.0)`, customer focus `(-24.2,1.0)`; queue marks run north
+  at `(-24.2,1.0),(-24.2,2.2),(-24.2,3.4)`, entirely west of the bicycle shelter pad.
 - Rear delivery door at `(-43,1.25,5.5)` opens only visually to the west service lane; bins and
   gas cages are behind a 1.8 m screen at x=-44.1.
 - Body solid: `x=-43.20..-28.80,z=-7.20..12.20`; blocker top 6.20.
@@ -346,11 +346,11 @@ All multi-storey blocks use these rules unless their own section overrides them:
 
 ### 6.9 B08 — 门卫 · 访客室
 
-- Mass: centre `(9.2,1.60,-9.7)`, size `6 × 3.20 × 5.4`, plaster with a brick plinth.
-- Sliding window on west face at x=6.16,z=-9.5; south window looks toward the main gate.
+- Mass: centre `(9.4,1.60,-9.7)`, size `6 × 3.20 × 5.4`, plaster with a brick plinth.
+- Sliding window on west face at x=6.36,z=-9.5; south window looks toward the main gate.
 - Roof sign `门卫`; barrier control panel, wall clock, desk silhouette, and two CCTV cameras.
-- Body solid: `x=6.00..12.40,z=-12.60..-6.80`; blocker top 3.60.
-- Guard standing point `(4.6,-9.6)` stays outside every solid and outside the main spine.
+- Body solid: `x=6.20..12.60,z=-12.60..-6.80`; blocker top 3.60.
+- Guard standing point `(4.8,-9.6)` stays outside every solid and outside the main spine.
 
 ---
 
@@ -369,7 +369,7 @@ navigation and prop budgets pass.
 | stone lions | `(-6,-12.7)` and `(0,-12.7)` | `.68 × .56` each |
 | metro mouth | retain centre `(-11.4,-11.7)` and signs | existing `x=-13.5..-10.1,z=-12..-9.9` solid; spawn moved clear |
 | campus map | board centre `(15,1.55,-2.5)`, width 3.2, facing south; `校园地图` | `x=13.3..16.7,z=-2.75..-2.35` |
-| noticeboard | three panels centre `(15,1.50,-5.5)`, total width 6.2, facing south | `x=11.9..18.1,z=-5.8..-5.2` |
+| noticeboard | three panels centre `(9,1.50,-2.5)`, total width 6.2, facing south | `x=5.9..12.1,z=-2.8..-2.2` |
 | flagpole | `(-3,4.2,6.5)`, 8.4 m pole, 1.4 m square plinth | `x=-3.8..-2.2,z=5.7..7.3` |
 | school seal mosaic | flat centre `(-3,.014,11.5)`, diameter 2.6 m | none |
 | print kiosk | centre `(-10.5,.60,15)`, size `1.6×1.2×1.0`, hatch faces south | `x=-11.35..-9.65,z=14.45..15.55` |
@@ -384,10 +384,12 @@ inside `x=-6..0,z=-12..52` unless explicitly listed as an axial object.
 - Canopy: centre `(-16.5,2.76,3)`, size `12.4 × .12 × 9.2`, tarpaulin `S.tarp`.
 - Posts: x=`[-22,-16.5,-11]`, z=`[-1.5,7.5]`, six 0.15 m diameter posts with individual
   `0.22 × 0.22` solids.
-- Rack strips: `x=-22..-11,z=-.70..1.10` and `x=-22..-11,z=4.90..6.70`.
+- Rack strips: `x=-22..-11,z=-.70..1.10` and `x=-22..-11,z=4.90..6.70`; these two AABBs
+  are the only body solids for the packed bicycle rows.
 - Bikes: for each row `{z:0.20,yaw:0}` and `{z:5.80,yaw:Math.PI}`, create 16 bikes at
   `x=-21.75 + i*.70`, `i=0..15`. Keep the central aisle `z=1.10..4.90` clear.
-- Charging cabinet: `(-10.7,1.15,3.0)`, focus `(-9.5,3.0)`; six numbered charging sockets.
+- Charging cabinet: centre `(-10.7,.90,3.0)`, size `.80×1.80×.45`, focus `(-9.5,3.0)`;
+  six numbered charging sockets and solid `x=-11.15..-10.25,z=2.55..3.45`.
 - `自行车` interaction position `(-10.3,1.1,5.8)`, focus `(-8.9,5.8)`, reach 2.2.
 
 Shared/stray bicycles, each `[x,z,yaw]`:
@@ -414,7 +416,7 @@ const CAMPUS_TREES = [
   [-19,-8],[-11,-6],[20,-9],[21,-5],[-22,13],[18,13],
   [-16,26],[-9,28],[-16,39],[-9,43],
   [5,26],[13,28],[6,39],[14,43],
-  [-26,26],[-26,37],[-25,47],[25,26],[25,37],[25,47],
+  [-26,45],[25,26],[26,39],[25,47],
 ];
 ```
 
@@ -429,9 +431,9 @@ batch. Exact centres:
 ```js
 const CAMPUS_LAMPS = [
   [-7,-8],[1,-8],[-7,2],[1,2],[-7,12],[1,12],
-  [-7,24],[1,24],[-7,36],[1,36],[-7,48],[1,48],
+  [-12,24],[1,24],[-7,36],[1,36],[-12,48],[6,48],
   [-24,28],[-24,40],[22,28],[22,40],
-  [-26.5,5.5],[27,1.5],[27,9],[27,17],
+  [-26.5,5.5],[27,1.5],[25,9],[23,17],
 ];
 ```
 
@@ -445,9 +447,9 @@ Benches use the current 1.56 m four-slat seat with two stone legs. All yaw value
 
 ```js
 const CAMPUS_BENCHES = [
-  [-8,-3,0],[2,-3,0],[8,-3,0],[-9,7,0],[3,7,Math.PI],
+  [-8,-3,0],[2,-3,0],[18,3.5,Math.PI],[-8,10,0],[3,7,Math.PI],
   [-16,23.5,0],[15,23.5,0],[-17,30,Math.PI/2],[-17,42,Math.PI/2],
-  [17,30,-Math.PI/2],[17,42,-Math.PI/2],[-8,25,0],[8,25,0],
+  [17,30,-Math.PI/2],[17,42,-Math.PI/2],[-8,25,0],[11,25,0],
   [24,35.5,-Math.PI/2],[25,54,-Math.PI/2],
   [28,11,Math.PI/2],[28,15,Math.PI/2],
 ];
@@ -455,6 +457,15 @@ const CAMPUS_BENCHES = [
 
 Each bench solid is its rotated conservative AABB with 0.10 m padding. Only benches `(-8,-3)`,
 `(-17,30)`, `(17,30)`, and `(25,54)` get `长椅` interaction anchors; the rest remain scenery.
+
+```js
+const INTERACTIVE_BENCHES = [
+  { at:[-8,.48,-3],  focus:[-8,-2.1] },
+  { at:[-17,.48,30], focus:[-16,30] },
+  { at:[17,.48,30],  focus:[16,30] },
+  { at:[25,.48,54],  focus:[24,54] },
+]; // reach 1.8 for every row
+```
 
 Teaching-block study tables are specified in B01. Add two picnic-study tables on the lawn pads at
 `(-12,34)` and `(10,34)`, each 1.8 × 1.0 m with four fixed stools. Their pads are 3.2 × 2.6 m;
@@ -464,11 +475,11 @@ only the western table receives a second `书桌` anchor, reusing the existing s
 
 ```js
 const FOUNTAINS = [
-  [-1,-4],[-9,17],[8,23.2],[-18,46.5],[18,46.5],[-26.5,33.5],[27,35.5],[27,13],
+  [-1,-4],[-9,17],[8,23.2],[-18,46.5],[18,46.5],[-26.5,33.5],[27,35.5],[25,13],
 ];
 const SORTING_BINS = [
-  [-8,-7],[12,-7],[-25,4],[26,-3],[-11,16],[11,23],
-  [-25.5,38],[27,37],[-25,58],[27,60],[-27,14],[27,7.5],
+  [-20,-5],[18,-7],[-26,-3.5],[26,-6.5],[-15,16],[11,23],
+  [-25.5,38],[27,42],[-25,58],[25,61.5],[-27,14],[27,7.5],
 ];
 const FIRE_POINTS = [
   [-28,10], [29,6], [-28,24], [-26,40], [29,23], [29,38], [-21,62], [18,62],
@@ -476,12 +487,23 @@ const FIRE_POINTS = [
 ```
 
 - Fountains use the existing teal column, basin, spout, `0.48 × 0.48` solid. The first three and
-  the two library/science fountains get `饮水机` anchors; repeated anchors reuse the same action.
+  the two library/science fountains get the exact `饮水机` anchors below; repeated anchors reuse
+  the same action.
 - Each sorting station has four 0.38 m bins in the order `可回收物 / 厨余垃圾 / 有害垃圾 / 其他垃圾`,
   on a 1.9 × .55 m pad with one combined solid.
 - Fire points are red hydrant cabinets or exterior standpipes kept 0.8 m off through-routes.
 - Storm drains: place 0.45 m grates at `(-21,-10),(19,-10),(-21,16),(19,16),(-27,47),(27,47),
   (-44,30),(44,30)`. Add two 0.60 m manhole covers at `(-3,-1)` and `(-3,40)`. No solids.
+
+```js
+const INTERACTIVE_FOUNTAINS = [
+  { at:[-1,.78,-4],    focus:[-1,-3.2] },
+  { at:[-9,.78,17],    focus:[-9,17.8] },
+  { at:[8,.78,23.2],   focus:[8,22.4] },
+  { at:[-18,.78,46.5], focus:[-18,47.3] },
+  { at:[18,.78,46.5],  focus:[18,47.3] },
+]; // reach 1.6 for every row
+```
 
 ### 7.7 Wayfinding, campus services, and small authored props
 
@@ -504,7 +526,7 @@ const FIRE_POINTS = [
 | `O07` | `(-26.8,27)` | international-services directory |
 | `O08` | `(27.5,49)` | library returns slot + opening-hours plate |
 | `O09` | `(-25.6,54)` | science innovation display case |
-| `O10` | `(4.6,-9.6)` | guard stool + thermos, outside guard-house solid |
+| `O10` | `(4.8,-9.6)` | guard stool + thermos, outside guard-house solid |
 
 Wayfinding posts are 2.35 m tall, blue panels with white glyphs, and a `0.22 × 0.22` post solid.
 Signs must be readable from the listed path before any tree crown or bike row.
@@ -517,8 +539,10 @@ Signs must be readable from the listed path before any tree crown or bike row.
 - Hoops: posts at `(29.65,13)` and `(42.35,13)`, each with a `0.40 × 0.40` solid; backboards face
   inward; rim y=3.05. Put loose ball `(36.2,.13,11.8)`.
 - Sideline benches are the manifest points `(28,11)` and `(28,15)`; keep x=27..29 as a clear run.
-- Four low fence runs, 2.6 m high chain-link style: north/south full length; east/west broken by a
-  2.4 m gate at the west midpoint. Fence solids are 0.12 m thick, but the west gate is open.
+- Five low chain-link segments, 2.6 m high and 0.12 m thick: north `x=29..43,z=16.94..17.06`;
+  south `x=29..43,z=8.94..9.06`; east `x=42.94..43.06,z=9..17`; west-south
+  `x=28.94..29.06,z=9..11.8`; west-north `x=28.94..29.06,z=14.2..17`. Use those exact AABBs as
+  solids; the west opening `z=11.8..14.2` is a 2.4 m gate.
 - `篮球场` interaction position `(30.6,1.7,13)`, focus `(27.8,13)`, reach 3.0.
 
 ---
@@ -536,7 +560,7 @@ const BUILDING_COLLIDERS = [
   ['行政楼', -43.20,-28.80, 23.80, 36.20, 14.20],
   ['实验楼', -43.20,-27.80, 39.80, 62.20, 16.90],
   ['活动中心',29.80, 43.20, 22.80, 34.20, 10.80],
-  ['门卫',     6.00, 12.40,-12.60, -6.80,  3.60],
+  ['门卫',     6.20, 12.60,-12.60, -6.80,  3.60],
 ];
 ```
 
@@ -595,15 +619,15 @@ do not identify as 杨柳胡同.
 | 图书馆 | `(29.55,2.6,50)` | `(27.3,50)` |
 | 食堂 | `(-28.55,2.4,2.5)` | `(-26.6,2.5)` |
 | 售货机 | `(-28.35,1.1,8)` | `(-26.9,8)` |
-| 煎饼 | `(-26,2.0,1)` | `(-24.4,1)` |
+| 煎饼 | `(-26,2.0,1)` | `(-24.2,1)` |
 | 大学 | `(-3,5.6,-12.4)` | `(-3,-10.4)` |
 | 自行车 | `(-10.3,1.1,5.8)` | `(-8.9,5.8)` |
-| 布告板 | `(15,2.72,-5.8)` | `(15,-7.0)` |
+| 布告板 | `(9,2.72,-2.8)` | `(9,-4.0)` |
 | 篮球场 | `(30.6,1.7,13)` | `(27.8,13)` |
 | 宿舍 | `(29.55,4,-2)` | `(27.4,-2)` |
 | 地铁站 | `(-11.4,2.92,-11.9)` | `(-11.4,-9.15)` |
-| 长椅 | see the four interactive bench points | 0.8–1.0 m in front of seat |
-| 饮水机 | see fountain array | 0.8 m toward nearest path |
+| 长椅 | exact `INTERACTIVE_BENCHES` rows in §7.5 | exact focus per row |
+| 饮水机 | exact `INTERACTIVE_FOUNTAINS` rows in §7.6 | exact focus per row |
 
 ### 9.3 New interactions
 
@@ -622,6 +646,22 @@ Use distinct global labels; `USE` is keyed by Chinese text across the whole game
 
 `学生证` closes an existing game loop: the mall cinema already expects a student-ID source. This
 building is its single authoritative source; do not mint the item from multiple campus objects.
+
+### 9.4 Save migration for the new footprint
+
+Existing v1 saves restore a campus `x/z/yaw` verbatim, and many coordinates that were formerly open
+become walls in this layout. Define `CAMPUS_LAYOUT_VERSION = 2`, export the canonical `SPAWN`, and
+write `layouts:{campus:CAMPUS_LAYOUT_VERSION}` into the existing save blob. During `loadGame()`,
+before `setPlace`, normalize a campus save whose marker is absent or differs:
+
+```js
+if (savedPlace === 'campus' && s.layouts?.campus !== CAMPUS_LAYOUT_VERSION)
+  savedAt = { ...CAMPUS_SPAWN };
+```
+
+This is a one-time layout migration, not a save-format bump: old `v:1` lives remain readable and
+the next autosave records the marker. Also run `spawnSafe` in a test against the migrated point after
+the Campus scene is constructed; the canonical spawn itself must never rely on rescue movement.
 
 ---
 
@@ -653,7 +693,7 @@ const CAMPUS_SPOTS = {
 };
 ```
 
-Optional v2 crowd anchors, added only after route/performance checks: guard `(4.6,-9.6)`, canteen
+Optional v2 crowd anchors, added only after route/performance checks: guard `(4.8,-9.6)`, canteen
 worker `(-27.0,2.5)`, services clerk `(-26.5,27)`, clinic nurse `(27.2,31)`, four student waits at
 `(-8,20),(8,20),(-10,42),(10,42)`. Use timed spots, not free patrols.
 
@@ -754,6 +794,8 @@ Shared-file integration changes are serialized after geometry lands:
       that should block the body has an explicit solid.
 - [ ] No major building AABBs overlap. Canteen/bikes, court/dorm, and court/library are separated.
 - [ ] Spawn, metro focus, classroom return, and library return are outside inflated solids.
+- [ ] A marker-less v1 save last written anywhere in the old campus resumes at canonical SPAWN;
+      a v2-layout campus save at a legal coordinate resumes exactly where it was written.
 - [ ] A 0.30 m radius flood-fill reaches every interaction focus from SPAWN.
 - [ ] Primary routes retain 4.4 m clear; no door waiting area is narrower than 2.0 m.
 - [ ] NPC timed spots and their 0.35 m clearance discs do not intersect solids.

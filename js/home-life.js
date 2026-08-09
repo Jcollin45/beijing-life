@@ -47,6 +47,11 @@ const HomeLife = (() => {
   const NOODLE_MINS = 3;     // 泡面 at the kettle — the whole point of it
   const SLEEP_FULL  = 7.5;   // hours that count as a whole night
   const AYI_FEE     = 80;    // what the 阿姨 charges for a morning
+  // One storey, in metres. The same 3.10 as `js/world.js:185`, which is where the building is
+  // actually laid out; repeated rather than imported because that constant is module-local to the
+  // scene builder and this file is state, not geometry. If one moves, both move.
+  const STOREY      = 3.10;
+  const SLEEP_DECK  = 2;     // the bed is in 202 and only in 202
 
   const fresh = () => ({
     // sleep
@@ -208,6 +213,33 @@ const HomeLife = (() => {
   // did not: 床 and 枕头 both charged a flat 420 minutes, so a nap at three in the morning ended at
   // ten and an early night at nine ended at four. What a night is worth is now the hours you
   // actually got, and an alarm is a thing that can *cost* you some.
+  // ---- item 263. What the neighbours take off a night.
+  //
+  // `Disrupt.noiseAt` already answers how loud deck N is at one instant, and nothing read it into
+  // sleep. This is the flat's half of the rule `HOTEL-TODO.md` H111 states for the hotel, and it is
+  // deliberately the *same* rule reached through the *same* function rather than a second one.
+  //
+  // Sampled hour by hour across the night rather than at the moment your head hits the pillow:
+  // F10's drill starts at eight, so it does not spoil a night that ended at seven, and it does
+  // spoil a lie-in that ran to ten. At most 24 iterations, once per 睡觉, never per frame.
+  function noiseNight(day, minutes, mins, deck) {
+    const out = { loud: 0, worst: 0, hours: 0, why: null };
+    if (typeof Disrupt === 'undefined' || !Disrupt.noiseAt) return out;
+    const start = abs(day, minutes);
+    const n = Math.max(1, Math.min(24, Math.ceil(mins / 60)));
+    let sum = 0;
+    for (let i = 0; i < n; i++) {
+      const a = start + i * 60;
+      const nz = Disrupt.noiseAt(dayOf(a), deck, a % 1440);
+      if (!nz) continue;
+      sum += nz.loud;
+      out.hours++;
+      if (nz.loud > out.worst) { out.worst = nz.loud; out.why = nz.why; }
+    }
+    out.loud = +(sum / n).toFixed(2);
+    return out;
+  }
+
   function sleepPlan(day, minutes) {
     const now = abs(day, minutes);
     let mins = 480, alarm = false;         // eight hours if nothing wakes you
@@ -222,14 +254,21 @@ const HomeLife = (() => {
     if (!alarm && now + mins > nat) mins = Math.max(60, nat - now);
     const hours = mins / 60;
     const wake = now + mins;
+    // Item 263. A night with the drill going is not a shorter night, it is a worse one, so this
+    // multiplies the quality and never the length — you still lose the hours to the bed.
+    // A whole night at full volume takes 45% off; the cap is there because you do eventually
+    // sleep through it, and a night that scores zero would make the flat unusable rather than
+    // annoying.
+    const noise = noiseNight(day, minutes, mins, SLEEP_DECK);
+    const spoil = clamp(noise.loud * 0.55, 0, 0.45);
     return {
-      mins, hours, alarm,
+      mins, hours, alarm, noise, spoil: +spoil.toFixed(2),
       wakeHour: hourOf(wake),
       // Four hours and nine hours must not produce the same morning. Rest fills to the fraction of
       // a full night you got; `rested` is the harsher curve, and it is what follows you all day.
-      rest: Math.round(100 * Math.min(1, hours / SLEEP_FULL)),
-      mood: Math.round(clamp((hours - 4) * 5, -14, 14)),
-      rested: clamp((hours - 4) / (SLEEP_FULL - 4), 0, 1),
+      rest: Math.round(100 * Math.min(1, hours / SLEEP_FULL) * (1 - spoil)),
+      mood: Math.round(clamp((hours - 4) * 5, -14, 14) - noise.loud * 9),
+      rested: clamp((hours - 4) / (SLEEP_FULL - 4), 0, 1) * (1 - spoil),
       // Waking after 上班时间 on a workday is the flat's one direct line into the job. It is not a
       // separate penalty: it means the punch you make when you get there is a late punch, and
       // Career.clockIn already knows what a late punch is worth.
@@ -625,6 +664,90 @@ const HomeLife = (() => {
                     day:o.guest.day | 0, hour:+o.guest.hour || 0, done:!!o.guest.done,
                     mood:+o.guest.mood || 0 };
     },
+    // ------------------------------------------------------------------ 楼梯 (item 251)
+    //
+    // The costs on `USE_AT.home['安全出口'].climb` are **per storey**, and applying them lived at
+    // the one call site that used them, which is how floor 11 and floor 3 came to cost the same.
+    // They are applied here instead so the lobby, the landing and any harness charge one climb
+    // the same way. `climb` is passed in rather than imported: this file does not read js/data.js.
+    stairFlights(from, to) { return Math.abs((to | 0) - (from | 0)); },
+    stairMetres(from, to) { return +(this.stairFlights(from, to) * STOREY).toFixed(2); },
+    stairCost(from, to, climb) {
+      const c = climb || {};
+      const n = this.stairFlights(from, to);
+      const per = (v, d) => (Number.isFinite(+v) ? +v : d);
+      return {
+        floors: n,
+        metres: this.stairMetres(from, to),
+        // Never zero minutes even for a half-flight: something that costs nothing is not a climb.
+        mins: n ? Math.max(1, Math.round(n * per(c.minsPerFloor, 1.2))) : 0,
+        rest: Math.round(n * per(c.restPerFloor, -3.2)),
+        mood: Math.round(n * per(c.moodPerFloor, -1.1)),
+        secs: +(per(c.secs, 2.4) + n * per(c.secsPerFloor, 0.24)).toFixed(2),
+        // Eleven storeys and one flight must not be described in the same sentence.
+        high: n >= per(c.highFrom, 6),
+        up: (to | 0) > (from | 0),
+      };
+    },
+
+    // ------------------------------------------------------------------ 楼上 (item 263)
+    // A named accessor over `Disrupt.noiseAt`, so the sleep rule above and anything that wants to
+    // say *why* it was loud both go through one place rather than two copies of the deck default.
+    noiseNow(day, minutes, deck) {
+      if (typeof Disrupt === 'undefined' || !Disrupt.noiseAt) return null;
+      return Disrupt.noiseAt(day, deck === undefined ? SLEEP_DECK : deck, minutes);
+    },
+    noiseNight(day, minutes, mins, deck) {
+      return noiseNight(day, minutes, mins, deck === undefined ? SLEEP_DECK : deck);
+    },
+
+    // --------------------------------------------------------- 邻居 in the car (items 264, 321)
+    //
+    // `livesOn` is authored on thirteen home rows in js/data.js and was read by nothing. It is the
+    // floor a person's flat is on, which is deliberately **not** where their body stands — every
+    // one of those rows is `deck: 0`, down in the lobby, because that is where the game can draw
+    // them. So this is the encounter as a *fact about the ride* rather than a second body: who is
+    // in the car depends on the floors the car passed and the hour, and it is the same person for
+    // the same hour of the same day, like everything else the calendar decides.
+    //
+    // Item 264 is the other half and is why `Story.knows` is here: the third time you share a lift
+    // with 老李 he says something, and the first time he does not. Depth over count — one resident
+    // who becomes familiar beats nine who never do.
+    liftShare(day, minutes, from, to, cast) {
+      const rows = cast || (typeof NPCS === 'undefined' ? null : NPCS);
+      if (!rows) return null;
+      const lo = Math.min(from | 0, to | 0), hi = Math.max(from | 0, to | 0);
+      if (lo === hi) return null;
+      const h = ((minutes % 1440) + 1440) % 1440 / 60;
+      const wd = (((day | 0) % 7) + 7) % 7;
+      // A trip that touches the ground floor is somebody going out or coming in, so anyone in the
+      // building can be aboard. A trip between two upper floors is only the people it passes.
+      const reaches = n => lo === 0 || (n.livesOn >= lo && n.livesOn <= hi);
+      const pool = rows.filter(n =>
+        n && n.place === 'home' && Number.isFinite(+n.livesOn) && reaches(n) &&
+        (!n.days || !n.days.length || n.days.includes(wd)) &&
+        (!n.hours || (h >= n.hours[0] && h < n.hours[1])));
+      if (!pool.length) return null;
+      // Two rides in three you have the car to yourself, which is what makes the third one worth
+      // noticing. Deterministic on the day and the hour, never Math.random — the same reason
+      // js/disrupt.js:14 gives for the metro.
+      const k = ((day | 0) * 31 + Math.floor(h) * 7 + lo * 3 + hi * 5) % (pool.length * 3);
+      if (k >= pool.length) return null;
+      const n = pool[k];
+      const ok = (typeof Story !== 'undefined' && Story.knows) ? Story.knows(n) | 0 : 0;
+      const who = n.name || n.hz;
+      return {
+        n, hz: n.hz, name: n.name, py: n.py, livesOn: n.livesOn, knows: ok,
+        zh: ok >= 2 ? `${who}也在电梯里，聊了一路。`
+          : ok >= 1 ? `${who}也在电梯里，点了点头。`
+          : `电梯里还有个人，按了${n.livesOn}楼。`,
+        en: ok >= 2 ? `${who} is in the car — you talk the whole way.`
+          : ok >= 1 ? `${who} is in the car. A nod, no more.`
+          : `Somebody else in the car. They press ${n.livesOn}.`,
+        mood: ok >= 2 ? 3 : ok >= 1 ? 1 : 0,
+      };
+    },
+
     reset() { S = fresh(); },
     // For harnesses only: the whole block, read-only.
     peek: () => S,

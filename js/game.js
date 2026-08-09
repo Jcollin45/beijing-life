@@ -7609,11 +7609,23 @@ function tickDelivery() {
     // so the cabinet, the corridor and the door are all reading one object.
     const p = HomeLife.addParcel(delivery.item.hz || delivery.item, delivery.item.en || '', day, 'locker');
     if (World.setLocker) World.setLocker(7, true);
+    // Item 257. 货到付款 meant a missed rider cost nothing at all, so there was no reason to be
+    // home — the parcel went in the locker and you collected it later, none the worse. A 外卖
+    // order is hot food, and hot food in a metal box for three hours is 超时: you still get it,
+    // it is still yours, and it is cold. That is the cost, and it is only the food's.
+    const missedDelivery = delivery.kind === 'waimai' ? '超时' : null;
+    if (missedDelivery) {
+      needs.mood = clamp(needs.mood - 6, 0, 100);
+      say('等不到人，放快递柜了，饭超时了，凉透了。',
+          `No answer. It went into the parcel locker — 超时, and it will be stone cold.`);
+      toast(`快递柜 · <span class="dim">取件码 ${p.code} — 超时, the food has gone cold</span>`);
+    } else {
+      say(`等不到人，放快递柜了，取件码${p.code}。`,
+          `No answer. It went into the parcel locker downstairs — code ${p.code}.`);
+      toast(`快递柜 · <span class="dim">取件码 ${p.code}</span>`);
+    }
     delivery = null;
     courier.here = false;
-    say(`等不到人，放快递柜了，取件码${p.code}。`,
-        `No answer. It went into the parcel locker downstairs — code ${p.code}.`);
-    toast(`快递柜 · <span class="dim">取件码 ${p.code}</span>`);
     updateHud();
     return;
   }
@@ -8089,6 +8101,20 @@ function openLiftPanel() {
       const f = HOME_FLOORS.find(q => q.deck === r.deck);
       toast(`${f.hz} · <span class="dim">the doors are closing</span>`);
       Vocab.sentenceHTML(`我去${f.hz}。`);
+      // Items 264 and 321. Who is in the car depends on the floors it passes and the hour, keyed
+      // on `livesOn` in js/data.js — which until now was authored on thirteen rows and read by
+      // nothing. It is a line rather than a body on purpose: every one of those rows is `deck: 0`
+      // and drawing a second figure inside the car costs a rig for a fifteen-second ride.
+      // `Story.knows` is what makes the third time you share it different from the first.
+      const share = HomeLife.liftShare(day, minutes, st.at, r.deck, typeof NPCS === 'undefined' ? null : NPCS);
+      if (share) {
+        say(share.zh, share.en);
+        if (share.mood) needs.mood = clamp(needs.mood + share.mood, 0, 100);
+        // A ride together is one of the ways you get to know somebody in this building, so it
+        // counts — quietly, and only when there was something said.
+        if (share.knows >= 1 && typeof Story !== 'undefined' && Story.heard)
+          Story.heard(share.n, true, day);
+      }
       return true;
     },
   });
@@ -12528,10 +12554,59 @@ function flatLabel(d, hz) {
                block:`这会儿不行，${a}点以后吧。`, blockTr:`Not now — after ${a}:00.` };
   }
 
+  // ---- 安全出口. A sign to read while the lift runs, and the way home when it does not.
+  //
+  // Items 250 and 251. The sign's joke — 十二层，还是坐电梯吧 — is only funny on a day there is a
+  // lift, so on a 检修/停电 day it inverts and the fire stair becomes an action. The cost is per
+  // storey and is applied by `HomeLife.stairCost`, not here: a flat charge made the eleventh floor
+  // the same as the third and the tower pointless, which is the whole of item 251.
+  if (d.stairs) {
+    const out = typeof Disrupt !== 'undefined' ? Disrupt.liftOut(day, minutes) : null;
+    const h = ((minutes % 1440) + 1440) % 1440 / 60;
+    const night = h >= HOME_RUSH.夜深[0] && h < HOME_RUSH.夜深[1];
+    // The stairwell light is on a sensor. That is true of the sign and of the climb, so it is
+    // read once here and appended to whichever of the two you get.
+    const lit = night && d.night ? `${d.night}` : '';
+    const litTr = night && d.nightTr ? ` ${d.nightTr}` : '';
+    if (!out)
+      return { ...d, done: lit || d.done, doneTr: (lit ? d.nightTr : d.doneTr) };
+    const here = World.level ? World.level() : 2;
+    // The two trips a tenant actually makes on the day the lift stops: home to 202, or down and
+    // out of the building. Any other pair is a floor picker, and a floor picker on a fire stair is
+    // a menu nobody opens twice.
+    const to = here === 2 ? 0 : 2;
+    const c = HomeLife.stairCost(here, to, d.climb);
+    if (!c.floors)
+      return { ...d, done: d.outDone || d.done, doneTr: d.outDoneTr || d.doneTr };
+    const cl = d.climb || {};
+    return { ...d, zh: cl.zh || '爬楼梯', py: cl.py || 'pá lóutī',
+             en: `${cl.en || 'climb the stairs'} — ${c.floors} ${c.floors === 1 ? 'storey' : 'storeys'} ` +
+                 `${c.up ? 'up' : 'down'}, about ${c.mins} min`,
+             secs: c.secs, mins: c.mins, pose: cl.pose || d.pose,
+             gain: { rest: c.rest, mood: c.mood },
+             stairTo: to, stairFloors: c.floors,
+             done: (c.high ? (cl.high || cl.done) : (cl.done || d.done)) + (lit ? lit : ''),
+             doneTr: (c.high ? (cl.highTr || cl.doneTr) : (cl.doneTr || d.doneTr)) + litTr };
+  }
+
   // ---- 睡觉. The wake time, not a fixed block.
   if (d.sleep) {
     const p = HomeLife.sleepPlan(day, minutes);
     const wake = zhTime(p.wakeHour);
+    // Item 263. A bad night has to be legible as a bad night, and it has to say whose fault it was
+    // — otherwise the rest bar is just lower and the player learns nothing. `noise.why` is the
+    // disruption's own record, so the reason is F10's drill or F9's wedding by name.
+    const noise = p.noise || { loud:0, why:null };
+    if (noise.loud >= 0.08) {
+      const why = noise.why || {};
+      return { ...d, mins:p.mins, secs: 3.0 + Math.min(3.8, p.hours * 0.5),
+               zh: p.alarm ? '睡到闹钟响' : '睡觉',
+               py: p.alarm ? 'shuì dào nàozhōng xiǎng' : 'shuìjiào',
+               en: `sleep ${p.hours.toFixed(1)}h — up at ${hm(p.wakeHour)}, and it is noisy upstairs`,
+               gain:{ rest:p.rest, mood:p.mood },
+               done: `${why.hz || '楼上一直有声音'}，一晚上没睡踏实。`,
+               doneTr: `${why.en || 'Noise from upstairs all night.'} You slept badly.` };
+    }
     return { ...d, mins:p.mins, secs: 3.0 + Math.min(3.8, p.hours * 0.5),
              zh: p.alarm ? '睡到闹钟响' : '睡觉',
              py: p.alarm ? 'shuì dào nàozhōng xiǎng' : 'shuìjiào',
@@ -14012,6 +14087,18 @@ function stopUse(finished) {
     // the car opens the floor panel again. Neither of them moves you: 走进去 does that, and
     // choosing the floor does the rest.
     if (def.liftCall) World.callLift();
+    // ---- 爬楼梯 (items 250, 251). The stairs are the only way between decks that is not the car,
+    // and they only exist as a way through on a day the car does not run. `stairTo` is set by
+    // `useLabel`'s `d.stairs` branch, which has already charged the minutes and the rest per storey.
+    if (def.stairTo !== undefined && World.setFloor) {
+      World.setFloor(def.stairTo);
+      // The body's height above the shell is not implied by the deck — the restore path at
+      // js/game.js:12053-12054 sets both, and so must this, or you arrive on floor 2 standing at
+      // the height of the lobby.
+      P.lift = World.deckY(def.stairTo);
+      toast(`${def.stairFloors}层 · <span class="dim">` +
+            `${def.stairFloors} ${def.stairFloors === 1 ? 'storey' : 'storeys'} on foot</span>`);
+    }
     if (def.liftPanel) openLiftPanel();
     if (def.mallLift) openMallLiftPanel();
     if (def.mallCinemaDoor) {
