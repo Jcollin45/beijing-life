@@ -894,7 +894,7 @@ const Street = Lazy('Street', () => {
   //
   // Everything here is placed off `jit`, never off `rnd()`. These are called from the middle of
   // the build and a draw from the random stream would shift every later decision in the district,
-  // down to which of the forty units on the far parade have their shutters down.
+  // down to which of the parade's units have their shutters down.
   function roofJunk(cx, cz, ridgeY, len, span, rise) {
     const j = jit(cx * 3.1, cz * 1.7);
     const half = span / 2;
@@ -1607,7 +1607,7 @@ const Street = Lazy('Street', () => {
           { hard: true, gloss: .18, tag: '超市' });
         // One kind of goods per tier, chosen by index and never by `rnd()`: a call to the build's
         // random stream here would shift every later decision in the district, down to which of
-        // the forty units on the far parade have their shutters down.
+        // the parade's units have their shutters down.
         for (let i = 0; i < 4; i++) {
           const ix = gx - .36 + i * .24, c = STOCK[(w * 5 + t * 2 + i) % STOCK.length];
           if (t === 0) {                                    // cartons stood on end
@@ -2887,6 +2887,11 @@ const Street = Lazy('Street', () => {
       { focus: [25.60, tlz + 3.70], reach: 2.6 });
 
     // ---- the far side of the road: shopfronts under six storeys of flats.
+    //
+    // TWENTY-TWO units, not forty. Counted 2026-08-09 by running the builder: blocks are
+    // 13 + rnd()*8 m long and each carries `round(len / 4.8)` units, and this file said "forty"
+    // in five places while STOREFRONT-UPGRADES.md repeated it. Nothing was built wrong — but D2's
+    // saving is 22 valance strips down to 7, not 40 down to 7, and A11 is 22 reveals.
     // The road runs north-south, so the frontage has to face -x and the blocks have to be a
     // row along z. Built as a row along x, only the first one faced the street at all: the
     // rest queued up behind it, the road had no built edge, and a camera swung round behind
@@ -3008,7 +3013,7 @@ const Street = Lazy('Street', () => {
         // on any of forty shopfronts. So the street was covered in writing the player could look at
         // and never ask about — which is a strange state for a game whose whole subject is reading
         // the street. Two of them is the right number to start with: a learner needs 药店 and 面包房
-        // long before 五金店, and forty labels down one pavement would be a wall of text rather than
+        // long before 五金店, and a label on every unit would be a wall of text rather than
         // a parade of shops.
         //
         // Which unit they land on is decided by the seeded RNG that picks the names, so it is stable
