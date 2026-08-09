@@ -207,16 +207,18 @@
     flat((BE0 + BE1) / 2, .006, 0, BE1 - BE0, 188, BIKE, { mode: 10, gloss: .18, ...ROADMAT });
 
     // 机非分界线 west — the solid line between the bike lane and the carriageway.
-    for (const [z0, z1] of [[-90, ISZ0], [ISZ1, 90]])
+    // Broken at BOTH crossings now — road markings stop where a crossing starts, and there are
+    // two of them on this road.
+    for (const [z0, z1] of [[-90, -11.00], [-8.40, ISZ0], [ISZ1, 90]])
       flat(BW1, YP, (z0 + z1) / 2, .15, z1 - z0, PAINT, { gloss: .10 });
     // 机非分界线 east — the shell's dashes at 35.10, re-lined solid. A road that has been marked
     // over its old lines is what every road in this city is, and the ghost of the dashes under
     // 22 cm of new paint is why it is drawn that wide. Broken at the crossing and at the three
     // manhole covers on x 35.30, which the line would otherwise slice through.
-    for (const [z0, z1] of [[-90, -28.6], [-27.6, ISZ0], [ISZ1, 33.4], [34.4, 90]])
+    for (const [z0, z1] of [[-90, -28.6], [-27.6, -11.00], [-8.40, ISZ0], [ISZ1, 33.4], [34.4, 90]])
       flat(BE0, .0220, (z0 + z1) / 2, .22, z1 - z0, PAINT, { gloss: .10 });
     // 边缘线 — the outer edge of the east bike lane, against the kerb.
-    for (const [z0, z1] of [[-90, ISZ0], [ISZ1, 90]])
+    for (const [z0, z1] of [[-90, -11.00], [-8.40, ISZ0], [ISZ1, 90]])
       flat(KE - .22, YP, (z0 + z1) / 2, .12, z1 - z0, PAINT, { gloss: .09 });
 
     // 停止线. Both run from the centre line out to the kerb, over the bike lane too — bikes hold
@@ -326,6 +328,35 @@
     ramp(37.06, .135);
     tactile(26.98, -0.20, .52, CZ1 - CZ0 + .20);
     tactile(38.06, -0.20, .52, CZ1 - CZ0 + .20);
+
+    // ---------------------------------------------------------- 人行横道 二, uncontrolled
+    //
+    // This road had ONE gap in 9.84 m of barrier, at z -2.50 .. 2.10, and everything the west
+    // footway is now for is south of it: 北京银行 at z -11.40 .. -7.10, 药店 at -6.90 .. -3.60,
+    // the 公交车站 at -12.0. Coming off the bus and crossing to the office meant walking ten
+    // metres north to a gap and ten back. This is the second gap, on the bank's own centre line
+    // at z -9.25.
+    //
+    // No signal, and that is the design, not a shortcut. An uncontrolled 人行横道 between two
+    // junctions is the commonest crossing in this city; js/street-traffic.js is not told about
+    // it, exactly as a driver is not told about it, and the shell's one signalised crossing keeps
+    // being the one that stops the traffic. Paint, two dropped kerbs and two tactile blocks —
+    // it adds no collider and no phase, so it cannot trap a body or a car.
+    const XZ0 = -11.00, XZ1 = -8.40, XZC = (XZ0 + XZ1) / 2, XD = XZ1 - XZ0;
+    // 45 cm bars on a 1.05 m pitch, which is what the shell's own zebra is laid on. Started clear
+    // of the kerb faces so no bar half-disappears under a kerb.
+    for (let x = KW + .58; x < KE - .45; x += 1.05)
+      flat(x, YP, XZC, .45, XD, PAINTW, { gloss: .10 });
+    // 缘石坡道 both sides, the same 1.30 m ramp and the same tilt the first crossing uses.
+    for (const [cx, tilt] of [[27.94, -.135], [37.06, .135]]) {
+      box(cx, .085, XZC, 1.30, .055, XD, CONC,
+        { hard: true, rz: tilt, mode: 9, gloss: .18, ...CONMAT });
+      for (const s of [-1, 1])
+        box(cx, .105, XZC + s * (XD / 2 + .11), 1.30, .16, .20, CONC,
+          { hard: true, rz: tilt * .55, mode: 9, gloss: .18 });
+    }
+    tactile(26.98, XZC, .52, XD + .20);
+    tactile(38.06, XZC, .52, XD + .20);
 
     // The lamps used to be advice only: the player could walk straight into live traffic on red.
     // A thin collider at each kerb makes the crossing enforce the same phase it displays. The tick
