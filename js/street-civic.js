@@ -615,7 +615,14 @@ StreetFit['civic'] = S => {
 
   // ---- 志愿服务站. The red-and-white stall that stands on every corner of this city: a parasol,
   // a folding table, an urn of hot water and a board with the two words on it.
-  const VX = 40.20, VZ = 7.00;
+  // MOVED to the west footway with the two shops, and mirrored to face +x like them: every VX
+  // offset flips sign and the glyph yaw turns from -PI/2 to +PI/2. It is freestanding, so it
+  // stands ON the pavement at x 25.00 rather than against the 23.30 building line — the parasol
+  // is 1.92 m across and at 24.10 it would have grown through the shopfronts.
+  //
+  // z 12.00, not 7.00: the road tree that moved to (25.4, 9.4) reaches z 10.6 with its crown, and
+  // 11.04 .. 12.96 clears it. The zone ends at 13.5.
+  const VX = 25.00, VZ = 12.00;
   cyl(VX, 1.10, VZ, .035, 2.20, col.steelD, { gloss: G.metal });
   taper(VX, 2.02, VZ, 1.80, .34, 1.80, REDV, { gloss: .18 });
   taper(VX, 1.90, VZ, 1.92, .12, 1.92, C('#eae6dc'), { gloss: .18 });
@@ -624,12 +631,12 @@ StreetFit['civic'] = S => {
   box(VX, .34, VZ, .52, .05, 1.12, C('#eae6dc'), { hard: true, gloss: .22 });
   for (const s of [-1, 1]) for (const q of [-1, 1])
     cap(VX + s * .20, .17, VZ + q * .47, .016, .34, .016, col.steelD, { gloss: G.metal });
-  box(VX - .015, .30, VZ, .50, .44, 1.08, REDV, { hard: true, gloss: .20 });
-  glyphs(VX - .272, .30, VZ, -Math.PI / 2, '志愿服务站',
+  box(VX + .015, .30, VZ, .50, .44, 1.08, REDV, { hard: true, gloss: .20 });
+  glyphs(VX + .272, .30, VZ, Math.PI / 2, '志愿服务站',
     { size: .105, gap: .028, color: C('#f6ece0'), mode: 1, lift: .008 });
-  cyl(VX + .02, .51, VZ - .36, .09, .30, C('#c9c4b8'), { gloss: .30 });
-  cyl(VX + .02, .675, VZ - .36, .095, .035, C('#8a8f95'), { gloss: .34 });
-  box(VX + .04, .47, VZ + .36, .26, .20, .30, C('#e2ded2'), { hard: true, gloss: .18 });
+  cyl(VX - .02, .51, VZ - .36, .09, .30, C('#c9c4b8'), { gloss: .30 });
+  cyl(VX - .02, .675, VZ - .36, .095, .035, C('#8a8f95'), { gloss: .34 });
+  box(VX - .04, .47, VZ + .36, .26, .20, .30, C('#e2ded2'), { hard: true, gloss: .18 });
 
   // ---- the hedge. Clipped box in stone planters down the civic stretch, which is what separates
   // a pavement that has been looked after from one that has not.
