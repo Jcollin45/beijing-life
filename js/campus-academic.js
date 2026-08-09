@@ -57,6 +57,62 @@ CampusFits.register('academic', 20, kit => {
       { hard:true, mode:1, gloss:G.glass }), rnd());
   }
 
+  // Custom meshes let a whole tactile run remain one scene prop while retaining literal raised
+  // bars. Mesh registration is deferred safely when a tooling build constructs Campus before GL.
+  const meshDefs = [];
+  let customMeshesReady = false, tactileMeshId = 0;
+  const FACE_AXES = [
+    [[1,0,0],[0,0,1],[0,1,0]], [[-1,0,0],[0,0,-1],[0,1,0]],
+    [[0,1,0],[1,0,0],[0,0,-1]], [[0,-1,0],[1,0,0],[0,0,1]],
+    [[0,0,1],[-1,0,0],[0,1,0]], [[0,0,-1],[1,0,0],[0,1,0]],
+  ];
+  const faceFlip = ([n,a,b]) =>
+    (a[1]*b[2]-a[2]*b[1])*n[0] + (a[2]*b[0]-a[0]*b[2])*n[1] +
+    (a[0]*b[1]-a[1]*b[0])*n[2] < 0;
+  function appendMeshBox(d, x0, x1, y0, y1, z0, z1) {
+    const c=[(x0+x1)/2,(y0+y1)/2,(z0+z1)/2], e=[(x1-x0)/2,(y1-y0)/2,(z1-z0)/2];
+    const extent=a=>Math.abs(a[0])*e[0]+Math.abs(a[1])*e[1]+Math.abs(a[2])*e[2];
+    for (const face of FACE_AXES) {
+      const [n,a,b]=face, en=extent(n), ea=extent(a), eb=extent(b), base=d.pos.length/3;
+      for (const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]) {
+        d.pos.push(c[0]+n[0]*en+a[0]*sx*ea+b[0]*sy*eb,
+          c[1]+n[1]*en+a[1]*sx*ea+b[1]*sy*eb,
+          c[2]+n[2]*en+a[2]*sx*ea+b[2]*sy*eb);
+        d.nor.push(...n); d.uv.push((sx+1)/2,(sy+1)/2);
+      }
+      if (faceFlip(face)) d.idx.push(base,base+2,base+1,base,base+3,base+2);
+      else d.idx.push(base,base+1,base+2,base,base+2,base+3);
+    }
+  }
+  function discMesh(radius=.225, segments=28) {
+    const d={pos:[0,0,0],nor:[0,1,0],uv:[.5,.5],idx:[]};
+    for (let i=0;i<=segments;i++) {
+      const a=i*Math.PI*2/segments;
+      d.pos.push(Math.cos(a)*radius,0,Math.sin(a)*radius);
+      d.nor.push(0,1,0); d.uv.push(Math.cos(a)*.5+.5,Math.sin(a)*.5+.5);
+      if (i<segments) d.idx.push(0,i+2,i+1);
+    }
+    return d;
+  }
+  function customMeshProp(name, data, x, y, z, yaw, color, dims, options={}) {
+    const p=box(x,y,z,1,1,1,color,{hard:true,...options});
+    p.mesh=name; p.m=M.trs(x,y,z,yaw,1,1,1); p.fixed=true;
+    p.cx=x; p.cy=y+dims[1]/2; p.cz=z; p.r=.5*Math.hypot(...dims);
+    p.ob={x,y,z,ry:yaw,sx:dims[0],sy:dims[1],sz:dims[2]};
+    meshDefs.push({name,data,ready:false});
+    return p;
+  }
+  function ensureCustomMeshes() {
+    if (customMeshesReady || typeof R==='undefined' || !R || !R.gl || typeof R.mesh!=='function') return;
+    for (const q of meshDefs) {
+      if (q.ready) continue;
+      if (!(typeof R.hasMesh==='function' && R.hasMesh(q.name)))
+        R.mesh(q.name,q.data.pos,q.data.nor,q.data.uv,q.data.idx);
+      q.ready=true;
+    }
+    customMeshesReady=meshDefs.every(q=>q.ready);
+  }
+
   // ---------------------------------------------------------------- circulation and quad
   path(-3, 19.7, 5.2, 64.6);             // P-SPINE
   path(0, 20, 96, 4.8);                  // P-CROSS
@@ -82,13 +138,17 @@ CampusFits.register('academic', 20, kit => {
   kerbX(18, 24, 28.8); kerbX(18, 31.2, 40.8); kerbX(18, 43.2, 46);
 
   // 124 m jogging loop. Dots mark corners; transverse ticks mark each ten metres.
-  const jogY = .016;
+  const jogY = .012; // .004 m above the paved support
   flat(0, jogY, 23, 38, .12, col.red, { gloss:.10 });
   flat(0, jogY, 47, 38, .12, col.red, { gloss:.10 });
   flat(-19, jogY, 35, .12, 24, col.red, { gloss:.10 });
   flat(19, jogY, 35, .12, 24, col.red, { gloss:.10 });
-  for (const [x, z] of [[-19,23],[19,23],[19,47],[-19,47]])
-    cyl(x, jogY, z, .225, .012, col.red, { hard:true, gloss:.10 });
+  const jogDot=discMesh();
+  for (let i=0;i<4;i++) {
+    const [x,z]=[[-19,23],[19,23],[19,47],[-19,47]][i];
+    customMeshProp('campus-jog-dot-v2',jogDot,x,jogY,z,0,col.red,[.45,.001,.45],
+      {gloss:.10});
+  }
   function loopPoint(m) {
     if (m <= 38) return [-19 + m, 23, false];
     if (m <= 62) return [19, 23 + m - 38, true];
@@ -103,14 +163,18 @@ CampusFits.register('academic', 20, kit => {
   thing('跑道', -19, .03, 35, '沿着跑道跑一圈。', 'Run one lap around the track.',
     '跑道 is a running track. 跑步 is to run.', { focus:[-19,35], reach:1.2 });
 
-  // Exact tactile route. The strip is one raised, batched surface per straight run; its path
-  // material repeats at .30 m so the rib rhythm does not cost hundreds of individual props.
+  // Exact tactile route. Each straight run is one merged mesh: a .30 m strip from y=.008..012,
+  // plus literal .10 m transverse bars every .30 m whose top is exactly y=.014.
   function tactileSegment(a, b) {
     const dx = b[0] - a[0], dz = b[1] - a[1];
     const len = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz);
     const cx = (a[0] + b[0]) / 2, cz = (a[1] + b[1]) / 2;
-    box(cx, .014, cz, .30, .028, len, held(col.yellow, S.path),
-      { hard:true, ry:yaw, gloss:.10, ...S.path, matScale:.30, mode:11 });
+    const data={pos:[],nor:[],uv:[],idx:[]};
+    appendMeshBox(data,-.15,.15,0,.004,-len/2,len/2);
+    for (let d=.15;d+.05<=len+1e-6;d+=.30)
+      appendMeshBox(data,-.15,.15,.004,.006,-len/2+d-.05,-len/2+d+.05);
+    customMeshProp(`campus-tactile-v2-${tactileMeshId++}`,data,cx,.008,cz,yaw,
+      held(col.yellow,S.path),[.30,.006,len],{gloss:.10,...S.path,matScale:.30});
   }
   const tactileMain = [[-11.4,-9.35],[-6,-7.5],[-3,-7.5],[-3,4.8],[-5,4.8],[-5,8.2],[-3,8.2],[-3,50]];
   for (let i = 1; i < tactileMain.length; i++) tactileSegment(tactileMain[i - 1], tactileMain[i]);
@@ -275,5 +339,6 @@ CampusFits.register('academic', 20, kit => {
     { focus:[27.30,50], reach:2.6 });
   libraryThing.exit = { place:'library', at:{ x:1.4, z:-3.3, yaw:.02 * Math.PI } };
 
-  return {};
+  ensureCustomMeshes();
+  return { tick(){ ensureCustomMeshes(); } };
 });

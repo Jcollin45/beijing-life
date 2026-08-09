@@ -174,11 +174,13 @@ const Street = Lazy('Street', () => {
   // the build's random stream — consuming numbers here would shift every later decision in the
   // district. `j` is how bright this particular sheet of glass is, `w` how warm the room behind
   // it burns at night. A facade painted one flat value is a spreadsheet, not a building.
-  function pane(p, warm, deep) {
+  function pane(p, warm, deep, mine) {
     const o = p.ob || { x: 0, y: 0, z: 0 };
     const h = Math.sin(o.x * 12.9898 + o.y * 4.1414 + o.z * 78.233) * 43758.5453;
     const j = h - Math.floor(h), h2 = h * 7.31, j2 = h2 - Math.floor(h2);
-    panes.push({ p, warm, deep, j, j2, y: o.y });
+    // 406. `mine` marks a pane of 十八号楼's own flat 202, whose light is the player's switch
+    // rather than a hash. Everything else on the block is a neighbour and stays fixed.
+    panes.push({ p, warm, deep, j, j2, y: o.y, mine });
     return p;
   }
 
@@ -620,7 +622,7 @@ const Street = Lazy('Street', () => {
     // than a coin toss.
     const warm = o.warm === undefined ? rnd() : o.warm;
     pane(box(x, y, d(.055), w, h, .02, col.glassDay,
-      { hard: true, mode: 1, gloss: G.glass }), warm);
+      { hard: true, mode: 1, gloss: G.glass }), warm, undefined, o.mine);
     if (o.frame !== false) {
       box(x, y, d(.070), .045, h, .02, col.frame, { hard: true, gloss: G.paint });
       box(x, y, d(.070), w, .045, .02, col.frame, { hard: true, gloss: G.paint });
@@ -682,9 +684,19 @@ const Street = Lazy('Street', () => {
     // an edge. Emissive, not a light — one lit strip a shop, on a district that is fill-rate
     // bound, where forty point lights would not be.
     box(x, y + h / 2 + .05, z + n * .17, w + .10, .10, .34, base, { hard: true, gloss: .26 });
-    litten(box(x, y - h / 2 - .04, z + n * .28, w - .06, .07, .03,
-      [Math.min(1, ink[0] * .55 + .45), Math.min(1, ink[1] * .55 + .45), Math.min(1, ink[2] * .55 + .45)],
+    const lit = [Math.min(1, ink[0] * .55 + .45), Math.min(1, ink[1] * .55 + .45),
+                 Math.min(1, ink[2] * .55 + .45)];
+    litten(box(x, y - h / 2 - .04, z + n * .28, w - .06, .07, .03, lit,
       { hard: true, mode: 1, glow: .10 }), glowK * 1.25);
+    // 灯箱 return. The board is a box and the valance under it is lit, but the lit part was still
+    // one flat face: a 灯箱 is a tray of light and what says so is the RETURN — the edge that runs
+    // round the tray and glows on its own, so the sign reads as thick from an oblique angle
+    // instead of collapsing to a painted panel. ONE quad per board, matched to the valance, which
+    // is the whole of the budget: `.audit.js:327` has this district fill-rate bound and
+    // `street-retail.js:12` costs a mode-1 glowing quad at half a transparent scene copy. Eleven
+    // named shops carry one; the forty anonymous units on the parade do not.
+    litten(box(x, y + h / 2 - .02, z + n * .285, w - .06, .05, .025, lit,
+      { hard: true, mode: 1, glow: .07 }), glowK * .9);
     // Sized to fill the board. 0.82 of the panel rather than 0.70, and 0.92 of the run rather than
     // 0.86: the datum fixed WHERE every sign sits, and the next thing a street needs is for the
     // writing on them to be big enough to read while you are still deciding whether to cross.
@@ -698,6 +710,42 @@ const Street = Lazy('Street', () => {
     // dark is somebody's shopfront. Set out in front of the board so the wall it is mounted on
     // is lit *by* it rather than from inside itself.
     B.light(x, y - .30, z + n * .80, [1.0, .74, .46], .45, w + 3.0);
+  }
+
+  // 遮阳篷 — the shop awning, one profile for the whole alley. Before this only 幸福超市 had one,
+  // so its stretch of frontage read richer than 老李面馆's and 五金电器's for no reason anybody
+  // could name from the street. The PROJECTION is 超市's own and is not a free number: slats
+  // 1.30 m deep at rx -.30 hung on z + .78, which puts the front rail on z + 1.34 (front face
+  // z + 1.39) and the sheet between y-.24 at the wall and y+.24 at the front. At y 2.92 that is
+  // the 2.68 .. 3.16 band the 超市 has always occupied — under the shutter housing at 2.86 and
+  // clear of the fascia at 3.12.
+  //
+  // `skip` breaks the run for a projecting sign: 五金's 侧招 hangs at x 16.62 on the shared
+  // BLADE line (2.27 .. 2.83) and the awning's own rear edge is at 2.68, so the two want the
+  // same 15 cm of air. A real frontage breaks its awning round the sign rather than either one
+  // moving, and that is what this does.
+  function awning(x, y, z, n, c1, c2, skip) {
+    for (let i = 0; i < n; i++) {
+      const sx = x + (i - (n - 1) / 2) * .60;
+      if (skip !== undefined && Math.abs(sx - skip) < .45) continue;
+      box(sx, y, z + .78, .60, .10, 1.30, i % 2 ? c2 : c1, { hard: true, rx: -.30, gloss: .24 });
+    }
+    box(x, y - .32, z + 1.34, n * .60 + .10, .22, .10, c2, { hard: true, gloss: .24 });
+  }
+
+  // 卷帘门 housing — the boxed-in roller drum every Chinese shopfront has over its glass. Three
+  // of the alley's did not: the glass simply stopped and the sign started, which is why the
+  // fascia band read as painted onto the wall rather than bolted to a shop. It lives in the one
+  // clear band there is: above the frontage head and below the boards, so top <= 3.12 where
+  // FASCIA - FASCIAH/2 puts the bottom of every name board on this street. No collider — the
+  // drum is at 2.9 m and `solid()` is a 2D footprint with no height, so one here would wall off
+  // the pavement in front of the shop it belongs to.
+  function shutterBox(x, y, z, w, h) {
+    box(x, y, z + .13, w, h, .26, col.steel, { hard: true, gloss: .34, ...SHUT });
+    box(x, y - h / 2 + .02, z + .25, w + .04, .05, .05, col.steelD, { hard: true, gloss: .36 });
+    for (const s of [-1, 1])
+      box(x + s * (w / 2 + .03), y, z + .13, .06, h + .05, .28, col.steelD,
+        { hard: true, gloss: .34 });
   }
 
   // A repeated threshold language for places the player can actually enter. The painted mat
@@ -1249,6 +1297,18 @@ const Street = Lazy('Street', () => {
     // so it gets its own treatment further down.
     const bays = [];
     for (let bx = NB.x0 + 1.9; bx < NB.x1 - 1.2; bx += 3.42) bays.push(bx);
+    // 406. Which bay is yours. Flat 202 is the deck-2 flat off the landing js/home-corridor.js
+    // builds, so its street face is the bay next to the 单元门 — the nearest one that is not the
+    // stairwell slot. This is a convention, not a measured correspondence: js/world.js's interior
+    // (x, z) and this facade were never laid out against each other, and nothing in the flat can
+    // see which pane the street picked.
+    // Reduced without a seed, over the filtered list. Seeding with `bays[0]` was wrong and would
+    // have gone unnoticed: bays[0] can itself be the stairwell bay, and being nearest the door is
+    // exactly what wins the comparison, so the flag would have landed on the slot windows.
+    const homeTowerBays = bays.filter(b => Math.abs(b - DOOR) >= 1.8);
+    const homeTowerBx = homeTowerBays.length
+      ? homeTowerBays.reduce((a, b) => Math.abs(b - DOOR) < Math.abs(a - DOOR) ? b : a)
+      : null;
     for (const bx of bays) {
       // Three things decide a bay, and all three are new with the block's real height:
       //
@@ -1270,6 +1330,9 @@ const Street = Lazy('Street', () => {
         const lod = f <= FACADE_LOD ? 0 : 1;
         const warm = .18 + jit(bx * 3.7, deck * 1.9) * .82;
         const isDoor = Math.abs(bx - DOOR) < 1.8;
+        // Yours only on deck 2. The eleven storeys above are neighbours and keep their hash.
+        const wo = (deck === 2 && bx === homeTowerBx && !isDoor)
+          ? { warm, mine: true } : { warm };
         if (isDoor) {           // stairwell: tall narrow slot windows, lit by the 声控灯 behind
           fwin(bx, y, NB.z1, 1.05, 1.35, { frame: false, warm: .92 });
           continue;
@@ -1297,14 +1360,14 @@ const Street = Lazy('Street', () => {
             box(bx, y - .48, NB.z1 + 1.02, 3.00, .86, .07, col.railD, { hard: true, gloss: .3 });
             box(bx, y + .18, NB.z1 + 1.02, 3.04, .07, .10, col.rail, { hard: true, gloss: .34 });
           }
-          fwin(bx - .78, y + .18, NB.z1, 1.28, 1.45, { warm });
-          fwin(bx + .78, y + .18, NB.z1, 1.28, 1.45, { warm });
+          fwin(bx - .78, y + .18, NB.z1, 1.28, 1.45, wo);
+          fwin(bx + .78, y + .18, NB.z1, 1.28, 1.45, wo);
           if (lod === 0 && jit(bx, f * 5.3) > .45) for (let i = 0; i < 3; i++)  // laundry on rail
             box(bx - .6 + i * .6, y - .58, NB.z1 + 1.06, .44, .70, .05,
               [col.white, col.blue, col.plastic, col.cream][(jit(bx + i * 2.1, f) * 4) | 0],
               { mode: 7, gloss: G.fabric, ry: (jit(bx, f + i) - .5) * .1 });
         } else {
-          fwin(bx, y, NB.z1, 2.05, 1.50, { warm });
+          fwin(bx, y, NB.z1, 2.05, 1.50, wo);
           if (lod === 0 && jit(bx * 1.7, f) > .35) acBox(bx + 1.35, y - 1.05, NB.z1);
         }
       }
@@ -1496,6 +1559,14 @@ const Street = Lazy('Street', () => {
     for (const gx of [-2.55, -1.28, 0, .99])
       box(SHOP + gx, 1.35, ez + .29, .09, 2.42, .07, col.steel, { hard: true, gloss: G.metal });
     box(SHOP, 2.62, ez + .30, 5.5, .12, .07, col.steel, { hard: true, gloss: G.metal });
+    // A9 · the transom. Every pane in the district was one sheet of glass between two mullions;
+    // a real shopfront divides the head off as a fanlight and puts a bar up the middle of it. The
+    // display run only — 4.00 m centred on SHOP - .70, which is the stallriser's own span, so the
+    // bar stops clear of the door reveal at 8.42 instead of running through it the way the head
+    // rail above does. Steel, 7 cm, and no new panes: the glass behind is the glass that was here.
+    box(SHOP - .70, 2.16, ez + .30, 4.00, .07, .07, col.steel, { hard: true, gloss: G.metal });
+    for (const gx of [-1.9, -.65, .65])
+      box(SHOP + gx, 2.37, ez + .30, .06, .38, .07, col.steel, { hard: true, gloss: G.metal });
     // Stallriser, head and two end returns, closing the new cavity. Without them the glass stood
     // 18 cm off the wall with daylight round all four edges of it: from a low camera the paving ran
     // on under the shopfront into a void, and from either side you looked straight along the
@@ -1550,11 +1621,14 @@ const Street = Lazy('Street', () => {
       }
     }
     signBoard(SHOP, FASCIA, ez + .10, 5.00, FASCIAH, col.red, col.goldL, '幸福超市');
-    // a red-and-white striped awning over the door end
-    for (let i = 0; i < 9; i++)
-      box(SHOP - 2.4 + i * .60, 2.92, ez + .78, .60, .10, 1.30,
-        i % 2 ? col.white : col.red, { hard: true, rx: -.30, gloss: .24 });
-    box(SHOP, 2.60, ez + 1.34, 5.5, .22, .10, col.white, { hard: true, gloss: .24 });
+    // The red-and-white striped awning over the door end. Geometry unchanged — it is now the
+    // profile the other two alley frontages are built to, so `awning()` draws all three.
+    awning(SHOP, 2.92, ez, 9, col.red, col.white);
+    // A1 · the 卷帘门 housing. 2.86 .. 3.10, which lands its top flush with the white surround
+    // and 2 cm under the fascia board's own bottom edge at FASCIA - FASCIAH/2 = 3.12. Its
+    // underside clears the awning by 8 cm: the sheet tilts UP away from the wall (rx -.30 puts
+    // the front edge high), so its rear corner at z ez+.13 is the low point at 2.68.
+    shutterBox(SHOP, 2.98, ez + .00, 6.00, .24);
 
     // A dedicated double glass door. The red surround, gold handles and bright transom are
     // deliberately stronger than the window mullions, while the dark reveal makes the glass
@@ -1680,6 +1754,13 @@ const Street = Lazy('Street', () => {
         { hard: true, mode: 1, gloss: G.glass, tag: '餐馆' }), .97);
     for (const mx of [-2.22, -.88, .52])
       box(RST + mx, 1.675, ez + .28, .09, 2.03, .10, col.steel, { hard: true, gloss: G.metal });
+    // A9 · the transom, on the same steel as the mullions and stopping on the outer two of them
+    // (RST-2.22 .. RST+.52, so 2.83 m centred on RST-.85). 2.28 divides a 1.91 m sheet into a
+    // 1.53 m light and a 35 cm fanlight, and the fanlight gets a bar up the middle of each bay.
+    // No new panes: the glass is the glass that was already here, and this is joinery over it.
+    box(RST - .85, 2.28, ez + .28, 2.83, .07, .10, col.steel, { hard: true, gloss: G.metal });
+    for (const gx of [-1.55, -.15])
+      box(RST + gx, 2.485, ez + .28, .06, .35, .10, col.steel, { hard: true, gloss: G.metal });
     // the doorway itself, at the +x end, standing open behind its strip curtain. A deep dark
     // reveal and red jambs separate it from the windows; the warm interior is set farther back
     // so the curtain now reads as something you can walk through instead of an opaque panel.
@@ -1705,6 +1786,13 @@ const Street = Lazy('Street', () => {
     capsule(RSTDOOR + .57, 1.35, ez + .82, .028, .42, .028, col.goldL,
       { ry: -.72, gloss: G.metal, tag: '餐馆' });
     entryMat(RSTDOOR, ez + 1.05, '餐馆');
+    // A7 · the awning, and A1 · the housing over it. Same projection as 超市's — the point of the
+    // item is that one frontage in three having an awning made its neighbours read as the poor
+    // relations. Eight slats, 4.90 m, inside the 5.00 m frontage. The awning's low rear corner is
+    // at 2.68 and this shopfront's mullions stop at 2.69, so the sheet passes 2.7 cm over the
+    // window head rather than through it. The housing sits on the frontage's own top at 3.10.
+    awning(RST, 2.92, ez, 8, col.red, col.cream);
+    shutterBox(RST, 2.98, ez + .06, 4.90, .24);
     signBoard(RST, FASCIA, ez + .10, 4.60, FASCIAH, col.red, col.goldL, '老李面馆');
     // 面 painted big on the glass, a red lantern at the door, and the menu case beside it
     glyphs(RST - .85, 1.62, ez + .31, 0, '牛肉面',
@@ -2840,9 +2928,29 @@ const Street = Lazy('Street', () => {
       const shops = Math.max(1, Math.round(len / 4.8));
       for (let i = 0; i < shops; i++) {
         const sw = len / shops, sz2 = cz - len / 2 + (i + .5) * sw;
+        // Which unit of the reachable run this is. `nearUnit` counts only the strip of far
+        // pavement a body can stand on (|z| < 11.5) and it used to be incremented forty lines
+        // down, inside the name override. Hoisted here because D4 has to decide before the board
+        // colour is drawn; the VALUE is unchanged — nothing between the two sites read it.
+        const near = Math.abs(sz2) < 11.5 ? ++nearUnit : 0;
+        // D4 · the parade's two failures. Every real run of forty shopfronts has one board the
+        // sun has taken and one unit with its sign out, and their absence is most of why forty
+        // units read as a repeated texture rather than forty businesses. Both are COLOUR ONLY —
+        // same props, same count, and the dark one gives an emissive quad back rather than
+        // adding one. Placed on the reachable stretch so they are seen, not inferred.
+        const bleached = near === 2, dead = near === 4;
         pane(box(FX - .08, 1.80, sz2, .06, 2.50, sw - .55, col.glassDay,
-          { hard: true, mode: 1, gloss: G.glass }), .95);
-        const board = pick([col.red, col.blue, col.paintY, col.teal]);
+          { hard: true, mode: 1, gloss: G.glass }), dead ? .10 : .95);
+        // A11 · the reveal. Each unit was a lit pane with the block's charcoal band 2 cm behind
+        // it, so from the west footway the parade read as forty light boxes and not forty rooms.
+        // ONE box per unit and no new emissive: a dark panel inset from the glass on every side,
+        // which is what turns a sheet into an opening with something behind it. It has to live in
+        // the 2 cm slot between the glass's back face at FX-.05 and the band's front face at
+        // FX-.03 — anything deeper is behind an opaque face, and every surface in this renderer
+        // is single-sided, so there is no building a box you can see the inside of.
+        box(FX - .041, 1.66, sz2, .012, 2.10, sw - .95, col.black, { hard: true, gloss: .10 });
+        let board = pick([col.red, col.blue, col.paintY, col.teal]);
+        if (bleached) board = [board[0] * .34 + .52, board[1] * .34 + .50, board[2] * .34 + .46];
         // Kept as a reference so the two units that get a thing can be tagged after their name is
         // known. The tag cannot be passed at construction because the name is drawn from the random
         // stream *after* the board colour is, and swapping those two `pick` calls round would
@@ -2877,10 +2985,9 @@ const Street = Lazy('Street', () => {
         // So: the first unit inside the reachable strip takes whichever name is still owed, and so
         // does the third and any after it. Everything else on the parade keeps the name the stream
         // gave it. A unit that has already drawn one of the two by itself is left alone.
-        if (Math.abs(sz2) < 11.5) {
-          nearUnit++;
+        if (near) {
           const owed = TEACH.filter(w => !taught.has(w));
-          if (owed.length && !owed.includes(name) && (nearUnit === 1 || nearUnit >= 3))
+          if (owed.length && !owed.includes(name) && (near === 1 || near >= 3))
             name = owed[0];
         }
         const span = sw - .70, gsz = Math.min(.64, span / name.length * .92);
@@ -2910,10 +3017,16 @@ const Street = Lazy('Street', () => {
           const th = thing(name, FX - .34, 3.72, sz2, say[0], say[1], say[2],
             { focus: [FX - 2.30, sz2], reach: 2.4 });
         }
+        // A bleached board keeps dark ink whatever it started as: the pale ground it has faded to
+        // gives cream nothing to read against, and `board === col.paintY` cannot match any more
+        // because bleaching builds a new array rather than one of the palette's own.
         for (const g of B.glyphs(FX - .36, 3.72, sz2, -Math.PI / 2, name,
-            { size: gsz, gap: gsz * .16, color: board === col.paintY ? col.charcoal : col.cream,
-              mode: 1, glow: .22, lift: .014, tag: signTag }))
-          litten(g, .9);
+            { size: gsz, gap: gsz * .16,
+              color: (bleached || board === col.paintY) ? col.charcoal : col.cream,
+              mode: 1, glow: dead ? 0 : .22, lift: .014, tag: signTag }))
+          // The dead unit's characters are NOT littened, which is the whole of D4's second half:
+          // its sign stays dark through the night curve while its forty neighbours come up.
+          { if (!dead) litten(g, .9); }
         // Roughly one unit in four has the shutter down. A parade where every single door is
         // open and lit at every hour of the day is a stage set.
         if (rnd() > .74) {
@@ -2939,6 +3052,16 @@ const Street = Lazy('Street', () => {
         }
         lampPools.push(glow(M.trs(FX - 2.2, .03, sz2, 0, 4.6, 1, sw + 2.6), C('#ffb877'), 0));
       }
+      // D2 · one lit valance for the whole block. The comment above records why there is none per
+      // unit — `street-retail.js:12`, forty mode-1 glowing quads laying forty half-transparent
+      // copies of the scene over it — and then says what to do instead: "one strip for the whole
+      // run rather than one per unit: same read, one quad." This is that. The parade gets the
+      // continuous lit line at the foot of its fascia that every Chinese shopping street has, and
+      // the emissive count goes up by the number of BLOCKS (7) and not the number of units (40).
+      // 3.26 is the board's own bottom edge (3.72 - .84/2 = 3.30) less the strip's half-depth;
+      // FX - .37 puts it 3 cm proud of the board face at FX - .34.
+      litten(box(FX - .37, 3.26, cz, .05, .08, len - .40, C('#ffe9c4'),
+        { hard: true, mode: 1, glow: .10 }), 1.1);
       // What is on top of a Chinese city block: a satellite dish or two, a water tank on legs
       // and a whip antenna. The parapet was a clean line all the way down the road.
       for (let k = 0; k < 2; k++) {
@@ -3136,6 +3259,21 @@ const Street = Lazy('Street', () => {
     }
     pane(box(17.8, 1.70, czb + .16, 7.20, 2.40, .07, col.glassDay,
       { hard: true, mode: 1, gloss: G.glass }), .95);
+    // A9 · joinery on the district's largest sheet of glass — 7.20 m with not one division in it.
+    // The mullions go on the party lines rather than a rhythm of this file's own choosing:
+    // js/street-retail.js divides this frontage into three tenancies at x 14.25..16.35,
+    // 16.45..19.70 and 19.80..21.36, so 16.40 and 19.75 are the 10 cm gaps between them and a
+    // 9 cm bar lands in each with 5 mm to spare. A bar anywhere else would stand across one of
+    // that file's doorways, which are built PROUD of this glass. Ends at 14.24 and 21.36.
+    for (const mx of [14.24, 16.40, 19.75, 21.36])
+      box(mx, 2.15, czb + .19, .09, 1.50, .09, col.steel, { hard: true, gloss: G.metal });
+    // A7 · the awning. Same 1.30 m projection as the other two, broken at 16.62 where
+    // street-retail.js hangs unit B's 侧招 on the shared BLADE line: 2.27..2.83 against the
+    // awning's own 2.68 rear edge is the same air, and the awning is what gives way.
+    awning(17.8, 2.92, czb, 12, col.blueSign, col.cream, 16.62);
+    // A1 · the housing. 2.90 .. 3.11: bottom on this frontage's glass head at 2.90 — 28 cm higher
+    // than 超市's, because this shopfront is taller — and top 1 cm under the 五金电器 board.
+    shutterBox(17.8, 3.005, czb + .00, 7.30, .21);
     signBoard(17.8, FASCIA, czb + .04, 6.40, FASCIAH, col.blue, col.cream, '五金电器');
     // ---- 地铁站 the 杨柳胡同 entrance, at the east end of the alley against the courtyard wall.
     // Which is where they go: a hutong gets its station mouth at the mouth of the hutong. Not at
@@ -3924,14 +4062,21 @@ const Street = Lazy('Street', () => {
   // here that shows it, which is why a windy day used to look exactly like a still one.
   function setWind(k) { windK = Math.max(0, Math.min(1, k || 0)); }
 
+  // 406. Whether the light is on in flat 202, pushed in from js/game.js's per-room `lightsOn`
+  // (item 403) once a frame beside setNight. Defaults on: a scene built before anybody has told
+  // it otherwise should look like a lived-in flat, not an empty one.
+  let homeLit = true;
+  function setHomeLit(v) { homeLit = !!v; }
+
   function setNight(k, skyRefl) {
     const soft = k * k * (3 - 2 * k);
     for (const { p, k: kk } of litProps) p.glow = (p.glow0 === undefined
       ? (p.glow0 = p.glow || 0) : p.glow0) + soft * kk * .95;
     for (const g of lampPools) g.a = soft * .30;
-    for (const { p, warm, deep, j, j2, y } of panes) {
-      // a pane either has someone home or it does not, and that never changes on you
-      const on = warm > .35;
+    for (const { p, warm, deep, j, j2, y, mine } of panes) {
+      // A neighbour's pane either has someone home or it does not, and that never changes on you.
+      // Yours does: it is your own light switch, seen from the pavement.
+      const on = mine ? homeLit : warm > .35;
       // Glass does not hand the sky back at full strength. Painted with the raw sky colour —
       // which is what this did — every window in the district came out a flat white rectangle
       // at midday, a facade of light boxes, and the only ones that read as glass were the
@@ -3962,7 +4107,7 @@ const Street = Lazy('Street', () => {
   }
 
   return B.finish({
-    setNight, tick, setWind, homes,
+    setNight, setHomeLit, tick, setWind, homes,
     get PHARMACY_OUT() { return PHARMACY_OUT; },
     indoor: false, cutaway: false, near: .22, far: 900,
     // Measured 2026-08-08 against the other daylight outdoor scenes. At `expose: .50` the district

@@ -74,14 +74,24 @@
 
   // Trading hours, in decimal hours. These agree with what the street already says about itself
   // out loud: the shell's own 超市 line is 七点开门 and the breakfast stall's is 05:00–10:30.
+  //
+  // Rounded to the nearest half hour when the 营业时间 plates went up (STOREFRONT-UPGRADES A3).
+  // Not cosmetic: a plate is generated from this table by `hm` below rather than written out, so
+  // the plate and the lights can never disagree — and 06:48 is not a time any shop in China has
+  // ever put on a door. The fiction the street already speaks out loud is unchanged and in two
+  // places is now exactly true rather than nearly: the shell's 超市 line is 七点开门, and this
+  // file's own header says the noodle place goes off at half nine and the 超市 at half ten.
   const HOURS = {
-    shop:   [6.8, 22.4],    // 幸福超市 — first open, last but one shut
-    noodle: [10.3, 21.6],   // 老李面馆 — lunch through supper
-    hardw:  [7.6, 18.4],    // 五金电器 — a trade counter keeps trade hours
-    mall:   [9.6, 22.0],    // 北京新天地
-    parade: [8.5, 21.8],    // the small units on the far side
+    shop:   [7.0, 22.5],    // 幸福超市 — first open, last but one shut
+    noodle: [10.5, 21.5],   // 老李面馆 — lunch through supper
+    hardw:  [7.5, 18.5],    // 五金电器 — a trade counter keeps trade hours
+    mall:   [9.5, 22.0],    // 北京新天地
+    parade: [8.5, 22.0],    // the small units on the far side
     dead:   [0, 24],        // the bulb behind the dead unit's shutter. Nobody turns it off.
   };
+  // Decimal hours to what a door plate says. The only formatter, so the plates cannot drift.
+  const hm = v => { const H = v | 0, M = Math.round((v - H) * 60);
+                    return (H < 10 ? '0' : '') + H + ':' + (M < 10 ? '0' : '') + M; };
   // Dark enough for a sign to be worth switching on. Deliberately not the curve the sun is on:
   // shops put their signs up before it is properly dark and leave them on well after dawn.
   const isDark = h => h >= 18.1 || h < 6.5;
@@ -115,7 +125,11 @@
           WARM = C('#ffd79a'), COOL = C('#dfe9ee'), GREEN = C('#2f7a4f'),
           ORANGE = C('#d9762c'), PINK = C('#cf5f7a'), SKYB = C('#3f7fa8'),
           GALV = C('#a9aeb0'), TARP = C('#2f6a8c'), CARD = C('#a8926e'),
-          BOTTLE = C('#8fb4b8'), BRASS = C('#b8a83f');
+          BOTTLE = C('#8fb4b8'), BRASS = C('#b8a83f'),
+          // The 门牌 enamel, taken off street-entry.js:90 and not re-picked. A house number
+          // plate that is a different blue from the one on the 单元门 forty metres away is a
+          // different council, which is the sort of thing nobody names and everybody reads.
+          ENAM = C('#1f4f8f'), ENAMW = C('#eef2f5');
     const dim = (c, v) => [c[0] * v, c[1] * v, c[2] * v];
 
     // =========================================================================================

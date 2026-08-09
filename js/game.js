@@ -148,7 +148,17 @@ let money = 260, day = 1, t0 = performance.now(), frameHold = false;
 const RENT = 60;
 let minutes = 14 * 60;        // float: minutes since midnight, one per real second
 let started = false;          // the clock and the needs wait for the title screen
-let lightsOn = true;              // ceiling light
+// 403. The ceiling light, per room rather than per world. One boolean for the whole flat meant
+// leaving the bathroom light on was not a thing that could happen, and the tower seen from the
+// street had one bit to read for twelve storeys. Keyed `place:roomId`, and **absent means on**, so
+// every room in every scene keeps the lit-by-default behaviour it had and only a room somebody has
+// actually switched off carries an entry — a save from before this holds no keys and is correct.
+const lightsOn = {};
+const lightKey = (pl, r) => pl + ':' + ((r && r.id) || 'main');
+// Named `roomLit` and not `lit`: the draw loop already declares a `const lit` of its own for the
+// room's lamps, and a shadowing helper that means nearly the same thing is how that gets read as
+// one variable. Arguments rather than closure reads, so a caller can ask about a room it is not in.
+function roomLit(pl, r) { return lightsOn[lightKey(pl, r)] !== false; }
 // The last day the body was in the flat during 物业 office hours. A repair visit lands on a day,
 // not at a moment, so the only question that matters is whether you were in for it — which is the
 // entire reason being at home on a Wednesday afternoon is worth anything. Set from the draw loop
@@ -11826,7 +11836,7 @@ function saveGame() {
     const saveAt=safeLift?safeLift.at:homeUnsafe?homeLanding():{x:P.x,z:P.z,yaw:P.yaw};
     const blob = JSON.stringify({
       v: 1, at: Date.now(),
-      minutes, day, money, lightsOn,
+      minutes, day, money, lightsOn: { ...lightsOn },
       // The fridge, as lots. `stock` is still written beside it and is still a plain count of
       // meals — not for this build, which never reads it back, but so that a save written here
       // and opened by an older one lands in a flat with roughly the right amount of food in it
@@ -11970,7 +11980,10 @@ function loadGame() {
           ? { topic:s.daily.extra.topic } : null }
     : newDailyState(day);
   dailySig = '';
-  lightsOn = !!s.lightsOn;
+  // 403. Saves written before the split carry a single boolean. There is no room list to spread
+  // it across, so an old save comes back with every light on rather than with a guess.
+  for (const k of Object.keys(lightsOn)) delete lightsOn[k];
+  if (s.lightsOn && typeof s.lightsOn === 'object') Object.assign(lightsOn, s.lightsOn);
   // ---- the fridge.
   //
   // A save from before the pantry has no `pantry` key, only `stock`: an integer that meant "meals,
@@ -13482,7 +13495,7 @@ function useLabel(hz, th) {
     return { ...d, en:`get off at ${s.en}`,
              done:`${s.hz}，我到了。`, doneTr:`${s.en}. This is where I get off.` };
   }
-  if (hz === '灯') return lightsOn ? { ...d, zh:'关灯', py:'guān dēng' } : d;
+  if (hz === '灯') return roomLit(place, room) ? { ...d, zh:'关灯', py:'guān dēng' } : d;
   if (hz === '窗户' && latched.window)
     return { ...d, zh:'关窗户', py:'guān chuānghu', en:'close the window' };
   if (hz === '窗帘' && latched.curtainL)
@@ -14343,7 +14356,8 @@ function stopUse(finished) {
   // who weighs out 一斤 and hands it over for you to carry home.
   if (def.buy) stow(def.buyHz || '水果', def.buy);
   if (def.pay) money = Math.max(0, money + def.pay);
-  if (def.light) { lightsOn = !lightsOn; }
+  // 403. The switch belongs to the room the body is standing in, not to the building.
+  if (def.light) { lightsOn[lightKey(place, room)] = !roomLit(place, room); }
 
   // ---- shopping. Taking something off a shelf only moves it into the basket; the till is
   // where it turns into money and into food in the fridge at home.
@@ -14950,12 +14964,22 @@ function frame(now) {
   // whole of the flicker: the room's own brightness moves with the shade. Dimming the shade without
   // dimming the bulb was the trap the note beside that curve warns about — a fitting that flickers
   // over a room whose brightness never moves looks more broken than the bug.
-  const bulbK = (lightsOn && powered()) ? (room.bulb === undefined ? 1 : room.bulb) : 0;
+  const bulbK = (roomLit(place, room) && powered()) ? (room.bulb === undefined ? 1 : room.bulb) : 0;
   const flick = place === 'home' && World.lampFlicker ? World.lampFlicker(now / 1000) : 1;
   if (place === 'home' && World.setLamp) World.setLamp(bulbK * flick);
   R.setBulb(room.light[0], room.light[1], room.light[2],
     scene.indoor ? bulbK * flick
       : 1 - daylight(minutes).day);
+  // 399. The curtains close the daylight shaft. `R.setWinShade` (js/gl.js) was built for this and
+  // had no caller in the repo, so drawing them across left the sun patch lying on the floor.
+  // `fixt.curtainL/R` are the eased positions, 1 fully drawn, so the shaft fades with the fabric
+  // rather than snapping off. Only flat 202 has curtains, and the shade is scene-wide, so it is
+  // gated on standing on deck 2 — otherwise closing them here would darken the eleventh floor's
+  // bedroom too. Restated every frame, never latched, so it cannot leak into the next place.
+  // `scene.level()` and not `drawDeck`: drawDeck is written later in the same frame (15510), so
+  // reading it here would shade a floor change one frame late.
+  R.setWinShade(place === 'home' && scene.level && scene.level() === 2
+    ? 1 - (fixt.curtainL + fixt.curtainR) / 2 : 1);
 
   // The room's own lamps, on top of the single overhead bulb above. Only eight reach the shader
   // and a room may declare more than that. Ordinary rooms retain their established per-frame
@@ -14964,7 +14988,7 @@ function frame(now) {
   //
   // Indoors they follow the light switch; outdoors they are street lighting and follow the sun.
   if (scene.lights && scene.lights.length) {
-    const lit = scene.indoor ? (lightsOn && powered()) : daylight(minutes).day < 0.5;
+    const lit = scene.indoor ? (roomLit(place, room) && powered()) : daylight(minutes).day < 0.5;
     if (!lit) {
       R.setLights(null); selectedLightDebug=[];
       if(place==='mall')resetMallLightSelection(mallLightSelectionState,'unlit');
@@ -15286,6 +15310,15 @@ function frame(now) {
     World.setClockHands(minutes);
   } else if (place === 'street') {
     Street.setNight(night, dl.glass);
+    // 406. Your own window in 十八号楼, seen from the pavement. `powered()` cannot be used here —
+    // it short-circuits true whenever `place` is not 'home', which is every frame this line runs —
+    // so the blackout is read off js/faults.js directly, and a 停电 darkens the flat from outside
+    // as well as in. Guarded on the module because harnesses load game.js without js/faults.js.
+    if (Street.setHomeLit) {
+      const flatPower = typeof Disrupt === 'undefined' || !Disrupt.homePower
+                        || !Disrupt.homePower(day, minutes);
+      Street.setHomeLit(roomLit('home', { id: 'main' }) && flatPower);
+    }
   } else {
     // The three interiors off the alley. Each one lifts its own lamps as the daylight through
     // its shopfront goes, and each has something that has to keep moving — steam off a pot, a
@@ -16521,7 +16554,7 @@ window.__game = {
   mallProgress:()=>({ ...mallProgress, stamps:{...mallProgress.stamps},
     prizes:mallProgress.prizes.slice(), lastOrder:mallProgress.lastOrder&&{...mallProgress.lastOrder} }),
   setMallTickets(v){ mallProgress.tickets=Math.max(0,Math.floor(Number(v)||0)); updateHud(); },
-  state: () => ({ minutes, day, money, lightsOn, place,
+  state: () => ({ minutes, day, money, lightsOn: { ...lightsOn }, place,
                   // Harnesses ask for `stock` and should keep getting a meal count; `pantry` is
                   // the whole fridge, for anything that wants to assert on what is actually in it.
                   stock: stockOf(), ready: Pantry.ready(day), pantry: Pantry.list(day),

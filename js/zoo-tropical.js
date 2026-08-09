@@ -131,7 +131,9 @@ const ZooTropical = Lazy('ZooTropical', () => {
     markThing(thing('长椅', x, .72, z, '在温室的长椅上休息一会儿。',
       'Rest on the greenhouse bench for a moment.',
       '长椅 is a long public bench.', { focus:[fx,fz], reach:1.9 }), 'TH-' + o.id);
-    solid(x - .86, x + .86, z - .30, z + .30);
+    const hx=Math.abs(Math.cos(ry))*.86+Math.abs(Math.sin(ry))*.30;
+    const hz=Math.abs(Math.sin(ry))*.86+Math.abs(Math.cos(ry))*.30;
+    solid(x-hx,x+hx,z-hz,z+hz);
   }
 
   function buildShell() {
@@ -190,12 +192,14 @@ const ZooTropical = Lazy('ZooTropical', () => {
     moving(ball(-5.1,.34,-5.45,1.45,.25,.42,col.croc,
       tagged('T01-croc/G10','扬子鳄',{gloss:.08})), 'T01-croc/G10', 0, .05);
     moving(box(-5.1,.30,-4.82,1.70,.20,.62,col.crocD,
-      tagged('T01-croc/G11','扬子鳄',{hard:true,gloss:.08})), 'T01-croc/G11', .2, .05);
-    taper(-5.1,.32,-6.75,.45,.28,2.15,col.crocD,
-      tagged('T01-croc/G12','扬子鳄',{rx:Math.PI/2,gloss:.06}));
+      tagged('T01-croc/G11','扬子鳄',{hard:true,gloss:.08})), 'T01-croc/G11', 0, .05);
+    moving(taper(-5.1,.32,-6.75,.45,.28,2.15,col.crocD,
+      tagged('T01-croc/G12','扬子鳄',{rx:Math.PI/2,gloss:.06})), 'T01-croc/G12', 0, .05);
     for (const x of [-5.55,-4.65]) for (const z of [-5.25,-5.75])
-      capsule(x,.23,z,.55,.12,.14,col.crocD,{rz:Math.PI/2,tag:'扬子鳄'});
-    for (const x of [-5.42,-4.78]) ball(x,.48,-4.58,.035,.035,.035,col.gold,{tag:'扬子鳄'});
+      moving(capsule(x,.23,z,.55,.12,.14,col.crocD,{rz:Math.PI/2,tag:'扬子鳄'}),
+        'T01-croc/leg-'+x+'-'+z,0,.05);
+    for (const x of [-5.42,-4.78]) moving(ball(x,.48,-4.58,.035,.035,.035,col.gold,{tag:'扬子鳄'}),
+      'T01-croc/eye-'+x,0,.05);
 
     // T02 长江水族: three sturgeon at different depths and a moving school of small fish.
     for (let i=0;i<3;i++) {
@@ -203,8 +207,10 @@ const ZooTropical = Lazy('ZooTropical', () => {
       moving(capsule(x,y,z,.95,.25,.30,col.fish,
         tagged('T02-sturgeon/G' + i,'中华鲟',{rz:Math.PI/2,gloss:.42})),
         'T02-sturgeon/G'+i, i*.9, .22);
-      taper(x-.62,y,z,.45,.23,.08,col.fishD || col.waterD,{rz:Math.PI/2,tag:'中华鲟'});
-      taper(x+.55,y,z,.22,.12,.34,col.fishL,{rz:-Math.PI/2,tag:'中华鲟'});
+      moving(taper(x-.62,y,z,.45,.23,.08,col.fishD || col.waterD,{rz:Math.PI/2,tag:'中华鲟'}),
+        'T02-sturgeon/tail-'+i,i*.9,.22);
+      moving(taper(x+.55,y,z,.22,.12,.34,col.fishL,{rz:-Math.PI/2,tag:'中华鲟'}),
+        'T02-sturgeon/nose-'+i,i*.9,.22);
     }
     for (let i=0;i<9;i++) {
       const x=2.5+(i%5)*.85, y=.35+(i%3)*.34, z=-7.4+Math.floor(i/5)*1.1;
@@ -230,11 +236,15 @@ const ZooTropical = Lazy('ZooTropical', () => {
     for (let i=0;i<15;i++) {
       const x=2.6+(i%5)*.82, y=.7+(i%4)*.62, z=3.8+Math.floor(i/5)*1.45;
       const cc=[col.orange,col.pink,col.blue,col.gold][i%4];
+      const phase=i*.47;
       const body=moving(capsule(x,y,z,.05,.18,.05,col.charcoal,
         tagged('T04-butterfly/G'+i,'蝴蝶',{rz:.3})), 'T04-butterfly/G'+i, i*.47, .40);
-      ball(x-.10,y,z,.13,.035,.16,cc,{tag:'蝴蝶',mode:1,alpha:.88,ry:.5});
-      ball(x+.10,y,z,.13,.035,.16,cc,{tag:'蝴蝶',mode:1,alpha:.88,ry:-.5});
+      const wl=moving(ball(x-.10,y,z,.13,.035,.16,cc,{tag:'蝴蝶',mode:1,alpha:.88,ry:.5}),
+        'T04-butterfly/wingL-'+i,phase,.40);
+      const wr=moving(ball(x+.10,y,z,.13,.035,.16,cc,{tag:'蝴蝶',mode:1,alpha:.88,ry:-.5}),
+        'T04-butterfly/wingR-'+i,phase,.40);
       body.flutter = true;
+      wl.flutter = wr.flutter = true;
     }
     for (const [x,z] of [[3,4.2],[5.2,5.1],[3.4,7.2],[6.1,7.5]]) tropicalPlant(x,z,2.0);
 
@@ -244,7 +254,8 @@ const ZooTropical = Lazy('ZooTropical', () => {
       moving(ball(x,y,z,.18,.12,.12,col.bat,
         tagged('T05-bat/G'+i,'果蝠')), 'T05-bat/G'+i, i*.72, .18);
       for (const s of [-1,1])
-        taper(x+s*.34,y,z,.34,.035,.30,col.bat,{rz:s*.16,tag:'果蝠'});
+        moving(taper(x+s*.34,y,z,.34,.035,.30,col.bat,{rz:s*.16,tag:'果蝠'}),
+          'T05-bat/wing-'+i+'-'+s,i*.72,.18);
     }
     box(10.25,2.75,4.5,2.45,5.45,2.95,col.charcoal,
       { hard:true,blueprintId:'T05-mesh',tag:'果蝠',mode:1,alpha:.16,gloss:.15 });
@@ -274,7 +285,7 @@ const ZooTropical = Lazy('ZooTropical', () => {
         box(x,.86,z,1.85,.10,.82,col.cream,{hard:true,ry:o.yaw,tag:'服务台'});
         glyphs(x,.76,z-.43,o.yaw,'服务台',{size:.14,color:col.red,mode:1,tag:'服务台'});
         markThing(thing('服务台',x,.9,z,'在服务台领取热带馆导览。','Pick up a Tropical House guide.',
-          '服务台 is an information desk.',{focus:[-10,2.15],reach:2}), 'TH-'+o.id);
+          '服务台 is an information desk.',{focus:[-10,.40],reach:2}), 'TH-'+o.id);
         solid(x-1.0,x+1.0,z-.45,z+.45);
       } else if (o.type === 'map-board') {
         for(const s of [-1,1]) cyl(x,.82,z+s*.62,.05,1.64,col.steel,{tag:'导游图'});

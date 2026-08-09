@@ -45,11 +45,39 @@
 //    whole re-plan exists to fix.
 //  * The walkable zone is inset from every built face by more than the 0.30 m body radius, so
 //    nothing here needs a collider except the two side blocks, the end and the gateway piers.
+//
+// ---------------------------------------------------------------------------------------------
+// WHERE THE STOREFRONT DRESSING IS ALLOWED TO STAND (STOREFRONT-UPGRADES.md, lane L3)
+//
+// `clampMove` reads the walkable zones and the solid list and nothing else, so the arithmetic
+// that decides whether a crate needs a collider is done once, here, and every placement below is
+// measured against it rather than looked at:
+//
+//     S.LANE_ZONE   x 39.30 .. 58.30   z -11.90 .. -6.50      the zone, as published above
+//     body centre   x 39.60 .. 58.00   z -11.60 ..  -6.80     the same, less the 0.30 m radius
+//
+// So there is a **1.00 m strip against each frontage that the body can never enter**: z -12.60 ..
+// -11.60 on the south, z -6.80 .. -5.80 on the north. Everything this file stands on the pavement
+// — goods, A-boards, bins, the mouth clutter, the cycle bay — is inside one of those two strips
+// or outside the zone entirely, and therefore calls neither `solid` nor `blocker`. That is a
+// stronger statement than a measurement: the lane's clear run is bit-identical with the dressing
+// and without it.
+//
+// **One collider is added**, and only one: the 三轮车 unloading outside 大超市 (B2), which has to
+// stand out in the lane or it is not a delivery. `solid(49.30, 51.70, -12.60, -10.62)` holds the
+// body at z >= -10.32 across those 2.40 m, leaving 3.52 m of body-centre travel and **4.12 m
+// clear**. B1's floor is 3.40 m, so it clears it by 0.72 m and it is the narrowest point in the
+// lane.
+//
+// The cycle bay (B4) is at x 39.70 .. 41.45, z -14.60 .. -12.90: south of the lane's mouth, on
+// the far pavement, where the road zone already stops the body at x 39.50 and the lane zone does
+// not reach. Outside every zone, so outside every question about width.
 
 (() => {
   'use strict';
 
-  try { Glyphs.need('北京新天地大超市购物中心步行街奶茶店书店花店面包房'); } catch (_) {}
+  try { Glyphs.need('北京新天地大超市购物中心步行街奶茶店书店花店面包房' +
+                    '微信支付宝今日特价鲜绿植珍珠可回收物其他垃圾单车停放'); } catch (_) {}
 
   // ---------------------------------------------------------------- the lane, measured
   const LX0 = 41.60;            // the mouth, on the far building line
@@ -65,12 +93,27 @@
   // on the main road they open off, because the point of the street is that daylight reaches it.
   const BH = 11.0;
 
-  const lit = [];
-  let lastLight = -1;
+  // ---------------------------------------------------------------- what the clock switches
+  // Emissive faces in groups, and a group is written only on the frame its own state changes.
+  // Group 0 is the lane's dusk — the two anchors, the gateway, the festoon, the upper windows.
+  // Each small unit then gets a group carrying that shop's own trading hours, which is the whole
+  // of C5: four units that light and unlight together are one switch, and one switch is not a
+  // street. Six groups, six comparisons a frame, and nothing written in between.
+  const GRP = [];                       // { w, ps: [{ p, day, night }], on }
+  const grp = w => { const g = { w, ps: [], on: null }; GRP.push(g); return g; };
+  const NIGHT = grp(null);
+  // A10. One shutter prop per unit, parked under the floor while the shop trades.
+  const SHUT = [];                      // { p, x, z, top, wid, h, hrs, open }
+  // Parked forty metres under the floor at a millionth of its size — js/street-alley.js's idiom,
+  // and the reason a closed shop costs one matrix write rather than a draw.
+  const HIDDEN = M.trs(0, -60, 0, 0, .001, .001, .001);
+  // The same window test `npcAwake` uses in game.js, so a shutter and the shopkeeper behind it
+  // can never disagree about what time it is.
+  const within = (h, a, b) => (b > 24 ? (h >= a || h < b - 24) : (h >= a && h < b));
 
   StreetFit['lane'] = S => {
     const { box, cyl, ball, taper, flat, glyphs, solid, blocker, glow, thing,
-            cap, light, C, G, col, FASCIA, FASCIAH } = S;
+            cap, light, C, G, col, FASCIA, FASCIAH, BLADE, BLADEH } = S;
 
     // The zone. Published the way js/street-hotel.js publishes its forecourt, because `zones` is
     // built in the scene object at the end of street.js's `build` and a district cannot push into
@@ -86,7 +129,24 @@
     const RED = C('#9c2a22'), REDD = C('#6e1c17'), CREAM = C('#e9dfc6'), STEEL = C('#8b9095');
     const PMAT = { mat: 'plaster', matScale: 2.6, matAmt: .13 };
 
-    const emis = (p, k) => { lit.push({ p, day: p.glow || 0, night: k }); return p; };
+    const emis = (p, k, g = NIGHT) => { g.ps.push({ p, day: p.glow || 0, night: k }); return p; };
+    // Glyph yaw for a frontage, once, so no call site has to remember which way round it is.
+    const yawOf = nn => (nn > 0 ? 0 : Math.PI);
+
+    // ---- A4. The pair of payment stickers that is on the glass of every shop in this country:
+    // the green one and the blue one, side by side at hand height. Both plates are 0.17 m — the
+    // item's ceiling is 0.18 — and every quad in here is `mode: 1` with **no glow**. A sticker
+    // that lights the pavement is a light-mask quad, and the ceiling on those is the one budget
+    // this district is actually against (street-retail.js:12).
+    const pay = (x, y, z, nn) => {
+      const yw = yawOf(nn), o = { hard: true, gloss: .30 };
+      box(x - .30, y, z, .17, .17, .010, C('#1aa34a'), o);
+      glyphs(x - .30, y, z + nn * .012, yw, '微信',
+        { size: .054, gap: .014, vertical: true, color: C('#f2f7f2'), mode: 1, lift: .004 });
+      box(x - .07, y, z, .17, .17, .010, C('#1678ff'), o);
+      glyphs(x - .07, y, z + nn * .012, yw, '支付宝',
+        { size: .044, gap: .010, vertical: true, color: C('#f0f5ff'), mode: 1, lift: .004 });
+    };
 
     // ---------------------------------------------------------------- the ground
     // Paved, not asphalt: this is a 步行街 and the surface is the first thing that says so.
@@ -148,18 +208,25 @@
     //
     // 8.80 m takes two at 3.40 with a 0.40 gap; 6.40 m takes a 3.40 and a 2.20. A fifth anywhere
     // is under 1.5 m of frontage, which is a doorway, not a shop. Twenty was never on.
+    //
+    // Each row also carries **its own trading hours** and how far its shutter comes down, which
+    // is items C5 and A10. The hours are picked so the lane is never uniformly lit and never
+    // uniformly shut: at 21:00 the baker is dark and the other three are not, and at 21:30 the
+    // baker and the florist are behind shutters while the tea shop and the bookshop trade on.
     const UNITS = [
-      [ 1, 43.70, 3.40, '面包房', C('#b8862f')],
-      [ 1, 46.60, 2.20, '花店',   C('#2f7a4f')],
-      [-1, 52.70, 3.40, '奶茶店', RED],
-      [-1, 56.50, 3.40, '书店',   C('#1f4f8f')],
+      //  n     x      w   name      board colour     hours       shutter drop
+      [ 1, 43.70, 3.40, '面包房', C('#b8862f'), [ 6.5, 20.0], 1.00],
+      [ 1, 46.60, 2.20, '花店',   C('#2f7a4f'), [ 8.5, 21.0],  .55],
+      [-1, 52.70, 3.40, '奶茶店', RED,          [10.0, 23.0], 1.00],
+      [-1, 56.50, 3.40, '书店',   C('#1f4f8f'), [ 9.5, 22.0],  .78],
     ];
-    for (const [n, ux, w, nm, base] of UNITS) {
+    for (const [n, ux, w, nm, base, hrs, drop] of UNITS) {
       const zf = n > 0 ? LZ0 : LZ1;
+      const UG = grp(hrs);                     // this shop's own switch, not the lane's
       emis(box(ux, 1.70, zf + n * .30, w - .5, 2.60, .06, GLASS,
-        { hard: true, mode: 1, gloss: G.glass }), .18);
+        { hard: true, mode: 1, gloss: G.glass }), .18, UG);
       emis(box(ux, 1.55, zf + n * .38, w - .9, 2.20, .04, n > 0 ? COOLI : WARMI,
-        { hard: true, mode: 1, glow: .04 }), .22);
+        { hard: true, mode: 1, glow: .04 }), .22, UG);
       // Same treatment street.js's `signBoard` now gives every board in the district: a 26 cm box
       // rather than an 18 cm panel, a drip over it, a lit valance under it, and glyphs at 0.82 of
       // the panel instead of 0.70. A lane six metres across is read down its length, not across
@@ -168,17 +235,45 @@
       box(ux, FASCIA + FASCIAH / 2 + .05, zf + n * .32, w + .10, .10, .34, base,
         { hard: true, gloss: .26 });
       emis(box(ux, FASCIA - FASCIAH / 2 - .04, zf + n * .42, w - .06, .07, .03, CREAM,
-        { hard: true, mode: 1, glow: .10 }), .70);
+        { hard: true, mode: 1, glow: .10 }), .70, UG);
       const gs = Math.min(FASCIAH * .82, (w - .24) / nm.length * .92);
-      for (const g of glyphs(ux, FASCIA, zf + n * .42, n > 0 ? 0 : Math.PI, nm,
+      for (const g of glyphs(ux, FASCIA, zf + n * .42, yawOf(n), nm,
           { size: gs, gap: gs * .14, color: base === C('#b8862f') ? C('#2a2723') : CREAM,
             mode: 1, glow: .26, lift: .012 }))
-        emis(g, .60);
+        emis(g, .60, UG);
       for (const s of [-1, 1]) {
         taper(ux + s * (w / 2 - .40), .21, zf + n * .72, .40, .42, .40, C('#8a8378'), { gloss: .22 });
         ball(ux + s * (w / 2 - .40), .52, zf + n * .72, .26, .20, .26, col.greenD,
           { mode: 15, gloss: .12 });
       }
+
+      // ---- A9. Joinery, not a sheet. Every pane in the district was one piece of glass; a real
+      // shopfront is a fanlight over the door and a mullion rhythm either side of it. Steel, 6–7
+      // cm, and NO new pane — these stand 1 cm proud of the glass that is already there, at
+      // zf + n*0.43, which clears the interior quad at 0.38 + 0.02.
+      const gw = w - .5, gz = zf + n * .43;
+      box(ux, 2.42, gz, gw, .07, .03, STEEL, { hard: true, gloss: G.metal });     // the transom
+      for (const s of [-1, 1])
+        box(ux + s * gw / 4, 1.62, gz, .06, 2.44, .03, STEEL, { hard: true, gloss: G.metal });
+      for (const s of [-1, 1])                                                    // the door stiles
+        box(ux + s * .46, 1.18, gz + n * .015, .07, 1.55, .03, STEEL,
+          { hard: true, gloss: G.metal });
+
+      // ---- A4. 支付 stickers, two on every glass door. The most characteristic thing on a
+      // Chinese shopfront and the district had none of it. mode 1 with NO glow, because a lit
+      // sticker is a light-mask quad and this district is fill-rate bound (.audit.js:327), and
+      // 17 cm square, which is what the real ones are.
+      pay(ux, 1.42, zf + n * .45, n);
+
+      // ---- A10. The 卷帘门 and the box it rolls into. The housing is permanent and sits at
+      // 2.89..3.11, under the fascia band's 3.12 and clear of the string course at 3.00. The
+      // shutter is ONE prop, parked under the floor while the shop trades and written once on the
+      // frame the hour changes — see `SHUT` in the tick.
+      box(ux, 3.00, zf + n * .40, w - .04, .22, .30, C('#7f8489'), { hard: true, gloss: .34 });
+      const sh = box(ux, 1.45, zf + n * .40, w - .16, 2.86, .05, C('#9aa0a6'), { hard: true, gloss: .28 });
+      sh.m = HIDDEN;
+      SHUT.push({ p: sh, x: ux, z: zf + n * .40, top: 2.88,
+                  wid: w - .16, h: 2.86 * drop, hrs, open: null });
     }
 
     // ---------------------------------------------------------------- 北京新天地, NORTH side
@@ -304,9 +399,23 @@
   StreetFit['lane'].tick = (t, body, mins) => {
     if (mins === undefined) return;
     const h = (mins / 60) % 24;
-    const night = h < 6.4 || h >= 18.3 ? 1 : 0;
-    if (night === lastLight) return;
-    lastLight = night;
-    for (const q of lit) q.p.glow = night ? q.night : q.day;
+    const night = h < 6.4 || h >= 18.3;
+    // A group with a window burns only while it is BOTH dark and trading: the sign comes up at
+    // dusk and goes out when the shop shuts, not when the sun does. A group without one is the
+    // lane itself and follows the light.
+    for (const g of GRP) {
+      const on = g.w ? (night && within(h, g.w[0], g.w[1])) : night;
+      if (on === g.on) continue;
+      g.on = on;
+      for (const q of g.ps) q.p.glow = on ? q.night : q.day;
+    }
+    // A10. The 卷帘门 comes down when the shop shuts. One matrix per unit, written on the frame
+    // the hour crosses and never again — this is four props that move twice a day.
+    for (const s of SHUT) {
+      const open = within(h, s.hrs[0], s.hrs[1]);
+      if (open === s.open) continue;
+      s.open = open;
+      s.p.m = open ? HIDDEN : M.trs(s.x, s.top - s.h / 2, s.z, 0, s.wid, s.h, .05);
+    }
   };
 })();

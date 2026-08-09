@@ -1067,6 +1067,7 @@ const Zoo = Lazy('Zoo', () => {
     {
       // Exact revision-2 relocation: east of the board remains clear for the interaction stance.
       const MPX = -16.2, MPZ = -9.0;
+      const mapFirst = B.props.length;
       for (const s of [-1, 1])
         cyl(MPX + s * 1.18, .82, MPZ, .06, 1.64, col.steelD,
           { tag: '导游图', gloss: G.metal });
@@ -1082,7 +1083,7 @@ const Zoo = Lazy('Zoo', () => {
         { tag: '导游图', hard: true, gloss: .24 });
       litten(box(MPX, 2.76, MPZ - .24, 1.20, .035, .12, C('#ffe6ae'),
         { tag: '导游图', hard: true, mode: 1, glow: .06 }), .70);
-      light(MPX, 2.66, MPZ - .34, [1.00, .88, .67], .48, 2.8);
+      const mapLamp = light(MPX, 2.66, MPZ - .34, [1.00, .88, .67], .48, 2.8);
 
       const mapW = 2.52, mapH = 1.04, mapY = 1.64;
       const mapX = x => MPX - x / (RX * 2) * mapW;
@@ -1119,11 +1120,27 @@ const Zoo = Lazy('Zoo', () => {
       glyphs(MPX + .70, .96, MPZ - .08, Math.PI, '无障碍路线',
         { size: .064, gap: .012, color: col.cream, mode: 1, tag: '导游图' });
 
-      solid(MPX - 1.45, MPX + 1.45, MPZ - .25, MPZ + .25);
-      thing('导游图', MPX, 2.05, MPZ - .30, '先看看导游图，再决定去哪儿。',
+      // The revision-2 board has yaw PI/2: rotate the complete authored board, including its
+      // miniature route diagram, around the exact anchor.  Merely moving the old south-facing
+      // board put the new east-side focus inside its own collider.
+      const group = M.mul(M.trans(MPX, 0, MPZ),
+        M.mul(M.rotY(Math.PI / 2), M.trans(-MPX, 0, -MPZ)));
+      for (let i = mapFirst; i < B.props.length; i++) {
+        const p = B.props[i]; p.m = M.mul(group, p.m);
+        if (p.ob) {
+          const dx = p.ob.x - MPX, dz = p.ob.z - MPZ;
+          p.ob.x = MPX + dz; p.ob.z = MPZ - dx; p.ob.ry = (p.ob.ry || 0) + Math.PI / 2;
+        }
+      }
+      mapLamp.x = MPX - .34; mapLamp.z = MPZ;
+      solid(MPX - .25, MPX + .25, MPZ - 1.45, MPZ + 1.45);
+      const mapThing = thing('导游图', MPX - .30, 2.05, MPZ, '先看看导游图，再决定去哪儿。',
         'Look at the map first, then decide where to go.',
         '导游 guide + 图 map. Every park and zoo has one at the gate.',
         { focus: [-15.2, -9.0], reach: 2.0 });
+      mapThing.blueprintId = 'TH-M100';
+      for (let i = mapFirst; i < B.props.length; i++)
+        if (B.props[i].tag === '导游图') B.props[i].blueprintId = 'M100-south-existing';
     }
 
     // ---- 小卖部 the kiosk, back against the south wall and serving north.

@@ -35,7 +35,8 @@
 //   * Every prop is given a colour explicitly, and every colour array is indexed with `% length`
 //     of a bounded integer. One `undefined` colour puts the boot overlay up.
 StreetFit['civic'] = S => {
-  const { box, cyl, ball, taper, flat, glyphs, cap, solid, shade, glow, thing, light, C, G, col } = S;
+  const { box, cyl, ball, taper, flat, glyphs, cap, solid, shade, glow, thing, light, C, G, col,
+          BLADE, BLADEH } = S;
 
   const FX = 41.60;                    // far building line
   const PLIM = 39.50;                  // furthest east the body can stand
