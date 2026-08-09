@@ -620,3 +620,36 @@ path, which means re-batching the whole ~22k-prop scene on arrival (a far worse 
 `js/build.js` and `js/game.js` are not the performance lane's files. **419 is a `js/build.js`
 change, not a `js/world.js` change**, and the TODO entry's `@check` — which greps `js/world.js`
 for `buildDeck` — points at the wrong file.
+
+---
+
+## Session handoff — the street re-plan (708 turns, and that is the finding)
+
+**Split this session.** The token audit measured it: 708 turns, 408.7k mean context, 781.9k peak,
+**289.3M input-equivalents — 98.2% of everything spent today.** The wave of six agents was 1.8%.
+Context crossed 150k at turn 102 and ran 606 more turns above it; turns 401–708 alone are 191.1M,
+so splitting at 400 with this handoff saves ~128.7M at identical work. The threshold was already
+written in `.claude/CLAUDE.md` and was still missed, because nothing fired on it.
+
+**Where the street is.** `STREET-BLUEPRINT.md` Part 4 is CLOSED — 31 action items, 20 built,
+11 struck each with the number that struck it, 0 open. Doors on the x 41.60 line went 7 → 3;
+frontage orientations 2 → 5; corners 0 → 2; crossings 1 → 2. `STREET-PLAN.html` is the as-built
+drawing set. `STREET-TENANT.md` is new and is the contract to read instead of `js/street.js`.
+
+**In flight at handoff:** four `coder` lanes + a `gatekeeper` + this audit, against
+`STOREFRONT-UPGRADES.md`. Lanes own disjoint files — street.js / street-retail.js / street-lane.js /
+(street-civic.js + street-road.js). Reports land in `.reports/L*.md` and `.reports/GATE-storefronts.md`.
+
+**Disproved this session — do not re-derive:**
+- The 夜市 cannot move to x 17.60: it needs a GAP in the courtyard wall and 3.2–6.0 is one; 17.60 is
+  mid-run in `brickRun(15.2, 24.0)`.
+- The 报刊亭 cannot go on the west footway: the kiosk is 2.10 m in x and the footway is 3.28 m clear.
+- The lock-up terrace cannot shift 1.5 m west: `wallJunk` at −16.07..−15.00 and a gas riser at −16.28.
+- 五金电器 has no west return: the corner block's west face abuts your block at 11.5 / 12.0.
+- The 步行街 holds FOUR units, not twenty — north is 8.80 m clear of the mall, south 6.40 m of the
+  hypermarket, and a fifth anywhere is under 1.5 m of frontage.
+- The four `wait` NPCs wait 1–3 hours, not eleven. One genuinely waited 05:00–14:00 at a cart that
+  trades 05:00–10:30; that one is fixed.
+
+**Not measured, and owed:** a frame-rate number for the district, and an emissive-quad census.
+Both are tickets E1/E2 in `STOREFRONT-UPGRADES.md` and both are the gatekeeper's.
