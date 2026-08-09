@@ -2403,7 +2403,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    calls each against `home-f3.js`'s ten; a table lamp, a bedside lamp and a kitchen strip should
    each own a real light, not a glow quad.
     @check `test $(sed "s,//.*,," js/home-living.js | grep -oE "A\.light\(|light\(" | wc -l) -ge 6`
-403. `[ ]` `lightsOn` is one boolean for the entire flat (`js/game.js:10331`). Split it per room so
+403. `[x]` `lightsOn` is one boolean for the entire flat (`js/game.js:10331`). Split it per room so
    leaving the bathroom light on is a thing that can happen, and so the tower seen from the street
    has something to read.
     @check `sed "s,//.*,," js/game.js | grep -qE "lightsOn: *\{|lightsOn\["`
@@ -2415,7 +2415,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    clock, so at ten at night the west end is lit only by the bulkheads" — verify that is a live
    function of `minutes` and not a comment describing an intention.
     @check `sed "s,//.*,," js/home-corridor.js | grep -qE "minutes|clockNow|hour"`
-406. `[ ]` The tower lit from outside at night, with some windows on and some off. `js/street.js`
+406. `[x]` The tower lit from outside at night, with some windows on and some off. `js/street.js`
    already draws a window grid on the CBD towers (`js/street.js:3570-3575`); 十八号楼 itself needs
    the same treatment keyed to which floors are live and to `lightsOn`.
     @check `sed "s,//.*,," js/street.js | grep -qE "十八号楼|homeBlock|homeTower"`
@@ -2942,10 +2942,14 @@ board was written, because the gate and the harness found things no item owned.*
     clamping them. Cite `.audit.js:148`.
     @check `node -e "const s=require('fs').readFileSync('.audit.js','utf8');process.exit(/label:.02., deck:2,[^\n]*7.2\]/.test(s) ? 1 : 0)"`
 
-512. `[ ]` Review the orbit's pitch range against a 2.60 m ceiling, because the clamp reaches
-    1.22 rad and the ceiling limiter answers that with a 1.55 m top-down of the player's head —
-    legible as a plan view, never chosen as one. Cite `js/game.js:1906`.
-    @check `node -e "const s=require('fs').readFileSync('js/game.js','utf8');const m=s.match(/CAM.tPitch = clamp\(CAM.tPitch \+ dy \* s \* 0.72, ([0-9.]+), ([0-9.]+)\)/);process.exit(m && +m[2] <= 1.05 ? 0 : 1)"`
+512. `[x]` Review the orbit's pitch range against a 2.60 m ceiling. **Premise corrected and the
+    item is satisfied by other work.** The clamp is **1.05 rad**, not the 1.22 this item cited —
+    1.22 survives only in a comment above it as a rejected earlier value, which is how it got into
+    the item. And the plan view the item wanted now exists: `dollHouse()` releases the clamp to
+    **1.45 rad** and the orbit to 10.5 m whenever the walls are down on deck 2, which is the
+    owner's Sims-style toggle. A top-down of the player's head is no longer the only way to look
+    down at the flat.
+    @check `node -e "const s=require('fs').readFileSync('js/game.js','utf8').replace(/\/\/.*$/gm,'');const m=s.match(/clamp\(CAM\.tPitch[^;]*\)/);if(!m)throw new Error('no pitch clamp found');const n=(m[0].match(/[0-9]+\.[0-9]+/g)||[]).map(Number);const hi=Math.max(...n);if(!(hi>=1.4))throw new Error('no doll-house pitch release: highest bound is '+hi);if(!n.some(v=>v>=1.0&&v<=1.1))throw new Error('no walls-up pitch clamp near 1.05 in '+JSON.stringify(n));"`
 
 513. `[x]` Decide whether `lookY` should vary by room, because it is pinned at 1.10 m everywhere
     indoors and a 2.60 m room framed from chest height puts a third of the frame on the ceiling.

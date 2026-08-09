@@ -405,7 +405,156 @@ StreetFit['civic'] = S => {
   box(23.48, 3.92, CZ0 + .12, .18, .14, .50, col.render, { hard: true, gloss: G.paint });
   box(23.74, 3.88, CZ0 + .12, .34, .13, .13, C('#d8d5cc'), { hard: true, rz: .22, gloss: .30 });
   cyl(23.92, 3.84, CZ0 + .12, .065, .10, C('#1a1d20'), { rz: -Math.PI / 2, gloss: .44 });
-  pool(39.95, PHZ - .40, 2.6, 4.4, .26, C('#bff0d2'));
+  // The pool the green cross throws was left on the FAR PARADE when the chemist was mirrored onto
+  // the west footway: at x 39.95 it lit two metres of pavement eighteen metres and one carriageway
+  // away from the lamp casting it, and the cross itself lit nothing. 24.30 is 1.0 m in front of the
+  // 23.30 building line, under the bracket at 23.93. Same omission in the `shade` at the bottom of
+  // this file; both are fixed, neither was in the brief.
+  pool(24.30, PHZ - .40, 2.6, 4.4, .26, C('#bff0d2'));
+
+  // ============================================================ 西人行道 the west footway's wall
+  //
+  // A12 (footway half), B7 and B8 of STOREFRONT-UPGRADES.md. Measured off the shell rather than
+  // taken from the brief:
+  //
+  //   23.30   the corner block's east face — js/street.js, box(17.6, 7.6, -11.05, 11.4, 15.2, 16.0)
+  //           spans x 11.90..23.30, z -19.05..-3.05. Not 23.42: that is the BANK's datum, and its
+  //           stone skin (js/street-bank.js:69, FACE-.14 by .28) fronts at 23.56.
+  //   24.30   where `clampMove` holds the body — the road zone starts at x 24.0 (js/street.js:3990)
+  //           and the 0.30 m body radius insets it. Nothing below carries a collider: a collider in
+  //           that strip could only ever narrow the footway.
+  //   -13.50  the road zone's own z0, so this is where the wall stops being visible from anywhere
+  //           a body can stand.
+  //
+  // Which leaves exactly three bare stretches of render on the whole elevation, since the branch
+  // covers z -11.40..-7.10 and the chemist's shell -6.90..-3.60:
+  //
+  //     -13.50 .. -11.40    2.10 m   south of the branch      B8, the service end
+  //      -7.10 ..  -6.90    0.20 m   between the two shops    B7, the downpipe
+  //      -3.60 ..  -3.05    0.55 m   north of the chemist     B8, the north return
+  //
+  // B8 in the brief calls the south stretch "-13.5 .. -13.3". There is nothing at -13.30 and never
+  // was; the number that ends that stretch is the bank's own Z0 at -11.40, which is 2.10 m of wall,
+  // not 0.20 m. Built to the measurement.
+  //
+  // Facing: this elevation looks +x, so wall-mounted glyphs take yaw +PI/2. The two 侧招 are the
+  // exception — a projecting sign is read from up and down the pavement, so its faces look ±z.
+  const PIPE = C('#8e8778'), PIPED = C('#5f5a4e');
+  const DOORG = C('#798086'), DOORD = C('#4c5257'), ACW = C('#dcd8cc'), ACD = C('#96928a');
+  const HYD = C('#a8322a'), HYDD = C('#761f19'), BOLL = C('#3d434a'), BOLLR = C('#d6d1c0');
+  const METER = C('#b6b2a6'), REDP = C('#9c2f26'), BLADEB = C('#6e1c17');
+
+  // ---- A12. The district's 侧招 rank stopped at the alley: 超市, 面馆 and 五金 all hang off
+  // S.BLADE 2.55 / S.BLADEH .56 (js/street.js:158) and the west footway had none, so walking the
+  // length of it you saw two frontages edge-on and could read neither.
+  //
+  // Both go on the block's own render at the ends of the run, not on the shopfronts. The branch's
+  // entire 4.30 m elevation is under its own canopy — js/street-bank.js builds it at FACE+.30,
+  // y 3.04..3.16, across z -11.35..-7.15 — and a blade whose top stay is at 2.90 would spend its
+  // life 14 cm under a soffit, invisible from either direction. So 银行's takes the blank wall
+  // south of the branch and 药店's the 0.55 m return north of the chemist, where it is the first
+  // thing read walking south off the second crossing.
+  //
+  // One emissive panel each, and it is dark until `nightAt` brings it up — the case, the stays and
+  // the characters are all unlit, which is the rule this district pays the most for.
+  bladeE(-11.62, 1.10, C('#c4222a'), C('#f0d68a'), '银行');
+  bladeE(-3.42, 1.10, C('#1f9455'), C('#f4fff8'), '药店');
+
+  // Mirrored from js/street-retail.js's `blade` — its 'x' case cantilevers in -x off a frontage
+  // that faces -x, and this elevation faces +x, so `cx` is +.15 out instead of -.11 and the stays
+  // hang off the near end. The 20 cm wall plate is buried from 23.24 to 23.44 so it reads as fixed
+  // whether the render behind it is at 23.30 or the bank's 23.56, and shares a plane with neither.
+  function bladeE(z, out, base, ink, text) {
+    const T = .075, size = Math.min(BLADEH * .68, (out - .20) / text.length * .88);
+    const cx = 23.45 + out / 2;
+    box(23.34, BLADE, z, .20, BLADEH * .86, .22, col.steelD, { hard: true, gloss: .34 });
+    box(cx, BLADE, z, out, BLADEH + .06, T * 2 + .05, BLADEB, { hard: true, gloss: .26 });
+    const panel = box(cx, BLADE, z, out - .09, BLADEH - .05, T * 2, base,
+      { hard: true, mode: 1, gloss: .20 });
+    for (const s of [-1, 1])
+      glyphs(cx, BLADE, z + s * (T + .013), s > 0 ? 0 : Math.PI, text,
+        { size, gap: size * .20, color: ink, mode: 1, lift: .008 });
+    for (const sy of [-1, 1])
+      cyl(cx - .01, BLADE + sy * (BLADEH / 2 + .07), z, .012, out * .96, col.steelD,
+        { rz: Math.PI / 2, gloss: G.metal });
+    return emis(panel, .55);
+  }
+
+  // ---- B7/B8. 落水管, three of them, one on each bare stretch — which is where a downpipe goes,
+  // because it comes down the party line between two units and not through one. 6 cm proud of the
+  // 23.30 face at x 23.42, so the pipe and the render never share a plane.
+  downpipe(-13.42);      // the south return, clear of the zone edge at -13.50 by 4 cm
+  downpipe(-7.00);       // B7 — dead centre of the 0.20 m gap between 银行 and 药店
+  downpipe(-3.18);       // the north return, 13 cm off the block corner at -3.05
+  function downpipe(z) {
+    const top = 9.60;
+    cyl(23.42, (top + .18) / 2, z, .058, top - .18, PIPE, { gloss: .30 });
+    box(23.40, top + .13, z, .26, .26, .19, PIPE, { hard: true, gloss: .28 });      // hopper head
+    cyl(23.47, .10, z, .062, .34, PIPE, { rz: -.34, gloss: .30 });                  // the shoe
+    for (const by of [1.86, 4.62, 7.38])
+      box(23.36, by, z, .14, .045, .13, PIPED, { hard: true, gloss: .34 });
+  }
+
+  // ---- B7. 电表箱 and the fire plate, both on the chemist's south jamb, which is the only wall
+  // between the two shops that is wider than the downpipe. The jamb face is 23.64 (the shell of the
+  // unit, `box(23.26, 2.10, PHZ ± 1.50, .76, 4.20, .30)`), so a 16 cm cabinet centred at 23.73
+  // stands 10 mm clear of it.
+  const MZ = -6.75;
+  box(23.73, 1.36, MZ, .16, .44, .28, METER, { hard: true, gloss: .30 });
+  box(23.815, 1.36, MZ, .02, .38, .24, C('#9d9a90'), { hard: true, gloss: .34 });
+  cyl(23.83, 1.36, MZ + .10, .014, .05, col.steelD, { rz: Math.PI / 2, gloss: G.metal });
+  box(23.83, 1.62, MZ, .02, .09, .16, C('#d8cf3a'), { hard: true, gloss: .26 });
+  glyphs(23.845, 1.62, MZ, Math.PI / 2, '有电危险',
+    { size: .036, gap: .006, color: C('#2a2118'), mode: 1, lift: .005 });
+  box(23.67, 2.06, MZ, .04, .22, .26, REDP, { hard: true, gloss: .28 });
+  glyphs(23.695, 2.06, MZ, Math.PI / 2, '消火栓',
+    { size: .055, gap: .010, color: C('#f4ece0'), mode: 1, lift: .006 });
+
+  // ---- B7. The 消火栓 itself, standing on the pavement under its plate. x 23.95 puts the widest
+  // part at 24.06, which is 24 cm inside the 24.30 the body is held at, so it needs no collider.
+  cyl(23.95, .34, -6.62, .105, .68, HYD, { gloss: .32 });
+  cyl(23.95, .05, -6.62, .17, .10, HYDD, { gloss: .26 });
+  cyl(23.95, .73, -6.62, .085, .10, HYDD, { gloss: .30 });
+  for (const s of [-1, 1])
+    cyl(23.95, .50, -6.62 + s * .13, .045, .12, HYDD, { rx: Math.PI / 2, gloss: .34 });
+  cyl(24.05, .60, -6.62, .038, .09, HYDD, { rz: Math.PI / 2, gloss: .34 });
+
+  // ---- B7. 隔离桩 along the branch's frontage, which is what stops a car parking against a bank's
+  // glass and is on the pavement outside every one of them. At x 24.16 they stand in the 0.88 m
+  // strip in front of the glazing that the body can never enter, so no collider — and the pair
+  // either side of the entrance at MID -9.25 is left out, because a bollard line across a door is
+  // a bollard line nobody would have built.
+  for (const bz of [-11.10, -10.30, -8.20, -7.40]) {
+    cyl(24.16, .42, bz, .058, .84, BOLL, { gloss: .34 });
+    cyl(24.16, .855, bz, .062, .05, BOLL, { gloss: .38 });
+    cyl(24.16, .66, bz, .064, .07, BOLLR, { gloss: .26 });
+  }
+
+  // ---- B8, the south return. A service door, and the air-con bank over it. No new mass: the door
+  // is a frame and a leaf standing 5 cm off the render, not a box bolted to it, and the units hang
+  // on brackets the way every condenser in this city does. This is the stretch the bus shelter
+  // stands in front of (x 25.00..27.10, z -15.7..-8.3), so it is read over the shelter roof from
+  // the north, which is why the units are up at 3.2 m and not at head height.
+  const SDZ = -12.80;
+  box(23.36, 1.08, SDZ, .12, 2.16, 1.10, DOORD, { hard: true, gloss: .26 });          // frame
+  box(23.41, 1.04, SDZ, .06, 2.04, .96, DOORG,
+    { hard: true, gloss: .34, mat: 'steel', matScale: .50, matAmt: .30 });            // leaf
+  for (const dz of [-.40, .40])
+    box(23.45, 1.04, SDZ + dz, .02, 1.96, .04, DOORD, { hard: true, gloss: .38 });
+  cyl(23.47, 1.02, SDZ - .36, .022, .22, col.steel, { gloss: G.metal });              // lever
+  box(23.46, 1.72, SDZ, .02, .13, .30, C('#d8d2c2'), { hard: true, gloss: .24 });
+  glyphs(23.475, 1.72, SDZ, Math.PI / 2, '配电间',
+    { size: .066, gap: .012, color: INK, mode: 1, lift: .006 });
+
+  for (let i = 0; i < 3; i++) {
+    const ay = 3.20 + i * 1.06;
+    box(23.49, ay, SDZ, .34, .58, .82, ACW, { hard: true, gloss: .24 });
+    box(23.665, ay, SDZ, .02, .46, .70, ACD, { hard: true, gloss: .20 });             // the grille
+    cyl(23.665, ay, SDZ, .17, .03, C('#b4b0a6'), { rz: Math.PI / 2, gloss: .26 });    // fan boss
+    for (const s of [-1, 1])
+      box(23.42, ay - .32, SDZ + s * .34, .30, .05, .05, DOORD, { hard: true, gloss: .34 });
+  }
+  cyl(23.37, 3.90, SDZ + .58, .034, 2.60, C('#7a7468'), { gloss: .28 });              // the pipe run
 
   // ============================================================ 公司 the office's ground plane
   //
@@ -674,7 +823,7 @@ StreetFit['civic'] = S => {
 
   shade(40.3, 1.6, 1.7, 6.6, .22);
   shade(40.2, 8.2, 1.7, 5.6, .22);
-  shade(40.5, PHZ, 1.9, 3.6, .24);
+  shade(24.10, PHZ, 1.9, 3.6, .24);   // the chemist's, left on the far parade by the mirror
 
   // ============================================================ 动 what the clock moves
   //

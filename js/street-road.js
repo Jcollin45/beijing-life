@@ -377,6 +377,41 @@
         box(cx, .0245, z, w - .10, .014, .10, TACTD, { hard: true, gloss: .22 });
     }
 
+    // ---------------------------------------------------------- 装卸货泊位, the loading bay
+    //
+    // B9 of STOREFRONT-UPGRADES.md asks for it "on the west kerb by 银行". The west kerb beside the
+    // branch cannot take it, and the numbers say so rather than taste:
+    //
+    //   -17.60 .. -6.40   the 公交 bay. js/street-traffic.js:681 stops the bus on STOP_U = -12.0,
+    //                     and :590 hangs the hull on the centre — an 11.2 m bus (:394) therefore
+    //                     rests across the whole of the branch's kerb, z -11.40 .. -7.10.
+    //   -11.00 ..  -8.40  人行横道 二, above. No markings cross a crossing.
+    //    -4.00            SLN, the northbound stop bar. Nothing is bayed up to a stop line.
+    //
+    // Which leaves 2.30 m between the bus's nose and the stop bar and 2.10 m between the crossing
+    // and the bus's flank: there is no 6 m of free west kerb anywhere south of the bay. So the bay
+    // goes at the first clear kerb north of it — 1.20 m off the bus's tail — where a 运钞车 for the
+    // branch or a delivery for the corner block would actually stand. It is 5.60 m beyond the road
+    // zone's own z0 of -13.50, so no body ever stands on it; it is read from the footway, which at
+    // z -13.20 is between 5.6 and 11.6 m away.
+    //
+    // Paint only, as the ticket says: no collider, no kerb, nothing that could catch a wheel. The
+    // bay carries no characters because `glyphs` cannot lie down — js/build.js:136 applies
+    // rotX(PI/2) after rotY(yaw), so every glyph quad this engine makes is vertical, and painting
+    // 装卸货 as stroke quads is thirty-odd quads on a road that is fill-rate bound.
+    {
+      const LZ0 = -24.80, LZ1 = -18.80, LZC = (LZ0 + LZ1) / 2, LL = LZ1 - LZ0;
+      const LX0 = 27.92, LX1 = 30.00, LXC = (LX0 + LX1) / 2, LW = LX1 - LX0;
+      for (const x of [LX0, LX1]) flat(x, YP, LZC, .12, LL, PAINTW, { gloss: .10 });
+      for (const z of [LZ0, LZ1]) flat(LXC, YP, z, LW + .12, .12, PAINTW, { gloss: .10 });
+      // The amber band down the kerb side is what separates a 装卸货泊位 from an ordinary bay: it
+      // is the edge you may not park across. STUDA is this file's own amber, not a new colour.
+      flat(LX0 + .40, YP, LZC, .40, LL - .40, STUDA, { gloss: .12 });
+      // And the polish, so 12 m² of new paint does not read as a decal laid on old asphalt — the
+      // same trick and the same colour as the two tyre bands across the zebra above.
+      flat(LXC + .30, .0205, LZC + .60, 1.50, 3.20, SCUFF, { mode: 10, gloss: .26, ...ROADMAT });
+    }
+
     // ---------------------------------------------------------- 人行灯, the pedestrian signals
     //
     // Three heads, each facing the pedestrian it is for. West→east is the crossing the player
@@ -442,6 +477,25 @@
     // sign goes and also keeps them off the two signal poles.
     crossSign(26.66, 3.06, -4.60, Math.PI);     // west kerb, read by southbound traffic
     crossSign(37.98, 3.10, 3.40, 0);            // east kerb, read by northbound traffic
+
+    // B10. 人行横道 二 had paint, two dropped kerbs and two tactile blocks and nothing that said
+    // what it was. It gets the same plate each side and NOTHING ELSE — no head, no countdown, no
+    // phase, no gate. It is uncontrolled by design; a signal head there would be a promise the
+    // traffic district was never told to keep.
+    //
+    // Neither plate is on the 26.66 / 37.98 pair the first crossing uses, and both moves are
+    // forced by geometry the brief did not carry:
+    //   * west — the shell's shelter (js/street.js:2441, bsx = RD0-1.35 = 26.15) fills
+    //     x 25.00..27.10, z -15.70..-8.30 and glazes at 26.99, so 26.66 buries the plate in it and
+    //     stands the pole in the bench. Out on the kerb stone at 27.40 there is 41 cm between that
+    //     glass and the 27.58 kerb face; the plate's 66 cm overhangs the channel by 15 cm at
+    //     2.73 m, which is clear of everything — the bus rests at x >= 28.09. Set back 2.10 m from
+    //     XZ0, exactly as the first crossing's west plate is set back from CZ0.
+    //   * east — 商务区's metro mouth is at (38.70, -5.20) and the shell's collider round it runs
+    //     x 36.65..40.00, z -6.10..-3.90, so the matching 2.10 m set-back would put the pole on the
+    //     stair. 3.20 m back, at z -7.60, clears the mouth by 1.50 m.
+    crossSign(27.40, 3.06, -13.10, Math.PI);    // west kerb, southbound, 2.10 m back from XZ0
+    crossSign(37.98, 3.10, -7.60, 0);           // east kerb, northbound, 3.20 m back from XZ1
 
     function crossSign(x, y, z, yaw) {
       const c = Math.cos(yaw), s = Math.sin(yaw);

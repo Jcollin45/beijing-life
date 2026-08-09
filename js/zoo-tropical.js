@@ -190,32 +190,35 @@ const ZooTropical = Lazy('ZooTropical', () => {
     // T01 扬子鳄: a low, broad silhouette on a mud shelf with a tapered tail.
     flat(-5.1,.025,-5.7,4.0,1.25,col.mud || col.soil,{mode:17,gloss:.05});
     moving(ball(-5.1,.34,-5.45,1.45,.25,.42,col.croc,
-      tagged('T01-croc/G10','扬子鳄',{gloss:.08})), 'T01-croc/G10', 0, .05);
+      tagged('T01-crocodile/G10','扬子鳄',{gloss:.08})), 'T01-crocodile/G10', 0, .05);
     moving(box(-5.1,.30,-4.82,1.70,.20,.62,col.crocD,
-      tagged('T01-croc/G11','扬子鳄',{hard:true,gloss:.08})), 'T01-croc/G11', 0, .05);
+      tagged('T01-crocodile/G11','扬子鳄',{hard:true,gloss:.08})), 'T01-crocodile/G11', 0, .05);
     moving(taper(-5.1,.32,-6.75,.45,.28,2.15,col.crocD,
-      tagged('T01-croc/G12','扬子鳄',{rx:Math.PI/2,gloss:.06})), 'T01-croc/G12', 0, .05);
+      tagged('T01-crocodile/G12','扬子鳄',{rx:Math.PI/2,gloss:.06})), 'T01-crocodile/G12', 0, .05);
+    let crocPart=13;
     for (const x of [-5.55,-4.65]) for (const z of [-5.25,-5.75])
       moving(capsule(x,.23,z,.55,.12,.14,col.crocD,{rz:Math.PI/2,tag:'扬子鳄'}),
-        'T01-croc/leg-'+x+'-'+z,0,.05);
+        'T01-crocodile/G'+String(crocPart++).padStart(2,'0'),0,.05);
     for (const x of [-5.42,-4.78]) moving(ball(x,.48,-4.58,.035,.035,.035,col.gold,{tag:'扬子鳄'}),
-      'T01-croc/eye-'+x,0,.05);
+      'T01-crocodile/G'+String(crocPart++).padStart(2,'0'),0,.05);
 
     // T02 长江水族: three sturgeon at different depths and a moving school of small fish.
     for (let i=0;i<3;i++) {
       const x=3.2+i*1.55, y=.55+i*.32, z=-5.6+(i%2)*.9;
       moving(capsule(x,y,z,.95,.25,.30,col.fish,
-        tagged('T02-sturgeon/G' + i,'中华鲟',{rz:Math.PI/2,gloss:.42})),
-        'T02-sturgeon/G'+i, i*.9, .22);
+        tagged('T02-river-aquarium/G' + String(10+i).padStart(2,'0'),'中华鲟',
+          {rz:Math.PI/2,gloss:.42})),
+        'T02-river-aquarium/G'+String(10+i).padStart(2,'0'), i*.9, .22);
       moving(taper(x-.62,y,z,.45,.23,.08,col.fishD || col.waterD,{rz:Math.PI/2,tag:'中华鲟'}),
-        'T02-sturgeon/tail-'+i,i*.9,.22);
+        'T02-river-aquarium/G'+String(13+i).padStart(2,'0'),i*.9,.22);
       moving(taper(x+.55,y,z,.22,.12,.34,col.fishL,{rz:-Math.PI/2,tag:'中华鲟'}),
-        'T02-sturgeon/nose-'+i,i*.9,.22);
+        'T02-river-aquarium/G'+String(16+i).padStart(2,'0'),i*.9,.22);
     }
     for (let i=0;i<9;i++) {
       const x=2.5+(i%5)*.85, y=.35+(i%3)*.34, z=-7.4+Math.floor(i/5)*1.1;
       moving(ball(x,y,z,.20,.075,.08,i%2?col.gold:col.fishL,
-        tagged('T02-fish/G'+i,'中华鲟',{gloss:.48})), 'T02-fish/G'+i, i*.61, .32);
+        tagged('T02-river-aquarium/G'+String(20+i).padStart(2,'0'),'中华鲟',{gloss:.48})),
+        'T02-river-aquarium/G'+String(20+i).padStart(2,'0'), i*.61, .32);
     }
 
     // T03 reptiles: a coiled snake beneath a branch and a low lizard on a warm rock.
@@ -237,12 +240,14 @@ const ZooTropical = Lazy('ZooTropical', () => {
       const x=2.6+(i%5)*.82, y=.7+(i%4)*.62, z=3.8+Math.floor(i/5)*1.45;
       const cc=[col.orange,col.pink,col.blue,col.gold][i%4];
       const phase=i*.47;
+      const base=20+i*3;
       const body=moving(capsule(x,y,z,.05,.18,.05,col.charcoal,
-        tagged('T04-butterfly/G'+i,'蝴蝶',{rz:.3})), 'T04-butterfly/G'+i, i*.47, .40);
+        tagged('T04-butterfly/G'+String(base).padStart(2,'0'),'蝴蝶',{rz:.3})),
+        'T04-butterfly/G'+String(base).padStart(2,'0'), phase, .40);
       const wl=moving(ball(x-.10,y,z,.13,.035,.16,cc,{tag:'蝴蝶',mode:1,alpha:.88,ry:.5}),
-        'T04-butterfly/wingL-'+i,phase,.40);
+        'T04-butterfly/G'+String(base+1).padStart(2,'0'),phase,.40);
       const wr=moving(ball(x+.10,y,z,.13,.035,.16,cc,{tag:'蝴蝶',mode:1,alpha:.88,ry:-.5}),
-        'T04-butterfly/wingR-'+i,phase,.40);
+        'T04-butterfly/G'+String(base+2).padStart(2,'0'),phase,.40);
       body.flutter = true;
       wl.flutter = wr.flutter = true;
     }
@@ -251,11 +256,13 @@ const ZooTropical = Lazy('ZooTropical', () => {
     // T05 fruit bats hang in a dim mesh volume.
     for (let i=0;i<5;i++) {
       const x=9.55+(i%2)*1.05, y=4.7-(i%3)*.38, z=3.6+(i%3)*.72;
+      const base=20+i*3;
       moving(ball(x,y,z,.18,.12,.12,col.bat,
-        tagged('T05-bat/G'+i,'果蝠')), 'T05-bat/G'+i, i*.72, .18);
+        tagged('T05-nocturnal/G'+String(base).padStart(2,'0'),'果蝠')),
+        'T05-nocturnal/G'+String(base).padStart(2,'0'), i*.72, .18);
       for (const s of [-1,1])
         moving(taper(x+s*.34,y,z,.34,.035,.30,col.bat,{rz:s*.16,tag:'果蝠'}),
-          'T05-bat/wing-'+i+'-'+s,i*.72,.18);
+          'T05-nocturnal/G'+String(base+(s<0?1:2)).padStart(2,'0'),i*.72,.18);
     }
     box(10.25,2.75,4.5,2.45,5.45,2.95,col.charcoal,
       { hard:true,blueprintId:'T05-mesh',tag:'果蝠',mode:1,alpha:.16,gloss:.15 });

@@ -125,7 +125,8 @@ function validate(probe = buildProbe()) {
   check('every expansion animal slot has one NPC',animals.length===expectedAnimals,
     `${animals.length}/${expectedAnimals}`);
   check('three keeper routes are populated',npcRows.filter(n=>n.serviceRoute).length===3);
-  check('three visitor loops are populated',npcRows.filter(n=>Array.isArray(n.patrol)).length===3);
+  check('three visitor loops are populated',npcRows.filter(n=>
+    /(?:^|-)R-VIS-/.test(n.npcId||'') && Array.isArray(n.spots) && n.spots.length>1).length===3);
   check('all generated NPC coordinates are finite',npcRows.every(n=>
     [...(n.spots||[]).flatMap(s=>s.at||[]),...(n.patrol||[]).flat()].every(Number.isFinite)));
   const tropicalWords=new Set(p.buildings.find(b=>b.id==='B08-tropical-house').scene.speciesThings

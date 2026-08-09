@@ -259,6 +259,146 @@
         { hard: true, mode: 1, alpha: .55, gloss: .04 });
     }
 
+    // -----------------------------------------------------------------------------------------
+    // 门脸 — the small kit every Chinese shopfront carries and none of these had. Six helpers,
+    // used from the shop sections below and from the block at the foot of this file.
+    //
+    // Every glyph in this kit is `mode: 1` with **no glow**, without exception. That is not
+    // caution, it is the finding at the head of this file: a glowing glyph is a light-mask quad,
+    // this district is fill-rate bound (`.audit.js:327`), and the kit lays down roughly two
+    // hundred small quads. Two hundred *lit* ones would be a second half-transparent copy of the
+    // alley. Nothing here is emissive and nothing here is added to `lit`.
+    //
+    // Nothing in the kit carries a collider either. Everything it places on the alley's north
+    // side sits at z ≤ -2.34, and `clampMove` at r = 0.30 stops the body at z = -2.05, so the
+    // whole kit stands in the 90 cm strip that was already unreachable. The walk is unchanged to
+    // the millimetre — see the measurements against each placement below.
+
+    // A facing direction, so one helper serves both the alley (yaw 0, faces +z) and the far
+    // parade (yaw -π/2, faces -x). A quad at yaw ψ faces (sin ψ, 0, cos ψ).
+    const fwd = ry => [Math.sin(ry), Math.cos(ry)];
+
+    // 营业时间 — the hours plate beside a door. The times are FORMATTED OFF `HOURS` and never
+    // written out, so a plate cannot drift from the hours the shop's own lights keep. Change the
+    // table and every plate in the district changes with it.
+    function hoursPlate(x, y, z, key, ry = 0) {
+      const r = HOURS[key], [sn, cs] = fwd(ry), o = ry ? { ry } : {};
+      box(x, y, z, .30, .34, .014, C('#f1ece0'), { hard: true, gloss: .18, ...o });
+      box(x + sn * .009, y + .112, z + cs * .009, .30, .11, .008, REDD,
+        { hard: true, gloss: .20, ...o });
+      glyphs(x + sn * .016, y + .112, z + cs * .016, ry, '营业时间',
+        { size: .066, gap: .009, color: CREAM, mode: 1, gloss: .10, lift: .004 });
+      glyphs(x + sn * .011, y - .040, z + cs * .011, ry, hm(r[0]) + '-' + hm(r[1]),
+        { size: .058, gap: .006, color: INK, mode: 1, gloss: .08, lift: .004 });
+    }
+
+    // 支付 — the 微信支付 / 支付宝 stickers on the glass, which are the single most characteristic
+    // thing on a Chinese shopfront and the thing the district had none of. Stacked rather than
+    // side by side: the clear slots left on these three doors are 20 cm wide and none of them
+    // takes a pair across. 16 cm each, under the 18 cm the brief allows.
+    function payDecals(x, y, z, ry = 0) {
+      const [sn, cs] = fwd(ry), o = ry ? { ry } : {};
+      for (const [oy, c, t] of [[.10, C('#2f9c4f'), '微信支付'], [-.10, C('#2f7fc4'), '支付宝']]) {
+        box(x, y + oy, z, .16, .16, .008, c, { hard: true, mode: 1, gloss: .12, ...o });
+        box(x + sn * .006, y + oy + .022, z + cs * .006, .075, .054, .005, C('#f4f7f4'),
+          { hard: true, mode: 1, gloss: .10, ...o });
+        glyphs(x + sn * .008, y + oy - .046, z + cs * .008, ry, t,
+          { size: .030, gap: .003, color: C('#f4f7f4'), mode: 1, gloss: .08, lift: .003 });
+      }
+    }
+
+    // 营业执照 / 健康证 — the pair of framed certificates every shop hangs where the street can
+    // see them. Behind the pane, so no collider and no tag: this is something you read through
+    // glass, not something you walk up to and use.
+    function certPair(x, y, z) {
+      for (const [ox, band, t] of [[-.155, C('#2f6f4f'), '营业执照'],
+                                   [.155, C('#8a2f2f'), '健康证']]) {
+        box(x + ox, y, z, .26, .34, .010, C('#3a3630'), { hard: true, gloss: .22 });
+        box(x + ox, y, z + .006, .22, .30, .005, C('#f2eee2'), { hard: true, mode: 1, gloss: .10 });
+        box(x + ox, y + .108, z + .010, .21, .050, .004, band, { hard: true, mode: 1, gloss: .10 });
+        glyphs(x + ox, y + .108, z + .014, 0, t,
+          { size: .040, gap: .005, color: C('#f4f2ea'), mode: 1, gloss: .08, lift: .003 });
+        for (let i = 0; i < 3; i++)
+          box(x + ox, y + .020 - i * .050, z + .010, .15, .008, .004, C('#9a948a'),
+            { hard: true, mode: 1, gloss: .06 });
+      }
+    }
+
+    // 立牌 — the folding A-board with today's price on it. Built as the standing kind this file
+    // already uses at the mall door rather than as two leaning leaves: the lean would want an
+    // `rx` on the face and a matching one on the writing, and glyph runs do not take one, so the
+    // characters would have floated off a tilted board. The back leg is what says it folds.
+    //
+    // The three on the alley are placed by measurement, not by eye — see each call. All of them
+    // stand with their front face no further out than z = -2.34, which is 29 cm short of where
+    // `clampMove` lets a body stand, so none of them has a collider and none of them takes a
+    // millimetre off a street the header already calls 5.70 m at its worst. Three chicanes in
+    // fifty metres is what this alley has and it is staying at three.
+    function aBoard(x, z, head, lines, headCol) {
+      box(x, .58, z, .54, 1.08, .045, C('#2b2f33'), { hard: true, gloss: .22 });
+      box(x, .58, z + .030, .46, .98, .018, CREAM, { hard: true, mode: 1, gloss: .12 });
+      glyphs(x, .92, z + .044, 0, head,
+        { size: .120, gap: .022, color: headCol, mode: 1, gloss: .10, lift: .004 });
+      lines.forEach((t, i) => glyphs(x, .60 - i * .20, z + .044, 0, t,
+        { size: .088, gap: .014, color: i ? C('#6f6a5f') : INK, mode: 1, gloss: .08, lift: .004 }));
+      // The back leg. `cyl` and not `capsule`: a capsule's caps are a quarter of its height each
+      // and scale with sy, so a 1.0 m "rod" comes out as a limb (gl.js:1466).
+      cyl(x, .50, z - .13, .016, .90, col.steelD, { rx: .26, gloss: G.metal });
+      for (const s of [-1, 1])
+        box(x + s * .21, .020, z - .02, .10, .04, .28, col.steelD, { hard: true, gloss: .28 });
+      shade(x, z - .06, .9, .7, .22);
+    }
+
+    // 门牌号 — the little blue enamel number plate. Deliberately the same object as the one on
+    // the 单元门 (street-entry.js:383): same enamel, same white, same 7.2 cm vertical characters.
+    function numPlate(x, y, z, text, ry = 0) {
+      const [sn, cs] = fwd(ry), o = ry ? { ry } : {};
+      box(x, y, z, .17, .34, .020, ENAM, { hard: true, gloss: .34, ...o });
+      glyphs(x + sn * .011, y, z + cs * .011, ry, text,
+        { size: .072, gap: .012, vertical: true, color: ENAMW, mode: 1, gloss: .16, lift: .008 });
+    }
+
+    // 春联 — the alley's own couplet geometry (street-entry.js:364) at shop scale: gold on red,
+    // `mode` left at the default so neither the paper nor the writing emits. Four characters a
+    // side rather than the household's seven, which is what fits a shop door's jambs and is what
+    // shops actually put up. Left on the door all year and gone pink at the folds, because that
+    // is what every one of these looks like by August.
+    function couplet(x, y, z, half, up, down, top) {
+      const paper = C('#a8443a'), gold = C('#f2d98c');
+      for (const [s, line] of [[-1, up], [1, down]]) {
+        box(x + s * half, y, z, .17, .86, .008, paper, { hard: true, gloss: .10 });
+        glyphs(x + s * half, y, z + .006, 0, line,
+          { size: .150, gap: .025, vertical: true, color: gold, gloss: .10, lift: .008 });
+      }
+      box(x, y + .61, z, .66, .175, .008, paper, { hard: true, gloss: .10 });
+      glyphs(x, y + .61, z + .006, 0, top,
+        { size: .110, gap: .016, color: gold, gloss: .10, lift: .008 });
+    }
+
+    // The bilingual under-plate: pinyin over an English gloss, in the order and the register the
+    // HUD uses. Three of them, on the three names a learner most needs off this alley.
+    function subPlate(x, y, z, py, en) {
+      box(x, y, z, .86, .17, .012, C('#efe9db'), { hard: true, gloss: .16 });
+      glyphs(x, y + .036, z + .008, 0, py,
+        { size: .058, gap: .009, color: REDD, mode: 1, gloss: .08, lift: .004 });
+      glyphs(x, y - .046, z + .008, 0, en,
+        { size: .044, gap: .006, color: C('#5b564c'), mode: 1, gloss: .08, lift: .004 });
+    }
+
+    // 竖幅 — the hanging vertical banner. street.js already has two of these (at x 4.10 and
+    // 11.10) and its own comment calls them "the vertical kind on every Chinese shopfront", so
+    // this matches their cloth, their width and their drop exactly. What it does not match is
+    // their `glow: .18`: two more lit ones is two more light-mask columns on a fill-rate-bound
+    // street, and unlit red cloth with gold on it reads the same at every hour anybody is in
+    // the alley to see it.
+    function hangBanner(x, z, wallZ, c, text) {
+      cyl(x, 3.05, (wallZ + z) / 2, .016, z - wallZ, col.steelD,
+        { rx: Math.PI / 2, gloss: G.metal });
+      box(x, 2.30, z, .34, 1.44, .04, c, { hard: true, mode: 7, gloss: G.fabric });
+      glyphs(x, 2.30, z + .022, 0, text,
+        { size: .26, gap: .08, vertical: true, color: CREAM, mode: 1, gloss: .12, lift: .006 });
+    }
+
     // =========================================================================================
     // 幸福超市 — x 4.50 .. 10.70, the corner shop in the ground floor of your own block
     // =========================================================================================
