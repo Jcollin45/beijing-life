@@ -42,6 +42,8 @@ ticket, it is a wish.
 | A11 | **Interior depth for the parade's 22 units.** Each is a lit pane with nothing behind it; from the west footway they read as forty light boxes. | `street.js` | **one** shared dark reveal box per unit, no new emissive | at 12:00 the parade reads as rooms; emissive quad count unchanged |
 | A12 | **A second 侧招 rank.** Three box signs in the whole district. The lane and the west footway have none. | `street-lane.js`, `street-civic.js` | `S.BLADE / S.BLADEH`, and count the glow budget before adding | four more, all on the datum |
 
+| **A13** | **Interior depth for the two ANCHORS.** A11 gave the parade's 22 units a dark reveal so they stopped reading as light boxes. 大超市 and 北京新天地 are the same construction at the largest scale in the district and did not get it: a `COOLI`/`WARMI` box at `glow .07` behind a `.62`-alpha pane. On the far parade that was read across a 9.84 m road; in a 6.80 m lane you stand **4 m** from 9.6 m of it and it is a featureless blown-out white wall. Found by verifying C2 on the live site at 18:00. | `street-lane.js` | reuse A11's reveal — one dark box, **no new emissive**; the aisle/shelf hint can be plain geometry | at (48.5, −7.2) looking at the doors, the glazing reads as a room with depth, not a lit panel; emissive count unchanged |
+
 ## B · The ground in front of them
 
 | # | item | file | constraint | done when |
