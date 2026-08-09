@@ -3,7 +3,7 @@
 CampusFits.register('academic', 20, kit => {
   const {
     box, cyl, ball, capsule, flat, glyphs, solid, blocker, shade, thing,
-    col, G, S, held, rnd, pane, litten, fwinZ, fwinX,
+    col, G, S, held, rnd, pane, litten, fwinZ, fwinX, serviceWindowAccents,
   } = kit;
 
   const hard = { hard: true };
@@ -28,33 +28,37 @@ CampusFits.register('academic', 20, kit => {
       { size:.25, gap:.085, color:ink, mode:1, tag, vertical })) litten(g, blue ? .55 : .9);
   }
 
-  function nonPublicZ(x0, x1, z, n, floors, floorH, skip = []) {
+  function nonPublicZ(accents, x0, x1, z, n, floors, floorH, skip = []) {
     for (let x = x0 + 1.8; x <= x1 - 1.8 + 1e-6; x += 3.2) {
       if (skip.some(v => Math.abs(v - x) < 1.2)) continue;
-      for (let f = 1; f < floors; f++) serviceWinZ(x, f * floorH + 1.35, z, 1.75, 1.45, n);
+      for (let f = 1; f < floors; f++)
+        serviceWinZ(accents, x, f * floorH + 1.35, z, 1.75, 1.45, n);
     }
   }
 
-  function nonPublicX(z0, z1, x, n, floors, floorH, skip = []) {
+  function nonPublicX(accents, z0, z1, x, n, floors, floorH, skip = []) {
     for (let z = z0 + 1.8; z <= z1 - 1.8 + 1e-6; z += 3.2) {
       if (skip.some(v => Math.abs(v - z) < 1.2)) continue;
-      for (let f = 1; f < floors; f++) serviceWinX(x, f * floorH + 1.35, z, 1.75, 1.45, n);
+      for (let f = 1; f < floors; f++)
+        serviceWinX(accents, x, f * floorH + 1.35, z, 1.75, 1.45, n);
     }
   }
 
-  // Distant service facades keep the exact deterministic bay coordinates with a two-piece
-  // recessed window. Public faces retain the full five-piece sill-and-mullion grammar below.
-  function serviceWinZ(x, y, z, w, h, n) {
+  // Distant service facades keep individual reveals/panes and deterministic night state. Their
+  // literal sill-and-mullion geometry is merged per building by the shared Campus helper.
+  function serviceWinZ(accents, x, y, z, w, h, n) {
     box(x, y, z + n * .03, w + .14, h + .14, .06, col.glassDark,
       { hard:true, gloss:.20 });
-    pane(box(x, y, z + n * .06, w, h, .02, col.glassDay,
+    pane(box(x, y, z + n * .055, w, h, .02, col.glassDay,
       { hard:true, mode:1, gloss:G.glass }), rnd());
+    accents.addZ(x, y, z, w, h, n);
   }
-  function serviceWinX(x, y, z, w, h, n) {
+  function serviceWinX(accents, x, y, z, w, h, n) {
     box(x + n * .03, y, z, .06, h + .14, w + .14, col.glassDark,
       { hard:true, gloss:.20 });
-    pane(box(x + n * .06, y, z, .02, h, w, col.glassDay,
+    pane(box(x + n * .055, y, z, .02, h, w, col.glassDay,
       { hard:true, mode:1, gloss:G.glass }), rnd());
+    accents.addX(x, y, z, w, h, n);
   }
 
   // Custom meshes let a whole tactile run remain one scene prop while retaining literal raised
@@ -202,9 +206,11 @@ CampusFits.register('academic', 20, kit => {
     fwinZ(x, y, 52, 2.50, 1.60, -1);
     if ((bay + f * 2) % 3 === 0) kit.acBox(x + .95, y - .65, 52, 'z', -1);
   }
-  nonPublicZ(-19, 13, 63, 1, 5, 3.30);
-  nonPublicX(52, 63, -19, -1, 5, 3.30);
-  nonPublicX(52, 63, 13, 1, 5, 3.30);
+  const b01Service=serviceWindowAccents('b01');
+  nonPublicZ(b01Service, -19, 13, 63, 1, 5, 3.30);
+  nonPublicX(b01Service, 52, 63, -19, -1, 5, 3.30);
+  nonPublicX(b01Service, 52, 63, 13, 1, 5, 3.30);
+  b01Service.finish();
 
   // Four glass leaves, a broad override canopy, two columns and exact stepped approach.
   for (const x of [-5.4,-3.8,-2.2,-.6])
@@ -290,9 +296,11 @@ CampusFits.register('academic', 20, kit => {
     box(29.78, 1.80, z, .30, .10, 2.45, held(col.stoneD, S.stone),
       { tag:b02Tag, hard:true, gloss:G.matte, ...S.stone });
   }
-  nonPublicX(38, 62, 43, 1, 4, 3.20);
-  nonPublicZ(30, 43, 38, -1, 4, 3.20);
-  nonPublicZ(30, 43, 62, 1, 4, 3.20);
+  const b02Service=serviceWindowAccents('b02');
+  nonPublicX(b02Service, 38, 62, 43, 1, 4, 3.20);
+  nonPublicZ(b02Service, 30, 43, 38, -1, 4, 3.20);
+  nonPublicZ(b02Service, 30, 43, 62, 1, 4, 3.20);
+  b02Service.finish();
 
   // Recess and doors; the specified canopy replaces the default mesh, while steps/columns remain.
   box(30, 1.55, 50, .45, 3.10, 3.20, col.glassDark,

@@ -235,8 +235,21 @@ async function main() {
     check('classroom return is flood-fill reachable', reachable(-3,47.2));
     check('library return is flood-fill reachable', reachable(27.2,50));
     check('metro focus is flood-fill reachable', reachable(-11.4,-9.15));
-    check('all seven zones join the same reachable component', scene.zones.every(z =>
-      reachable((z.x0+z.x1)/2,(z.z0+z.z1)/2)));
+    // District zone centres intentionally fall inside some building masses. Prove that each zone
+    // contributes at least one safe cell to the spawn's component instead of testing that arbitrary
+    // centre coordinate.
+    const zoneConnected = zone => {
+      const ax0=Math.max(0,Math.ceil((zone.x0+BODY-x0)/STEP));
+      const ax1=Math.min(nx-1,Math.floor((zone.x1-BODY-x0)/STEP));
+      const az0=Math.max(0,Math.ceil((zone.z0+BODY-z0)/STEP));
+      const az1=Math.min(nz-1,Math.floor((zone.z1-BODY-z0)/STEP));
+      for(let iz=az0;iz<=az1;iz++) for(let ix=ax0;ix<=ax1;ix++) {
+        const p=point(ix,iz);
+        if(safe(p[0],p[1])&&reached[key(ix,iz)]) return true;
+      }
+      return false;
+    };
+    check('all seven zones join the same reachable component', scene.zones.every(zoneConnected));
 
     // Integration acceptance runs in this harness's disposable Chrome profile. It deliberately
     // exercises the public game seam and the real save/load path instead of duplicating their rules.

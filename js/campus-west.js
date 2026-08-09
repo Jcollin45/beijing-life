@@ -3,6 +3,7 @@ CampusFits.register('west', 30, kit => {
   const {
     box, cyl, ball, capsule, flat, glyphs, solid, blocker, shade, thing, dynamic,
     col, G, S, held, rnd, pick, pane, litten, fwinZ, fwinX, acBox,
+    serviceWindowAccents,
   } = kit;
 
   const path = (x, z, w, d, color = col.paveL) =>
@@ -61,28 +62,30 @@ CampusFits.register('west', 30, kit => {
     }
   }
 
-  function serviceWindowsX(x, n, zs, floors, floorH, skip = []) {
+  function serviceWindowsX(accents, x, n, zs, floors, floorH, skip = []) {
     for (const z of zs) {
       if (skip.some(v => Math.abs(v - z) < 1.2)) continue;
       for (let f = 1; f < floors; f++) {
         const y = f * floorH + 1.35;
         box(x + n * .03, y, z, .06, 1.59, 1.89, col.glassDark,
           { hard:true, gloss:.20 });
-        pane(box(x + n * .06, y, z, .02, 1.45, 1.75, col.glassDay,
+        pane(box(x + n * .055, y, z, .02, 1.45, 1.75, col.glassDay,
           { hard:true, mode:1, gloss:G.glass }), rnd());
+        accents.addX(x, y, z, 1.75, 1.45, n);
       }
     }
   }
 
-  function serviceWindowsZ(z, n, xs, floors, floorH, skip = []) {
+  function serviceWindowsZ(accents, z, n, xs, floors, floorH, skip = []) {
     for (const x of xs) {
       if (skip.some(v => Math.abs(v - x) < 1.2)) continue;
       for (let f = 1; f < floors; f++) {
         const y = f * floorH + 1.35;
         box(x, y, z + n * .03, 1.89, 1.59, .06, col.glassDark,
           { hard:true, gloss:.20 });
-        pane(box(x, y, z + n * .06, 1.75, 1.45, .02, col.glassDay,
+        pane(box(x, y, z + n * .055, 1.75, 1.45, .02, col.glassDay,
           { hard:true, mode:1, gloss:G.glass }), rnd());
+        accents.addZ(x, y, z, 1.75, 1.45, n);
       }
     }
   }
@@ -201,9 +204,11 @@ CampusFits.register('west', 30, kit => {
 
   const adminEast = [25.5,28.5,31.5,34.5];
   windowsX(-29, 1, adminEast, 4, 3.10);
-  serviceWindowsX(-43, -1, regular(24,36), 4, 3.10);
-  serviceWindowsZ(24, -1, regular(-43,-29), 4, 3.10);
-  serviceWindowsZ(36, 1, regular(-43,-29), 4, 3.10);
+  const b05Service=serviceWindowAccents('b05');
+  serviceWindowsX(b05Service, -43, -1, regular(24,36), 4, 3.10);
+  serviceWindowsZ(b05Service, 24, -1, regular(-43,-29), 4, 3.10);
+  serviceWindowsZ(b05Service, 36, 1, regular(-43,-29), 4, 3.10);
+  b05Service.finish();
   boardX(-28.70, 3.72, 30, 4.2, .62, '行政楼', admin, 1);
   boardX(-28.70, 2.72, 33.2, 4.4, .56, '国际学生中心', '学生服务中心', 1, true);
 
@@ -255,8 +260,10 @@ CampusFits.register('west', 30, kit => {
     fwinX(-28, y, z, 1.75, bay % 2 ? 1.80 : 1.45, 1);
     if ((bay + f * 2) % 3 === 0) acBox(-28, y - .60, z, 'x', 1);
   }
-  serviceWindowsX(-43, -1, regular(40,62), 4, 3.65);
-  serviceWindowsZ(62, 1, regular(-43,-28), 4, 3.65);
+  const b06Service=serviceWindowAccents('b06');
+  serviceWindowsX(b06Service, -43, -1, regular(40,62), 4, 3.65);
+  serviceWindowsZ(b06Service, 62, 1, regular(-43,-28), 4, 3.65);
+  b06Service.finish();
   // Four ordinary office windows on the south face.
   [-40.8,-37.4,-34.0,-30.6].forEach(x => fwinZ(x, 2.15, 40, 1.75, 1.45, -1));
 

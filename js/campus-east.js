@@ -2,7 +2,7 @@
 CampusFits.register('east', 40, kit => {
   const {
     box, cyl, ball, capsule, flat, glyphs, solid, blocker, shade, thing,
-    col, G, S, held, rnd, pane, litten, fwinZ, fwinX, acBox,
+    col, G, S, held, rnd, pane, litten, fwinZ, fwinX, acBox, serviceWindowAccents,
   } = kit;
 
   const path = (x, z, w, d, color = col.paveL) =>
@@ -61,28 +61,30 @@ CampusFits.register('east', 40, kit => {
     }
   }
 
-  function serviceWindowsX(x, n, zs, floors, floorH, skip = []) {
+  function serviceWindowsX(accents, x, n, zs, floors, floorH, skip = []) {
     for (const z of zs) {
       if (skip.some(v => Math.abs(v - z) < 1.2)) continue;
       for (let f = 1; f < floors; f++) {
         const y = f * floorH + 1.35;
         box(x + n * .03, y, z, .06, 1.59, 1.89, col.glassDark,
           { hard:true, gloss:.20 });
-        pane(box(x + n * .06, y, z, .02, 1.45, 1.75, col.glassDay,
+        pane(box(x + n * .055, y, z, .02, 1.45, 1.75, col.glassDay,
           { hard:true, mode:1, gloss:G.glass }), rnd());
+        accents.addX(x, y, z, 1.75, 1.45, n);
       }
     }
   }
 
-  function serviceWindowsZ(z, n, xs, floors, floorH, skip = []) {
+  function serviceWindowsZ(accents, z, n, xs, floors, floorH, skip = []) {
     for (const x of xs) {
       if (skip.some(v => Math.abs(v - x) < 1.2)) continue;
       for (let f = 1; f < floors; f++) {
         const y = f * floorH + 1.35;
         box(x, y, z + n * .03, 1.89, 1.59, .06, col.glassDark,
           { hard:true, gloss:.20 });
-        pane(box(x, y, z + n * .06, 1.75, 1.45, .02, col.glassDay,
+        pane(box(x, y, z + n * .055, 1.75, 1.45, .02, col.glassDay,
           { hard:true, mode:1, gloss:G.glass }), rnd());
+        accents.addZ(x, y, z, 1.75, 1.45, n);
       }
     }
   }
@@ -111,9 +113,11 @@ CampusFits.register('east', 40, kit => {
   const dormBays = [-7,-4,-1,2,5];
   for (let f = 1; f <= 5; f++) for (let bay = 0; bay < dormBays.length; bay++)
     fwinX(30, f * 3 + 1.35, dormBays[bay], 1.75, 1.50, -1);
-  serviceWindowsX(43, 1, regular(-9,7), 6, 3.0);
-  serviceWindowsZ(-9, -1, regular(30,43), 6, 3.0);
-  serviceWindowsZ(7, 1, regular(30,43), 6, 3.0);
+  const b04Service=serviceWindowAccents('b04');
+  serviceWindowsX(b04Service, 43, 1, regular(-9,7), 6, 3.0);
+  serviceWindowsZ(b04Service, -9, -1, regular(30,43), 6, 3.0);
+  serviceWindowsZ(b04Service, 7, 1, regular(30,43), 6, 3.0);
+  b04Service.finish();
 
   // Exact six-unit override; no other B04 facade receives an AC box.
   [[0,2],[1,4],[2,1],[3,3],[4,2],[4,5]].forEach(([bay,floor]) =>
@@ -200,9 +204,11 @@ CampusFits.register('east', 40, kit => {
       { tag, hard:true, alpha:.76, gloss:.18 });
   }
   windowsX(30, -1, [24.8,28.8,33.0], 3, 3.0, [27,31]);
-  serviceWindowsX(43, 1, regular(23,34), 3, 3.0);
-  serviceWindowsZ(23, -1, regular(30,43), 3, 3.0);
-  serviceWindowsZ(34, 1, regular(30,43), 3, 3.0);
+  const b07Service=serviceWindowAccents('b07');
+  serviceWindowsX(b07Service, 43, 1, regular(23,34), 3, 3.0);
+  serviceWindowsZ(b07Service, 23, -1, regular(30,43), 3, 3.0);
+  serviceWindowsZ(b07Service, 34, 1, regular(30,43), 3, 3.0);
+  b07Service.finish();
 
   // O05/O06 wall-mounted notice cases, covered by the building body solid.
   for (const [z,tag,color,title] of [[27,centre,col.blueSign,'社团通知'],[31,'校医院',col.green,'门诊时间']]) {

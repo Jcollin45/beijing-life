@@ -75,6 +75,104 @@ const Campus = Lazy('Campus', () => {
     p.dynamic=true; p.fixed=true; p.cx=cx; p.cy=cy; p.cz=cz; p.r=r; return p;
   }
 
+  // Service facades keep each reveal and pane as an ordinary prop, but their repeated steel
+  // crossbars and sills are combined per building. Geometry is authored in world metres, then
+  // recentered on its exact bounds so culling/shadow admission use the building's real height.
+  const campusMeshDefs=[];
+  const serviceAccentIds=new Set();
+  let campusMeshesReady=false;
+  const FACE_AXES=[
+    [[1,0,0],[0,0,1],[0,1,0]], [[-1,0,0],[0,0,-1],[0,1,0]],
+    [[0,1,0],[1,0,0],[0,0,-1]], [[0,-1,0],[1,0,0],[0,0,1]],
+    [[0,0,1],[-1,0,0],[0,1,0]], [[0,0,-1],[1,0,0],[0,1,0]],
+  ];
+  const faceFlip=([n,a,b])=>
+    (a[1]*b[2]-a[2]*b[1])*n[0]+(a[2]*b[0]-a[0]*b[2])*n[1]+
+    (a[0]*b[1]-a[1]*b[0])*n[2]<0;
+  function appendMeshBox(d,x0,x1,y0,y1,z0,z1) {
+    const c=[(x0+x1)/2,(y0+y1)/2,(z0+z1)/2],e=[(x1-x0)/2,(y1-y0)/2,(z1-z0)/2];
+    const extent=a=>Math.abs(a[0])*e[0]+Math.abs(a[1])*e[1]+Math.abs(a[2])*e[2];
+    for(const face of FACE_AXES){
+      const [n,a,b]=face,en=extent(n),ea=extent(a),eb=extent(b),base=d.pos.length/3;
+      for(const [sx,sy] of [[-1,-1],[1,-1],[1,1],[-1,1]]){
+        d.pos.push(c[0]+n[0]*en+a[0]*sx*ea+b[0]*sy*eb,
+          c[1]+n[1]*en+a[1]*sx*ea+b[1]*sy*eb,
+          c[2]+n[2]*en+a[2]*sx*ea+b[2]*sy*eb);
+        d.nor.push(...n); d.uv.push((sx+1)/2,(sy+1)/2);
+      }
+      if(faceFlip(face)) d.idx.push(base,base+2,base+1,base,base+3,base+2);
+      else d.idx.push(base,base+1,base+2,base,base+2,base+3);
+    }
+  }
+  function compoundMeshProp(name,data,color,options) {
+    if(!data.pos.length) throw new Error(`empty Campus compound mesh: ${name}`);
+    let x0=Infinity,y0=Infinity,z0=Infinity,x1=-Infinity,y1=-Infinity,z1=-Infinity;
+    for(let i=0;i<data.pos.length;i+=3){
+      const x=data.pos[i],y=data.pos[i+1],z=data.pos[i+2];
+      x0=Math.min(x0,x); x1=Math.max(x1,x);
+      y0=Math.min(y0,y); y1=Math.max(y1,y);
+      z0=Math.min(z0,z); z1=Math.max(z1,z);
+    }
+    const cx=(x0+x1)/2,cy=(y0+y1)/2,cz=(z0+z1)/2;
+    for(let i=0;i<data.pos.length;i+=3){
+      data.pos[i]-=cx; data.pos[i+1]-=cy; data.pos[i+2]-=cz;
+    }
+    const p=B.shape(name,cx,cy,cz,1,1,1,color,options);
+    p.fixed=true; p.cx=cx; p.cy=cy; p.cz=cz;
+    p.r=.5*Math.hypot(x1-x0,y1-y0,z1-z0);
+    // These are decorative façade pieces. A building-wide pick box would mask nearby objects.
+    p.ob=null;
+    campusMeshDefs.push({name,data,ready:false});
+    return p;
+  }
+  function serviceWindowAccents(id) {
+    if(!/^[a-z][a-z0-9-]*$/.test(id)) throw new Error(`invalid Campus mesh id: ${id}`);
+    if(serviceAccentIds.has(id)) throw new Error(`duplicate Campus service accents: ${id}`);
+    serviceAccentIds.add(id);
+    const steel={pos:[],nor:[],uv:[],idx:[]},sills={pos:[],nor:[],uv:[],idx:[]};
+    let finished=false;
+    const assertOpen=(x,y,z,w,h,n)=>{
+      if(finished) throw new Error(`Campus service accents already finished: ${id}`);
+      if(![x,y,z,w,h,n].every(Number.isFinite)||w<=0||h<=0||(n!==-1&&n!==1))
+        throw new Error(`invalid Campus service window: ${id}`);
+    };
+    const addZ=(x,y,z,w,h,n=-1)=>{
+      assertOpen(x,y,z,w,h,n);
+      const bz=z+n*.070,sz=z+n*.085;
+      appendMeshBox(steel,x-.0225,x+.0225,y-h/2,y+h/2,bz-.01,bz+.01);
+      appendMeshBox(steel,x-w/2,x+w/2,y-.0225,y+.0225,bz-.01,bz+.01);
+      const sy=y-h/2-.055;
+      appendMeshBox(sills,x-(w+.26)/2,x+(w+.26)/2,sy-.035,sy+.035,sz-.085,sz+.085);
+    };
+    const addX=(x,y,z,w,h,n=-1)=>{
+      assertOpen(x,y,z,w,h,n);
+      const bx=x+n*.070,sx=x+n*.085;
+      appendMeshBox(steel,bx-.01,bx+.01,y-h/2,y+h/2,z-.0225,z+.0225);
+      appendMeshBox(steel,bx-.01,bx+.01,y-.0225,y+.0225,z-w/2,z+w/2);
+      const sy=y-h/2-.055;
+      appendMeshBox(sills,sx-.085,sx+.085,sy-.035,sy+.035,z-(w+.26)/2,z+(w+.26)/2);
+    };
+    const finish=()=>{
+      if(finished) throw new Error(`Campus service accents already finished: ${id}`);
+      finished=true;
+      compoundMeshProp(`campus-service-${id}-steel-v1`,steel,col.steel,
+        {hard:true,gloss:G.metal});
+      compoundMeshProp(`campus-service-${id}-sills-v1`,sills,col.renderD,
+        {hard:true,gloss:G.paint});
+    };
+    return Object.freeze({addZ,addX,finish});
+  }
+  function ensureCampusMeshes() {
+    if(campusMeshesReady||typeof R==='undefined'||!R||!R.gl||typeof R.mesh!=='function') return;
+    for(const q of campusMeshDefs){
+      if(q.ready) continue;
+      if(!(typeof R.hasMesh==='function'&&R.hasMesh(q.name)))
+        R.mesh(q.name,q.data.pos,q.data.nor,q.data.uv,q.data.idx);
+      q.ready=true;
+    }
+    campusMeshesReady=campusMeshDefs.length>0&&campusMeshDefs.every(q=>q.ready);
+  }
+
   function fwinZ(x,y,z,w,h,n=-1) {
     const d=q=>z+n*q;
     box(x,y,d(.030),w+.14,h+.14,.06,col.glassDark,{hard:true,gloss:.20});
@@ -167,7 +265,7 @@ const Campus = Lazy('Campus', () => {
     B,box,cyl,ball,capsule,taper,flat,glyphs,glyph,solid,blocker,shade,glow,thing,light,
     col,G,S,held,contract:CAMPUS_CONTRACT,CAMPUS_CONTRACT,RX,RZ,GROUND,AXIS_X,SPAWN,OUT,
     rnd,pick,panes,litProps,lampPools,pane,litten,fwin,fwinZ,fwinX,acBox,
-    tree,bike,bench,fountain,lamp,sign,dynamic,
+    tree,bike,bench,fountain,lamp,sign,dynamic,serviceWindowAccents,
   });
   const requiredFits={boundary:10,academic:20,west:30,east:40,furniture:50,life:60};
   for(const [id,order] of Object.entries(requiredFits)){
@@ -180,6 +278,7 @@ const Campus = Lazy('Campus', () => {
   const rows=CampusFits.rows.slice().sort((a,b)=>a.order-b.order||a.id.localeCompare(b.id));
   const hooks=[];
   for(const row of rows) hooks.push({id:row.id,hook:row.build(kit)||{}});
+  ensureCampusMeshes();
 
   function sharedNight(n) {
     const k=Math.max(0,Math.min(1,Number(n)||0)),soft=k*k*(3-2*k);
@@ -197,6 +296,7 @@ const Campus = Lazy('Campus', () => {
     sharedNight(n);
   }
   function tick(t,player,gameMinutes) {
+    ensureCampusMeshes();
     const events=[];
     for(const q of hooks){
       if(typeof q.hook.tick!=='function') continue;
