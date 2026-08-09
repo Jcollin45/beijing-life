@@ -284,17 +284,17 @@ paving.</p>
     // ---- NEW WORK
     const n=S.g('new');
     // pedestrian lane east of the road — DRAWN, NOT BUILT
-    S.rect(n,41.6,-4,60,4,{fill:'var(--warn)','fill-opacity':.10,stroke:'var(--warn)',
-      'stroke-width':1.4,'stroke-dasharray':'7 4'});
-    tag(S,S.g('nl'),51,0,'新天地步行街 — HELD, see below','var(--warn)',11);
+    S.rect(n,41.6,-12.6,59.0,-5.8,{fill:'var(--good)','fill-opacity':.26,stroke:'var(--good)',
+      'stroke-width':1.6});
+    tag(S,S.g('nl'),50,-9.2,'新天地步行街 BUILT — 17.4 × 6.8','var(--good)',11);
     // west footway frontage — BUILT
     S.rect(n,23.30,-13.5,24.0,13.5,{fill:'var(--good)','fill-opacity':.28,stroke:'var(--good)',
       'stroke-width':1.6});
     tag(S,S.g('nl'),30.4,-13.0,'BUILT — east-facing frontage, building line x 23.30','var(--good)',10);
     // second crossing — drawn, not built
-    S.rect(n,27.5,-11.0,37.5,-8.4,{fill:'var(--warn)','fill-opacity':.10,stroke:'var(--warn)',
-      'stroke-width':1.2,'stroke-dasharray':'5 3'});
-    tag(S,S.g('nl'),32.5,-9.7,'2nd crossing — held','var(--warn)',9.5);
+    S.rect(n,27.5,-11.0,37.5,-8.4,{fill:'var(--good)','fill-opacity':.26,stroke:'var(--good)',
+      'stroke-width':1.4});
+    tag(S,S.g('nl'),32.5,-12.4,'2nd crossing BUILT','var(--good)',9.5);
     // and what else moved on the ground
     tag(S,S.g('nl'),-28.6,-1.2,'广场舞 BUILT','var(--good)',10);
     tag(S,S.g('nl'),4.6,-4.4,'tree DELETED','var(--good)',9.5);
@@ -318,8 +318,8 @@ paving.</p>
     const dn=S.g('doorsnew');
     door(S,dn,23.38,-5.25,"D8 BUILT",1,-30,0);
     door(S,dn,23.42,-9.25,"D11 BUILT",1,-32,0);
-    door(S,dn,47.20,3.60,"D9 held",2,0,-13);
-    door(S,dn,54.00,-3.60,"D10 held",2,0,16);
+    door(S,dn,46.60,-5.80,"D9 BUILT",1,0,-13);
+    door(S,dn,52.80,-12.60,"D10 BUILT",1,0,16);
 
     // ---- dimensions
     const dm=S.g('dims');
@@ -406,7 +406,7 @@ paving.</p>
     S.line(n,23.30,9,23.30,13.5,{stroke:'var(--accent)','stroke-width':3});
     const nl=S.g('newlbl');
     tag(S,nl,25.4,-15.0,'BUILT — east-facing frontage, building line x 23.30','var(--good)',10);
-    tag(S,nl,32.5,-9.7,'2nd crossing  z -11.00 .. -8.40  — HELD, not built','var(--warn)',9.5);
+    tag(S,nl,32.5,-9.7,'2nd crossing BUILT  z -11.00 .. -8.40','var(--good)',9.5);
 
     // occupants of the new frontage
     const o=S.g('occ');
@@ -419,7 +419,7 @@ paving.</p>
     S.line(o,23.95,11.2,27.9,11.2,{stroke:'var(--accent)','stroke-width':.7,'stroke-dasharray':'3 3'});
     tag(S,o,28.1,-5.25,'药店  BUILT  z -6.90 .. -3.60','var(--good)',10,'start');
     tag(S,o,28.1,-9.25,'银行  BUILT  z -11.40 .. -7.10','var(--good)',10,'start');
-    tag(S,o,28.1,11.2,'志愿服务站 — held','var(--warn)',10,'start');
+    tag(S,o,28.1,11.2,'志愿服务站 BUILT (25.00, 12.00)','var(--good)',10,'start');
     // bus shelter to the kerb, newsstand on the footway
     S.rect(o,25.35,-15.65,27.05,-8.35,{fill:'none',stroke:'var(--good)','stroke-width':1.6});
     S.line(o,27.05,-14.6,31.2,-14.6,{stroke:'var(--good)','stroke-width':.7,'stroke-dasharray':'3 3'});
@@ -529,8 +529,8 @@ paving.</p>
     ['D6','地铁站 · 商务区','38.70, -5.20','—','held','street-civic.js builds its furniture off the shell mouth; not a one-number move'],
     ['D7','公司 office','41.60, 2.20','—','unmoved','the one thing that should front a main road'],
     ['D8','药店 pharmacy','41.60, -3.70','23.38, -5.25','BUILT','mirrored about x 31.99 onto the corner block. First east-facing shopfront in the game'],
-    ['D9','北京新天地 mall','41.60, -9.20','—','held','needs a 90° facade rotation and a new zone'],
-    ['D10','大超市 hypermarket','41.60, 6.50','—','held','same'],
+    ['D9','北京新天地 mall','41.60, -9.20','46.60, -5.80','BUILT','onto 新天地步行街, north side. Its own portal was the hole the lane opens through'],
+    ['D10','大超市 hypermarket','41.60, 6.50','52.80, -12.60','BUILT','lane, south side. Both return legs in market.js and mall.js were stale street coordinates and are fixed'],
     ['D11','银行 bank','40.55, -2.20','23.42, -9.25','BUILT','reflected about its own face plane, 24 offsets. BANK_OUT → (24.62, -9.25) facing east'],
     ['D12','医院 main / 急诊','23.38, 22.20 / 35.55','—','unmoved',''],
     ['D13','酒店','41.10, 28.40','—','unmoved',''],
@@ -541,7 +541,7 @@ paving.</p>
     ['road','24.0 .. 39.8','-13.5 .. 13.5','carriageway 9.84','UNCHANGED — the body stops at 24.30 and the frontage lives in the 0.88 m strip beyond it'],
     ['hospital-road','23.2 .. 27.4','12.8 .. 42.8','spine on x 25.2','unchanged'],
     ['hotel-forecourt','37.35 .. 40.92','12.78 .. 48.25','—','unchanged'],
-    ['步行街','41.6 .. 60.0','-4.0 .. 4.0','18.4 × 8.0','HELD. Needs a new zone, a cut backstop, and two 90° facade rotations — for a shelf that is now 5 doors, not 7'],
+    ['步行街 (NEW)','39.30 .. 58.30','-11.90 .. -6.50','17.4 × 6.8 built','BUILT. Mouth is the 6.80 m the mall portal used to occupy; parade gapped, backstop split, blocks 11.0 tall so daylight reaches it'],
   ];
   const fill=(id,rows)=>{const b=document.querySelector('#'+id+' tbody');
     rows.forEach(r=>{const tr=document.createElement('tr');
