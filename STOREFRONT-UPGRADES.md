@@ -80,6 +80,21 @@ ticket, it is a wish.
 | D5 | **Bilingual under-text** on the two or three signs a learner most needs, in the pinyin style the HUD uses. | `street-retail.js` | `mode: 1`, no glow, ≤ 0.12 | 药店, 面包房, 超市 carry it |
 | D6 | **Festival dressing.** 春联 on shop doors at New Year, 开业花篮 outside a new one. The alley has couplets on residential gates and none on shops. | `street-retail.js` | reuse the alley's own couplet geometry | shop couplets on at least three frontages |
 
+## Verified by the lead, on the live origin — items a lane could not frame itself
+
+Read off `jcollin45.github.io`, not `:8000`. Recorded here because each was left honestly
+unverified in a lane's report, and an item nobody looked at is not done.
+
+| item | camera | what was read |
+|---|---|---|
+| **A13** | (48.5, −7.2) — the ticket's own point, chase dist 0.12 to clear the mall portal | 大超市's glazing renders as a mid-grey interior with shelf and aisle lines and a light border, where it was a flat blown-out white panel. **Closed.** |
+| **C4** | (44.6, −10.3) looking west, fov 0.75 | the cat, ginger, curled on the top bread crate outside 面包房 at (43.13, −11.98, y 0.61). **Closed.** |
+| **C2** | (52.4, −9.0) at 18:00 | two 顾客 at 大超市's doors, (52.1, −11.1) and (52.1, −10.6), one on `act:'phone'`. **Closed.** |
+| **B5** | (26.0, −9.0), the west footway | the gateway carries — 新天地步行街 in gold on the beam, 全场五折 on the pier, the lane and its festoon behind. **Closed.** |
+| **blade fix** | (0.50, 2.20) | 超市 reads gold-on-red. It was a blank box before `CASE = .065`. **Closed.** |
+| **五金 blade** | (18.80, 1.10) | reads, but its **top half is behind L1's awning valance** — confirmed, and the reason the awning moves rather than the datum. **OPEN, with L1.** |
+| **A5** | — | **never framed by anyone.** The certificate pairs may not exist. **OPEN, with L2.** |
+
 ## E · Measurement — the item that gates the rest
 
 | # | item | file | done when |
