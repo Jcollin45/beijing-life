@@ -173,7 +173,7 @@ const Metro = Lazy('Metro', () => {
     // The coordinates are written out rather than read off each scene, so that metro.js does not
     // have to load after four other files to know where its own line goes.
     { hz:'大学城', py:'Dàxuéchéng', en:'University Town',
-      out: { place:'campus', at: { x: -11.40, z: -9.80, yaw: 0 } } },
+      out: { place:'campus', at: { x: -11.40, z: -9.35, yaw: 0 } } },
     { hz:'火车站', py:'Huǒchēzhàn', en:'Railway Station',
       out: { place:'rail', at: { x: -6.10, z: -4.80, yaw: Math.PI * .10 } } },
     { hz:'公园', py:'Gōngyuán', en:'The Park',

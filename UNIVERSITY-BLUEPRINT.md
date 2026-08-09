@@ -88,10 +88,19 @@ zone clamp.
 | `west-gate-apron` | `-50.70..-47.00` | `17.30..22.70` | west pavement; light `(-35,4,44)` |
 | `east-gate-apron` | `47.00..50.70` | `17.30..22.70` | east pavement; light `(36,4,44)` |
 
-`roomAt(x,z)` should return the first zone containing the point, with the three apron zones checked
-before the four campus zones. If no zone contains the point, return the previous room when supplied,
-otherwise `campus-south`; never return a room without a three-number `light`. Gate-apron outer edges
-receive visible rails and matching solids.
+`roomAt(x,z,previousRoomId)` should return the first zone containing the point, with the three apron
+zones checked before the four campus zones. If none contains it, resolve the prior string ID back to
+a zone object and then fall back to `campus-south`; never return the raw third argument or any object
+without a three-number `light`:
+
+```js
+function roomAt(x, z, previousRoomId) {
+  const hit = zones.find(r => x >= r.x0 && x <= r.x1 && z >= r.z0 && z <= r.z1);
+  return hit || zones.find(r => r.id === previousRoomId) || campusSouth;
+}
+```
+
+Gate-apron outer edges receive visible rails and matching solids.
 Every adjoining pair overlaps by at least 0.80 m. This is mandatory: `clampMove` insets a candidate
 zone by the 0.30 m player radius and only considers zones containing the previous point, so zones
 that merely touch are impassable. Preserve these overlaps if a boundary is edited.
@@ -206,7 +215,7 @@ supporting surface.
 | `P-COURT` | `(36,13)` | `14 × 8` | asphalt | compact basketball court; 1 m clear of east service lane |
 | `P-W-SERVICE` | `(-45.5,27)` | `3 × 76` | dark concrete | wall-side deliveries, broken around west gate |
 | `P-E-SERVICE` | `(45.5,27)` | `3 × 76` | dark concrete | maintenance / fire access, broken around east gate |
-| `P-N-SERVICE` | `(0,64.5)` | `90 × 3` | dark concrete | rear fire/service link |
+| `P-N-SERVICE` | `(0,65)` | `90 × 3` | dark concrete | rear fire/service link, `z=63.5..66.5` |
 
 `P-W-SERVICE` and `P-E-SERVICE` are rendered as separate runs on either side of their gate gaps.
 They are scenery/maintenance lanes, not moving vehicle systems in v2.
@@ -257,8 +266,31 @@ All multi-storey blocks use these rules unless their own section overrides them:
 - Plinth: brick facing to y=2.20, 0.30 m proud of the public face, `S.brick`, `mode:11`.
 - String course: 0.18 m high at each floor line, 0.22 m deep.
 - Roof: 0.60 m parapet plus 0.10 m stone/tile cap.
-- Window: dark reveal, inset sky pane, vertical/horizontal steel bars, stone sill. Reuse `fwinZ`
-  for north/south faces and add `fwinX` for east/west faces.
+- Window: dark reveal, inset sky pane, vertical/horizontal steel bars, stone sill. The existing
+  `campus.js` helper is named `fwin`; export it as `fwinZ` and define the perpendicular helper below.
+  Here `w` spans x in `fwinZ`, spans z in `fwinX`, and `n` is the outward sign on that axis:
+
+```js
+const fwinZ = fwin;
+function fwinX(x, y, z, w, h, n = -1) {
+  const d = q => x + n * q;
+  box(d(.030), y, z, .06, h + .14, w + .14, col.glassDark,
+    {hard:true, gloss:.20});
+  const warm = rnd();
+  pane(box(d(.055), y, z, .02, h, w, col.glassDay,
+    {hard:true, mode:1, gloss:G.glass}), warm);
+  box(d(.070), y, z, .02, h, .045, col.steel,
+    {hard:true, gloss:G.metal});
+  box(d(.070), y, z, .02, .045, w, col.steel,
+    {hard:true, gloss:G.metal});
+  box(d(.085), y - h / 2 - .055, z, .17, .07, w + .26, col.renderD,
+    {hard:true, gloss:G.paint});
+  return warm;
+}
+// The fit toolkit exposes both keys explicitly:
+kit.fwinZ = fwinZ;
+kit.fwinX = fwinX;
+```
 - AC units: only above ground floor, on roughly one of every three window bays using the stable
   formula `(bay + floor*2) % 3 === 0`; `bay` and `floor` are zero-based indices.
 - Public entrance: 2.4–3.6 m glazed opening, two or three shallow steps, 2.8–4.0 m canopy, bilingual
@@ -721,14 +753,14 @@ Use distinct global labels; `USE` is keyed by Chinese text across the whole game
 
 | label | coordinate / focus | base behavior |
 |---|---|---|
-| 校园地图 | thing `(15,2.55,-2.6)`, focus `(15,-4.0)`, reach 2.2 | read map, 4 min, small mood gain |
-| 学生服务中心 | thing `(-28.62,2.20,27)`, focus `(-26.6,27)`, reach 2.5 | obtain persistent `学生证`; repeat visits explain services |
-| 行政楼 | thing `(-28.75,3.20,30)`, focus `(-26.6,30)`, reach 2.6 | ask directions / office-hours interaction |
-| 实验楼 | thing `(-27.55,3.00,50)`, focus `(-25.5,50)`, reach 2.6 | inspect/visit science building; no false portal yet |
-| 活动中心 | thing `(29.55,3.20,27)`, focus `(27.4,27)`, reach 2.6 | see club activities / noticeboard |
-| 校医院 | thing `(29.55,3.20,31)`, focus `(27.4,31)`, reach 2.6 | simple campus-clinic check; no `go` until interior exists |
-| 校园快递柜 | thing `(29.45,1.20,3.5)`, focus `(27.8,3.5)`, reach 2.2 | read QR pickup instructions, 2 min; never call apartment `快递柜` |
-| 跑道 | thing `(-19,.03,35)`, focus `(-19,35)`, reach 1.2 | run one lap, 12 min, rest/food cost and mood gain |
+| 校园地图 | thing `(15,2.55,-2.6)`, focus `(15,-4.0)`, reach 2.2 | `secs:2.4,mins:4,gain:{mood:2},pose:{type:'stand'}` |
+| 学生服务中心 | thing `(-28.62,2.20,27)`, focus `(-26.6,27)`, reach 2.5 | `secs:3,mins:6,gain:{mood:4},pose:{type:'talk'}`; issue persistent `学生证` |
+| 行政楼 | thing `(-28.75,3.20,30)`, focus `(-26.6,30)`, reach 2.6 | `secs:2.4,mins:5,gain:{mood:1},pose:{type:'talk'}` |
+| 实验楼 | thing `(-27.55,3.00,50)`, focus `(-25.5,50)`, reach 2.6 | `secs:2.2,mins:4,gain:{mood:2},pose:{type:'stand'}`; no false portal |
+| 活动中心 | thing `(29.55,3.20,27)`, focus `(27.4,27)`, reach 2.6 | `secs:2.6,mins:6,gain:{mood:5},pose:{type:'stand'}` |
+| 校医院 | thing `(29.55,3.20,31)`, focus `(27.4,31)`, reach 2.6 | `secs:3,mins:10,gain:{rest:4},pose:{type:'talk'}`; no `go` yet |
+| 校园快递柜 | thing `(29.45,1.20,3.5)`, focus `(27.8,3.5)`, reach 2.2 | `secs:1.8,mins:2,gain:{mood:1},pose:{type:'press'}`; never call apartment `快递柜` |
+| 跑道 | thing `(-19,.03,35)`, focus `(-19,35)`, reach 1.2 | `secs:3.2,mins:12,gain:{rest:-12,food:-5,mood:8},pose:{type:'walk'}` |
 
 `学生证` closes an existing game loop: the mall cinema already expects a student-ID source. This
 building is its single authoritative source; do not mint the item from multiple campus objects.
@@ -737,9 +769,11 @@ Use this exact durable contract in `game.js`:
 ```js
 let campusLife = { studentId:false };
 function issueStudentId() {
-  if (!campusLife.studentId) campusLife.studentId = true;
+  const fresh = !campusLife.studentId;
+  campusLife.studentId = true;
   if (!mallBought.includes('学生证')) mallBought.push('学生证');
-  saveGame();
+  if (fresh) saveGame();
+  return fresh;
 }
 // saveGame blob:
 campusLife: { studentId:!!campusLife.studentId },
@@ -748,10 +782,27 @@ campusLife = { studentId:!!s.campusLife?.studentId };
 if (campusLife.studentId && !mallBought.includes('学生证')) mallBought.push('学生证');
 ```
 
-The `学生服务中心` USE row calls `issueStudentId()` once and gives an already-issued response on
-repeat. Re-inserting the card after load is the bridge to `CinemaSys.hasStudentId()`, even after
-more than 24 later purchases have pushed it out of the truncated `bought` save list. New Game resets
-`campusLife.studentId=false`; expose it in `__game.state()` for a persistence harness.
+Use this exact data flag and completion hook; `USE` rows do not support arbitrary callbacks:
+
+```js
+USE['学生服务中心'] = {
+  zh:'办学生证', py:'bàn xuéshēngzhèng', en:'get a student card',
+  secs:3, mins:6, gain:{mood:4}, pose:{type:'talk'}, studentId:true,
+  done:'学生证办好了，请收好。', doneTr:'Your student card is ready. Keep it safe.',
+  repeatDone:'学生证已经办过了。', repeatDoneTr:'Your student card has already been issued.'
+};
+// Inside stopUse(), after `let spoke = null`, and inside `if (finished)`:
+if (def.studentId) {
+  const fresh = issueStudentId();
+  spoke = fresh ? [def.done, def.doneTr] : [def.repeatDone, def.repeatDoneTr];
+}
+```
+
+This branch only runs on completion, not cancellation, and `spoke` already takes precedence over the
+generic `def.done` output at the end of `stopUse()`. Re-inserting the card after load is the bridge to
+`CinemaSys.hasStudentId()`, even after more than 24 later purchases have pushed it out of the truncated
+`bought` save list. New Game resets `campusLife.studentId=false`; expose it in `__game.state()` for a
+persistence harness.
 
 ### 9.4 Save migration for the new footprint
 
@@ -879,8 +930,12 @@ const CampusFits = window.CampusFits = {
 
 Inside the Lazy builder, create `kit`, sort a copy with `(a,b)=>a.order-b.order ||
 a.id.localeCompare(b.id)`, call every `build(kit)` exactly once, then compose returned hooks in that
-same order. Campus's `tick(dt)` runs every hook tick; `setNight(n)` runs every night hook and finally
-the shared window/lamp updater. Call `B.finish()` only after every fit has built. Required order IDs:
+same order. The engine supplies absolute seconds, not a delta; implement
+`Campus.tick(t, player, gameMinutes)` and forward all three arguments unchanged to every
+`hook.tick(t, player, gameMinutes)` in registry order. Preserve any hook events by flattening array
+returns and wrapping scalar returns, then return the combined array (or `undefined` when empty).
+`setNight(n)` runs every night hook and finally the shared window/lamp updater. Call `B.finish()` only
+after every fit has built. Required order IDs:
 `boundary:10, academic:20, west:30, east:40, furniture:50, life:60`.
 
 Shared-file integration changes are serialized after geometry lands:
@@ -888,8 +943,9 @@ Shared-file integration changes are serialized after geometry lands:
 - `js/classroom.js`: new campus return.
 - `js/library.js`: new campus return.
 - `js/metro.js`: safe campus arrival.
-- `js/data.js`: existing NPC spot arrays and new USE rows/state.
-- `js/game.js`: `DISTRICT` fix and any student-card persistence hook.
+- `js/data.js`: corrected-rig NPC spot arrays, `campusStatic:true`, and the new distinct USE rows.
+- `js/game.js`: `DISTRICT`, deferred-snap branch, `CampusContract` layout migration, and the exact
+  `campusLife.studentId` save/load/issuance contract in §9.3.
 - `js/vocab.js`: new university words only.
 
 ---
@@ -924,8 +980,12 @@ Shared-file integration changes are serialized after geometry lands:
 - [ ] A marker-less v1 save last written anywhere in the old campus resumes at canonical SPAWN;
       a v2-layout campus save at a legal coordinate resumes exactly where it was written.
 - [ ] A 0.30 m radius flood-fill reaches every interaction focus from SPAWN.
+- [ ] A simulated 0.30 m body crosses all south/core/west/east zone seams and each open apron in
+      both directions; every `roomAt` result, including aprons/fallback, has a valid light triple.
 - [ ] Primary routes retain 4.4 m clear; no door waiting area is narrower than 2.0 m.
 - [ ] NPC timed spots and their 0.35 m clearance discs do not intersect solids.
+- [ ] A Campus schedule-window change never hands a straight-line target to generic NPC motion;
+      queued deferred snaps apply only off-scene/before the next Campus render.
 
 ### Visual organization
 
@@ -942,9 +1002,15 @@ Shared-file integration changes are serialized after geometry lands:
 - [ ] Metro ↔ campus, classroom ↔ campus, and library ↔ campus work both ways.
 - [ ] `classroom` and `library` identify as 大学城 in district UI.
 - [ ] Student ID is issued once and recognized by the cinema path.
+- [ ] Student ID remains recognized after 30 later purchases, save/reload, and a repeat service-centre
+      visit; `校园快递柜` never reads or clears `HomeLife` apartment parcels.
+- [ ] The court's 2.4 m northwest gate remains reachable and clear of its hoop, bench, and fence
+      after 0.30 m inflation.
 - [ ] Day, dusk, rain, and midnight captures have no black facades, floating glyphs, z-fighting,
       missing ground, or lightless entrance slabs.
 - [ ] Scene remains within 3,200 props / 220 submitted color calls, with only nearest 8 lights active.
+- [ ] The visual map renders at 320 px and 736 px in light/dark themes with all building footprints,
+      circulation, gate states, and fixture symbols visible and no clipped coordinate labels.
 
 When these checks pass, the university is complete as an exterior gameplay district. New interiors
 for the canteen, dormitory, clinic, administration, or science building can be added later without

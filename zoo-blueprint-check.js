@@ -51,6 +51,11 @@ const segmentsIntersect = (a,b,c,d) => {
 const segmentDistance = (a,b,c,d) => segmentsIntersect(a,b,c,d) ? 0 : Math.min(
   pointSegmentDistance(a,c,d),pointSegmentDistance(b,c,d),
   pointSegmentDistance(c,a,b),pointSegmentDistance(d,a,b));
+const segmentRectDistance = (a,b,q) => {
+  if (contains(q,a)||contains(q,b)) return 0;
+  const c=[[q.x0,q.z0],[q.x1,q.z0],[q.x1,q.z1],[q.x0,q.z1]];
+  return Math.min(...c.map((p,i)=>segmentDistance(a,b,p,c[(i+1)%4])));
+};
 const polylineDistance = (a,b) => {
   let d=Infinity;
   for(let i=1;i<a.centerline.length;i++) for(let j=1;j<b.centerline.length;j++)
@@ -78,7 +83,9 @@ assert(Number.isInteger(bp.revision) && bp.revision > 0, 'REVISION', 'root',
 assert(bp.units === 'metres', 'UNITS', 'root', 'units must be metres');
 
 const geometryPayload = {
-  revision:bp.revision, site:bp.site, districts:bp.districts, preservation:bp.preservation,
+  revision:bp.revision, coordinateSystem:bp.coordinateSystem,
+  engineContract:bp.engineContract, objectScheduleContract:bp.objectScheduleContract,
+  site:bp.site, districts:bp.districts, preservation:bp.preservation,
   outerWalls:bp.outerWalls, gates:bp.gates, paths:bp.paths,
   controlledCrossings:bp.controlledCrossings, habitatBarrierSystem:bp.habitatBarrierSystem,
   habitats:bp.habitats, buildings:bp.buildings,
@@ -86,9 +93,12 @@ const geometryPayload = {
   planting:bp.planting, wayfinding:bp.wayfinding, routes:bp.routes, interactions:bp.interactions,
 };
 const geometryHash='sha256:'+crypto.createHash('sha256').update(stable(geometryPayload)).digest('hex');
+if (process.argv.includes('--print-hash')) {
+  console.log(geometryHash);
+  process.exit(0);
+}
 assert(bp.geometryHash===geometryHash,'GEOMETRY_HASH','root',
   `declared ${bp.geometryHash}; calculated ${geometryHash}`);
-if (process.argv.includes('--print-hash')) console.log(geometryHash);
 
 const site = bp.site && bp.site.bounds;
 assert(ordered(site), 'SITE_BOUNDS', 'site', 'site bounds must be finite, ordered and non-zero');
@@ -113,6 +123,7 @@ for (const [group, list] of [
   ['preservation.existingHabitatBounds',bp.preservation.existingHabitatBounds],
   ['preservation.existingCorePaths',bp.preservation.existingCorePaths],
   ['preservation.keepExact',bp.preservation.keepExact],
+  ['preservation.remove',bp.preservation.remove],
   ['preservation.existingStaffGates',bp.preservation.existingStaffGates],
   ['preservation.relocateForCentralSpine',bp.preservation.relocateForCentralSpine],
   ['preservation.retainSouthWall',bp.preservation.retainSouthWall],
@@ -132,13 +143,16 @@ for (const [group,list] of Object.entries(bp.objectSchedules || {}))
   for (const item of list || []) {
     ownId(item, `objectSchedules.${group}`);
     if (item.thingId) ownId({id:item.thingId}, `objectSchedules.${group}.thingId`);
+    if (group === 'benches') ownId({id:`TH-${item.id}`},
+      'objectSchedules.benches.derivedThingId');
   }
 for (const [group,list] of Object.entries(bp.planting || {}))
   for (const item of list || []) ownId(item, `planting.${group}`);
 for (const x of bp.animalTransferCrossings || [])
   for (const g of x.interlockedGates || []) ownId(g, `${x.id}.interlockedGates`);
 for (const h of bp.habitats || [])
-  for (const [group,list] of [['publicGates',h.publicGates],['animalGates',h.animalGates]])
+  for (const [group,list] of [['publicGates',h.publicGates],['animalGates',h.animalGates],
+    ['publicAccessZones',h.publicAccessZones]])
     for (const g of list || []) ownId(g, `${h.id}.${group}`);
 for (const b of bp.buildings || [])
   for (const [group,list] of [['internalDriveAisles',b.internalDriveAisles],
@@ -200,6 +214,13 @@ for (const p of bp.paths || []) {
   }
 }
 
+assert(bp.habitatBarrierSystem?.playerPublicAccessZoneCuts===true,
+  'PLAYER_ACCESS_ZONE_CONTRACT','habitatBarrierSystem',
+  'public access zones must be subtracted from the player collider');
+assert(bp.habitatBarrierSystem?.playerServiceAndAnimalGateCuts===false,
+  'PLAYER_GATE_COLLISION_CONTRACT','habitatBarrierSystem',
+  'service and animal gates must remain player-solid');
+
 for (const h of bp.habitats || []) {
   assert(districts.has(h.district), 'HABITAT_DISTRICT', h.id, `unknown district ${h.district}`);
   assert(ordered(h.bounds), 'HABITAT_BOUNDS', h.id, 'bounds must be ordered');
@@ -226,6 +247,27 @@ for (const h of bp.habitats || []) {
     assert(g.width>=bp.engineContract.minimumClearOpening,'HABITAT_GATE_WIDTH',
       `${h.id}/${g.id||'service'}`,`width ${g.width} below minimum`);
   }
+  for(const g of h.publicGates||[]) {
+    const zones=(h.publicAccessZones||[]).filter(q=>q.gate===g.id);
+    assert(zones.length>0,'PUBLIC_GATE_ACCESS_ZONE',`${h.id}/${g.id}`,
+      'public gate has no collider-cut access zone');
+  }
+  for(const zone of h.publicAccessZones||[]) {
+    const q=rect(zone.rect), g=(h.publicGates||[]).find(x=>x.id===zone.gate);
+    assert(ordered(q)&&insideRect(q,h.bounds),'PUBLIC_ACCESS_ZONE_BOUNDS',`${h.id}/${zone.id}`,
+      'public access zone must be ordered and inside habitat bounds');
+    assert(!!g,'PUBLIC_ACCESS_ZONE_GATE',`${h.id}/${zone.id}`,`unknown public gate ${zone.gate}`);
+    if(g&&ordered(q)) {
+      const c=g.center, touches=(g.side==='x0'&&near(q.x0,h.bounds.x0)&&c[1]>=q.z0&&c[1]<=q.z1)||
+        (g.side==='x1'&&near(q.x1,h.bounds.x1)&&c[1]>=q.z0&&c[1]<=q.z1)||
+        (g.side==='z0'&&near(q.z0,h.bounds.z0)&&c[0]>=q.x0&&c[0]<=q.x1)||
+        (g.side==='z1'&&near(q.z1,h.bounds.z1)&&c[0]>=q.x0&&c[0]<=q.x1);
+      const via=(h.publicAccessZones||[]).find(x=>x.id===zone.via), viaRect=via&&rect(via.rect);
+      const linked=via&&via.gate===g.id&&ordered(viaRect)&&overlap(q,viaRect,.001);
+      assert(touches||linked,'PUBLIC_ACCESS_ZONE_OPENING',`${h.id}/${zone.id}`,
+        `zone does not meet owning gate ${g.id} directly or through its declared via zone`);
+    }
+  }
   for (const s of h.animalSlots || []) {
     assert(Array.isArray(s.uv) && s.uv.length===2 && s.uv.every(n=>finite(n)&&n>0&&n<1),
       'ANIMAL_SLOT', `${h.id}/${s.id}`, 'uv must lie strictly inside 0..1');
@@ -238,11 +280,14 @@ for (let i=0; i<(bp.habitats||[]).length; i++)
     assert(!overlap(a.bounds,b.bounds), 'HABITAT_OVERLAP', `${a.id}/${b.id}`, 'footprints overlap');
   }
 
+const plannedAndPreservedHabitats=[...(bp.preservation.existingHabitatBounds||[]),
+  ...(bp.habitats||[])];
+
 // Public path surfaces may touch a habitat edge, but may not have positive area inside one.
 for (const p of (bp.paths||[]).filter(q=>q.access==='public'))
   for (let i=1; i<p.centerline.length; i++) {
     const q=segmentRect(p.centerline[i-1],p.centerline[i],p.width);
-    for (const h of bp.habitats || []) assert(!overlap(q,h.bounds), 'PATH_HABITAT',
+    for (const h of plannedAndPreservedHabitats) assert(!overlap(q,h.bounds), 'PATH_HABITAT',
       `${p.id}/${h.id}`, 'public path surface enters habitat');
   }
 
@@ -299,6 +344,8 @@ for (let i=0; i<(bp.habitats||[]).length; i++)
     const intentional = bp.habitats[i].id==='H31-waterfowl-lake' && id==='B04-lake-pavilion';
     assert(intentional || !overlap(bp.habitats[i].bounds,q), 'HABITAT_BUILDING',
       `${bp.habitats[i].id}/${id}`, 'unrelated footprints overlap');
+    assert(intentional || !overlap(bp.habitats[i].bounds,q,1), 'HABITAT_BUILDING_CLEARANCE',
+      `${bp.habitats[i].id}/${id}`, 'unrelated footprints have less than 1.0m clearance');
   }
 
 // Ground-level public paving cannot pass through a building. The west gate is a deliberately
@@ -338,8 +385,7 @@ for (const w of bp.outerWalls || []) {
 for (const g of bp.gates || []) assert(g.width >= bp.engineContract.minimumClearOpening,
   'GATE_WIDTH', g.id, `opening ${g.width} below minimum`);
 
-const allHabitats=new Map([...(bp.preservation.existingHabitatBounds||[]),...(bp.habitats||[])]
-  .map(q=>[q.id,q]));
+const allHabitats=new Map(plannedAndPreservedHabitats.map(q=>[q.id,q]));
 for (const x of bp.animalTransferCrossings || []) {
   const q=x.corridor;
   assert(ordered(q),'TRANSFER_CORRIDOR',x.id,'corridor must be an ordered rectangle');
@@ -350,6 +396,17 @@ for (const x of bp.animalTransferCrossings || []) {
     assert(!overlap(q,h.bounds),'TRANSFER_HABITAT',`${x.id}/${h.id}`,
       'animal transfer corridor enters an unrelated habitat');
   }
+  if(x.preservedSourceGate) {
+    const source=(bp.preservation?.existingStaffGates||[]).find(g=>g.id===x.preservedSourceGate);
+    const first=x.interlockedGates?.[0];
+    assert(!!source,'TRANSFER_SOURCE_GATE',x.id,`unknown preserved gate ${x.preservedSourceGate}`);
+    if(source&&first) assert(near(source.at[0],first.at[0])&&near(source.at[1],first.at[1]),
+      'TRANSFER_SOURCE_GATE_MATCH',x.id,
+      `${first.id} must reuse ${source.id} exactly`);
+  }
+  for(const gate of x.interlockedGates||[]) assert(gate.at[0]>=q.x0&&gate.at[0]<=q.x1&&
+    gate.at[1]-gate.width/2>=q.z0-1e-7&&gate.at[1]+gate.width/2<=q.z1+1e-7,
+    'TRANSFER_GATE_CORRIDOR',`${x.id}/${gate.id}`,'gate opening leaves transfer corridor');
 }
 
 const operations=(bp.buildings||[]).find(q=>q.id==='B07-operations-campus');
@@ -385,6 +442,28 @@ for (const r of bp.routes.keeperRoutes || []) {
         `segment ${k} enters ${h.id} away from gate (${g[0]},${g[1]})`);
       break;
     }
+  }
+}
+
+// Keep the keeper's body clear of authored habitat solids and water, including the interior stop
+// beyond each service gate. A legal gate coordinate is not enough if the landing behind it is wet
+// or occupied by a den, barn, shelter or other fixed structure.
+const keeperRadius=bp.engineContract.playerRadius;
+for(const route of bp.routes.keeperRoutes||[]) {
+  const pts=route.waypoints||[];
+  for(let i=1;i<pts.length;i++) for(const h of bp.habitats||[]) {
+    const obstacles=[];
+    for(const [j,o] of (h.objects||[]).entries()) if(o.rect&&
+      !['keeper-landing','footbridge'].includes(o.type))
+      obstacles.push([`${o.type||'object'}-${j+1}`,rect(o.rect)]);
+    for(const [j,g] of (h.ground||[]).entries()) if(g.rect&&
+      (finite(g.depth)||['water','pool','shallow-water'].includes(g.kind)))
+      obstacles.push([`${g.kind||'water'}-${j+1}`,rect(g.rect)]);
+    for(const [j,q] of (h.waterSolids||[]).entries())
+      obstacles.push([`water-solid-${j+1}`,rect(q)]);
+    for(const [id,q] of obstacles) assert(segmentRectDistance(pts[i-1],pts[i],q)>keeperRadius-1e-6,
+      'KEEPER_HABITAT_OBSTACLE',`${route.id}/${h.id}/${id}`,
+      `segment ${i} has less than ${keeperRadius}m body clearance`);
   }
 }
 
@@ -426,11 +505,45 @@ const fixtureRadius={benches:osc.benches?.bodyHalfExtents?.[1],bins:osc.bins?.bo
   lamps:osc.lamps?.bodyRadius,mapBoards:osc.mapBoards?.bodyHalfExtents?.[1],
   waterStations:osc.waterStations?.bodyRadius,
   accessibleRouteSigns:osc.accessibleRouteSigns?.bodyHalfExtents?.[1]};
+const orientedBody=(at,yaw,half)=>{
+  const c=Math.abs(Math.cos(yaw||0)),s=Math.abs(Math.sin(yaw||0));
+  const hx=c*half[0]+s*half[1], hz=s*half[0]+c*half[1];
+  return {x0:at[0]-hx,x1:at[0]+hx,z0:at[1]-hz,z1:at[1]+hz};
+};
+const fixtureBody=(group,item)=>{
+  const p=item.at?.slice(0,2);
+  if(!p) return null;
+  if(group==='benches') return orientedBody(p,item.faceYaw,osc.benches.bodyHalfExtents);
+  if(group==='mapBoards') return orientedBody(p,item.yaw,osc.mapBoards.bodyHalfExtents);
+  if(group==='accessibleRouteSigns')
+    return orientedBody(p,item.yaw,osc.accessibleRouteSigns.bodyHalfExtents);
+  const radius={bins:osc.bins?.bodyRadius,lamps:osc.lamps?.bodyRadius,
+    waterStations:osc.waterStations?.bodyRadius}[group];
+  return finite(radius)?{x0:p[0]-radius,x1:p[0]+radius,z0:p[1]-radius,z1:p[1]+radius}:null;
+};
+const fixtureBodies=[];
 for(const [group,list] of Object.entries(bp.objectSchedules||{})) for(const item of list||[]) {
+  const body=fixtureBody(group,item);
+  if(body) fixtureBodies.push({group,item,body});
   if(fixtureRadius[group]!==undefined&&Array.isArray(item.at)) {
     const p=item.at.slice(0,2), radius=fixtureRadius[group];
     for(const q of publicPaths) assert(pathDistance(p,q)>q.width/2+radius-1e-6,
       'FIXTURE_ON_PATH',item.id,`${group} body intrudes ${q.id}`);
+  }
+  if(group==='benches') {
+    assert(Array.isArray(item.focus)&&standableOnPublic(item.focus),'BENCH_FOCUS',item.id,
+      `focus ${item.focus} is not on player-inset public paving`);
+    if(item.focus&&item.at) {
+      const dx=item.focus[0]-item.at[0], dz=item.focus[1]-item.at[1];
+      const distance=Math.hypot(dx,dz), reach=osc.benches?.reach;
+      assert(finite(reach)&&distance<=reach+1e-6,'BENCH_REACH',item.id,
+        `focus-to-bench distance ${distance.toFixed(2)} exceeds reach ${reach}`);
+      if(finite(item.faceYaw)&&distance>1e-9) {
+        const facing=(dx*Math.sin(item.faceYaw)+dz*Math.cos(item.faceYaw))/distance;
+        assert(facing>.95,'BENCH_FACING',item.id,
+          `focus is not on the seat/front side (alignment ${facing.toFixed(3)})`);
+      }
+    }
   }
   if(item.tag) {
     assert(typeof item.thingId==='string'&&item.thingId,'FIXTURE_THING',item.id,
@@ -440,6 +553,22 @@ for(const [group,list] of Object.entries(bp.objectSchedules||{})) for(const item
     if(item.focus&&item.at&&finite(item.reach)) assert(Math.hypot(item.focus[0]-item.at[0],
       item.focus[1]-item.at[1])<=item.reach+1e-6,'FIXTURE_REACH',item.id,
       'focus-to-fixture distance exceeds reach');
+  }
+}
+
+for(let i=0;i<fixtureBodies.length;i++) {
+  const a=fixtureBodies[i];
+  for(let j=i+1;j<fixtureBodies.length;j++) {
+    const b=fixtureBodies[j];
+    assert(!overlap(a.body,b.body),'FIXTURE_OVERLAP',`${a.item.id}/${b.item.id}`,
+      `${a.group} and ${b.group} solid bodies overlap`);
+  }
+  for(const h of plannedAndPreservedHabitats) assert(!overlap(a.body,h.bounds),
+    'FIXTURE_HABITAT',`${a.item.id}/${h.id}`,`${a.group} body enters habitat`);
+  for(const [id,q] of buildingRects) {
+    const owned=a.item.building===id, elevated=id==='B06b-conservation-bridge';
+    assert(owned||elevated||!overlap(a.body,q),'FIXTURE_BUILDING',`${a.item.id}/${id}`,
+      `${a.group} body enters building footprint`);
   }
 }
 
@@ -461,6 +590,8 @@ if(Array.isArray(returnAt)) for(const [group,list] of Object.entries(bp.objectSc
     assert(Math.hypot(item.at[0]-returnAt[0],item.at[1]-returnAt[1])>=1.5,
       'TROPICAL_RETURN_CLEAR',item.id,'fixture is inside 1.5m tropical-return clear circle');
 
+const keeperLines=[...(bp.routes?.keeperRoutes||[]).map(q=>({id:q.id,centerline:q.waypoints})),
+  ...(bp.routes?.keeperAccessSpurs||[])];
 const treeGroups=['perimeterTrees','districtTrees','wetlandWillows','highlandPines'];
 for(const group of treeGroups) for(const tree of bp.planting?.[group]||[]) {
   assert(tree&&typeof tree.id==='string'&&Array.isArray(tree.at)&&tree.at.length===2&&
@@ -478,12 +609,18 @@ for(const group of treeGroups) for(const tree of bp.planting?.[group]||[]) {
   }
   for(const [id,q] of buildingRects) assert(!contains(q,tree.at,.55),'TREE_BUILDING',
     `${tree.id}/${id}`,'tree collar enters building footprint');
+  for(const line of keeperLines) assert(pathDistance(tree.at,line)>.55+keeperRadius-1e-6,
+    'TREE_KEEPER_ROUTE',`${tree.id}/${line.id}`,'tree collar blocks keeper body route');
 }
 for(const hedge of bp.planting?.hedgeRuns||[]) {
   const q=segmentRect(hedge.from,hedge.to,.3);
   for(const p of publicPaths) for(let i=1;i<p.centerline.length;i++)
     assert(!overlap(q,segmentRect(p.centerline[i-1],p.centerline[i],p.width)),
       'HEDGE_ON_PATH',`${hedge.id}/${p.id}`,'hedge run intrudes public paving');
+  for(const line of keeperLines) for(let i=1;i<line.centerline.length;i++)
+    assert(segmentDistance(hedge.from,hedge.to,line.centerline[i-1],line.centerline[i])>
+      .15+keeperRadius-1e-6,'HEDGE_KEEPER_ROUTE',`${hedge.id}/${line.id}`,
+      'hedge run blocks keeper body route');
 }
 
 if (tropical) {
@@ -528,6 +665,24 @@ if (tropical) {
     'exit trigger is not inside player-inset public paving');
   for(const t of tropical.speciesThings||[]) assert(indoorStandable(t.focus),'TROPICAL_THING_FOCUS',t.id,
     `focus ${t.focus} is not standable on an indoor public path`);
+
+  const indoorBodies=[];
+  for(const o of tropical.objects||[]) {
+    const at=Array.isArray(o.at)?[o.at[0],o.at[2]]:null;
+    let body=null;
+    if(at&&o.type==='bench') body=orientedBody(at,o.faceYaw,osc.benches.bodyHalfExtents);
+    if(at&&o.type==='bin') {
+      const r=osc.bins.bodyRadius;
+      body={x0:at[0]-r,x1:at[0]+r,z0:at[1]-r,z1:at[1]+r};
+    }
+    if(body) {
+      assert(insideRect(body,local),'TROPICAL_OBJECT_BOUNDS',o.id,'solid body leaves indoor shell');
+      indoorBodies.push([o.id,body]);
+    }
+  }
+  for(let i=0;i<indoorBodies.length;i++) for(let j=i+1;j<indoorBodies.length;j++)
+    assert(!overlap(indoorBodies[i][1],indoorBodies[j][1]),'TROPICAL_OBJECT_OVERLAP',
+      `${indoorBodies[i][0]}/${indoorBodies[j][0]}`,'indoor solid bodies overlap');
 
   for(const door of tropical.doors||[]) {
     const at=door.side==='x0'?local.x0:door.side==='x1'?local.x1:

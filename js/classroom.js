@@ -35,9 +35,9 @@ const Classroom = Lazy('Classroom', () => {
   const WIN = { x: 0, y: 1.50, z: -RZ + .05, hw: 3.40, hh: .90 };
   const DX = 3.40;                        // the door, in the +x end of the back wall
   const CLK = { x: DX, y: 2.56 };         // the clock, above the door and clear of the board
-  // Back out onto the campus forecourt, a couple of paces in front of the teaching-block steps,
-  // facing the building.
-  const OUT = { x: 0, z: 7.8, yaw: 0 };
+  // Back out onto the north teaching forecourt, a couple of paces in front of the rebuilt
+  // teaching-block steps, facing the building.
+  const OUT = { x: -3, z: 47.20, yaw: 0 };
 
   const litProps = [], tubes = [], doorParts = [], clock = { hour: null, min: null };
   const litten = (p, k) => { litProps.push({ p, k }); return p; };

@@ -94,7 +94,8 @@ const Zoo = Lazy('Zoo', () => {
           solid, blocker, shade, glow, light, thing, transform } = B;
 
   // ---------------------------------------------------------------- dimensions
-  const RX = 22.0, RZ = 16.0;             // the wall line
+  const RX = 22.0, RZ = 16.0;             // preserved heritage-core dimensions
+  const SITE_RX = 58.0, SITE_RZ = 70.0;   // revision-2 expansion boundary
   const GX = -12.0;                       // the gate, in the -z wall
   // Where the subway leaves you: on the entrance plaza, a few steps inside the gate.
   const OUT = { x: GX, z: -RZ + 2.60, yaw: Math.PI * .0 };
@@ -147,6 +148,10 @@ const Zoo = Lazy('Zoo', () => {
   // that a body standing on it looks like it is standing on the rock.
   const HILL = { x: 0, z: 0, rx: 2.9, rz: 2.4, h: 1.95 };
   function liftAt(x, z) {
+    if (typeof expansion !== 'undefined' && expansion && expansion.liftAt) {
+      const e = expansion.liftAt(x, z);
+      if (e) return e;
+    }
     const u = (x - HILL.x) / HILL.rx, v = (z - HILL.z) / HILL.rz;
     const d = u * u + v * v;
     return d >= 1 ? 0 : HILL.h * (1 - d) * (1 - d * .35);
@@ -1060,7 +1065,8 @@ const Zoo = Lazy('Zoo', () => {
 
     // ---- 导游图 the map board, on the other side of the gate path
     {
-      const MPX = GX - 4.2, MPZ = -RZ + 2.2;
+      // Exact revision-2 relocation: east of the board remains clear for the interaction stance.
+      const MPX = -16.2, MPZ = -9.0;
       for (const s of [-1, 1])
         cyl(MPX + s * 1.18, .82, MPZ, .06, 1.64, col.steelD,
           { tag: '导游图', gloss: G.metal });
@@ -1117,7 +1123,7 @@ const Zoo = Lazy('Zoo', () => {
       thing('导游图', MPX, 2.05, MPZ - .30, '先看看导游图，再决定去哪儿。',
         'Look at the map first, then decide where to go.',
         '导游 guide + 图 map. Every park and zoo has one at the gate.',
-        { focus: [MPX, MPZ - 1.25], reach: 2.0 });
+        { focus: [-15.2, -9.0], reach: 2.0 });
     }
 
     // ---- 小卖部 the kiosk, back against the south wall and serving north.
@@ -1158,45 +1164,13 @@ const Zoo = Lazy('Zoo', () => {
         { focus: [KX, KZ + 2.8], reach: 2.2 });
     }
 
-    // ================================================================ the wall and the planting
-    // A zoo has a wall rather than a railing — it has to hold animals in as well as keep people
-    // out — so this is brick, with a tile coping, and a gap only at the gate.
-    for (const [ax, az, bx, bz] of [[-RX, -RZ, RX, -RZ], [-RX, RZ, RX, RZ],
-                                    [-RX, -RZ, -RX, RZ], [RX, -RZ, RX, RZ]]) {
-      const horiz = az === bz;
-      const len = Math.hypot(bx - ax, bz - az), n = Math.round(len / 2.4);
-      for (let i = 0; i < n; i++) {
-        const t = (i + .5) / n, x = ax + (bx - ax) * t, z = az + (bz - az) * t;
-        if (horiz && az < 0 && x > GX - 3.6 && x < GX + 3.6) continue;
-        const w = len / n;
-        // One continuous brick wall is quieter and more civic than the old alternating patchwork.
-        // The repeated green-grey coping supplies rhythm without turning the perimeter into stripes.
-        box(x, 1.10, z, horiz ? w : .40, 2.20, horiz ? .40 : w, col.brickR,
-          { hard: true, gloss: G.matte, ...MAT.brick });
-        box(x, 2.28, z, horiz ? w : .56, .16, horiz ? .56 : w, col.copingR,
-          { hard: true, gloss: .18, ...MAT.coping });
-      }
-      // One collider per side rather than one per brick section: forty small boxes in a row is
-      // forty chances for the body to catch on a seam between two of them.
-      if (horiz) {
-        for (const [x0, x1] of az < 0 ? [[-RX, GX - 3.6], [GX + 3.6, RX]] : [[-RX, RX]])
-          solid(x0 - .3, x1 + .3, az - .3, az + .3);
-      } else solid(ax - .3, ax + .3, -RZ - .3, RZ + .3);
-      // Match the camera mass to the same opening the visible south wall and body colliders use.
-      // One full-width blocker across the gate made the third-person eye repeatedly recover from
-      // an invisible wall while the player crossed the entrance—the entire zoo appeared to nudge
-      // even though its geometry was stationary.
-      if (horiz && az < 0) {
-        for (const [x0, x1] of [[-RX, GX - 3.6], [GX + 3.6, RX]])
-          blocker(x0 - .4, x1 + .4, az - .4, az + .4, 2.6);
-      } else blocker(Math.min(ax, bx) - .4, Math.max(ax, bx) + .4,
-                     Math.min(az, bz) - .4, Math.max(az, bz) + .4, 2.6);
-    }
+    // The old north, west and east boundary is deliberately absent.  The expansion builder owns
+    // the complete revision-2 perimeter and keeps its visible, body and camera openings aligned.
     // Trees along the paths and in the corners. Placed off the enclosure walls rather than against
     // them: a six-metre crown over a pen hides whatever is standing in it, which is the animal.
     tree(-19.0, -9.0, 6.0); tree(-19.2, 8.4, 6.2); tree(-19.0, 13.6, 5.6);
     tree(19.2, -9.4, 5.8); tree(19.0, 8.0, 6.0); tree(19.2, 13.4, 5.8);
-    tree(-2.0, 9.6, 5.4); tree(-2.4, 14.6, 5.8); tree(13.0, 14.6, 6.0);
+    tree(-16.2, 9.8, 5.2); tree(14.8, 10.8, 5.0); tree(13.0, 14.6, 6.0);
     tree(-20.3, -11.8, 5.4); tree(13.6, -13.6, 5.6); tree(2.2, -8.2, 5.0);
     // and a low hedge along the outside of the loop path, which is what separates path from lawn
     const HEDGE = [col.leafD, col.leafU, col.leafM];
@@ -1220,7 +1194,7 @@ const Zoo = Lazy('Zoo', () => {
     bench(-20.35, 3.0, Math.PI / 2); bench(20.35, -2.0, -Math.PI / 2);
     bench(-5.6, 15.15, Math.PI); bench(12.4, 15.15, Math.PI);
     for (const [bx, bz] of [[-7.6, -14.75], [4.0, -14.75], [-20.35, .4], [20.35, .6],
-                            [-3.4, 15.15], [-11.0, -5.75]])
+                            [16.3, 11.8], [-11.0, -5.75]])
       bin(bx, bz);
     // lamps on the loop, warm at night.
     //
@@ -1233,7 +1207,7 @@ const Zoo = Lazy('Zoo', () => {
     // that makes the paving, the wall behind it and the person standing under it actually
     // respond. Outdoors the engine switches these with the sun, so they are off all day.
     for (const [lx, lz] of [[GX - 5.6, -RZ + 4.6], [-20.55, -6.0], [-20.55, 10.0],
-                            [20.55, -6.0], [20.55, 10.0], [0, 15.45], [0, -14.65]]) {
+                            [20.55, -6.0], [20.55, 10.0], [16.2, 9.5], [0, -14.65]]) {
       cyl(lx, 1.90, lz, .075, 3.80, col.charcoal, { gloss: .28 });
       box(lx, 3.92, lz, .46, .18, .46, col.charcoal, { hard: true, gloss: .28 });
       litten(box(lx, 3.78, lz, .38, .10, .38, C('#ffe6ae'),
@@ -1289,6 +1263,12 @@ const Zoo = Lazy('Zoo', () => {
   }
 
   build();
+  // Everything outside the preserved heritage core is compiled from the canonical JSON plan.
+  // The returned hooks extend this scene without a second Build.finish call.
+  const expansion = ZooExpansion.build(B, {
+    col, MAT, G, litten, pools, tree, bench, bin,
+    core: { RX, RZ, GX, OUT, PENS },
+  });
 
   // Keep planting on its authored transforms. The former per-blade wind pass rewrote more than
   // eighty bamboo/grass matrices every frame; even with small angles, motion scattered across two
@@ -1310,6 +1290,7 @@ const Zoo = Lazy('Zoo', () => {
       m[12] = px + c * x - s * y; m[13] = py + s * x + c * y;
       m[14] = b[14]; m[15] = 1;
     }
+    if (expansion && expansion.tick) expansion.tick(t);
   }
   function setNight(k) {
     const soft = k * k * (3 - 2 * k);
@@ -1319,16 +1300,19 @@ const Zoo = Lazy('Zoo', () => {
     // positions — the pool is there to fake the bounce off the paving that the renderer has no
     // way to compute, and any more than a hint of it turns a lamp into a spotlight on a stage.
     for (const g of pools) g.a = soft * .30;
+    if (expansion && expansion.setNight) expansion.setNight(k);
   }
 
   return B.finish({
-    setNight, tick, liftAt, RX, RZ, OUT, PENS,
+    setNight, tick, liftAt, RX: SITE_RX, RZ: SITE_RZ, OUT, PENS,
     label: '动物园', labelK: '动物园 · the zoo',
-    indoor: false, cutaway: false, near: .18, far: 620,
-    fogNear: 30, fogD: .0058, expose: .52,
+    indoor: false, cutaway: false, near: .18, far: 1080,
+    fogNear: 58, fogD: .0032, expose: .52,
     spawn: { x: GX, z: -RZ + 2.60, yaw: 0 },
-    zones: [{ id: 'zoo', x0: -RX + .6, x1: RX - .6, z0: -RZ + .6, z1: RZ - .6,
-              light: [GX, 3.6, -RZ + 6.0] }],
-    roomAt() { return this.zones[0]; },
+    zones: expansion.zones,
+    roomAt(x, z) {
+      return this.zones.find(q => x >= q.x0 && x <= q.x1 && z >= q.z0 && z <= q.z1) ||
+        this.zones[0];
+    },
   });
 });

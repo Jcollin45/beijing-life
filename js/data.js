@@ -1096,6 +1096,10 @@ const NPCS = [
       ['光正好，再来一张。', 'The light is good — one more.'],
       ['站到栏杆旁边。', 'Stand by the rail.'],
     ] },
+  // Revision-2 expansion animals, three keeper rounds and visitor loops are compiled from the
+  // same normalized coordinates as their habitats.  Keeping the generator here avoids a second
+  // rectangle table in data.js and makes geometry revisions move the schedules with the scene.
+  ...ZooExpansion.npcRows(ZOO_BLUEPRINT),
   {
     hz: '学生', name: '小周', py: 'Xiǎo Zhōu', place: 'campus', rig: 'xiaozhou_student',
     look: { skin:'#e2b189', hair:'#241f1d', hairStyle:'ponytail', top:'#4a6f9c', pants:'#39414d',
@@ -2481,6 +2485,7 @@ const USE_AT = {
   // prevents the later global definitions from turning admission into a plane-ticket purchase and
   // the drinks kiosk into a pot-noodle stall.
   zoo: {
+    ...ZooExpansion.useRows(ZOO_BLUEPRINT, 'zoo'),
     '售票处': { zh:'买门票', py:'mǎi ménpiào', en:'buy a ticket in', secs:3.0, mins:8, pay:-15,
                 gain:{ mood:6 }, pose:{ type:'stand' },
                 done:'十五块，票收好。', doneTr:'Fifteen yuan. Keep hold of the ticket.' },
@@ -2488,6 +2493,9 @@ const USE_AT = {
                 pay:-4, gain:{ food:10, mood:6, rest:4 }, pose:{ type:'stand' },
                 done:'四块钱一瓶，园里就这个价。',
                 doneTr:'Four yuan a bottle. That is the price inside the gate.' },
+  },
+  zoo_tropical: {
+    ...ZooExpansion.useRows(ZOO_BLUEPRINT, 'zoo_tropical'),
   },
   // ---- 大堂 the lobby of the block, three metres under the flat. These words only exist down
   // here, so they go in the room rather than in USE: 门 and 镜子 already mean the right thing

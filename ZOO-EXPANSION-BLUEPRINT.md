@@ -225,7 +225,7 @@ B01 stays entirely inside the site at `x[-58,-55.5] z[19.5,28.5]`. Only its sout
 | P101 | `(-50.5,-13.2) → (-20,-13.2)` | 3.6 | paving | west extension of south loop |
 | P102 | `(20,-13.2) → (50.5,-13.2)` | 3.6 | paving | east extension of south loop |
 | P103 | `x=-19, z14.4→64` | 4.0 | dark paving | West Zoo Avenue |
-| P104 | `x=-2, z5.5→64` | 5.0 | paving | continuous Central Conservation Walk from P06 |
+| P104 | `x=-2, z6.6→64` | 5.0 | paving | Central Conservation Walk; square cap clears H03 by 0.10 m |
 | P105 | `x=19, z14.4→64` | 4.0 | dark paving | East Zoo Avenue |
 | P106 | `z=18, x-50→50` | 4.0 | paving | first cross avenue; stops inside service lanes |
 | P107 | `z=40, x-50→50` | 4.0 | paving | conservation cross avenue; stops inside service lanes |
@@ -267,8 +267,9 @@ other public avenue ends at `x=±50`, leaving positive clearance to the service 
 The three old north exits become P103, P104 and P105:
 
 - P103 continues the current west loop at `x=-19`.
-- P104 starts on P06 at `(-2,5.5)`, rises through the gap between the existing monkey and tiger
-  pens, and reaches the north promenade without an unpaved break.
+- P104's authored centreline starts at `(-2,6.6)`. Its 5 m square cap overlaps P06's paving but
+  stops at `z=4.1`, leaving `0.10 m` clear of the preserved peacock habitat at `z=4.0`; it then
+  rises through the gap between the existing monkey and tiger pens to the north promenade.
 - P105 continues the current east loop at `x=19`.
 
 This is why the old core is preserved rather than re-centred. The new network grows naturally out
@@ -292,12 +293,12 @@ record. No builder may type the rectangle again in `data.js`.
 | H21 | 雪豹 snow leopard | `x[-34,-24] z[26,37]` | `x0 / (-35.75,31.5)` | BA-HIGHLAND-GLASS | `x1 @ z=34`, 1.5 |
 | H30 | 小熊猫 red panda | `x[-34,-24] z[43,52]` | `x1 / (-20.5,47.5)` | BA-FINE-MESH | `x0 @ z=49`, 1.5 |
 | H31 | 天鹅 / 鸳鸯 waterfowl | `x[-16,-6] z[22,36]` | `x1 / (-4.2,29)` | water edge rail | `z1 @ x=-14`, 1.8 |
-| H32 | 山羊 / 兔子 family farm | `x[2,16.5] z[22,36]` | `x0 / (0.2,29)` | timber fence, double gate | `x1 @ z=33`, 2.0 |
-| H33 | 金丝猴 golden monkey | `x[2,16.5] z[43,52]` | `x0 / (0.2,47.5)` | cable mesh + glass bay | `x1 @ z=49`, 1.6 |
+| H32 | 山羊 / 兔子 family farm | `x[2,16.5] z[22,36]` | `x0 / (0.2,29)` | timber fence, double gate | `x1 @ z=28`, 2.0 |
+| H33 | 金丝猴 golden monkey | `x[2,16.5] z[43,52]` | `x0 / (0.2,47.5)` | cable mesh + glass bay | `x1 @ z=44`, 1.6 |
 | H40 | 亚洲象 elephant reserve | `x[24,36.5] z[-10,15]` | `x0 / (20.2,2.5)` | dry moat + cable | `x1 @ z=11`, 3.0 |
 | H41 | 斑马 / 羚羊 / 长颈鹿 | `x[41.5,50] z[-10,15]` | `x0 / (40,2.5)` | dry moat + rail | `x1 @ z=10`, 2.8 |
 | H42 | 犀牛 rhino | `x[24,36.5] z[23,37]` | `x0 / (20.5,30)` | BA-RHINO-MOAT | `x1 @ z=34`, 2.8 |
-| H43 | 狮子 lion | `x[41.5,50] z[24,37]` | `x0 / (40,30.5)` | BA-BIGCAT-GLASS | `x1 @ z=34`, 2.0 |
+| H43 | 狮子 lion | `x[41.5,50] z[24,37]` | `x0 / (40,30.5)` | BA-BIGCAT-GLASS | `x1 @ z=27`, 2.0 |
 
 ### Habitat wall compiler
 
@@ -311,10 +312,13 @@ HW-<habitat>-z1: z=bounds.z1, x=bounds.x0..bounds.x1
 ```
 
 Subtract `gate.center ± gate.width/2` from the matching run in visible, keeper-body and camera
-layers. The player uses a separate full habitat rectangle, while keepers use the cut perimeter;
-that distinction keeps public visitors out without sealing staff gates. Generated child IDs are
-stable. H31 additionally cuts `x=-6, z[28.2,29.8]` for its public bridge; H32 cuts
-`x=2, z[28.1,29.9]` for its supervised double gate; H40 cuts `x=24, z[0.8,3.2]` for X01.
+layers. Player collision starts as the full habitat rectangle, then subtracts only the explicitly
+listed `publicAccessZones`; service and animal gates remain player-solid. H31 subtracts bridge zone
+`PAZ-H31-bridge [-9.2,-6]×[28.2,29.8]` and linked pavilion zone
+`PAZ-H31-pavilion [-12.8,-9.2]×[27.5,31.5]`. H32 subtracts only supervised contact yard
+`PAZ-H32-contact-yard [2,7]×[26,32]`. Generated child IDs are stable. H31 cuts
+`x=-6, z[28.2,29.8]`; H32 cuts `x=2, z[28.1,29.9]`; H40 cuts
+`x=24, z[1.4,3.8]` for X01.
 
 | Archetype | Public / back height | Thickness | Camera top | Material family |
 |---|---:|---:|---:|---|
@@ -338,12 +342,12 @@ These are mandatory silhouettes, not optional dressing.
 
 | Habitat | Objects |
 |---|---|
-| H10 | pool `[-49,-43]×[-8,-2]`, rock bank, log `(-45.6,-6.5)`, den `[-49.5,-47]×[-3.4,-1.3]` |
-| H11 | pool `[-49.5,-42.5]×[3,13.8]`, sand bank, shelter `[-43,-39.6]×[10.5,14.3]`, trough, scrub post |
-| H12 | shallow water `[-33,-25]×[-8,1.7]`, islands `(-30.5,-4.5)` and `(-27.2,-1.4)`, reeds, feed pan |
+| H10 | pool `[-49,-43]×[-8,-2]`, landing `[-50,-49]×[-5.9,-4.1]`, rock bank, log, den |
+| H11 | pool `[-48.8,-42.5]×[3,13.8]`, landing `[-50,-48.8]×[10.8,13.2]`, shelter, trough, scrub post |
+| H12 | shallow water `[-33,-25]×[-8,1.7]`, landing `[-25,-24]×[-3.75,-2.25]`, islands, reeds, feed pan |
 | H13 | marsh `[-33,-25]×[7,12]`, pool `[-32.5,-27]×[7.3,10.5]`, reeds and nest platform |
 | H20 | rock slope `(-45,32)`, pine `(-47.5,28.5)`, hay rack `(-41,34)` |
-| H21 | rock shelf `(-28.5,32)` to `y=2.8`, den `[-26.5,-24.5]×[34,36.5]`, deadfall log |
+| H21 | rock shelf `(-28.5,32)` to `y=2.8`, den `[-27,-24.5]×[35,36.5]`, deadfall log |
 | H30 | climbing tree `(-28,47)`, rope bridge `(-31,48)→(-26,45)` at `y=2.1`, nest box |
 | H31 | water `[-15.5,-7]×[23,35]`, island `[-12.8,-9.2]×[27.5,31.5]`, east footbridge |
 | H32 | barn `[11.5,16]×[31,35.5]`, contact yard, handwash `(0.9,32.8)`, hay and rabbit shelter |
@@ -376,8 +380,9 @@ Do not block the full H31 rectangle. That would make the pavilion decorative and
 
 ### Animal transfer crossing
 
-X01 is the only surface transfer: elephant corridor `x[16,24] z[0.8,3.2]`. Its four interlocked
-gates are at `(16,2)`, `(17.5,2)`, `(20.5,2)` and `(24,2)`, all width `2.4`. Normal state is
+X01 is the only surface transfer: elephant corridor `x[16,24] z[1.4,3.8]`. Its four interlocked
+gates are at `(16,2.6)`, `(17.5,2.6)`, `(20.5,2.6)` and `(24,2.6)`, all width `2.4`. The first
+gate reuses preserved `PF-SG03` at `(16,2.6)` instead of cutting a second opening. Normal state is
 **animal gates closed / P03 public path open**. The game may open it only after closing both public
 crossing shutters and confirming that no player or visitor occupies the corridor.
 
@@ -499,7 +504,7 @@ make the service opening physically real.
 Rest niches are `TN01 x[-12,-10] z[3.3,5.1]` and
 `TN02 x[9,12] z[-1,1]`. Mandatory interior objects are lobby desk `(-10,1.4)`, map
 `(-10.5,-2.2)`, waterfall `(0,7.4)`, canopy tree `(0,4.8)`, benches `(-11.2,4.2)` and
-`(11.2,0)`, bin `(-10.8,3.6)` and illuminated exit sign `(-12.6,6.2)`. The six species things
+`(11.2,0)`, bin `(-10.4,4.7)` and illuminated exit sign `(-12.6,6.2)`. The six species things
 `TTH-T01-01` through `TTH-T05-01` give 蛇 and 蜥蜴 separate boards rather than merging their
 headwords.
 
@@ -619,6 +624,11 @@ All three keeper routes start in B07's south court at `(-38,44.6)`, pass the eas
 `(-37,44.6)`, dogleg through `(-35.5,44.6)` and only then turn south to `(-35.5,40)`. Fifteen
 `KFS-*` records define the final keeper-only or timed-shared approach to every habitat/service door;
 there is no route centred on the operations fence.
+
+Interior inspection stops are deliberately short of wet or occupied ground: H10 `(-49.5,-5)`,
+H11 `(-49.4,12)`, H12 `(-24.5,-3)`, H21 `(-27,34)`, H32 `(14,28)`, H33 `(14.5,44)`,
+H42 `(35.5,34)` and H43 `(48,27)`. H10–H12 receive the dry landing rectangles listed in the
+habitat schedule. The H31 approach passes through the `2.4 m` gap between `HG103A` and `HG103B`.
 
 ### Animal schedules
 
@@ -819,7 +829,91 @@ remain mandatory.
 
 ---
 
-## 16. Instructions to the building AI
+## 16. Exact outdoor placement appendix
+
+All points below are `[x,z]`. `E/W/N/S` are face yaws `π/2`, `−π/2`, `0`, and `π`. These schedules
+are duplicated here for human review; JSON remains canonical and the geometry hash detects drift.
+
+### Benches and bins
+
+Each bench line is `ID  at → focus  facing`. The focus is the standable interaction point on the
+seat/front side; the compiler creates a unique `TH-<bench-id>` thing tagged `长椅` for every bench.
+
+```text
+BN101 (-38.6,-10.2)→(-37.45,-10.2) E   BN102 (-34.45,4.75)→(-35.55,4.75) W
+BN103 (-42,20.8)→(-42,22.3) N           BN104 (-39.3,21)→(-39.3,22.3) N
+BN105 (-22.2,47.5)→(-20.65,47.5) E      BN106 (-9,20.8)→(-9,19.65) S
+BN107 (6.2,20.8)→(6.2,19.65) S          BN108 (1.25,47.5)→(0.15,47.5) W
+BN109 (21.4,-4)→(20.15,-4) W            BN110 (40.95,8)→(40.05,8) W
+BN111 (21.4,28)→(20.65,28) W            BN112 (40.95,33)→(40.05,33) W
+BN113 (-14,20.8)→(-14,19.65) S          BN114 (10,20.8)→(10,19.65) S
+BN115 (-15,42.8)→(-15,41.65) S          BN116 (27,42.8)→(27,41.65) S
+BN117 (-22.2,60.5)→(-20.65,60.5) E      BN118 (22.2,60.5)→(20.65,60.5) W
+BN119 (-48,20.8)→(-48,19.65) S          BN120 (47,42.8)→(47,41.65) S
+
+BI101 (-39.3,-10)   BI102 (-34.45,5.9) BI103 (-38.2,21)
+BI104 (-22.2,49.2)  BI105 (-7,20.8)     BI106 (1.2,37)
+BI107 (22.4,-5.6)   BI108 (40.95,9.7)  BI109 (22.4,29.6)
+BI110 (40.95,34.6)  BI111 (-10.2,20.8) BI112 (29,42.8)
+```
+
+### Lamps
+
+```text
+L101 (-21.4,20.3) L102 (-21.4,32) L103 (-21.4,44) L104 (-21.4,56)
+L105 (-21.4,61)   L106 (-11.5,21.5) L107 (-5.2,30) L108 (-8.5,42.8)
+L109 (-5.2,56)    L110 (-4.8,58.8) L111 (21.4,20.3) L112 (21.4,32)
+L113 (21.4,44)    L114 (21.4,56)   L115 (21.4,61)   L116 (-51.2,15.5)
+L117 (-30,15.4)   L118 (16.2,11.5) L119 (22.5,14)   L120 (51.2,15.5)
+L121 (-48,42.2)   L122 (-30,42.2)  L123 (8,42.2)    L124 (30,42.2)
+L125 (48,42.2)    L126 (-51.65,61) L127 (-30,61)    L128 (23,61)
+L129 (51,61)
+```
+
+### Tagged civic fixtures
+
+| ID | Prop | Focus | Thing |
+|---|---|---|---|
+| M100 | `(-16.2,-9)` | `(-15.2,-9)` | TH-M100 |
+| M101 | `(-54.5,21.4)` | `(-54.5,23.2)` | TH-M101 |
+| M102 | `(-5.4,20.8)` | `(-4.2,19.6)` | TH-M102 |
+| M103 | `(-5.4,42.8)` | `(-4.2,41.6)` | TH-M103 |
+| M104 | `(22.4,42.8)` | `(20.8,41.6)` | TH-M104 |
+| M105 | `(-5.4,61.2)` | `(-4.2,62.4)` | TH-M105 |
+| WS101 | `(-27,20.8)` | `(-27.5,19.6)` | TH-WS101 |
+| WS102 | `(0.9,20.8)` | `(0.2,19.6)` | TH-WS102 |
+| WS103 | `(41.2,21)` | `(40.5,19.6)` | TH-WS103 |
+| WS104 | `(-12,42.8)` | `(-12,41.6)` | TH-WS104 |
+| WS105 | `(23.2,48.4)` | `(21.8,50)` | TH-WS105 |
+| FA101 | `(4.25,55.2)` | `(4.25,53.5)` | TH-FA101 |
+| AR101 | `(3.8,20.8)` | `(2.5,19.6)` | TH-AR101 |
+
+### Trees and hedge runs
+
+```text
+PT101 (-56.3,-8) h6.2   PT102 (-56.3,4) h5.8    PT103 (-56.3,16) h6.0
+PT104 (-56.3,32) h6.2   PT105 (-56.3,44) h5.8   PT106 (-56.3,60) h6.2
+PT107 (56.3,-8) h6.2    PT108 (56.3,4) h5.8     PT109 (56.3,16) h6.0
+PT110 (56.3,32) h6.2    PT111 (56.3,52) h5.8    PT112 (56.3,64) h6.2
+
+DT101 (-51,.5) h5.2 D1   DT102 (-27,4.8) h4.8 D1   DT103 (-27,20.9) h5.4 D2
+DT104 (-27,24) h5.2 D2   DT105 (-15,20.8) h5.4 D4  DT106 (13,20.8) h5.2 D4
+DT107 (24,20.8) h5.6 D5 DT108 (51,20.8) h5.4 D5   DT109 (22.5,59.5) h5.4 D6
+DT110 (51,60) h5.8 D6
+
+WW101 (-51,-8) h5.2 D1  WW102 (-51,9) h5.6 D1  WW103 (-23,-4) h5.1 D1
+WW104 (-23,10) h5.4 D1
+HP101 (-48,28) h5.2 H20 HP102 (-45,35) h5.6 H20 HP103 (-31,28) h5.0 H21
+HP104 (-27,35) h5.4 H21
+
+HG101 (-16.5,21.1)→(-5.2,21.1) h.65
+HG102 (1.2,21.1)→(16.8,21.1) h.65
+HG103A (-16.5,37.2)→(-15.2,37.2) h.65
+HG103B (-12.8,37.2)→(-5.2,37.2) h.65
+HG104 (1.2,37.2)→(16.8,37.2) h.65
+```
+
+## 17. Instructions to the building AI
 
 1. Read the entire JSON before editing code.
 2. Preserve all D0 coordinates and existing interaction identities.

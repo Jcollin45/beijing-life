@@ -67,7 +67,8 @@ const PLACES = { home: World, street: Street, shop: Shop, pharmacy: Pharmacy, ma
                  office:Office4, office5:Office5, office6:Office6, office7:Office7,
                  officeRoof:OfficeRoof,
                  officeLift:OfficeLift.scene,
-                 metro: Metro, park: Park, zoo: Zoo, campus: Campus, classroom: Classroom,
+                 metro: Metro, park: Park, zoo: Zoo, zoo_tropical: ZooTropical,
+                 campus: Campus, classroom: Classroom,
                  library: Library, nightmarket: NightMarket,
                  rail: Rail, airport: Airport, train: Train,
                  // Inside the aeroplane. Reached only by boarding one, and left only by landing.
@@ -1809,6 +1810,7 @@ $('#pNew').addEventListener('click', () => {
     return;
   }
   wiping = true;                          // stop the reload's save-on-exit from writing it back
+  campusLife.studentId = false;
   try { localStorage.removeItem(SAVEKEY); } catch (_) { /* private window, blocked — fine */ }
   // The diary is the life, not the vocabulary, and it lives in its own key — so it has to be named
   // here or a new game starts with somebody else's fortnight already written in it.
@@ -4934,6 +4936,42 @@ function mallAccessibilityState() {
     kinds:[...new Set(actors.map(q=>q.kind))].sort(),route:'entrance-to-lift'};
 }
 
+function campusStaticSpotNow(n) {
+  const h = minutes / 60;
+  return n.spots.find(q => q.h1 > 24 ? (h >= q.h0 || h < q.h1 - 24)
+                                     : (h >= q.h0 && h < q.h1)) || n.spots[0];
+}
+function snapCampusStaticNPC(n, sp = campusStaticSpotNow(n)) {
+  n.campusStaticSpot = sp;
+  n.campusStaticPending = null;
+  n.x = sp.at[0]; n.z = sp.at[1];
+  n.face = sp.face; n.yaw = sp.face === undefined ? n.yaw : sp.face;
+  n.spot = sp; n.errand = null; n.wait = 0; n.ground = 0; n.animGround = 0;
+  if (n.th) {
+    n.th.pos[0] = n.x; n.th.pos[2] = n.z;
+    n.th.focus[0] = n.x; n.th.focus[1] = n.z;
+  }
+  return sp.at;
+}
+function syncCampusStaticNPCs() {
+  for (const n of NPCS) if (n.place === 'campus' && n.campusStatic)
+    snapCampusStaticNPC(n);
+}
+function campusStaticTarget(n) {
+  const scheduled = campusStaticSpotNow(n);
+  if (!n.campusStaticSpot) return snapCampusStaticNPC(n, scheduled);
+  if (scheduled !== n.campusStaticSpot) {
+    // A schedule edge while Campus is visible is queued instead of becoming a straight-line walk
+    // through the new buildings. Leaving the scene applies the latest queued/current schedule;
+    // entering it always snaps before the first Campus frame is rendered.
+    if (place === 'campus') n.campusStaticPending = scheduled;
+    else return snapCampusStaticNPC(n, scheduled);
+  } else n.campusStaticPending = null;
+  const held = n.campusStaticSpot;
+  n.face = held.face; n.spot = held;
+  return held.at;
+}
+
 function npcTarget(n) {
   n.seatCandidate = null;
   // The outside waypoint makes the approach square to the opening. Going directly from a work
@@ -4960,6 +4998,10 @@ function npcTarget(n) {
     n.carrying = !!leg.carry;
     n.carryKind = leg.carryKind || null;
     return leg.at;
+  }
+  if (n.campusStatic) {
+    n.carrying = false; n.carryKind = null;
+    return campusStaticTarget(n);
   }
   const staffBeat=mallStaffBeatSpot(n);
   if(staffBeat) {
@@ -6039,6 +6081,9 @@ function updateNPCs(dt, now) {
     // hard-coded 'street' it was impossible for anyone to be indoors.
     const wasAwake = !!n.awake;
     n.awake = place === n.place && npcAwake(n);
+    // Off-camera campus schedule changes are true snaps. Keeping this before the awake early-out
+    // means the next campus visit is already staged even if several clock windows passed elsewhere.
+    if (n.campusStatic && place !== 'campus') campusStaticTarget(n);
     // A keeper's authored service route includes the exact staff gate used between jobs. When the
     // player enters the zoo halfway through a shift, begin her at the current care stop instead of
     // making her replay every unseen morning leg in one diagonal line through several habitats.
@@ -8253,6 +8298,17 @@ function mallBookOffer() {
 // receipt and the diary — and a promotion honoured by four of them is a pricing bug.
 const mallTotal = () => mallBasket.reduce((n, b) => n + b.item.price, 0) - bookPromoOff(mallBasket);
 let mallBought = [];              // what you own, by name, in the order you bought it
+// The campus issues one durable identity item. It is kept separately from `mallBought`, whose save
+// intentionally retains only the latest 24 purchases, then mirrored into that list because the
+// cinema's existing concession path asks whether the player is carrying 学生证 there.
+let campusLife = { studentId:false };
+function issueStudentId() {
+  const fresh = !campusLife.studentId;
+  campusLife.studentId = true;
+  if (!mallBought.includes('学生证')) mallBought.push('学生证');
+  if (fresh) saveGame();
+  return fresh;
+}
 
 // The receipt, which is a different thing from the list of names above. `mallBought` answers "do I
 // own a coat" — which is what the wardrobe and the carry line want — and it is capped and lossy on
@@ -9199,8 +9255,8 @@ const DISTRICT = { officeB1:'商务区',office1:'商务区',office2:'商务区',
                    hotel5:'商务区',hotel6:'商务区',hotel7:'商务区',hotel8:'商务区',hotel9:'商务区',
                    hotel10:'商务区',hotel11:'商务区',hotel12:'商务区',
                    hotelLift:'商务区',
-                   campus: '大学城', rail: '火车站',
-                   park: '公园', zoo: '动物园', airport: '机场' };
+                   campus: '大学城', classroom:'大学城', library:'大学城', rail: '火车站',
+                   park: '公园', zoo: '动物园', zoo_tropical: '动物园', airport: '机场' };
 function hereStation() {
   if (place === 'metro' || place === 'train') return station;
   if (DISTRICT[place]) return DISTRICT[place];
@@ -11792,6 +11848,11 @@ function saveGame() {
           ? PLAYER.glassesColor.slice(0, 3).map(v => clamp(Number(v) || 0, 0, 1)) : null,
       },
       job: job && job.hz, clockedDay, bought: mallBought.slice(-24),
+      campusLife: { studentId:!!campusLife.studentId },
+      // Scene-layout markers migrate coordinates without changing the v1 life format. A missing
+      // CampusContract is possible only while loading a partial development build; JSON simply
+      // omits that marker and the complete build will migrate on its next load.
+      layouts: { campus:window.CampusContract?.layoutVersion },
       mall: {
         stamps:{...mallProgress.stamps}, rewardTier:mallProgress.rewardTier,
         tickets:mallProgress.tickets, arcadePlays:mallProgress.arcadePlays,
@@ -11970,6 +12031,8 @@ function loadGame() {
     hospitalVisit = { ...hospitalVisit, ...s.hospital };
   clockedDay = s.clockedDay || 0;
   mallBought = Array.isArray(s.bought) ? s.bought : [];
+  campusLife = { studentId:!!s.campusLife?.studentId };
+  if (campusLife.studentId && !mallBought.includes('学生证')) mallBought.push('学生证');
   mallProgress=freshMallProgress();
   // A basket belongs to one visit and is never restored; everything else mall-side starts clean so
   // that loading an older save cannot leave the previous life's ticket or receipts lying about.
@@ -12056,6 +12119,12 @@ function loadGame() {
   let savedPlace = PLACES[s.place] ? s.place : 'home';
   let savedAt = Number.isFinite(s.x) && Number.isFinite(s.z) && Number.isFinite(s.yaw)
     ? { x:s.x, z:s.z, yaw:s.yaw } : undefined;
+  // The expanded campus reuses the place id but not its old footprint. Any campus save without
+  // the matching scene marker predates those walls and is restored at the contract's canonical
+  // metro-side spawn instead of trusting coordinates that may now be inside a building.
+  const cc = window.CampusContract;
+  if (savedPlace === 'campus' && cc && s.layouts?.campus !== cc.layoutVersion)
+    savedAt = { ...cc.spawn };
   // Before the tower existed, `office` was the same F4 team room at z+1.35. The optional
   // officeLift record is the backward-compatible marker: a save without it predates the move, so
   // shift its body with the retained room instead of reopening in empty circulation space.
@@ -12289,6 +12358,11 @@ function setPlace(name, at) {
     return;
   }
   const cameFrom = place;
+  // Campus schedules are static tableaux, not paths. Settle them while the old coordinate space
+  // is still hidden: on departure this consumes any queued schedule edge, and on arrival it puts
+  // every actor at the current authored spot before the first campus frame can expose a teleport.
+  if ((cameFrom === 'campus' && name !== 'campus') ||
+      (name === 'campus' && cameFrom !== 'campus')) syncCampusStaticNPCs();
   // Queue paper and the form in your hand belong to this physical visit. Leaving through the
   // branch door gives the number back; returning or loading begins at the machine, not mid-call.
   if(cameFrom==='bank'&&name!=='bank') resetBankVisit();
@@ -14083,6 +14157,10 @@ function stopUse(finished) {
     (fix.homeLatch && place === 'home' && World.level() === 2));
   if (finished && latchHere) for (const k of fix.on) latched[k] = latched[k] ? 0 : 1;
   if (finished) {
+    if (def.studentId) {
+      const fresh = issueStudentId();
+      spoke = fresh ? [def.done, def.doneTr] : [def.repeatDone, def.repeatDoneTr];
+    }
     // ---- the lift. Pressing the landing button fetches the car and opens it; pressing 按钮 in
     // the car opens the floor panel again. Neither of them moves you: 走进去 does that, and
     // choosing the floor does the rest.
@@ -16453,6 +16531,7 @@ window.__game = {
                   mallHold: mallBasket.length ? mallBasket[0] : null,
                   mallBasket: mallBasket.slice(), mallTotal: mallTotal(),
                   bought: mallBought.slice(),
+                  campusLife:{ ...campusLife },
                   // The full record, beside the names. A harness proving a purchase survived a
                   // reload has to be able to see what the purchase actually was.
                   receipts: mallReceipts.map(r => ({ ...r, items: r.items.map(i => ({ ...i })) })),

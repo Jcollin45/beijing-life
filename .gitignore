@@ -4,6 +4,7 @@
 .*
 !.gitignore
 !.nojekyll
+!.campuscheck.js
 !.claude/
 
 # Concept art: 783 MB of source PNGs. Not referenced by index.html or anything in js/.

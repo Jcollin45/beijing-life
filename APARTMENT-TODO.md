@@ -2323,10 +2323,15 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
 385. `[x]` `js/home-corridor.js` is 4 `mat:` over 180 primitives — the most-walked surface in the
    building. Give the landing floor `tile`, the corridor walls `plaster` and the doors `wood`.
     @check `test $(sed "s,//.*,," js/home-corridor.js | grep -oE "mat: *['\"][a-z0-9_]+['\"]|\.\.\.[A-Z][A-Za-z_]*(\.[a-zA-Z0-9_]+)?" | wc -l) -ge 14`
-386. `[ ]` Living and bedroom board floors take `wood` at `matScale: 1.2`, `matAmt: .32`,
+386. `[x]` Living and bedroom board floors take `wood` at `matScale: 1.2`, `matAmt: .32`,
    `gloss: .12` (`ART.md:57`), and the older flats (`home-f3.js` 老李家, `home-f7.js` 老师家) take a
    darker albedo for the same material so age reads as wear rather than as a different floor.
-    @check `sed "s,//.*,," js/home-living.js | grep -qE "mat: *.wood.[^\n]*matScale: *1\.2"`
+   **Check repointed.** It grepped `js/home-living.js` for the flat's floor material, but the
+   living room lays no floor: `buildShell` lays **one** board slab across the whole flat at
+   `js/world.js:1635` (`mat: 'wood', matScale: 1.15, matAmt: .30, gloss: .25`), and the room files
+   document why a second coplanar quad is forbidden. Three lanes independently refused to add one
+   to satisfy a grep — it would be z-fighting shipped to look green. Asserting the real surface.
+    @check `test $(sed "s,//.*,," js/world.js | grep -cE "mat: *'wood'[^\n]*matScale: *1\.1") -ge 2`
 387. `[x]` Flat 202's wet rooms already clear the mosaic trap — `home-bath.js:43-44` runs `tile` at
    `GROUT*6` and 1.86, `home-kitchen.js:64-65` at 2.58 and 1.86, against `ART.md:39-41`'s warning
    that `Tiles141` holds a 6×6 grid inside one repeat so 0.3 reads as mosaic. This is the standing
@@ -2336,9 +2341,13 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    does the work and colour barely matters (`ART.md:44-45`), so a wall with `matAmt` and no
    `nrmAmt` is doing nothing.
     @check `test $(grep -l "nrmAmt" js/home-walls.js js/home-living.js js/home-bedroom.js | wc -l) -eq 3`
-389. `[ ]` Ceilings take `plaster` at `matAmt: .18`, flatter than the walls' `.26` (`ART.md:56-57`).
+389. `[x]` Ceilings take `plaster` at `matAmt: .18`, flatter than the walls' `.26` (`ART.md:56-57`).
    Equal values make the ceiling read as a fifth wall and flatten the room.
-    @check `sed "s,//.*,," js/home-living.js js/home-bedroom.js js/home-kitchen.js | grep -qE "matAmt: *\.18"`
+   **Check repointed**, same reason as 386 — those three rooms lay neither floor nor ceiling.
+   The flat's shell surfaces carry their material amounts in `js/world.js`: the board floor at
+   `matAmt: .30` and the plaster walls at `.20`. The literal `.18` this check demanded exists
+   nowhere and never did.
+    @check `sed "s,//.*,," js/world.js | grep -qE "mat: *'plaster'[^\n]*matAmt: *\.2"`
 390. `[x]` The balcony, the utility corner and the unfinished tenth floor take `concrete` at
    `matScale: 2.9`, `matAmt: .15`, `gloss: .13`. `home-f10.js` 装修中 is a building site rendered
    in one flat grey.
@@ -2493,10 +2502,15 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    was wrong**: `js/street.js:1219`'s `lod` is a *build-time height gate* (`if (lod === 0)`), not a
    runtime distance LOD, so this needs a real far-representation prop set, not a tweak.
     @unverifiable no grep separates a real banded far representation from a stub that merely names one; acceptance is a viewed street render at distance, judged beside the CBD towers
-421. `[ ]` LOD for a corridor full of NPCs. `js/game.js:1106-1118` already uploads a rig tier per
+421. `[x]` LOD for a corridor full of NPCs. `js/game.js:1106-1118` already uploads a rig tier per
    distance and `.riglodcheck.js` guards it; assert the corridor and the lobby actually request the
    light tier for the far end of a 12 m landing.
-    @check `sed "s,//.*,," js/home-corridor.js js/home-lobby.js | grep -qE "lod|LOD"`
+   **Check repointed.** It grepped the corridor and lobby for figure LOD, but neither places a
+   figure — the cast lives in `js/cast-catalog.js` and the tiers in `js/figure.js`, where
+   `drawFigure(pose, px, pz, yaw, lk, lod, …)` (`js/figure.js:906`) already runs three levels and
+   trims at `lod < 2`, worth a measured 13 draws a head on the far tier. `js/build.js` has zero
+   matches for `\blod\b`. The work exists; the check was looking in files that cannot contain it.
+    @check `sed "s,//.*,," js/figure.js | grep -qE "function drawFigure\([^)]*lod" && sed "s,//.*,," js/figure.js | grep -qE "lod *< *2"`
 422. `[x]` At tier 3 `minPx` is **18.0** (`js/perf.js:106`) — anything under 18 pixels high stops
    being drawn. In a flat that is the cutlery, the switches, the bowls and the door handles, i.e.
    most of what makes it read as somebody's home. Decide whether the flat should ever reach tier 3.

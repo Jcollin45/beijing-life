@@ -228,6 +228,8 @@ const Speech = (() => {
   const WET = { street: 1.10, park: .85, zoo: .90, campus: 1.00, metro: 1.80,
                 home: 1.05, shop: 1.35,
                 diner: 1.35, office: 1.25, rail: 1.85, airport: 1.85, classroom: 1.45,
+                // Glass, tile, rockwork and water give the greenhouse a long, humid indoor tail.
+                zoo_tropical: 1.55,
                 // The deadest room in the game, and by a long way. Every surface in an aircraft
                 // cabin is upholstered, the nearest one is two metres off, and there is a wall of
                 // engine noise over the top: a voice in here has essentially no tail at all.

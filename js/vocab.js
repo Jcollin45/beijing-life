@@ -577,7 +577,48 @@ const RAW = `
 导游图|dǎoyóutú|visitor map|direction
 游泳|yóuyǒng|to swim
 爬|pá|to climb
+# ---- 扩建动物园 expansion habitats, visitor services and the Tropical House
+水獭|shuǐtǎ|otter
+河马|hémǎ|hippopotamus
+火烈鸟|huǒlièniǎo|flamingo
+丹顶鹤|dāndǐnghè|red-crowned crane
+羚牛|língniú|takin
+雪豹|xuěbào|snow leopard
+小熊猫|xiǎoxióngmāo|red panda
+天鹅|tiān'é|swan
+山羊|shānyáng|goat
+兔子|tùzi|rabbit
+金丝猴|jīnsīhóu|golden snub-nosed monkey
+亚洲象|Yàzhōu xiàng|Asian elephant
+斑马|bānmǎ|zebra
+羚羊|língyáng|antelope
+犀牛|xīniú|rhinoceros
+狮子|shīzi|lion
+热带馆|rèdàiguǎn|Tropical House
+扬子鳄|Yángzǐ'è|Chinese alligator
+中华鲟|Zhōnghuáxún|Chinese sturgeon
+蛇|shé|snake
+蜥蜴|xīyì|lizard
+蝴蝶|húdié|butterfly
+果蝠|guǒfú|fruit bat
+饮水处|yǐnshuǐchù|drinking-water station
+医务室|yīwùshì|first-aid room|medical
+无障碍路线|wúzhàng'ài lùxiàn|accessible route|direction
+西门|xīmén|west gate|direction
+保育中心|bǎoyù zhōngxīn|conservation centre
+动物医院|dòngwù yīyuàn|animal hospital|medical
 # ---- 大学城 the university district
+校园|xiàoyuán|campus
+校园地图|xiàoyuán dìtú|campus map|direction
+学生服务中心|xuéshēng fúwù zhōngxīn|student services centre|social
+学生证|xuéshēngzhèng|student card
+行政楼|xíngzhènglóu|administration building|work
+国际学生中心|guójì xuéshēng zhōngxīn|international student centre|social
+实验楼|shíyànlóu|laboratory building
+活动中心|huódòng zhōngxīn|student activity centre|social
+校医院|xiàoyīyuàn|campus clinic|medical
+校园快递柜|xiàoyuán kuàidìguì|campus parcel locker
+跑道|pǎodào|running track
 宿舍|sùshè|dormitory
 大学|dàxué|university
 教学楼|jiàoxuélóu|teaching building
@@ -1455,7 +1496,7 @@ X光片|X guāng piàn|X-ray film|medical
 韭叶|jiǔyè|chive-leaf-width noodles|food
 宽面|kuān miàn|wide noodles|food
 清汤|qīngtāng|clear broth|food
-鸳鸯|yuānyāng|half spicy and half clear|food
+鸳鸯|yuānyāng|mandarin duck; paired spicy-and-clear hotpot|food
 原味|yuánwèi|original flavour|food
 少汁|shǎo zhī|a little sauce|food
 加汁|jiā zhī|extra sauce|food

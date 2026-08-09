@@ -1800,7 +1800,9 @@
                'mall-events','mall',
                'mall-jewel','mall-fashion','mall-shoes','mall-digital','mall-optical','mall-flowers','mall-coffee','mall-bakery','mall-pets','mall-restaurant','mall-beauty','mall-books','mall-sport','mall-home','mall-toys','mall-dessert','mall-cinema','mall-arcade',
                'office-core','office-lift','office-b1','office-f1','office-f2','office-f3','office','office-f4','office-f5','office-f6','office-f7','office-roof',
-               'park','zoo','campus','classroom','library','nightmarket','rail','airport',
+               'park','zoo','zoo-animals','zoo-expansion','zoo-tropical',
+               'campus','campus-boundary','campus-academic','campus-west','campus-east',
+               'campus-furniture','campus-life','classroom','library','nightmarket','rail','airport',
                'air-info','air-ticket','air-checkin','air-belt','air-kiosks','air-board','air-shop','air-security',
                'air-dutyfree','air-cafe','air-smoke','air-wc','air-gate','air-apron','air-runway',
                'shanghai','chengdu','metro',
@@ -1851,6 +1853,8 @@
     ['Office6', 'things tick setNight'], ['Office7', 'things tick setNight'],
     ['OfficeRoof', 'things tick setNight'],
     ['Office', 'things TASKS'], ['Park', 'things'], ['Zoo', 'things PENS'],
+    ['ZooAnimals', 'profiles'], ['ZooExpansion', 'build npcRows useRows validatePlan'],
+    ['ZooTropical', 'things'],
     ['Campus', 'things'],     ['Classroom', 'things'],
     ['Library', 'things'], ['NightMarket', 'things tick setNight'],
     ['Rail', 'things'],
@@ -1933,6 +1937,25 @@
   };
   }
 
+  // The expansion blueprint is runtime data, not a second handwritten copy in the scene. Loading
+  // it before any game module runs means geometry, routes, interactions and the standalone checker
+  // all consume the same revision and SHA-256 identity. A missing plan is a real boot failure: the
+  // old seven-pen room must never masquerade as the completed expansion.
+  function loadZooBlueprint() {
+    return fetch('ZOO-EXPANSION-BLUEPRINT.json?v=' + v, { cache:'no-store' })
+      .then(function (r) {
+        if (!r.ok) throw new Error('HTTP ' + r.status);
+        return r.json();
+      }).then(function (plan) {
+        if (!plan || plan.schema !== 'chinesegame.zoo-expansion/v1' || plan.revision !== 2)
+          throw new Error('unexpected schema or revision');
+        window.ZOO_BLUEPRINT = plan;
+      }).catch(function (e) {
+        show('ZOO-EXPANSION-BLUEPRINT.json did not load — ' + e.message);
+        throw e;
+      });
+  }
+
   // ---------------------------------------------------------------- models, before everything
   //
   // js/assets.js loads on its own and its geometry is parsed before a single game script is
@@ -1945,17 +1968,24 @@
   // download must not be a black screen, so every path below ends in loadGame().
   var am = document.createElement('script');
   am.src = 'js/assets.js?v=' + v;
-  am.onerror = function () { console.warn('assets.js did not load; models disabled'); loadGame(); };
+  am.onerror = function () {
+    console.warn('assets.js did not load; models disabled');
+    loadZooBlueprint().then(loadGame).catch(function () {});
+  };
   am.onload = function () {
     var t0 = performance.now();
     Assets.preload().then(function (r) {
       console.log('models: ' + r.loaded + ' loaded in ' +
                   Math.round(performance.now() - t0) + ' ms' +
                   (r.failed.length ? ', FAILED: ' + r.failed.join(' | ') : ''));
-      loadGame();
+      return loadZooBlueprint().then(loadGame);
     }).catch(function (e) {
+      // A blueprint failure has already raised the visible boot error and must not be mistaken for
+      // an optional model failure. Only continue through the model fallback while no boot failure
+      // has been registered.
+      if (failed) return;
       console.warn('model preload failed, continuing without: ' + e.message);
-      loadGame();
+      loadZooBlueprint().then(loadGame).catch(function () {});
     });
   };
   document.head.appendChild(am);

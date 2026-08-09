@@ -42,7 +42,7 @@ const Library = Lazy('Library', () => {
 
   const RX = 6.0, RZ = 5.5, H = 4.8;
   const DX = 1.8;                         // door at the +x end of the -z wall
-  const OUT = { x: 10.8, z: -5.9, yaw: Math.PI * .5 };
+  const OUT = { x: 27.20, z: 50, yaw: Math.PI * .5 };
 
   const litProps = [], tubes = [], doorParts = [];
   const litten = (p, k) => { litProps.push({ p, k }); return p; };

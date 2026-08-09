@@ -53,6 +53,7 @@
     "mall:release": "node .mall-release-check.js",
     "boot": "node .bootcheck.js",
     "places": "node .places.js",
+    "campus:check": "node .campuscheck.js",
     "perf": "node .perfcheck.js",
     "save": "node .savecheck.js",
     "shop": "node .shoptest.js",
