@@ -2531,28 +2531,99 @@ function pickUnderCursor() {
 }
 
 const startButton = $('#start');
+const startFreshButton = $('#startFresh');
+const RECOVERY_SAVEKEY = 'bjlife.save.recovery.v1';
+const RECOVERY_AUTOSTART = 'bjlife.recovery.autostart';
 startButton.disabled = false;
 startButton.textContent = '进入 · PLAY';
-startButton.onclick = () => {
+if (startFreshButton) startFreshButton.disabled = false;
+
+function unlockStartAudio() {
   // This click is the browser's permission to make sound later. Nothing plays on the title
   // screen; it only wakes the train audio and begins decoding the short station clips.
-  TrainAudio.unlock();
-  Speech.unlock();
+  try { TrainAudio.unlock(); }
+  catch (error) { console.warn('Train audio unavailable at entry:', error); }
+  try { Speech.unlock(); }
+  catch (error) { console.warn('Speech audio unavailable at entry:', error); }
   // Every voice in the game is a file fetched from audio/voice. If that list cannot be read then
   // nobody can speak, and the player needs telling why rather than being left in a silent city.
   Speech.ready().then(() => {
     const why = Speech.trouble();
     if (why) toast(`没有声音 · <span class="dim">no voices: ${why}</span>`);
-  });
+  }).catch(error => console.warn('Voice list unavailable at entry:', error));
+}
+
+function archiveSavedLife(reason) {
+  // Recovery must never silently destroy somebody's life. Keep the exact original JSON under a
+  // separate key before removing the active copy; a developer can restore it after diagnosing the
+  // source, while the next page load starts from known-safe defaults.
+  try {
+    const raw = localStorage.getItem(SAVEKEY);
+    if (raw) localStorage.setItem(RECOVERY_SAVEKEY, raw);
+    localStorage.removeItem(SAVEKEY);
+  } catch (_) { /* blocked/private storage cannot be the reason entry itself stays trapped */ }
+  try { sessionStorage.setItem(RECOVERY_AUTOSTART, String(reason || 'fresh')); } catch (_) {}
+  wiping = true; // reload's exit hooks must not put the rejected save straight back
+}
+
+function showEntryFailure(error) {
+  const message = error && (error.message || String(error)) || 'unknown startup error';
+  console.error('Could not enter Beijing Life:', error);
+  const what = $('#bootWhat');
+  if (what) what.textContent = `PLAY failed — ${message}`;
+  const boot = $('#boot');
+  if (boot) boot.className = 'on';
+  startButton.disabled = false;
+  startButton.textContent = '重试 · RETRY';
+  if (startFreshButton) startFreshButton.disabled = false;
+}
+
+function revealPlayableGame() {
   // Back to the flat, at two in the afternoon, wherever the title had wandered off to.
-  endTitle();
   $('#intro').classList.add('gone'); started = true;
   setSurfaceOpen('#intro', false);
   setGameplayAccessible(true);
   // Brings the HUD up. Everything in #ui is held at zero opacity until this lands, so that the
   // title screen is not sharing the frame with a clock and a line map.
   document.body.classList.add('playing');
+}
+
+function enterFromTitle(autoRecovery = false) {
+  startButton.disabled = true;
+  startButton.textContent = '正在进入 · ENTERING';
+  if (startFreshButton) startFreshButton.disabled = true;
+  unlockStartAudio();
+  try {
+    endTitle();
+    try { sessionStorage.removeItem(RECOVERY_AUTOSTART); } catch (_) {}
+    revealPlayableGame();
+  } catch (error) {
+    // The clean hosted boot covers the ordinary path. A failure here is therefore local state or
+    // a client API. If a save exists, preserve it and make one automatic clean attempt; if the
+    // clean attempt also fails, stop the loop and put the exact error on screen.
+    let hasSave = false;
+    try { hasSave = !!localStorage.getItem(SAVEKEY); } catch (_) {}
+    if (hasSave && !autoRecovery) {
+      archiveSavedLife(error && error.message);
+      location.reload();
+      return;
+    }
+    showEntryFailure(error);
+  }
+}
+
+startButton.onclick = () => enterFromTitle(false);
+if (startFreshButton) startFreshButton.onclick = () => {
+  archiveSavedLife('start-fresh');
+  location.reload();
 };
+
+// A failed saved-state restore reloads once with that save archived. Enter automatically on the
+// clean page so recovery is one click, while the marker is retained until success to prevent an
+// infinite reload if the client itself lacks a required API.
+let recoverOnLoad = false;
+try { recoverOnLoad = !!sessionStorage.getItem(RECOVERY_AUTOSTART); } catch (_) {}
+if (recoverOnLoad) setTimeout(() => enterFromTitle(true), 0);
 
 // The long-form explanation, moved off the front of the title screen and behind a button.
 $('#howtoOpen').onclick = () => window.setHowtoOpen ? window.setHowtoOpen(true)

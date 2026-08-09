@@ -1599,6 +1599,7 @@
            switches to English. <b>You learn the city by living in it.</b></p>
         <div class="cta">
           <button id="start" type="button" disabled aria-live="polite">正在加载 · LOADING</button>
+          <button id="startFresh" type="button" class="ghost" disabled>重新开始 · START FRESH</button>
           <button id="howtoOpen" class="ghost">怎么玩 · HOW TO PLAY</button>
         </div>
       </div>
@@ -1640,6 +1641,7 @@
   <div class="sub">The game did not load</div>
   <div id="bootWhat"></div>
   <button id="bootAgain">重新加载 · RELOAD</button>
+  <button id="bootFresh">安全启动 · START FRESH</button>
 </div></div>
 
 <script>
@@ -1991,6 +1993,15 @@
   document.head.appendChild(am);
 
   document.getElementById('bootAgain').onclick = function () { location.reload(); };
+  document.getElementById('bootFresh').onclick = function () {
+    try {
+      var raw = localStorage.getItem('bjlife.save.v1');
+      if (raw) localStorage.setItem('bjlife.save.recovery.v1', raw);
+      localStorage.removeItem('bjlife.save.v1');
+      sessionStorage.setItem('bjlife.recovery.autostart', 'boot-fresh');
+    } catch (_) {}
+    location.reload();
+  };
 })();
 </script>
 <script>
