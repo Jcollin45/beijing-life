@@ -2486,6 +2486,7 @@ const USE_AT = {
   // the drinks kiosk into a pot-noodle stall.
   zoo: {
     ...ZooExpansion.useRows(ZOO_BLUEPRINT, 'zoo'),
+    ...ZooContents.useRows(ZOO_CONTENTS_BLUEPRINT, 'zoo', ZOO_BLUEPRINT),
     '售票处': { zh:'买门票', py:'mǎi ménpiào', en:'buy a ticket in', secs:3.0, mins:8, pay:-15,
                 gain:{ mood:6 }, pose:{ type:'stand' },
                 done:'十五块，票收好。', doneTr:'Fifteen yuan. Keep hold of the ticket.' },
@@ -2496,6 +2497,7 @@ const USE_AT = {
   },
   zoo_tropical: {
     ...ZooExpansion.useRows(ZOO_BLUEPRINT, 'zoo_tropical'),
+    ...ZooContents.useRows(ZOO_CONTENTS_BLUEPRINT, 'zoo_tropical', ZOO_BLUEPRINT),
   },
   // ---- 大堂 the lobby of the block, three metres under the flat. These words only exist down
   // here, so they go in the room rather than in USE: 门 and 镜子 already mean the right thing

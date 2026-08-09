@@ -7,6 +7,7 @@ const { performance } = require('perf_hooks');
 
 const ROOT = __dirname;
 const PLAN = require('./ZOO-EXPANSION-BLUEPRINT.json');
+const CONTENTS = require('./ZOO-PENS-BUILDINGS-BLUEPRINT.json');
 
 function context() {
   const ctx = {
@@ -15,6 +16,7 @@ function context() {
     Uint8Array, Uint16Array, Uint32Array, Int32Array, ArrayBuffer,
     setTimeout() { return 0; }, clearTimeout() {},
     ZOO_BLUEPRINT: PLAN,
+    ZOO_CONTENTS_BLUEPRINT: CONTENTS,
     C(hex) {
       const h = String(hex).replace('#', '');
       const n = parseInt(h.length === 3 ? h.split('').map(c => c + c).join('') : h, 16);
@@ -49,16 +51,17 @@ function buildProbe() {
   run(ctx, 'js/zoo-animals.js');
   run(ctx, 'js/lazy.js');
   run(ctx, 'js/build.js');
+  run(ctx, 'js/zoo-contents.js');
   run(ctx, 'js/zoo-expansion.js');
   run(ctx, 'js/zoo.js');
   run(ctx, 'js/zoo-tropical.js');
   const outdoor = vm.runInContext("Lazy.force('Zoo')", ctx, { timeout:120000 });
   const tropical = vm.runInContext("Lazy.force('ZooTropical')", ctx, { timeout:120000 });
   const npcRows = vm.runInContext('ZooExpansion.npcRows(ZOO_BLUEPRINT)',ctx,{timeout:30000});
-  const zooUse = vm.runInContext("ZooExpansion.useRows(ZOO_BLUEPRINT,'zoo')",ctx,{timeout:30000});
-  const tropicalUse = vm.runInContext("ZooExpansion.useRows(ZOO_BLUEPRINT,'zoo_tropical')",ctx,
+  const zooUse = vm.runInContext("Object.assign({},ZooExpansion.useRows(ZOO_BLUEPRINT,'zoo'),ZooContents.useRows(ZOO_CONTENTS_BLUEPRINT,'zoo',ZOO_BLUEPRINT))",ctx,{timeout:30000});
+  const tropicalUse = vm.runInContext("Object.assign({},ZooExpansion.useRows(ZOO_BLUEPRINT,'zoo_tropical'),ZooContents.useRows(ZOO_CONTENTS_BLUEPRINT,'zoo_tropical',ZOO_BLUEPRINT))",ctx,
     {timeout:30000});
-  return { ctx, outdoor, tropical, npcRows, zooUse, tropicalUse, plan:PLAN };
+  return { ctx, outdoor, tropical, npcRows, zooUse, tropicalUse, plan:PLAN, contents:CONTENTS };
 }
 
 const dist = (a,b) => Math.hypot(a[0]-b[0],a[1]-b[1]);

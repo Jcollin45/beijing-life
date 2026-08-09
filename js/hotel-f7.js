@@ -184,10 +184,10 @@ const Hotel7Fit = Object.freeze({ floor:'hotel7', api:1 });
   }
 
   function partition(A,c,x,z0,z1,tag='墙'){
-    A.box(x,1.57,(z0+z1)/2,.16,3.14,z1-z0,c.plaster,{...MAT.stone,hard:true,tag});
+    Build.partition(0,3.14,(yc,hh,pf)=>A.box(x,yc,(z0+z1)/2,.16,hh,z1-z0,c.plaster,{...MAT.stone,hard:true,tag,...pf}));
     A.solid(x-.09,x+.09,z0,z1);
     A.box(x,.10,(z0+z1)/2,.10,.20,z1-z0,c.walnutD,{...MAT.timber,hard:true,gloss:.28,tag});
-    A.box(x,3.08,(z0+z1)/2,.12,.14,z1-z0,c.walnutD,{...MAT.timber,hard:true,gloss:.28,tag});
+    A.box(x,3.08,(z0+z1)/2,.12,.14,z1-z0,c.walnutD,{...MAT.timber,hard:true,gloss:.28,tag,partition:true});
     cap(A,c,x-.08,x+.08,z0,z1,tag);
   }
 

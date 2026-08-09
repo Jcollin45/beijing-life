@@ -1802,7 +1802,7 @@
                'mall-events','mall',
                'mall-jewel','mall-fashion','mall-shoes','mall-digital','mall-optical','mall-flowers','mall-coffee','mall-bakery','mall-pets','mall-restaurant','mall-beauty','mall-books','mall-sport','mall-home','mall-toys','mall-dessert','mall-cinema','mall-arcade',
                'office-core','office-lift','office-b1','office-f1','office-f2','office-f3','office','office-f4','office-f5','office-f6','office-f7','office-roof',
-               'park','zoo','zoo-animals','zoo-expansion','zoo-tropical',
+               'park','zoo-animals','zoo-expansion','zoo-contents','zoo','zoo-tropical',
                'campus','campus-boundary','campus-academic','campus-west','campus-east',
                'campus-furniture','campus-life','classroom','library','nightmarket','rail','airport',
                'air-info','air-ticket','air-checkin','air-belt','air-kiosks','air-board','air-shop','air-security',
@@ -1856,6 +1856,7 @@
     ['OfficeRoof', 'things tick setNight'],
     ['Office', 'things TASKS'], ['Park', 'things'], ['Zoo', 'things PENS'],
     ['ZooAnimals', 'profiles'], ['ZooExpansion', 'build npcRows useRows validatePlan'],
+    ['ZooContents', 'buildOutdoor buildTropical useRows validatePlan'],
     ['ZooTropical', 'things'],
     ['Campus', 'things'],     ['Classroom', 'things'],
     ['Library', 'things'], ['NightMarket', 'things tick setNight'],
@@ -1944,16 +1945,24 @@
   // all consume the same revision and SHA-256 identity. A missing plan is a real boot failure: the
   // old seven-pen room must never masquerade as the completed expansion.
   function loadZooBlueprint() {
-    return fetch('ZOO-EXPANSION-BLUEPRINT.json?v=' + v, { cache:'no-store' })
-      .then(function (r) {
-        if (!r.ok) throw new Error('HTTP ' + r.status);
-        return r.json();
-      }).then(function (plan) {
+    return Promise.all([
+      fetch('ZOO-EXPANSION-BLUEPRINT.json?v=' + v, { cache:'no-store' }),
+      fetch('ZOO-PENS-BUILDINGS-BLUEPRINT.json?v=' + v, { cache:'no-store' }),
+    ]).then(function (responses) {
+      if (!responses[0].ok) throw new Error('expansion HTTP ' + responses[0].status);
+      if (!responses[1].ok) throw new Error('contents HTTP ' + responses[1].status);
+      return Promise.all(responses.map(function (r) { return r.json(); }));
+    }).then(function (plans) {
+        var plan = plans[0], contents = plans[1];
         if (!plan || plan.schema !== 'chinesegame.zoo-expansion/v1' || plan.revision !== 2)
           throw new Error('unexpected schema or revision');
+        if (!contents || contents.schema !== 'chinesegame.zoo-contents/v1' || contents.revision !== 1 ||
+            !contents.parent || contents.parent.geometryHash !== plan.geometryHash)
+          throw new Error('unexpected contents schema, revision or parent hash');
         window.ZOO_BLUEPRINT = plan;
+        window.ZOO_CONTENTS_BLUEPRINT = contents;
       }).catch(function (e) {
-        show('ZOO-EXPANSION-BLUEPRINT.json did not load — ' + e.message);
+        show('zoo blueprints did not load — ' + e.message);
         throw e;
       });
   }

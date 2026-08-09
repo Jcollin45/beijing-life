@@ -193,18 +193,20 @@ HotelFit.register('hotel2', A => {
   const wallEW = (z, x0, x1, tag = '墙', face = P.plaster) => {
     const w = x1 - x0; if (w < .03) return;
     const cx = (x0 + x1) / 2;
-    box(cx, WH / 2, z, w, WH, TT, face, {...MAT.stone, hard: true, mode: 14, gloss: .12, tag });
+    Build.partition(0, WH, (yc, hh, pf) =>
+      box(cx, yc, z, w, hh, TT, face, {...MAT.stone, hard: true, mode: 14, gloss: .12, tag, ...pf }));
     box(cx, .085, z, w, .17, TT + .06, P.walnutD, {...MAT.timber, hard: true, mode: 6, gloss: .28, tag });
-    box(cx, 3.34, z, w, .075, TT + .05, P.bronzeD, { hard: true, gloss:AGED, tag });
+    box(cx, 3.34, z, w, .075, TT + .05, P.bronzeD, { hard: true, gloss:AGED, tag, partition: true });
     solid(x0, x1, z - HT, z + HT);
     blocker(x0 - .02, x1 + .02, z - HT - .02, z + HT + .02, WH);
   };
   const wallNS = (x, z0, z1, tag = '墙', face = P.plaster) => {
     const d = z1 - z0; if (d < .03) return;
     const cz = (z0 + z1) / 2;
-    box(x, WH / 2, cz, TT, WH, d, face, {...MAT.stone, hard: true, mode: 14, gloss: .12, tag });
+    Build.partition(0, WH, (yc, hh, pf) =>
+      box(x, yc, cz, TT, hh, d, face, {...MAT.stone, hard: true, mode: 14, gloss: .12, tag, ...pf }));
     box(x, .085, cz, TT + .06, .17, d, P.walnutD, {...MAT.timber, hard: true, mode: 6, gloss: .28, tag });
-    box(x, 3.34, cz, TT + .05, .075, d, P.bronzeD, { hard: true, gloss:AGED, tag });
+    box(x, 3.34, cz, TT + .05, .075, d, P.bronzeD, { hard: true, gloss:AGED, tag, partition: true });
     solid(x - HT, x + HT, z0, z1);
     blocker(x - HT - .02, x + HT + .02, z0 - .02, z1 + .02, WH);
   };

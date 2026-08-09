@@ -51,10 +51,15 @@
     function wallZ(z,x0,x1,doors=[],tag='隔墙',color=P.wall) {
       const cuts = doors.slice().sort((a,b)=>a[0]-b[0]);
       let at=x0;
+      // Split through the shared `A.partition` (js/build.js): a 0.40 m stub that stays, and the
+      // upper part flagged for the owner's walls-down setting. The skirting below is 0.13 m tall
+      // and never flagged, so with the wall down a doorway reads as a gap in the kerb. Collision
+      // is unchanged — `solid` and `A.blocker` keep the extents they had.
       const run=(a,b)=>{
         if(b-a<.08) return;
-        box((a+b)/2,H/2,z,b-a,H,wallT,color,
-          {hard:true,mat:'plaster',matScale:1.6,matAmt:.16,tag});
+        A.partition(0,H,(yc,hh,dh)=>
+          box((a+b)/2,yc,z,b-a,hh,wallT,color,
+            {hard:true,mat:'plaster',matScale:1.6,matAmt:.16,tag,...dh}));
         box((a+b)/2,.065,z-.09,b-a,.13,.035,P.wallD,{hard:true,tag});
         solid(a,b,z-wallT*.62,z+wallT*.62);
         A.blocker(a,b,z-wallT*.62,z+wallT*.62,A.H);
@@ -62,7 +67,9 @@
       for(const [cx,w] of cuts) {
         const l=Math.max(x0,cx-w/2), r=Math.min(x1,cx+w/2);
         run(at,l);
-        if(r>l) box((l+r)/2,(doorH+H)/2,z,r-l,H-doorH,wallT,color,{hard:true,tag});
+        // Door head panel: its base is `doorH`, well above the kerb, so it is flagged whole
+        // rather than split — otherwise it hangs over the opening with its wall gone.
+        if(r>l) box((l+r)/2,(doorH+H)/2,z,r-l,H-doorH,wallT,color,{hard:true,tag,partition:true});
         at=Math.max(at,r);
       }
       run(at,x1);
@@ -72,8 +79,9 @@
       let at=z0;
       const run=(a,b)=>{
         if(b-a<.08) return;
-        box(x,H/2,(a+b)/2,wallT,H,b-a,color,
-          {hard:true,mat:'plaster',matScale:1.6,matAmt:.16,tag});
+        A.partition(0,H,(yc,hh,dh)=>
+          box(x,yc,(a+b)/2,wallT,hh,b-a,color,
+            {hard:true,mat:'plaster',matScale:1.6,matAmt:.16,tag,...dh}));
         box(x+.09,.065,(a+b)/2,.035,.13,b-a,P.wallD,{hard:true,tag});
         solid(x-wallT*.62,x+wallT*.62,a,b);
         A.blocker(x-wallT*.62,x+wallT*.62,a,b,A.H);
@@ -81,7 +89,7 @@
       for(const [cz,w] of cuts) {
         const l=Math.max(z0,cz-w/2), r=Math.min(z1,cz+w/2);
         run(at,l);
-        if(r>l) box(x,(doorH+H)/2,(l+r)/2,wallT,H-doorH,r-l,color,{hard:true,tag});
+        if(r>l) box(x,(doorH+H)/2,(l+r)/2,wallT,H-doorH,r-l,color,{hard:true,tag,partition:true});
         at=Math.max(at,r);
       }
       run(at,z1);

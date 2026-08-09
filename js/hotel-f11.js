@@ -184,9 +184,10 @@ HotelFit.register('hotel11', A => {
   function wallX(xc, z0, z1, tag, face) {
     if (z1 - z0 < .02) return;
     const zc = (z0 + z1) / 2, d = z1 - z0;
-    box(xc, WH / 2, zc, T, WH, d, face || c.plaster, { hard:true, mode:14, gloss:.11, tag });
+    Build.partition(0, WH, (yc, hh, pf) =>
+      box(xc, yc, zc, T, hh, d, face || c.plaster, { hard:true, mode:14, gloss:.11, tag, ...pf }));
     box(xc, .17, zc, T + .05, .22, d, c.walnutD, { hard:true, gloss:.28, tag });
-    box(xc, WH - .07, zc, T + .05, .10, d, c.bronzeD, { hard:true, gloss:.58, tag });
+    box(xc, WH - .07, zc, T + .05, .10, d, c.bronzeD, { hard:true, gloss:.58, tag, partition:true });
     solid(xc - TH, xc + TH, z0, z1);
     blocker(xc - TH, xc + TH, z0, z1, WH);
   }
@@ -195,9 +196,10 @@ HotelFit.register('hotel11', A => {
   function wallZ(zc, x0, x1, tag, face) {
     if (x1 - x0 < .02) return;
     const xc = (x0 + x1) / 2, w = x1 - x0;
-    box(xc, WH / 2, zc, w, WH, T, face || c.plaster, { hard:true, mode:14, gloss:.11, tag });
+    Build.partition(0, WH, (yc, hh, pf) =>
+      box(xc, yc, zc, w, hh, T, face || c.plaster, { hard:true, mode:14, gloss:.11, tag, ...pf }));
     box(xc, .17, zc, w, .22, T + .05, c.walnutD, { hard:true, gloss:.28, tag });
-    box(xc, WH - .07, zc, w, .10, T + .05, c.bronzeD, { hard:true, gloss:.58, tag });
+    box(xc, WH - .07, zc, w, .10, T + .05, c.bronzeD, { hard:true, gloss:.58, tag, partition:true });
     solid(x0, x1, zc - TH, zc + TH);
     blocker(x0, x1, zc - TH, zc + TH, WH);
   }

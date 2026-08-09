@@ -1627,6 +1627,15 @@ const ZooExpansion = (() => {
     }
     const routeTotal = routeCumulative[routeCumulative.length - 1];
 
+    // The companion fit-out blueprint is compiled before render/collision chunk snapshots. This
+    // makes all 227 additive pen/building records first-class members of the same five render
+    // chunks and the same 180/55 collision budgets instead of an unbudgeted overlay appended
+    // after the fact. `existing-r2` records are documentation only and are skipped by the compiler.
+    if (typeof ZooContents === 'undefined')
+      throw new Error('ZooExpansion: ZooContents compiler is missing');
+    const contentsStats = ZooContents.buildOutdoor(B,
+      typeof ZOO_CONTENTS_BLUEPRINT !== 'undefined' ? ZOO_CONTENTS_BLUEPRINT : null, plan);
+
     // Five render chunks are named by the canonical performance contract. Construction remains
     // one lazy Zoo build, but only nearby chunk members enter the draw passes; fine-detail LOD is
     // evaluated in the same refresh. This is renderer state only and never changes interactions.
@@ -1830,6 +1839,7 @@ const ZooExpansion = (() => {
       accessibleRoute:Object.freeze(accessibleRouteSegments.map(q=>Object.freeze({
         a:Object.freeze(q.a),b:Object.freeze(q.b),owner:q.owner}))),
       refreshCollision, refreshRenderChunks, toggleAccessibleRoute,
+      contentsStats,
       spawn: { x: plan.site.mainSpawn.at[0], z: plan.site.mainSpawn.at[1],
         yaw: plan.site.mainSpawn.yaw },
       secondarySpawn: { x: plan.site.secondarySpawn.at[0], z: plan.site.secondarySpawn.at[1],

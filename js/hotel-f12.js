@@ -212,10 +212,11 @@ HotelFit.register('hotel12', A => {
   function partZ(x0, x1, z, h, tag, colour, sx0, sx1) {
     if (x1 - x0 < .02) return;
     const w = x1 - x0, cx = (x0 + x1) / 2;
-    box(cx, h / 2, z, w, h, WH * 2, colour, { hard: true, mode: 14, gloss: .12, tag });
+    Build.partition(0, h, (yc, hh, pf) =>
+      box(cx, yc, z, w, hh, WH * 2, colour, { hard: true, mode: 14, gloss: .12, tag, ...pf }));
     for (const s of [-1, 1]) {
       box(cx, .11, z + s * (WH + .018), w, .22, .035, c.walnutD, { hard: true, mode: 6, gloss: .28, tag });
-      box(cx, h - .07, z + s * (WH + .018), w, .085, .035, c.bronzeD, { hard: true, gloss: .58, tag });
+      box(cx, h - .07, z + s * (WH + .018), w, .085, .035, c.bronzeD, { hard: true, gloss: .58, tag, partition: true });
     }
     solid(sx0 === undefined ? x0 : sx0, sx1 === undefined ? x1 : sx1, z - WH, z + WH);
     blocker(sx0 === undefined ? x0 : sx0, sx1 === undefined ? x1 : sx1, z - WH, z + WH, h);
@@ -223,10 +224,11 @@ HotelFit.register('hotel12', A => {
   function partX(x, z0, z1, h, tag, colour, sz0, sz1) {
     if (z1 - z0 < .02) return;
     const d = z1 - z0, cz = (z0 + z1) / 2;
-    box(x, h / 2, cz, WH * 2, h, d, colour, { hard: true, mode: 14, gloss: .12, tag });
+    Build.partition(0, h, (yc, hh, pf) =>
+      box(x, yc, cz, WH * 2, hh, d, colour, { hard: true, mode: 14, gloss: .12, tag, ...pf }));
     for (const s of [-1, 1]) {
       box(x + s * (WH + .018), .11, cz, .035, .22, d, c.walnutD, { hard: true, mode: 6, gloss: .28, tag });
-      box(x + s * (WH + .018), h - .07, cz, .035, .085, d, c.bronzeD, { hard: true, gloss: .58, tag });
+      box(x + s * (WH + .018), h - .07, cz, .035, .085, d, c.bronzeD, { hard: true, gloss: .58, tag, partition: true });
     }
     solid(x - WH, x + WH, sz0 === undefined ? z0 : sz0, sz1 === undefined ? z1 : sz1);
     blocker(x - WH, x + WH, sz0 === undefined ? z0 : sz0, sz1 === undefined ? z1 : sz1, h);

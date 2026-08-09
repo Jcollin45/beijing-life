@@ -241,25 +241,26 @@ HotelFit.register('hotel5', A => {
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
     const y0 = o.y0 === undefined ? 0 : o.y0, y1 = o.y1 === undefined ? WH : o.y1;
     const tag = o.tag || '墙';
-    box(cx, (y0 + y1) / 2, cz, w, y1 - y0, d, o.c || plaster,
-      { ...MAT.stone, hard: true, gloss: o.gloss === undefined ? .10 : o.gloss, tag });
+    Build.partition(y0, y1 - y0, (yc, hh, pf) =>
+      box(cx, yc, cz, w, hh, d, o.c || plaster,
+        { ...MAT.stone, hard: true, gloss: o.gloss === undefined ? .10 : o.gloss, tag, ...pf }));
     if (o.stop !== false) solid(x0, x1, z0, z1);
     if (o.eye !== false) blocker(x0 - .03, x1 + .03, z0 - .03, z1 + .03, o.top || EYE);
     // The bulkhead runs from this wall's own top to the slab soffit, with no seam: a 40 mm slot
     // at the head of every partition is exactly the kind of thing a screenshot never shows.
     if (o.bulk !== false && y1 >= WH - .01 && y1 < EYE - .02)
       box(cx, (y1 + EYE) / 2, cz, w, EYE - y1, d, plasterD,
-        { ...MAT.stone, hard: true, gloss: .09, tag });
+        { ...MAT.stone, hard: true, gloss: .09, tag, partition: true });
     if (o.trim === false) return;
     // Skirting and picture rail on both long faces: a partition with no base is a card.
     if (w >= d) for (const s of [-1, 1]) {
       const fz = s < 0 ? z0 - .035 : z1 + .035;
       box(cx, .105, fz, w, .21, .07, walnutD, { ...MAT.timber, hard: true, gloss: .29, tag });
-      box(cx, 3.075, fz, w, .15, .07, walnutD, { ...MAT.timber, hard: true, gloss: .29, tag });
+      box(cx, 3.075, fz, w, .15, .07, walnutD, { ...MAT.timber, hard: true, gloss: .29, tag, partition: true });
     } else for (const s of [-1, 1]) {
       const fx = s < 0 ? x0 - .035 : x1 + .035;
       box(fx, .105, cz, .07, .21, d, walnutD, { ...MAT.timber, hard: true, gloss: .29, tag });
-      box(fx, 3.075, cz, .07, .15, d, walnutD, { ...MAT.timber, hard: true, gloss: .29, tag });
+      box(fx, 3.075, cz, .07, .15, d, walnutD, { ...MAT.timber, hard: true, gloss: .29, tag, partition: true });
     }
   }
 

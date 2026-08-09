@@ -2430,7 +2430,10 @@ function hiddenProp(p) {
   // (anything tall and thin) takes wardrobes and bookcases with it, and because a tag cannot be
   // used here at all: tags are scene-wide across twelve decks, so `墙` on deck 7 and `墙` on
   // deck 2 average their group centre into the middle of the shaft. A per-prop boolean has no
-  // centre to average. Nothing outside the flat sets it, so no other place can be affected.
+  // centre to average. **This was flat-202-only when written and is not any more** — the hotel
+  // (11 floors) and the office (9) now set it through `Build.partition`, so pressing V drops
+  // their interior walls too. That is intended; the flag is safe to spread precisely because
+  // it is a property rather than a tag, and because it culls a draw and never a collider.
   if (SET.wallsOff && p.partition) return true;
   // A tag group only gets to speak for a prop when the whole group fits inside the room being
   // cut. `build.js:280` keys tagBox by tag alone and one Build.scene covers all twelve decks of

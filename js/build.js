@@ -579,7 +579,13 @@ const Build = (() => {
   // stops being findable. A 46 m mall hall needs its own number. `pitch` is the released pitch
   // clamp in radians, against the walking camera's 1.05.
   //
-  // Adding a key here is the whole of enabling a building: nothing else is gated on `place`.
+  // Adding a key here enables the **camera** half only. The geometry half is already global:
+  // `js/game.js`'s `if (SET.wallsOff && p.partition) return true;` is not gated on `place`, so
+  // any building whose interior walls route through `partition()` above drops them the moment
+  // the owner presses V, with its ordinary walking camera. That is deliberate — the walls are
+  // the useful half and they are safe everywhere; craning the eye upward is the half that needs
+  // a per-scene decision, because a floor roofed by one nocut, deck-undefined slab will simply
+  // show you the top of it. The hotel and the office are in exactly that position today.
   const DOLLHOUSE = {
     home: { levels: [2], far: 10.5, pitch: 1.45 },
   };

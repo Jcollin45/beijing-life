@@ -185,7 +185,7 @@ const coreHabitats = [
       surface('H03/S01','aviary grass floor',[-4,2,-2.5,4],0.006,'M-MEADOW','primary substrate'),
       item('H03/O01','full-height aviary cage','mesh-enclosure',[-1,0,0.75],[6,4.2,6.5],'M-MESH','camera-blocker','flight containment',{ grid:1.0, roofGrid:1.2, cornerPost:0.13 }),
       item('H03/O02','diagonal timber perch', 'ground-log',[-1.8,1.4,1.35],[2.6,0.12,0.12],'M-TIMBER','none','roosting',{ yaw:1.44 }),
-      item('H03/O03','north-east shrub',[].constructor === Array ? 'tree' : 'tree',[1.35,0,3.28],[1.1,1.1,1.1],'M-FOLIAGE','none','cover and nesting'),
+      item('H03/O03','north-east shrub','tree',[1.35,0,3.28],[1.1,1.1,1.1],'M-FOLIAGE','none','cover and nesting'),
       item('H03/O04','grain feeder','feed-trough',[-2.8,0,2.7],[0.75,0.24,0.55],'M-FOOD-STEEL','none','daily feeding'),
       item('H03/O05','dust bath','pool-volume',[0.45,0,1.4],[1.15,0.12,0.9],'M-SAND','none','dust bathing',{ depth:0.12 }),
       item('H03/O06','shallow drinker','water-trough',[-2.75,0,-1.5],[0.8,0.18,0.55],'M-CERAMIC','none','fresh drinking water'),
@@ -206,7 +206,7 @@ const coreHabitats = [
     ],
     contents:[
       surface('H04/S01','sand yard',[6,16,-2.5,4],0.006,'M-SAND','primary substrate'),
-      item('H04/O01','mud wallow outer basin',[].constructor === Array ? 'pool-volume' : 'pool-volume',[13,0,0.75],[4.2,0.25,3.4],'M-MUD','none','dusting and cooling',{ innerWaterSize:[1.72,0.12,1.05] }),
+      item('H04/O01','mud wallow outer basin','pool-volume',[13,0,0.75],[4.2,0.25,3.4],'M-MUD','none','dusting and cooling',{ innerWaterSize:[1.72,0.12,1.05] }),
       item('H04/O02','east rock cluster','rock-cluster',[14.65,0,3.05],[2.3,1.05,2.0],'M-ROCK','none','scratching and visual cover'),
       item('H04/O03','open elephant shelter','animal-shelter',[13.6,0,-0.5],[4.8,4.0,4.2],'M-CONCRETE-DARK','camera-blocker','shade and rain cover',{ roofMaterial:'M-ROOF-RED', postSize:0.46 }),
       item('H04/O04','suspended enrichment ball','climbing-frame',[11.55,0,-0.32],[0.7,3.4,0.7],'M-RUBBER','none','moving enrichment',{ pivotY:3.38, swingRadius:1.45 }),
@@ -495,7 +495,7 @@ const buildingFixtures = {
   'B01-west-gate-pavilion': [
     item('B01/FIX01','south ticket reader','box-fixture',[-56.05,0,21.1],[0.28,1.1,0.34],'M-STEEL-DARK','body','secondary-entry ticket validation',{ interaction:{ tag:'检票', focus:[-57.0,21.1], reach:1.5 } }),
     item('B01/FIX02','north ticket reader','box-fixture',[-56.05,0,26.9],[0.28,1.1,0.34],'M-STEEL-DARK','body','secondary-entry ticket validation'),
-    item('B01/FIX03','entry status screen','screen',[-55.62,2.25,24.0],[0.05,0.75,1.9],'M-SCREEN','none','hours, ticket status and accessible route',{ yaw:PI/2, interaction:{ tag:'西门信息', focus:[-57.0,24], reach:2.0 } }),
+    item('B01/FIX03','entry status screen','screen',[-55.62,2.25,24.0],[0.05,0.75,1.9],'M-SCREEN','none','hours, ticket status and accessible route',{ yaw:PI/2, interaction:{ tag:'西门', focus:[-57.0,24], reach:2.0 } }),
     item('B01/FIX04','emergency intercom','box-fixture',[-55.64,0.95,22.3],[0.08,0.3,0.22],'M-STEEL','none','visitor assistance',{ yaw:PI/2 }),
     item('B01/FIX05','passage ceiling light A','light-fixture',[-56.75,4.15,22.0],[0.65,0.08,0.18],'M-CERAMIC','none','night entry illumination',{ lumens:1100, temperatureK:3000 }),
     item('B01/FIX06','passage ceiling light B','light-fixture',[-56.75,4.15,26.0],[0.65,0.08,0.18],'M-CERAMIC','none','night entry illumination',{ lumens:1100, temperatureK:3000 }),
@@ -536,11 +536,11 @@ const buildingFixtures = {
     item('B04/tea/FIX01','tea service counter','counter',[-11.55,0.5,29.5],[1.5,1.05,3.0],'M-TIMBER-DARK','body','tea preparation and sales',{ room:'tea-counter', interaction:{ tag:'茶亭', focus:[-9.0,29], reach:2.2 } }),
     item('B04/tea/FIX02','hot-water boiler','cylinder-fixture',[-12.0,1.1,30.25],[0.42,0.75,0.42],'M-FOOD-STEEL','none','tea water heating',{ room:'tea-counter' }),
     item('B04/tea/FIX03','handwash sink','sanitary-fixture',[-12.0,0.5,28.7],[0.6,0.9,0.45],'M-FOOD-STEEL','none','staff hand washing',{ room:'tea-counter' }),
-    item('B04/tea/FIX04','tea shelf','shelf',[-12.52,0.5,29.5],[0.32,1.9,1.8],'M-TIMBER','body','tea and cup storage',{ room:'tea-counter' }),
+    item('B04/tea/FIX04','tea shelf','shelf',[-12.2,0.5,29.5],[0.32,1.9,1.8],'M-TIMBER','body','tea and cup storage',{ room:'tea-counter' }),
     item('B04/seating/FIX01','communal tea table','table',[-10.1,0.5,29.5],[0.82,0.82,1.55],'M-TIMBER','body','visitor seating',{ room:'seating' }),
     item('B04/seating/FIX02','stool north','chair',[-9.65,0.5,30.2],[0.42,0.48,0.42],'M-TIMBER','none','visitor seat',{ room:'seating' }),
     item('B04/seating/FIX03','stool south','chair',[-9.65,0.5,28.8],[0.42,0.48,0.42],'M-TIMBER','none','visitor seat',{ room:'seating' }),
-    item('B04/seating/FIX04','lake binocular','box-fixture',[-9.45,1.1,30.85],[0.28,1.35,0.28],'M-STEEL-DARK','body','waterfowl viewing',{ room:'seating', interaction:{ tag:'望远镜', focus:[-9.0,30.4], reach:1.5 } }),
+    item('B04/seating/FIX04','lake binocular','box-fixture',[-9.55,1.1,30.85],[0.28,1.35,0.28],'M-STEEL-DARK','body','waterfowl viewing',{ room:'seating', interaction:{ tag:'望远镜', focus:[-9.0,30.4], reach:1.5 } }),
     item('B04/FIX05','life ring cabinet','cabinet',[-12.45,0.5,27.85],[0.55,0.85,0.22],'M-STEEL','none','water safety'),
     item('B04/FIX-L01','pavilion pendant','light-fixture',[-11.0,3.6,29.5],[0.46,0.34,0.46],'M-ROOF-RED','none','evening pavilion light',{ lumens:900, temperatureK:2700 }),
   ],
@@ -555,7 +555,7 @@ const buildingFixtures = {
     ...[[-10.1,57.2],[-8.0,57.2],[-10.1,59.6],[-8.0,59.6]].map((p,i)=>
       item(`B05/gallery/CASE${String(i+1).padStart(2,'0')}`,`panda science display ${i+1}`,'display-case',[p[0],0,p[1]],[1.25,1.25,0.72],'M-GLASS','body','panda conservation specimen and model',{ room:'panda-lab-gallery' })),
     item('B05/gallery/FIX05','genetics touchscreen','screen',[-6.72,1.35,56.8],[0.08,0.9,1.25],'M-SCREEN','none','interactive genetics exhibit',{ room:'panda-lab-gallery', yaw:-PI/2, interaction:{ tag:'熊猫保护', focus:[-8.0,56.8], reach:2.0 } }),
-    item('B05/gallery/FIX06','lab viewing window','box-fixture',[-6.08,1.6,59.8],[0.08,1.6,2.4],'M-GLASS','none','view into offstage conservation lab',{ room:'panda-lab-gallery', yaw:PI/2 }),
+    item('B05/gallery/FIX06','lab viewing window','box-fixture',[-6.55,1.6,59.8],[0.08,1.6,2.4],'M-GLASS','none','view into offstage conservation lab',{ room:'panda-lab-gallery', yaw:PI/2 }),
     item('B05/FIX-L01','classroom light row','light-fixture',[-14.3,4.4,58.5],[0.24,0.08,4.5],'M-CERAMIC','none','classroom lighting',{ lumens:3200, temperatureK:3800 }),
     item('B05/FIX-L02','gallery light row','light-fixture',[-9.0,4.4,58.5],[0.24,0.08,4.5],'M-CERAMIC','none','gallery lighting',{ lumens:2800, temperatureK:3500 }),
   ],
@@ -594,7 +594,7 @@ const buildingFixtures = {
     item('B07/hospital/FIX05','recovery kennel B','box-fixture',[-45.0,0,53.0],[1.55,1.35,1.2],'M-STEEL','body','post-treatment recovery',{ room:'animal-hospital' }),
     item('B07/hospital/FIX06','surgical prep sink','sanitary-fixture',[-49.1,0,53.55],[1.0,0.92,0.55],'M-FOOD-STEEL','body','clinical hand washing',{ room:'animal-hospital' }),
     item('B07/hospital/FIX07','medicine refrigerator','cabinet',[-44.5,0,48.0],[0.75,1.9,0.75],'M-FOOD-STEEL','body','temperature-controlled medicine',{ room:'animal-hospital' }),
-    item('B07/hospital/FIX08','public viewing window','box-fixture',[-47.0,0.76,42.5],[3.4,2.36,0.1],'M-GLASS','threshold','visitor view into animal hospital',{ room:'animal-hospital', interaction:{ tag:'动物医院', focus:[-47,40.0], reach:2.6 } }),
+    item('B07/hospital/FIX08','public viewing window','box-fixture',[-47.0,0.76,42.5],[3.4,2.36,0.1],'M-GLASS','threshold','visitor view into animal hospital',{ room:'animal-hospital', allowOutside:'south public viewing facade', interaction:{ tag:'动物医院', focus:[-47,40.0], reach:2.6 } }),
     ...[[-49.0,57.0],[-46.6,57.0],[-49.0,59.25],[-46.6,59.25]].map((p,i)=>
       item(`B07/quarantine/PEN${String(i+1).padStart(2,'0')}`,`quarantine pen ${i+1}`,'mesh-enclosure',[p[0],0,p[1]],[1.8,2.2,1.6],'M-STEEL','body','isolated animal holding',{ room:'quarantine' })),
     item('B07/quarantine/FIX05','wash-down drain','floor-drain',[-45.0,0,58.0],[0.45,0.03,3.8],'M-STEEL','none','quarantine cleaning',{ room:'quarantine' }),
@@ -604,7 +604,7 @@ const buildingFixtures = {
     item('B07/feed/FIX03','walk-in chiller','cabinet',[-40.55,0,51.1],[0.8,2.4,1.45],'M-FOOD-STEEL','body','cold feed storage',{ room:'feed-kitchen' }),
     item('B07/feed/FIX04','dry-feed shelving','shelf',[-42.55,0,47.6],[0.55,2.1,1.1],'M-STEEL','body','dry feed storage',{ room:'feed-kitchen' }),
     item('B07/feed/FIX05','platform scale','box-fixture',[-40.8,0,48.0],[0.85,0.12,0.85],'M-STEEL','none','portion weighing',{ room:'feed-kitchen' }),
-    ...[-42.55,-42.0,-41.45,-40.9,-40.35,-39.8].map((x,i)=>
+    ...[-42.55,-42.1,-41.65,-41.2,-40.75,-40.3].map((x,i)=>
       item(`B07/lockers/LOCKER${String(i+1).padStart(2,'0')}`,`staff locker ${i+1}`,'cabinet',[x,0,55.65],[0.45,1.9,0.48],'M-STEEL-DARK','body','staff clothing storage',{ room:'staff-lockers' })),
     item('B07/lockers/FIX07','changing bench','chair',[-41.5,0,54.1],[1.8,0.48,0.48],'M-TIMBER','body','staff changing',{ room:'staff-lockers' }),
     item('B07/lockers/FIX08','staff washbasin','sanitary-fixture',[-40.3,0,53.35],[0.65,0.9,0.45],'M-CERAMIC','none','hand washing',{ room:'staff-lockers' }),
@@ -657,7 +657,7 @@ const tropicalRoomContents = {
     item('T02/FIX06','bubble diffuser line','floor-drain',[4.5,-1.9,-8.0],[3.0,0.06,0.12],'M-STEEL','none','oxygenation',{ bubbles:18 }),
     item('T02/FIX07','filter return grille','floor-drain',[6.72,0.9,-5.8],[0.06,1.5,0.65],'M-STEEL','none','filtered water return',{ yaw:PI/2 }),
     item('T02/FIX08','keeper feed hatch','feed-trough',[6.45,2.25,-8.0],[0.55,0.18,0.45],'M-FOOD-STEEL','none','staff-only feeding hatch'),
-    item('T02/FIX09','tank information monitor','screen',[6.95,1.45,-2.98],[1.1,0.72,0.06],'M-SCREEN','none','water temperature and species facts',{ interaction:{ tag:'中华鲟', focus:[6.2,-2.1], reach:2.2 } }),
+    item('T02/FIX09','tank information monitor','screen',[6.95,1.45,-2.98],[1.1,0.72,0.06],'M-SCREEN','none','water temperature and species facts',{ allowOutside:'public-side interpretation face', interaction:{ tag:'中华鲟', focus:[6.2,-2.1], reach:2.2, aliasOf:'TTH-T02-01' } }),
   ],
   'T03-reptile': [
     volume('T03/FIX01','snake terrarium','mesh-enclosure',[-7.7,-4.9,3.35,8.15],0,2.4,'M-GLASS','camera-blocker','snake climate enclosure',{ front:'z0', meshTop:true }),
@@ -676,7 +676,7 @@ const tropicalRoomContents = {
     volume('T04/S02','east tropical planting bed','surface-rect',[5.0,6.7,3.35,8.15],0,0.18,'M-FOREST','none','nectar planting'),
     item('T04/FIX01','nectar tray A','feed-trough',[3.0,0.85,5.3],[0.65,0.08,0.65],'M-RUBBER','none','butterfly feeding'),
     item('T04/FIX02','nectar tray B','feed-trough',[6.0,0.85,6.3],[0.65,0.08,0.65],'M-RUBBER','none','butterfly feeding'),
-    item('T04/FIX03','chrysalis cabinet','display-case',[6.55,0,7.7],[0.42,1.65,0.9],'M-GLASS','body','visible butterfly emergence',{ interaction:{ tag:'蝴蝶', focus:[5.8,7.3], reach:1.6 } }),
+    item('T04/FIX03','chrysalis cabinet','display-case',[6.55,0,7.7],[0.42,1.65,0.9],'M-GLASS','body','visible butterfly emergence',{ interaction:{ tag:'蝴蝶', focus:[5.8,7.3], reach:1.6, aliasOf:'TTH-T04-01' } }),
     item('T04/FIX04','mist nozzle west','light-fixture',[3.4,4.2,5.0],[0.15,0.15,0.15],'M-STEEL','none','humidity control',{ system:'water-mist' }),
     item('T04/FIX05','mist nozzle east','light-fixture',[5.8,4.2,7.1],[0.15,0.15,0.15],'M-STEEL','none','humidity control',{ system:'water-mist' }),
     item('T04/FIX06','west airlock sign','screen',[2.05,2.3,5.8],[0.06,0.5,1.1],'M-SCREEN','none','keep both doors closed',{ yaw:PI/2 }),
@@ -684,7 +684,7 @@ const tropicalRoomContents = {
     item('T04/FIX08','floor drain','floor-drain',[4.5,0,8.0],[0.45,0.03,0.45],'M-STEEL','none','greenhouse drainage'),
   ],
   'T05-nocturnal': [
-    volume('T05/FIX01','dark mesh flight volume',[].constructor===Array?'mesh-enclosure':'mesh-enclosure',[9.15,11.35,3.2,5.85],0,5.45,'M-MESH','camera-blocker','fruit bat flight space'),
+    volume('T05/FIX01','dark mesh flight volume','mesh-enclosure',[9.15,11.35,3.2,5.85],0,5.45,'M-MESH','camera-blocker','fruit bat flight space'),
     item('T05/FIX02','high roost beam','ground-log',[10.25,4.85,4.5],[2.1,0.18,0.18],'M-TIMBER-DARK','none','bat roost',{ yaw:PI/2 }),
     item('T05/FIX03','cave roost box A','animal-den',[9.55,3.65,5.65],[0.65,0.62,0.45],'M-ROCK','none','dark retreat'),
     item('T05/FIX04','cave roost box B','animal-den',[10.95,3.65,5.65],[0.65,0.62,0.45],'M-ROCK','none','dark retreat'),
@@ -696,7 +696,7 @@ const tropicalRoomContents = {
   'T06-atrium': [
     item('T06/FIX01','canopy tree','tree',[0,0,4.8],[3.5,5.5,3.5],'M-FOLIAGE','body','atrium canopy and shade'),
     item('T06/FIX02','rock waterfall','box-fixture',[0,0,7.4],[1.8,4.5,0.6],'M-ROCK','camera-blocker','central water feature'),
-    volume('T06/FIX03','waterfall receiving pool','pool-volume',[-1.7,1.7,5.5,8.1],0,0.38,'M-WATER','none','waterfall basin'),
+    volume('T06/FIX03','waterfall receiving pool','pool-volume',[-1.7,1.7,5.5,8.1],0,0.38,'M-WATER','none','waterfall basin',{ allowOutside:'atrium pool overlaps the TP06 public path by design' }),
     item('T06/FIX04','west rock group','rock-cluster',[-0.75,0,6.9],[1.4,0.75,1.2],'M-ROCK','none','pool edge'),
     item('T06/FIX05','east rock group','rock-cluster',[0.85,0,6.5],[1.4,0.75,1.2],'M-ROCK-LIGHT','none','pool edge'),
     item('T06/FIX06','south canopy vine','climbing-frame',[0,1.0,-5.8],[1.7,4.2,1.4],'M-FOLIAGE','none','vertical planting'),
@@ -704,7 +704,7 @@ const tropicalRoomContents = {
     item('T06/FIX08','mist nozzle south','light-fixture',[0,5.2,-3.0],[0.15,0.15,0.15],'M-STEEL','none','humidity control',{ system:'water-mist' }),
     item('T06/FIX09','mist nozzle north','light-fixture',[0,5.2,3.5],[0.15,0.15,0.15],'M-STEEL','none','humidity control',{ system:'water-mist' }),
     item('T06/FIX10','pool floor drain','floor-drain',[0,-0.36,7.25],[0.45,0.03,0.45],'M-STEEL','none','waterfall filtration intake'),
-    item('T06/FIX11','rainforest sound post','box-fixture',[1.5,0,0.0],[0.32,1.2,0.32],'M-SCREEN','body','rainforest sound interaction',{ interaction:{ tag:'雨林声音', focus:[1.0,0], reach:1.5 } }),
+    item('T06/FIX11','rainforest sound post','box-fixture',[1.5,0,0.0],[0.32,1.2,0.32],'M-SCREEN','body','rainforest sound interaction',{ allowOutside:'public atrium-path edge', interaction:{ tag:'雨林声音', focus:[1.0,0], reach:1.5 } }),
   ],
 };
 
@@ -737,3 +737,319 @@ const tropicalScene = (() => {
   };
 })();
 
+const knownExisting = new Set([
+  'H00/S01','H00/W01','H00/O01','H00/O02',
+  'H01/S01','H01/O01','H01/O02','H01/O03','H01/O04','H01/O05',
+  'H02/S01','H02/O01','H02/O02','H02/O03','H02/O04','H02/O05','H02/O06',
+  'H03/S01','H03/O01','H03/O02','H03/O03',
+  'H04/S01','H04/O01','H04/O02','H04/O03','H04/O04',
+  'H05/S01','H05/W01','H05/O01','H05/O02','H05/O03','H05/O04','H05/O05','H05/O06',
+  'H06/S01','H06/O01','H06/O02','H06/O03','H06/O04',
+  'B02/women/FIX01','B02/women/FIX02','B02/women/FIX03','B02/women/FIX04',
+  'B02/women/FIX05','B02/women/FIX06','B02/family/FIX01','B02/family/FIX02','B02/family/FIX03',
+  'B03/snack/FIX01','B03/snack/FIX04','B03/toilets/FIX01','B03/toilets/FIX02',
+  'B03/toilets/FIX03','B03/toilets/FIX04','B03/toilets/FIX05',
+  ...Array.from({length:6},(_,i)=>`B05/classroom/DESK${String(i+1).padStart(2,'0')}`),
+  'B05/classroom/FIX01',
+  ...Array.from({length:4},(_,i)=>`B05/gallery/CASE${String(i+1).padStart(2,'0')}`),
+  'B06/aid/FIX01','B06/aid/FIX02','B06/aid/FIX03',
+  ...Array.from({length:3},(_,i)=>`B06/exhibition/PLINTH${String(i+1).padStart(2,'0')}`),
+  ...Array.from({length:3},(_,i)=>`B06/shop/SHELF${String(i+1).padStart(2,'0')}`),
+  'B06/shop/FIX04','B06b/FIX01','B06b/FIX02','B06b/FIX03','B06b/FIX04','B06b/FIX05',
+  'B07/hospital/FIX01','B07/hospital/FIX02','B07/hospital/FIX04','B07/hospital/FIX05','B07/hospital/FIX08',
+  'B08/FIX01','B08/FIX02',
+  'T00/FIX01','T00/FIX02','T01/S02','T03/FIX03','T03/FIX06','T05/FIX01',
+  'T06/FIX01','T06/FIX02','T06/FIX03','T06/FIX04','T06/FIX05',
+  'TROP/REST01','TROP/REST02','TROP/BIN01','TROP/EXIT01',
+]);
+
+function implementationStatus(id) {
+  if (knownExisting.has(id)) return 'existing-r2';
+  if (/^H(?:1\d|2\d|3\d|4\d)-[^/]+\/[SO]\d/.test(id)) return 'existing-r2';
+  return 'build-v1';
+}
+
+function tagContents(list) {
+  return list.map(q => ({ ...q, implementationStatus:implementationStatus(q.id) }));
+}
+
+function subtract(lo, hi, cuts) {
+  const ordered=cuts.map(q=>[Math.max(lo,q[0]),Math.min(hi,q[1])])
+    .filter(q=>q[1]>q[0]).sort((a,b)=>a[0]-b[0]);
+  const merged=[];
+  for(const q of ordered){const last=merged.at(-1);if(!last||q[0]>last[1])merged.push(q.slice());else last[1]=Math.max(last[1],q[1]);}
+  const out=[];let p=lo;
+  for(const q of merged){if(q[0]>p)out.push([p,q[0]]);p=Math.max(p,q[1]);}
+  if(p<hi)out.push([p,hi]);
+  return out;
+}
+
+function doorSide(b, d) {
+  const f=b.footprint, [x,z]=d.at;
+  const options=[['x0',Math.abs(x-f.x0)],['x1',Math.abs(x-f.x1)],['z0',Math.abs(z-f.z0)],['z1',Math.abs(z-f.z1)]];
+  return options.sort((a,c)=>a[1]-c[1])[0][0];
+}
+
+function genericWallRuns(b) {
+  if (['B01-west-gate-pavilion','B04-lake-pavilion','B06b-conservation-bridge','B07-operations-campus'].includes(b.id)) return [];
+  const f=b.footprint,t=0.18, doors=[...(b.publicDoors||[]),...(b.serviceDoors||[])];
+  const out=[];
+  for(const side of ['x0','x1','z0','z1']) {
+    const lo=side[0]==='x'?f.z0:f.x0,hi=side[0]==='x'?f.z1:f.x1;
+    const cuts=doors.filter(d=>doorSide(b,d)===side).map(d=>{
+      const v=side[0]==='x'?d.at[1]:d.at[0];return [v-d.width/2,v+d.width/2];
+    });
+    subtract(lo,hi,cuts).forEach((r,i)=>{
+      const id=`${b.id}/WALL-${side.toUpperCase()}-${String(i+1).padStart(2,'0')}`;
+      const rect=side[0]==='x'?[f[side]-t/2,f[side]+t/2,r[0],r[1]]:
+        [r[0],r[1],f[side]-t/2,f[side]+t/2];
+      out.push({id,side,range:r,rect,y0:0,height:b.height,thickness:t,
+        material:b.id==='B08-tropical-house'?'M-GLASS':'M-BRICK',collision:'body+camera'});
+    });
+  }
+  return out;
+}
+
+const partitions = {
+  'B02-west-restroom':[
+    {id:'B02/PART01',axis:'z',at:-31.3,range:[21,24.2],opening:[21,22.05],height:2.65,thickness:0.12},
+  ],
+  'B03-east-rest-hub':[
+    {id:'B03/PART01',axis:'z',at:45.75,range:[21,22.7],opening:[21,22.05],height:2.65,thickness:0.12},
+  ],
+  'B05-conservation-west':[
+    {id:'B05/PART01',axis:'z',at:-12.2,range:[56,61],opening:[58.05,59.25],height:3,thickness:0.12},
+  ],
+  'B06-conservation-east':[
+    {id:'B06/PART01',axis:'z',at:6.25,range:[55.5,58.5],opening:[56.15,57.35],height:3,thickness:0.12},
+    {id:'B06/PART02',axis:'z',at:9.6,range:[56,61],opening:[58.25,59.45],height:3,thickness:0.12},
+  ],
+};
+
+const buildings = parent.buildings.map(b => {
+  const fixtures=tagContents(buildingFixtures[b.id]||[]);
+  const shell = b.id==='B01-west-gate-pavilion' ? {
+    type:'gate-pavilion', solidSegments:b.solidSegments, clearPassage:b.clearPassage,
+    roof:{ y:b.height, overhang:0.25, material:'M-ROOF-GREEN' },
+  } : b.id==='B04-lake-pavilion' ? {
+    type:'open-pavilion', deckY:0.5, posts:[[-12.58,27.72],[-12.58,31.28],[-9.42,27.72],[-9.42,31.28]],
+    postSize:[0.2,3.7,0.2], roof:{ y:4.2,size:[4.25,0.2,4.65],material:'M-ROOF-GREEN' },
+    apron:b.entranceApron,
+  } : b.id==='B06b-conservation-bridge' ? {
+    type:'elevated-glazed-bridge', floorY:b.y0, topY:b.y0+b.height,
+    floorRect:[b.footprint.x0,b.footprint.x1,b.footprint.z0,b.footprint.z1],
+    glazedSides:[{side:'z0',height:b.height},{side:'z1',height:b.height}],
+    openEnds:['x0','x1'], clearanceBelow:b.clearanceBelow,
+    lifts:[[-7.25,-5.85,58.2,60.8],[1.85,3.25,58.2,60.8]],
+  } : b.id==='B07-operations-campus' ? {
+    type:'staff-campus', perimeterFence:b.perimeterFence, serviceDoors:b.serviceDoors,
+    internalDriveAisles:b.internalDriveAisles,
+  } : {
+    type:b.id==='B08-tropical-house'?'glass-greenhouse':'masonry-public-building',
+    wallRuns:genericWallRuns(b), roof:{ y:b.height, material:b.id==='B08-tropical-house'?'M-GLASS':'M-ROOF-GREEN' },
+  };
+  const rooms=(b.rooms||[]).map(room=>({
+    ...room,
+    fixtures:fixtures.filter(q=>q.room===room.id),
+  }));
+  return {
+    id:b.id,label:b.style,district:b.district||null,footprint:[b.footprint.x0,b.footprint.x1,b.footprint.z0,b.footprint.z1],
+    y0:b.y0||0,height:b.height,style:b.style,publicDoors:b.publicDoors||[],serviceDoors:b.serviceDoors||[],
+    shell,partitions:partitions[b.id]||[],rooms,
+    sharedFixtures:fixtures.filter(q=>!q.room),
+  };
+});
+
+const habitats=[...coreHabitats.map(h=>({
+  ...h,district:'D0',coordinateSpace:'zoo-world',
+  barrierSource:{file:'js/zoo.js',contract:'ZOO_PENS + pen()'},
+  gates:{service:parent.preservation.existingStaffGates.filter(g=>g.owner===h.id),public:[],animal:[]},
+  contents:tagContents(h.contents),
+})),...expansionHabitats.map(h=>({...h,coordinateSpace:'zoo-world',contents:tagContents(h.contents)}))];
+
+tropicalScene.rooms=tropicalScene.rooms.map(r=>({...r,contents:tagContents(r.contents)}));
+tropicalScene.sharedObjects=tagContents(tropicalScene.sharedObjects);
+
+const buildPhases = [
+  {id:'CV1-P00',order:0,label:'validate parent and content revisions',includes:['schema','parent.geometryHash','contentHash','stable IDs']},
+  {id:'CV1-P01',order:1,label:'compile shells, room partitions and habitat barriers',includes:['building shell runs','door cuts','public/animal/service gates']},
+  {id:'CV1-P02',order:2,label:'compile substrates and water',includes:['surface-rect','pool-volume','drains'],rule:'water before rocks; floors before fixtures'},
+  {id:'CV1-P03',order:3,label:'compile large habitat structures',includes:['shelters','dens','rock clusters','trees','climbing frames']},
+  {id:'CV1-P04',order:4,label:'compile feeding, drinking and keeper infrastructure',includes:['troughs','safe zones','cameras','service cabinets']},
+  {id:'CV1-P05',order:5,label:'compile building fit-out',includes:['counters','sanitary fixtures','furniture','display cases','storage']},
+  {id:'CV1-P06',order:6,label:'compile Tropical House fit-out and environmental systems',includes:['terrariums','aquarium fixtures','mist','heat','red light','filtration']},
+  {id:'CV1-P07',order:7,label:'compile learning and interaction layer',includes:['screens','signs','things','focus points','bilingual copy']},
+  {id:'CV1-P08',order:8,label:'spawn animals and bind activity anchors',includes:['population','activityAnchors','hours','acts']},
+  {id:'CV1-P09',order:9,label:'run construction acceptance suite',includes:['containment','clearance','reachability','collision','budgets','hash']},
+];
+
+const validation = {
+  numericTolerance:0.001,
+  rules:[
+    'Every record with geometry has one globally unique stable id.',
+    'Zoo-world records use metres and [x,y,z]; Tropical House records use local metres.',
+    'A habitat content anchor or rect must lie within its declared habitat bounds unless purpose is a public-side interaction.',
+    'A room fixture must lie within its room rect; shared fixtures must lie within the building footprint or named apron.',
+    'Every material and archetype reference must resolve.',
+    'Every public interaction has a unique tag/thing owner, standable focus and reach no greater than 2.8m.',
+    'Water surfaces declare depth, drain or filtration ownership, and an animal-safe egress where required.',
+    'Keeper service landings remain dry, at least 0.8m wide, and do not overlap feeding anchors or deep water.',
+    'Fixtures marked body own exact plan-view collision; fixtures marked none never add collision.',
+    'All light fixtures declare purpose; exhibit heat/red lights are excluded from visitor-area white-light budgets.',
+    'The runtime builds only implementationStatus=build-v1; existing-r2 prevents duplicate geometry.',
+  ],
+  acceptance:[
+    {id:'AC01',test:'schema/revision/hash exact'},
+    {id:'AC02',test:'all stable IDs unique'},
+    {id:'AC03',test:'all placements finite and dimensions positive'},
+    {id:'AC04',test:'all habitat placements contained or explicitly exempt'},
+    {id:'AC05',test:'all room fixtures assigned and contained'},
+    {id:'AC06',test:'all material and archetype references resolve'},
+    {id:'AC07',test:'all build-v1 records compiled exactly once'},
+    {id:'AC08',test:'public path and focus collision sweeps pass at player radius 0.30m'},
+    {id:'AC09',test:'outdoor 180-solid/55-blocker and render-chunk budgets remain valid'},
+    {id:'AC10',test:'Tropical House entry/exit, walk-through butterfly room and local interactions remain reachable'},
+  ],
+};
+
+const blueprint = {
+  schema:'chinesegame.zoo-contents/v1',revision:1,status:'construction-ready',
+  title:'Zoo Pens and Buildings — Complete Contents Construction Blueprint',
+  parent:{file:'ZOO-EXPANSION-BLUEPRINT.json',schema:parent.schema,revision:parent.revision,geometryHash:parent.geometryHash},
+  coordinateSystem:{
+    units:'metres',axes:{x:'east/west; east positive',y:'up; ground is 0 unless stated',z:'north/south; north positive'},
+    yaw:'radians about +Y; 0 faces +z, +pi/2 faces +x',
+    at:'[x,y,z] is the archetype anchor defined in archetypes',
+    size:'[width-x,height-y,depth-z] gives full extents before yaw',
+    rect:'[x0,x1,z0,z1] with x0<x1 and z0<z1',
+    precision:0.001,
+  },
+  engineContract:{
+    playerRadius:0.30,defaultInteractionReach:2.0,maxInteractionReach:2.8,
+    collisionModes:['none','body','threshold','camera-blocker','body+camera','inherited'],
+    implementationSelector:'implementationStatus === "build-v1"',
+    idOwnership:'first rendered structural primitive owns the base ID; children use /Gnn',
+  },
+  materials,archetypes,habitats,buildings,tropicalScene,buildPhases,validation,
+};
+
+function stable(value) {
+  if (Array.isArray(value)) return '['+value.map(stable).join(',')+']';
+  if (value && typeof value==='object') return '{'+Object.keys(value).sort().map(k=>JSON.stringify(k)+':'+stable(value[k])).join(',')+'}';
+  return JSON.stringify(value);
+}
+blueprint.contentHash='sha256:'+crypto.createHash('sha256').update(stable(blueprint)).digest('hex');
+
+function allContent(bp) {
+  return [
+    ...bp.habitats.flatMap(h=>h.contents),
+    ...bp.buildings.flatMap(b=>[...b.sharedFixtures,...b.rooms.flatMap(r=>r.fixtures)]),
+    ...bp.tropicalScene.rooms.flatMap(r=>r.contents),
+    ...bp.tropicalScene.sharedObjects,
+  ];
+}
+
+function fmtAt(q) {
+  if(q.at)return `at (${q.at.join(', ')}) · size (${q.size.join(' × ')})`;
+  if(q.rect)return `rect [${q.rect.join(', ')}]${q.height!==undefined?` · y ${q.y0||0}…${r3((q.y0||0)+q.height)}`:''}`;
+  if(q.centres)return `centres ${q.centres.map(c=>`(${c.join(', ')})`).join(', ')}`;
+  return 'reference only';
+}
+
+function markdown(bp) {
+  const contents=allContent(bp),planned=contents.filter(q=>q.implementationStatus==='build-v1');
+  const lines=[
+    '# Zoo Pens and Buildings — Complete Contents Construction Blueprint','',
+    `Status: **${bp.status}** · revision **${bp.revision}** · parent zoo revision **${bp.parent.revision}**`,
+    '',`Content hash: \`${bp.contentHash}\``,
+    '',
+    'This document is the human-readable companion to `ZOO-PENS-BUILDINGS-BLUEPRINT.json`. The JSON is canonical. Load it only after the parent revision/hash matches `ZOO-EXPANSION-BLUEPRINT.json`.',
+    '',
+    '## Construction contract','',
+    '- Units are metres. World X points east, Y points up, and Z points north.',
+    '- `at` is `[x,y,z]`; `size` is full `[width,height,depth]`; `rect` is `[x0,x1,z0,z1]`.',
+    '- Yaw 0 faces north/+Z; +π/2 faces east/+X.',
+    '- Build only records marked `build-v1`. Records marked `existing-r2` document geometry already present and prevent duplicates.',
+    '- Base IDs belong to the first structural primitive; generated child parts use `/G01`, `/G02`, and so on.',
+    '- Every public focus must remain standable for a 0.30m-radius actor.',
+    '',
+    '## Scope and totals','',
+    `- ${bp.habitats.length} outdoor habitats: 7 preserved core + 14 expansion habitats`,
+    `- ${bp.buildings.length} site buildings/structures`,
+    `- ${bp.tropicalScene.rooms.length} Tropical House rooms/exhibits`,
+    `- ${contents.length} exact content records; ${planned.length} are additive build-v1 placements`,
+    `- ${bp.materials.length} material definitions and ${bp.archetypes.length} construction archetypes`,
+    '',
+    '## Build sequence','',
+    ...bp.buildPhases.map(p=>`${p.order}. **${p.id} — ${p.label}.** ${p.includes.join('; ')}.`),
+    '',
+    '## Outdoor habitat contents','',
+  ];
+  for(const h of bp.habitats){
+    lines.push(`### ${h.id} — ${h.label}`,'',
+      `Bounds: \`[${h.bounds.join(', ')}]\` · public side: \`${h.publicSide}\` · species: ${h.species.join('、')}`,'',
+      '| Stable ID | Object | Exact placement | Material | Collision | Build state | Purpose |','|---|---|---|---|---|---|---|');
+    for(const q of h.contents)lines.push(`| ${q.id} | ${q.label} | ${fmtAt(q)} | ${q.material||'inherited'} | ${q.collision} | ${q.implementationStatus} | ${q.purpose} |`);
+    lines.push('','Animal population/activity anchors:','',
+      ...(h.population||[]).map(a=>`- ${a.id}: ${a.name||a.species} — ${a.at?`(${a.at.join(', ')}) · `:''}${a.act||''}${a.hours?` · hours ${a.hours.join('–')}`:''}`),'');
+  }
+  lines.push('## Building shells, rooms and fixtures','');
+  for(const b of bp.buildings){
+    lines.push(`### ${b.id} — ${b.label}`,'',`Footprint: \`[${b.footprint.join(', ')}]\` · y ${b.y0}…${r3(b.y0+b.height)} · shell: \`${b.shell.type}\``,'');
+    const shared=b.sharedFixtures;
+    if(shared.length){
+      lines.push('Shared/exterior fixtures:','','| Stable ID | Object | Exact placement | Build state | Purpose |','|---|---|---|---|---|');
+      shared.forEach(q=>lines.push(`| ${q.id} | ${q.label} | ${fmtAt(q)} | ${q.implementationStatus} | ${q.purpose} |`));lines.push('');
+    }
+    for(const room of b.rooms){
+      lines.push(`#### ${b.id}/${room.id}`,'',`Room rect: \`[${room.rect.join(', ')}]\``,'',
+        '| Stable ID | Object | Exact placement | Material | Collision | Build state |','|---|---|---|---|---|---|');
+      room.fixtures.forEach(q=>lines.push(`| ${q.id} | ${q.label} | ${fmtAt(q)} | ${q.material} | ${q.collision} | ${q.implementationStatus} |`));
+      if(!room.fixtures.length)lines.push('| — | No loose fixtures; structural passage/room only | — | — | — | existing-r2 |');
+      lines.push('');
+    }
+  }
+  lines.push('## Tropical House local-coordinate fit-out','',
+    `Local bounds: \`[${bp.tropicalScene.bounds.join(', ')}]\` · height ${bp.tropicalScene.height}m · all coordinates in this section are local to \`zoo_tropical\`.`, '');
+  for(const room of bp.tropicalScene.rooms){
+    lines.push(`### ${room.id} — ${room.label}`,'',`Rect: \`[${room.rect.join(', ')}]\``,'',
+      '| Stable ID | Object | Exact placement | Material | Collision | Build state | Purpose |','|---|---|---|---|---|---|---|');
+    room.contents.forEach(q=>lines.push(`| ${q.id} | ${q.label} | ${fmtAt(q)} | ${q.material} | ${q.collision} | ${q.implementationStatus} | ${q.purpose} |`));
+    lines.push('');
+  }
+  lines.push('## Acceptance checklist','',...bp.validation.acceptance.map(a=>`- [ ] **${a.id}:** ${a.test}`),'',
+    '## AI build instruction','',
+    '1. Load and validate the parent blueprint first.','2. Load this JSON and verify `contentHash`.','3. Compile phases CV1-P01 through CV1-P08 in order.','4. Build only `build-v1` placements; use `existing-r2` as collision/reference geometry.','5. Run all AC01–AC10 checks. A build is incomplete if any stable ID is missing, duplicated, displaced, or unreachable.','');
+  return lines.join('\n');
+}
+
+function html(bp) {
+  const compact={habitats:bp.habitats.map(h=>({id:h.id,label:h.label,bounds:h.bounds,items:h.contents})),
+    buildings:bp.buildings.map(b=>({id:b.id,label:b.label,bounds:b.footprint,items:[...b.sharedFixtures,...b.rooms.flatMap(r=>r.fixtures)],rooms:b.rooms.map(r=>({id:r.id,rect:r.rect}))})),
+    tropical:bp.tropicalScene.rooms.map(r=>({id:r.id,label:r.label,bounds:r.rect,items:r.contents}))};
+  return `<!doctype html>
+<html lang="en"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Zoo Pens & Buildings Construction Blueprint</title>
+<style>
+:root{color-scheme:dark;background:#111814;color:#edf3eb;font:14px/1.45 system-ui,-apple-system,sans-serif}*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at 20% 0,#1e3124,#111814 42%);min-height:100vh}.app{max-width:1440px;margin:auto;padding:24px}.top{display:flex;gap:18px;align-items:end;justify-content:space-between;flex-wrap:wrap;border-bottom:1px solid #405044;padding-bottom:16px}.eyebrow{color:#b3c7b4;letter-spacing:.12em;text-transform:uppercase;font-size:11px}h1{font-size:clamp(24px,4vw,44px);line-height:1.05;margin:6px 0}.hash{font:12px ui-monospace,monospace;color:#9fb2a3}.controls{display:flex;gap:10px;flex-wrap:wrap}button,select{background:#1c2a21;color:#edf3eb;border:1px solid #526355;padding:9px 12px;border-radius:7px}button.active{background:#d8b84f;color:#172018;border-color:#d8b84f}.layout{display:grid;grid-template-columns:minmax(0,1fr) 360px;gap:18px;margin-top:18px}.map,.details{background:#17221b;border:1px solid #35453a;border-radius:10px}.map{padding:14px}.details{padding:18px;min-height:520px}.svgwrap{width:100%;aspect-ratio:1.35;min-height:480px}svg{width:100%;height:100%;display:block}.frame{fill:#101712;stroke:#6f806f;stroke-width:.14}.room{fill:#304137;stroke:#9eb2a0;stroke-width:.09}.item-existing{fill:#66836c;stroke:#d2dfd3;stroke-width:.05}.item-build{fill:#d4aa3f;stroke:#fff1bd;stroke-width:.07}.item-hit{fill:transparent;cursor:pointer}.label{fill:#edf3eb;font-size:.42px;paint-order:stroke;stroke:#152019;stroke-width:.12px}.minor{fill:#b9c7bb;font-size:.28px}.details h2{margin:0 0 4px}.details h3{font-size:13px;color:#d6bc61;margin:18px 0 6px}.grid{display:grid;grid-template-columns:110px 1fr;gap:7px 10px;margin-top:14px}.grid dt{color:#aabaae}.grid dd{margin:0;word-break:break-word}.list{max-height:250px;overflow:auto;border-top:1px solid #35453a;margin-top:14px;padding-top:10px}.row{display:flex;justify-content:space-between;gap:12px;padding:6px 0;border-bottom:1px solid #27352c;cursor:pointer}.row:hover{color:#f3d97d}.legend{display:flex;gap:18px;margin-top:10px;color:#b9c7bb;font-size:12px}.sw{display:inline-block;width:10px;height:10px;border-radius:2px;margin-right:5px}.existing{background:#66836c}.build{background:#d4aa3f}@media(max-width:900px){.layout{grid-template-columns:1fr}.details{min-height:0}.svgwrap{min-height:390px}}@media(max-width:520px){.app{padding:14px}.svgwrap{min-height:320px}.details{padding:14px}}
+</style></head><body><main class="app"><header class="top"><div><div class="eyebrow">Construction contract · revision ${bp.revision}</div><h1>Zoo Pens & Buildings</h1><div class="hash">${bp.contentHash}</div></div><div class="controls"><button data-mode="habitats" class="active">Outdoor pens</button><button data-mode="buildings">Buildings</button><button data-mode="tropical">Tropical House</button><select id="place" aria-label="Select plan"></select></div></header><div class="layout"><section class="map"><div class="svgwrap"><svg id="plan" role="img" aria-label="Selected construction plan"></svg></div><div class="legend"><span><i class="sw existing"></i>existing r2</span><span><i class="sw build"></i>build v1</span></div></section><aside class="details"><h2 id="title"></h2><div id="subtitle" class="hash"></div><dl class="grid" id="facts"></dl><h3>Contents</h3><div class="list" id="items"></div></aside></div></main>
+<script>
+const DATA=${JSON.stringify(compact)};let mode='habitats',selected=null;const svg=document.getElementById('plan'),select=document.getElementById('place');
+const el=id=>document.getElementById(id);const esc=s=>String(s).replace(/[&<>]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;'}[c]));
+function options(){select.innerHTML=DATA[mode].map((q,i)=>'<option value="'+i+'">'+esc(q.id+' — '+q.label)+'</option>').join('');selected=DATA[mode][0];draw()}
+function geom(q){if(q.rect)return{r:q.rect};if(q.at&&q.size)return{r:[q.at[0]-q.size[0]/2,q.at[0]+q.size[0]/2,q.at[2]-q.size[2]/2,q.at[2]+q.size[2]/2]};if(q.centres){const xs=q.centres.map(c=>c[0]),zs=q.centres.map(c=>c[1]);return{r:[Math.min(...xs)-.7,Math.max(...xs)+.7,Math.min(...zs)-.7,Math.max(...zs)+.7]}}return null}
+function draw(){const q=selected,b=q.bounds,pad=Math.max(1,Math.max(b[1]-b[0],b[3]-b[2])*.08),x0=b[0]-pad,x1=b[1]+pad,z0=b[2]-pad,z1=b[3]+pad;svg.setAttribute('viewBox',x0+' '+(-z1)+' '+(x1-x0)+' '+(z1-z0));let s='<rect class="frame" x="'+b[0]+'" y="'+(-b[3])+'" width="'+(b[1]-b[0])+'" height="'+(b[3]-b[2])+'"/>';(q.rooms||[]).forEach(r=>s+='<rect class="room" x="'+r.rect[0]+'" y="'+(-r.rect[3])+'" width="'+(r.rect[1]-r.rect[0])+'" height="'+(r.rect[3]-r.rect[2])+'"/><text class="minor" x="'+((r.rect[0]+r.rect[1])/2)+'" y="'+(-((r.rect[2]+r.rect[3])/2))+'" text-anchor="middle">'+esc(r.id)+'</text>');q.items.forEach((it,i)=>{const g=geom(it);if(!g)return;const r=g.r,cls=it.implementationStatus==='build-v1'?'item-build':'item-existing';s+='<rect class="'+cls+'" x="'+r[0]+'" y="'+(-r[3])+'" width="'+Math.max(.08,r[1]-r[0])+'" height="'+Math.max(.08,r[3]-r[2])+'"/><rect class="item-hit" data-i="'+i+'" x="'+r[0]+'" y="'+(-r[3])+'" width="'+Math.max(.3,r[1]-r[0])+'" height="'+Math.max(.3,r[3]-r[2])+'"/>';if((r[1]-r[0])>.55&&(r[3]-r[2])>.4)s+='<text class="label" x="'+((r[0]+r[1])/2)+'" y="'+(-((r[2]+r[3])/2))+'" text-anchor="middle">'+esc(it.id.split('/').at(-1))+'</text>'});svg.innerHTML=s;svg.querySelectorAll('[data-i]').forEach(n=>n.onclick=()=>showItem(q.items[+n.dataset.i]));el('title').textContent=q.id+' — '+q.label;el('subtitle').textContent='bounds ['+b.join(', ')+']';el('facts').innerHTML='<dt>Items</dt><dd>'+q.items.length+'</dd><dt>Build v1</dt><dd>'+q.items.filter(x=>x.implementationStatus==='build-v1').length+'</dd><dt>Existing r2</dt><dd>'+q.items.filter(x=>x.implementationStatus!=='build-v1').length+'</dd>';el('items').innerHTML=q.items.map((it,i)=>'<div class="row" data-row="'+i+'"><span>'+esc(it.id)+'</span><span>'+esc(it.label)+'</span></div>').join('');el('items').querySelectorAll('[data-row]').forEach(n=>n.onclick=()=>showItem(q.items[+n.dataset.row]))}
+function showItem(it){el('title').textContent=it.id;el('subtitle').textContent=it.label;const placement=it.at?'('+it.at.join(', ')+') · '+it.size.join(' × '):it.rect?'['+it.rect.join(', ')+']':it.centres?JSON.stringify(it.centres):'reference';el('facts').innerHTML='<dt>Placement</dt><dd>'+esc(placement)+'</dd><dt>Archetype</dt><dd>'+esc(it.archetype)+'</dd><dt>Material</dt><dd>'+esc(it.material||'inherited')+'</dd><dt>Collision</dt><dd>'+esc(it.collision)+'</dd><dt>State</dt><dd>'+esc(it.implementationStatus)+'</dd><dt>Purpose</dt><dd>'+esc(it.purpose)+'</dd>'}
+document.querySelectorAll('[data-mode]').forEach(b=>b.onclick=()=>{document.querySelectorAll('[data-mode]').forEach(x=>x.classList.toggle('active',x===b));mode=b.dataset.mode;options()});select.onchange=()=>{selected=DATA[mode][+select.value];draw()};options();
+</script></body></html>`;
+}
+
+const jsonPath=path.join(ROOT,'ZOO-PENS-BUILDINGS-BLUEPRINT.json');
+const mdPath=path.join(ROOT,'ZOO-PENS-BUILDINGS-BLUEPRINT.md');
+const htmlPath=path.join(ROOT,'zoo-pens-buildings-blueprint.html');
+fs.writeFileSync(jsonPath,JSON.stringify(blueprint,null,2)+'\n');
+fs.writeFileSync(mdPath,markdown(blueprint));
+fs.writeFileSync(htmlPath,html(blueprint));
+const content=allContent(blueprint),planned=content.filter(q=>q.implementationStatus==='build-v1');
+console.log(`wrote ${path.basename(jsonPath)}, ${path.basename(mdPath)}, ${path.basename(htmlPath)}`);
+console.log(`${content.length} content records; ${planned.length} build-v1; hash ${blueprint.contentHash}`);

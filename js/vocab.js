@@ -607,6 +607,14 @@ const RAW = `
 西门|xīmén|west gate|direction
 保育中心|bǎoyù zhōngxīn|conservation centre
 动物医院|dòngwù yīyuàn|animal hospital|medical
+茶亭|chátíng|tea pavilion|food
+望远镜|wàngyuǎnjìng|binoculars
+熊猫保护|xióngmāo bǎohù|panda conservation
+急救|jíjiù|first aid|medical
+保育展|bǎoyù zhǎn|conservation exhibition
+图书商店|túshū shāngdiàn|bookshop
+动物声音|dòngwù shēngyīn|animal sounds
+雨林声音|yǔlín shēngyīn|rainforest sounds
 # ---- 大学城 the university district
 校园|xiàoyuán|campus
 校园地图|xiàoyuán dìtú|campus map|direction

@@ -249,10 +249,11 @@ const Hotel10Fit = Object.freeze({ floor:'hotel10', api:1 });
     tag = undefined;
 
     const d = z1 - z0, zc = (z0 + z1) / 2;
-    A.box(x, h / 2, zc, T * 2, h, d, c.plaster, { hard:true, mode:14, gloss:.11, tag });
+    Build.partition(0, h, (yc, hh, pf) =>
+      A.box(x, yc, zc, T * 2, hh, d, c.plaster, { hard:true, mode:14, gloss:.11, tag, ...pf }));
     for (const s of [-1, 1]) {
       A.box(x + s * (T + .014), .155, zc, .028, .31, d, c.walnutD, { hard:true, gloss:.28, tag });
-      A.box(x + s * (T + .014), h - .11, zc, .028, .15, d, c.brassD, { hard:true, gloss:.56, tag });
+      A.box(x + s * (T + .014), h - .11, zc, .028, .15, d, c.brassD, { hard:true, gloss:.56, tag, partition:true });
     }
     A.solid(x - T, x + T, z0, z1);
     A.blocker(x - T - .02, x + T + .02, z0, z1, h);
@@ -265,10 +266,11 @@ const Hotel10Fit = Object.freeze({ floor:'hotel10', api:1 });
     tag = undefined;
 
     const w = x1 - x0, xc = (x0 + x1) / 2;
-    A.box(xc, h / 2, z, w, h, T * 2, c.plaster, { hard:true, mode:14, gloss:.11, tag });
+    Build.partition(0, h, (yc, hh, pf) =>
+      A.box(xc, yc, z, w, hh, T * 2, c.plaster, { hard:true, mode:14, gloss:.11, tag, ...pf }));
     for (const s of [-1, 1]) {
       A.box(xc, .155, z + s * (T + .014), w, .31, .028, c.walnutD, { hard:true, gloss:.28, tag });
-      A.box(xc, h - .11, z + s * (T + .014), w, .15, .028, c.brassD, { hard:true, gloss:.56, tag });
+      A.box(xc, h - .11, z + s * (T + .014), w, .15, .028, c.brassD, { hard:true, gloss:.56, tag, partition:true });
     }
     A.solid(x0, x1, z - T, z + T);
     A.blocker(x0, x1, z - T - .02, z + T + .02, h);

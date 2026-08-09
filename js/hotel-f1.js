@@ -220,8 +220,9 @@ HotelFit.register('hotel', A => {
   // One partition: what you SEE, what STOPS you, what stops the CAMERA, and its trim.
   const wall = (x0, x1, z0, z1, o = {}) => {
     const h = o.h ?? CH, y0 = o.y0 ?? 0;
-    box((x0 + x1) / 2, y0 + h / 2, (z0 + z1) / 2, x1 - x0, h, z1 - z0,
-      o.c ?? T.plaster, { hard:true, gloss:o.gloss ?? .13, mode:o.mode ?? 14, tag:o.tag || '隔墙' });
+    Build.partition(y0, h, (yc, hh, pf) =>
+      box((x0 + x1) / 2, yc, (z0 + z1) / 2, x1 - x0, hh, z1 - z0,
+        o.c ?? T.plaster, { hard:true, gloss:o.gloss ?? .13, mode:o.mode ?? 14, tag:o.tag || '隔墙', ...pf }));
     if (o.solid !== false) solid(x0, x1, z0, z1);
     if (o.blocker !== false) blocker(x0 - .03, x1 + .03, z0 - .03, z1 + .03, o.top ?? (y0 + h));
     if (o.dress !== false) dress(x0, x1, z0, z1, { ...o, h });

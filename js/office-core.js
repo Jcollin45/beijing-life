@@ -149,27 +149,38 @@ const OfficeCore=(()=>{
       // behind — reported from play as "sometimes I just see the back of a wall", and it got worse
       // the moment nine floors gained real partitions. The blocker matches the solid exactly, so
       // it is cut by the same door openings and the camera can still see through a doorway.
+      // Built as two pieces through the shared `Build.partition` split: a 0.40 m stub that is
+      // never flagged, and the upper part flagged `partition`, which `hiddenProp` culls when the
+      // owner's walls-down setting is on. The stub is the point — with the wall gone, an opening
+      // reads as a gap in the kerb, so a doorway is findable from above instead of being an
+      // unmarked stretch of empty floor. Collision is untouched: `solid` and `blocker` below run
+      // the same extents they always did, so the body and the eye behave identically either way.
       const segment=(a,b)=>{if(b-a<.025)return;
-        box((a+b)/2,H/2,z,b-a,H,.14,color,{hard:true,mode:14,gloss:.12,...tagOpt(tag,opts)});
+        B.partition(0,H,(yc,hh,dh)=>
+          box((a+b)/2,yc,z,b-a,hh,.14,color,{hard:true,mode:14,gloss:.12,...tagOpt(tag,opts),...dh}));
         solid(a,b,z-.08,z+.08);
         blocker(a,b,z-.08,z+.08,H);
       };
+      // The panel over a door starts at the door head — 2.35 m at the default, far above the
+      // 0.40 m kerb — so it has no stub of its own and is flagged whole. Left unflagged it would
+      // hang in the air over every doorway once the walls beside it had gone.
       for(const q of cuts){segment(at,q.a);if(q.h<H-.04)
         box((q.a+q.b)/2,(H+q.h)/2,z,q.b-q.a,H-q.h,.14,color,
-          {hard:true,mode:14,gloss:.12,...tagOpt(tag,opts)});at=Math.max(at,q.b);}
+          {hard:true,mode:14,gloss:.12,...tagOpt(tag,opts),partition:true});at=Math.max(at,q.b);}
       segment(at,x1);return cuts;
     }
     function partitionX(x,z0,z1,openings=[],color=col.wall,tag='墙',opts={}){
       const cuts=normalizeOpenings(openings,z0,z1);let at=z0;
       // See partitionZ: the blocker is what keeps the camera on the player's side of the wall.
       const segment=(a,b)=>{if(b-a<.025)return;
-        box(x,H/2,(a+b)/2,.14,H,b-a,color,{hard:true,mode:14,gloss:.12,...tagOpt(tag,opts)});
+        B.partition(0,H,(yc,hh,dh)=>
+          box(x,yc,(a+b)/2,.14,hh,b-a,color,{hard:true,mode:14,gloss:.12,...tagOpt(tag,opts),...dh}));
         solid(x-.08,x+.08,a,b);
         blocker(x-.08,x+.08,a,b,H);
       };
       for(const q of cuts){segment(at,q.a);if(q.h<H-.04)
         box(x,(H+q.h)/2,(q.a+q.b)/2,.14,H-q.h,q.b-q.a,color,
-          {hard:true,mode:14,gloss:.12,...tagOpt(tag,opts)});at=Math.max(at,q.b);}
+          {hard:true,mode:14,gloss:.12,...tagOpt(tag,opts),partition:true});at=Math.max(at,q.b);}
       segment(at,z1);return cuts;
     }
     function sign(x,y,z,yaw,text,color=col.accent,tag=text,size=.18){
@@ -251,6 +262,7 @@ const OfficeCore=(()=>{
     return {B,box,cyl,ball,capsule,taper,wall,flat,glyphs,solid,blocker,shade,glow,light,thing,
       RX,RZ,H,key,floor:key,meta,C:Cc,col,accent:col.accent,levels:OFFICE_FLOORS,
       routes:OFFICE_ROUTES,route:OFFICE_ROUTES[key],core:OFFICE_CORE,state,
+      partition:B.partition,
       onTick,luminous,partitionZ,partitionX,sign,doorPlate,room,cameraRoom,officeThing,
       furnitureSolid,chair,desk,cabinet,plant,_ticks:ticks,_lit:lit,_rooms:rooms};
   }

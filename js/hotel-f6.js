@@ -64,17 +64,17 @@ const Hotel6Fit = Object.freeze({ floor:'hotel6', api:1 });
   // the chase camera slide through it and shows the unlit back of the room behind. Floor 6 had
   // 0 blockers on 100+ partitions before this.
   function wall(A,c,x,z,w,d=0.16,tag='六楼隔墙') {
-    A.box(x,2.05,z,w,4.10,d,c.plaster,{...MAT.stone,hard:true,tag});
+    Build.partition(0,4.10,(yc,hh,pf)=>A.box(x,yc,z,w,hh,d,c.plaster,{...MAT.stone,hard:true,tag,...pf}));
     A.box(x,.10,z,w,.20,d+.07,c.walnutD,{...MAT.timber,hard:true,gloss:.28,tag});
-    A.box(x,3.10,z,w,.14,d+.07,c.walnutD,{...MAT.timber,hard:true,gloss:.30,tag});
+    A.box(x,3.10,z,w,.14,d+.07,c.walnutD,{...MAT.timber,hard:true,gloss:.30,tag,partition:true});
     A.solid(x-w*.5,x+w*.5,z-d*.58,z+d*.58);
     A.blocker(x-w*.5-.03,x+w*.5+.03,z-d*.58-.03,z+d*.58+.03,4.09);
   }
 
   function sideWall(A,c,x,z,d,tag='六楼隔墙') {
-    A.box(x,2.05,z,.16,4.10,d,c.plaster,{...MAT.stone,hard:true,tag});
+    Build.partition(0,4.10,(yc,hh,pf)=>A.box(x,yc,z,.16,hh,d,c.plaster,{...MAT.stone,hard:true,tag,...pf}));
     A.box(x,.10,z,.23,.20,d,c.walnutD,{...MAT.timber,hard:true,gloss:.28,tag});
-    A.box(x,3.10,z,.23,.14,d,c.walnutD,{...MAT.timber,hard:true,gloss:.30,tag});
+    A.box(x,3.10,z,.23,.14,d,c.walnutD,{...MAT.timber,hard:true,gloss:.30,tag,partition:true});
     A.solid(x-.09,x+.09,z-d*.5,z+d*.5);
     A.blocker(x-.12,x+.12,z-d*.5-.03,z+d*.5+.03,4.09);
   }

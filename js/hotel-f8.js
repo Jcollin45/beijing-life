@@ -240,8 +240,9 @@ const Hotel8Fit = Object.freeze({ floor: 'hotel8', api: 1 });
       const y0 = o.y0 || 0, y1 = o.y1 === undefined ? SOFFIT : o.y1;
       const tag = o.tag || uid('八楼隔墙');
       const nsWall = w < d;                     // thin in x -> the wall runs north/south
-      box(cx, (y0 + y1) / 2, cz, w, y1 - y0, d, o.color || c.plaster,
-        { ...MAT.stone, hard: true, mode: 14, gloss: .11, tag });
+      Build.partition(y0, y1 - y0, (yc, hh, pf) =>
+        box(cx, yc, cz, w, hh, d, o.color || c.plaster,
+          { ...MAT.stone, hard: true, mode: 14, gloss: .11, tag, ...pf }));
       if (o.trim !== false) {
         // Walnut skirting on both faces. Without it a partition is a card standing on the floor.
         for (const s of [-1, 1]) {
@@ -259,13 +260,13 @@ const Hotel8Fit = Object.freeze({ floor: 'hotel8', api: 1 });
     function bulkhead(x0, x1, z0, z1, tag = uid('八楼过梁')) {
       const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2;
       box(cx, (FITWALL_TOP + SOFFIT) / 2, cz, x1 - x0, SOFFIT - FITWALL_TOP, z1 - z0,
-        c.plaster, { ...MAT.stone, hard: true, mode: 14, gloss: .11, tag });
+        c.plaster, { ...MAT.stone, hard: true, mode: 14, gloss: .11, tag, partition: true });
       const nsWall = (x1 - x0) < (z1 - z0);
       for (const s of [-1, 1]) {
         const ox = nsWall ? s * ((x1 - x0) / 2 + .015) : 0;
         const oz = nsWall ? 0 : s * ((z1 - z0) / 2 + .015);
         box(cx + ox, FITWALL_TOP + .05, cz + oz, nsWall ? .030 : x1 - x0 - .01, .07,
-          nsWall ? z1 - z0 - .01 : .030, c.bronzeD, { hard: true, gloss: .56, tag });
+          nsWall ? z1 - z0 - .01 : .030, c.bronzeD, { hard: true, gloss: .56, tag, partition: true });
       }
       blocker(x0 - .02, x1 + .02, z0 - .02, z1 + .02, SOFFIT + .10);
     }

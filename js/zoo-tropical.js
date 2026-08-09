@@ -427,6 +427,10 @@ const ZooTropical = Lazy('ZooTropical', () => {
   buildShell();
   buildHabitats();
   buildObjects();
+  if (typeof ZooContents === 'undefined')
+    throw new Error('ZooTropical: ZooContents compiler is missing');
+  const contentsStats=ZooContents.buildTropical(B,
+    typeof ZOO_CONTENTS_BLUEPRINT !== 'undefined' ? ZOO_CONTENTS_BLUEPRINT : null,plan);
 
   function tick(t) {
     for (let i=0;i<movers.length;i++) {
@@ -449,7 +453,7 @@ const ZooTropical = Lazy('ZooTropical', () => {
   walk.push({id:'T04-butterfly-walk-through',x0:1,x1:9,z0:3,z1:8.5,
     light:[4.5,H-.5,5.8],wet:1.55});
   const rooms=S.rooms;
-  return B.finish({
+  const scene=B.finish({
     tick,setNight,RX:13,RZ:10,H,OUT:{x:S.exit.arrival[0],z:S.exit.arrival[1],yaw:S.exit.yaw},
     label:'热带馆',labelK:'热带馆 · Tropical House',indoor:true,cutaway:false,
     near:.12,far:85,fogNear:18,fogD:.018,expose:.58,spawn:{x:S.spawn.at[0],z:S.spawn.at[1],yaw:S.spawn.yaw},
@@ -460,4 +464,6 @@ const ZooTropical = Lazy('ZooTropical', () => {
       return walk.find(r=>x>=r.x0&&x<=r.x1&&z>=r.z0&&z<=r.z1)||walk[0];
     },
   });
+  scene.contentsStats=contentsStats;
+  return scene;
 });

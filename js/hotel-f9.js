@@ -114,10 +114,10 @@ const Hotel9Fit=Object.freeze({floor:'hotel9',api:1});
   function wallZ(A,c,x0,x1,z,tag='墙') {
     if(x1<=x0)return;
     const cx=(x0+x1)/2,w=x1-x0;
-    A.box(cx,1.78,z,w,3.56,.18,c.plaster,{...MAT.stone,hard:true,mode:14,gloss:.11,tag});
+    Build.partition(0,3.56,(yc,hh,pf)=>A.box(cx,yc,z,w,hh,.18,c.plaster,{...MAT.stone,hard:true,mode:14,gloss:.11,tag,...pf}));
     for(const s of [-1,1]) {
       A.box(cx,.17,z+s*.105,w,.22,.035,c.walnutD,{...MAT.timber,hard:true,gloss:.28,tag});
-      A.box(cx,3.48,z+s*.105,w,.10,.035,c.bronzeD,{hard:true,gloss:.60,tag});
+      A.box(cx,3.48,z+s*.105,w,.10,.035,c.bronzeD,{hard:true,gloss:.60,tag,partition:true});
     }
     A.solid(x0,x1,z-.10,z+.10);
     cap(A,c,x0,x1,z-.09,z+.09,tag);
@@ -126,10 +126,10 @@ const Hotel9Fit=Object.freeze({floor:'hotel9',api:1});
   function wallX(A,c,x,z0,z1,tag='墙') {
     if(z1<=z0)return;
     const cz=(z0+z1)/2,d=z1-z0;
-    A.box(x,1.78,cz,.18,3.56,d,c.plaster,{...MAT.stone,hard:true,mode:14,gloss:.11,tag});
+    Build.partition(0,3.56,(yc,hh,pf)=>A.box(x,yc,cz,.18,hh,d,c.plaster,{...MAT.stone,hard:true,mode:14,gloss:.11,tag,...pf}));
     for(const s of [-1,1]) {
       A.box(x+s*.105,.17,cz,.035,.22,d,c.walnutD,{...MAT.timber,hard:true,gloss:.28,tag});
-      A.box(x+s*.105,3.48,cz,.035,.10,d,c.bronzeD,{hard:true,gloss:.60,tag});
+      A.box(x+s*.105,3.48,cz,.035,.10,d,c.bronzeD,{hard:true,gloss:.60,tag,partition:true});
     }
     A.solid(x-.10,x+.10,z0,z1);
     cap(A,c,x-.09,x+.09,z0,z1,tag);

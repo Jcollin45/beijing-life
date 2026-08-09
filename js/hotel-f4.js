@@ -285,12 +285,14 @@ HotelFit.register('hotel4', A => {
     const cx = (x0 + x1) / 2, cz = (z0 + z1) / 2, w = x1 - x0, d = z1 - z0;
     const y0 = o.y0 === undefined ? 0 : o.y0, y1 = o.y1 === undefined ? WH : o.y1;
     const tag = newTag(o.tag);
-    box(cx, (y0 + y1) / 2, cz, w, y1 - y0, d, o.c || stoneW,
-      {...MAT.stone,  hard: true, gloss: o.gloss === undefined ? .12 : o.gloss, tag, nocut: o.nocut });
+    Build.partition(y0, y1 - y0, (yc, hh, pf) =>
+      box(cx, yc, cz, w, hh, d, o.c || stoneW,
+        {...MAT.stone,  hard: true, gloss: o.gloss === undefined ? .12 : o.gloss, tag, nocut: o.nocut, ...pf }));
     if (o.stop !== false) solid(x0, x1, z0, z1);
     if (o.eye !== false) blocker(x0 - .03, x1 + .03, z0 - .03, z1 + .03, o.top || EYE);
     if (o.bulk !== false && y1 >= WH - .01 && y1 < EYE - .02)
-      box(cx, (y1 + EYE) / 2, cz, w, EYE - y1, d, stoneWD, {...MAT.stone, hard: true, gloss: .10, tag });
+      box(cx, (y1 + EYE) / 2, cz, w, EYE - y1, d, stoneWD,
+        {...MAT.stone, hard: true, gloss: .10, tag, partition: !o.nocut });
     if (o.trim === false) return;
     // Dark stone skirting. ONE box proud of the wall on both faces rather than two cards, which
     // reads identically and halves the prop cost over ninety wall stretches.
