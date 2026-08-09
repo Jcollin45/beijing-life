@@ -1825,6 +1825,11 @@ const Street = Lazy('Street', () => {
     // nowhere on this stretch to move it to: the 超市 blade is at x 3.05, the 单元门 canopy ends at
     // 1.75, and its trunk has to stand in the 0.90 m unreachable strip. Four alley trees, not five.
     tree(16.4, SZ - .55, 1.05, false);
+    // One more at the east end. Blueprint 4.4 also moved this one to 13.2; that is struck — the
+    // courtyard wall has a GATE gap at 12.4..15.2 and a tree at 13.2 stands in front of somebody's
+    // door. 22.0 fills the run past the 地铁站 instead, with its crown at 20.8..23.2, clear of the
+    // metro canopy which ends at 20.5.
+    tree(22.0, SZ - .55, 1.0, false);
     tree(-20.0, -2.10, 1.0, false);
 
     // 早餐 breakfast stall: a cart with steamer baskets, a wok, a folding table and stools
@@ -3306,7 +3311,10 @@ const Street = Lazy('Street', () => {
 
     // ---- 修车 the bicycle-repair pitch: a wheel off, a pump, a crate of tools and the man
     // who has been doing it on this corner for thirty years.
-    const rx0 = -17.8, rz0 = -2.00, RP = { tag: '修车' };
+    // -22.40, not -17.8. Blueprint 4.2: the pitch moves west with the residential half, now that
+    // the trading half of the hutong is everything east of the lock-ups. Clear of the scooter
+    // parked at -24.60 by 0.90 m at the bike's widest, and the washing overhead is at y 2.4..3.0.
+    const rx0 = -22.40, rz0 = -1.30, RP = { tag: '修车' };
     // The bench, the tools and the crate carry the tag, so the corner can be pointed at as well as
     // stood in front of. Nothing here was pickable before, which for a thing whose focus was also
     // out of reach meant the word could not be got at at all.
@@ -3396,7 +3404,10 @@ const Street = Lazy('Street', () => {
 
     // ---- the dog, asleep in the sun against the courtyard wall
     // Turned to face the alley. Nose to the wall you saw nothing but a beige lump.
-    dog(3.7, CWZ - .80, Math.PI - .55);
+    // Into 杨柳西口 with the dancers and the chess. Against the square's own north wall
+    // (brickRun -33.2..-23.6 at z 7.4, face 7.19), a metre off it, facing south into the square —
+    // the same relationship it had to the courtyard wall in the alley.
+    dog(-31.20, 6.10, Math.PI - .55);
     // Its bowl. Every hutong stray has one, put out by whoever on the alley has decided it is
     // theirs, and without it the animal is scenery rather than somebody's dog. Placed off the
     // dog's own heading rather than at a fixed offset — dropped straight down +x it landed behind
@@ -3417,16 +3428,18 @@ const Street = Lazy('Street', () => {
     const CABBAGE = [C('#c3cc9a'), C('#b7c48c'), C('#cad3a4')];
     for (let i = 0; i < 14; i++) {
       const r = (i / 5) | 0, c = i % 5;
-      ball(19.6 + c * .30, .14 + r * .24, CWZ - .62 + (r % 2) * .06,
+      ball(-24.60 + c * .30, .14 + r * .24, CWZ - .62 + (r % 2) * .06,
         .155, .12, .17, CABBAGE[i % 3],
         { gloss: .18, ry: i * .7, tag: '白菜' });
     }
-    thing('白菜', 20.2, .70, CWZ - .62, '冬天大家都买很多白菜。',
+    thing('白菜', -24.00, .70, CWZ - .62, '冬天大家都买很多白菜。',
       'Everyone buys a lot of cabbage for the winter.',
       '白 white + 菜 vegetable. 大白菜 is the Beijing winter staple.',
-      { focus: [20.2, CWZ - 2.0], reach: 2.0 });
+      { focus: [-24.00, CWZ - 2.0], reach: 2.0 });
     // the trike it came on
-    const tx0 = 22.2, tz0 = CWZ - .95;
+    // The stack and its trike move west with the repair pitch — 大白菜 against a courtyard wall
+    // for the winter is the residential half's image, not the shopping end's.
+    const tx0 = -22.00, tz0 = CWZ - .95;
     box(tx0, .52, tz0, 1.60, .12, 1.00, col.trunkL, { hard: true, gloss: G.wood });
     for (const t of [-1, 1])
       box(tx0, .68, tz0 + t * .48, 1.60, .34, .06, col.trunkL, { hard: true, gloss: G.wood });

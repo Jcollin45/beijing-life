@@ -599,7 +599,12 @@ StreetFit['civic'] = S => {
   // ---- 公示栏, the community notice board. Two panels behind glass with real notices pinned in
   // them: a water shut-off, the refuse timetable, the clinic's hours and something for rent. The
   // header is red, because it always is.
-  const NX = 40.25, NZ = 8.60, NT = { tag: '公示栏' };
+  // Into 杨柳西口. A community notice board belongs where the community sits, and since 广场舞
+  // moved there the square is where they are. It is freestanding on two posts and already faces
+  // -x, which in the square is the way the chess table and the dance pitch are, so it needed
+  // moving and not mirroring. Clear of the tree at (-29.2, 3.4) by 3.0 m and of the nearest
+  // dancer by 0.9 m; the west zone is x -32.2..-25.0, z -3.10..6.40.
+  const NX = -26.20, NZ = 4.10, NT = { tag: '公示栏' };
   for (const s of [-1, 1])
     box(NX + .10, .78, NZ + s * .82, .09, 1.56, .09, col.steelD, { hard: true, gloss: G.metal, ...NT });
   box(NX + .06, 1.72, NZ, .16, 1.44, 1.98, C('#5a6066'), { hard: true, gloss: .30, ...NT });
@@ -618,7 +623,7 @@ StreetFit['civic'] = S => {
   thing('公示栏', NX, 1.90, NZ, '公示栏上贴着停水通知。',
     'There is a water shut-off notice up on the board.',
     '公示 to announce publicly + 栏 a railed board. 通知 is a notice; 贴 is to stick one up.',
-    { tag: '公示栏', focus: [39.30, NZ], reach: 1.9 });
+    { tag: '公示栏', focus: [-27.30, NZ], reach: 1.9 });
 
   // ---- 志愿服务站. The red-and-white stall that stands on every corner of this city: a parasol,
   // a folding table, an urn of hot water and a board with the two words on it.

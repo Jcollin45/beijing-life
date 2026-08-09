@@ -470,8 +470,11 @@ const NPCS = [
     look: { skin:'#d7ab84', hair:'#7c746a', hairStyle:'perm', top:'#7f8a86', pants:'#333a44',
             shoe:'#4a4e54', sleeve:'short', collar:'polo', bag:'tote', bagColor:'#8e7f60',
             tall:0.91, wide:1.07, headScale:0.99, stoop:0.07, age:0.62, faceSeed:29 },
-    hours: [5, 14], temper: 'patient',
-    spots: [ { h0:5, h1:14, at:[-7.7, 1.72], face:0.15, act:'wait' } ] },
+    // 05:00–10:30, not 05:00–14:00. She waits at the breakfast cart, and the cart trades
+    // 05:00–10:30 (STALL_OPEN/STALL_SHUT, js/street.js) — so for three and a half hours she was
+    // queueing at a pitch that had been wheeled away.
+    hours: [5, 10.5], temper: 'patient',
+    spots: [ { h0:5, h1:10.5, at:[-7.7, 1.72], face:0.15, act:'wait' } ] },
   { hz: '大爷',
     // The white singlet and the flat cap. There is no more specific way to say "old man on a
     // stool in a Beijing alley in July" than those two things together — and the third thing is
@@ -536,7 +539,12 @@ const NPCS = [
             hat:'sun', hatColor:'#cbbf9c',
             tall:0.90, wide:0.96, headScale:0.98, stoop:0.19, age:0.76, faceSeed:109 },
     hours: [6, 18], temper: 'weary',
-    spots: [ { h0:6, h1:18, at:[13.6, 2.95], face:Math.PI * 1.06, act:'sweep' } ] },
+    // A ROUTE, not a spot. This was `{h0:6, h1:18, at:[13.6, 2.95], act:'sweep'}` — twelve hours
+    // sweeping one square metre, which is the single figure on this street nobody could explain.
+    // The line is z -0.6, the one run js/street-alley.js measured as clear from x -27.0 to 25.5,
+    // and the pace is a sweeper's rather than a pedestrian's.
+    hours: [6, 18], speed: 0.52,
+    patrol: [[-13.0, -0.58], [21.0, -0.62]] },
   { hz: '行人一',
     look: { skin:'#dfa87c', hair:'#3a332d', hairStyle:'short', top:'#cfc7b4', pants:'#39414d',
             shoe:'#4a4842', jacket:'#4e5647', collar:'shirt',
@@ -1095,15 +1103,19 @@ const NPCS = [
             tall:0.90, wide:0.90, headScale:1.02, youth:0.35, faceSeed:73 },
     temper: 'eager',
     hours: [7, 22],
-    spots: [ { h0:7, h1:11, at:[-2.2, -2.4], face:Math.PI * 1.04, act:'wait' },
-             { h0:11, h1:13, at:[-3.6, -.6], face:Math.PI * .5, act:'wait' },
-             { h0:13, h1:22, at:[4.6, -5.2], face:Math.PI, act:'wait' } ],
+    campusStatic: true,
+    spots: [ { h0:7, h1:11, at:[-5.0, -7.5], face:Math.PI, act:'wait' },
+             { h0:11, h1:13, at:[-24.0, 2.5], face:-Math.PI / 2, act:'wait' },
+             { h0:13, h1:17, at:[27.0, 50.0], face:Math.PI / 2, act:'wait' },
+             { h0:17, h1:22, at:[3.0, 29.0], face:Math.PI, act:'wait' } ],
     lines: [
       ['你也是来上课的吗？', 'Are you here for a class too?'],
       ['食堂十一点就排队了。', 'The canteen has a queue by eleven.'],
-      ['图书馆四层最安静。', 'The fourth floor of the library is the quietest.'],
+      ['图书馆北边的阅览室最安静。', 'The north reading room in the library is the quietest.'],
       ['我的自行车又找不到了。', 'I have lost my bicycle again.'],
       ['晚上有人在篮球场打球。', 'People play basketball in the evening.'],
+      ['回杨柳胡同坐两站，商务区只隔一站。',
+        'Willow Lane is two stops back; Business District is only one stop away.'],
       ['下学期我想去上海。', 'Next term I want to go to Shanghai.'],
     ] },
   {
@@ -1115,8 +1127,10 @@ const NPCS = [
             shoe:'#33373c', collar:'shirt', vest:'#6b6257', glasses:true,
             bag:'shoulder', bagColor:'#4a3f36',
             tall:1.00, wide:0.99, headScale:1.01, stoop:0.06, age:0.50, faceSeed:223 },
-    hours: [8, 18], temper: 'patient',
-    spots: [ { h0:8, h1:18, at:[.80, 6.60], face:Math.PI, act:'wait' } ],
+    hours: [8, 18], temper: 'patient', campusStatic: true,
+    spots: [ { h0:8, h1:12, at:[-3.0, 47.0], face:Math.PI, act:'wait' },
+             { h0:12, h1:14, at:[-26.0, 30.0], face:-Math.PI / 2, act:'wait' },
+             { h0:14, h1:18, at:[-8.0, 45.0], face:0, act:'wait' } ],
     lines: [
       ['上课不要迟到。', 'Do not be late for class.'],
       ['汉字要天天写。', 'You have to write characters every day.'],
@@ -1136,15 +1150,15 @@ const NPCS = [
     look: { skin:'#c99668', hair:'#1d1816', hairStyle:'buzz', top:'#b5503e', pants:'#2b323c',
             shoe:'#e8e2d6', sleeve:'short', yoke:'#2b323c', pack:true, packColor:'#2f3f52',
             tall:1.05, wide:0.91, headScale:0.99, youth:0.40, faceSeed:227 },
-    hours: [8, 22], temper: 'brisk',
-    spots: [ { h0:8,  h1:11, at:[6.0, 1.0],   face:Math.PI,        act:'wait' },
-             { h0:11, h1:12, at:[-8.0, 2.2],  face:Math.PI * .5,   act:'wait' },
+    hours: [8, 22], temper: 'brisk', campusStatic: true,
+    spots: [ { h0:8,  h1:11, at:[-10.5, 13.2], face:Math.PI,        act:'wait' },
+             { h0:11, h1:12, at:[-24.0, 1.0],  face:-Math.PI / 2,   act:'wait' },
              // 'play' is 打麻将 — a seated pose that reaches for the middle of a table. On the
              // sports ground, where there is no table and no stool, it sat him in mid-air for six
              // hours a day. He is here to play basketball, which he does standing up.
-             { h0:12, h1:14, at:[12.0, -6.0], face:Math.PI * .15,  act:'wait' },
-             { h0:14, h1:18, at:[-2.0, 3.0],  face:0,              act:'wait' },
-             { h0:18, h1:22, at:[12.0, -6.0], face:Math.PI * .15,  act:'wait' } ],
+             { h0:12, h1:14, at:[36.0, 11.0], face:Math.PI * .15,  act:'wait' },
+             { h0:14, h1:18, at:[6.0, 31.0],  face:0,              act:'wait' },
+             { h0:18, h1:22, at:[36.0, 13.0], face:Math.PI * .15,  act:'wait' } ],
     lines: [
       ['我赶时间，下节课在二楼。', 'I am in a hurry. Next class is on the second floor.'],
       ['食堂的队太长了，我去买煎饼。', 'The canteen queue is too long. I will get a jianbing.'],
@@ -2115,6 +2129,44 @@ const USE = {
               gain:{ mood:14, rest:-14, food:-10 }, pose:{ type:'stand' },
               done:'听懂了一半，记了半页笔记。',
               doneTr:'Understood about half of it. Half a page of notes.' },
+  '校园地图': { zh:'看校园地图', py:'kàn xiàoyuán dìtú', en:'read the campus map',
+              secs:2.4, mins:4, gain:{ mood:2 }, pose:{ type:'stand' },
+              done:'教学楼在北边，食堂在西边，图书馆在东北边。',
+              doneTr:'Teaching is north, the canteen west, and the library northeast.' },
+  // This is the single authoritative source of 学生证. `studentId` is completed in game.js so
+  // cancelling the interaction cannot issue a card and repeat visits can answer differently.
+  '学生服务中心': {
+              zh:'办学生证', py:'bàn xuéshēngzhèng', en:'get a student card',
+              secs:3, mins:6, gain:{ mood:4 }, pose:{ type:'talk' }, studentId:true,
+              done:'学生证办好了，请收好。', doneTr:'Your student card is ready. Keep it safe.',
+              repeatDone:'学生证已经办过了。',
+              repeatDoneTr:'Your student card has already been issued.' },
+  '行政楼': { zh:'问问行政楼', py:'wèn wen xíngzhènglóu', en:'ask at administration',
+              secs:2.4, mins:5, gain:{ mood:1 }, pose:{ type:'talk' },
+              done:'办事窗口在一楼，国际学生中心在东边。',
+              doneTr:'The service windows are on the ground floor; international students go east.' },
+  '实验楼': { zh:'看看实验楼', py:'kàn kan shíyànlóu', en:'look into the science building',
+              secs:2.2, mins:4, gain:{ mood:2 }, pose:{ type:'stand' },
+              done:'门口贴着今天的实验室安全安排。',
+              doneTr:'Today’s laboratory safety schedule is posted by the entrance.' },
+  '活动中心': { zh:'看看活动', py:'kàn kan huódòng', en:'see what is on at the student centre',
+              secs:2.6, mins:6, gain:{ mood:5 }, pose:{ type:'stand' },
+              done:'今晚有社团活动，门口正在报名。',
+              doneTr:'Clubs meet tonight, and sign-ups are open by the door.' },
+  '校医院': { zh:'去校医院', py:'qù xiàoyīyuàn', en:'ask at the campus clinic',
+              secs:3, mins:10, gain:{ rest:4 }, pose:{ type:'talk' },
+              done:'护士说先休息，多喝水，不舒服再来。',
+              doneTr:'The nurse says to rest, drink water, and come back if you still feel unwell.' },
+  // Deliberately not the apartment 快递柜: this row never reads or clears HomeLife parcels.
+  '校园快递柜': { zh:'看校园快递柜', py:'kàn xiàoyuán kuàidìguì',
+              en:'check the campus parcel locker', secs:1.8, mins:2,
+              gain:{ mood:1 }, pose:{ type:'press' },
+              done:'没有取件码，柜门没有打开。',
+              doneTr:'There is no collection code, so the locker stays shut.' },
+  '跑道':   { zh:'跑步', py:'pǎobù', en:'run a lap', secs:3.2, mins:12,
+              gain:{ rest:-12, food:-5, mood:8 }, pose:{ type:'walk' },
+              done:'跑完一圈，呼吸快了，脑子也清醒了。',
+              doneTr:'One lap done—breathing hard, and much more awake.' },
   // ---- 药店 the chemist's. The sign on the parade has taught this word since the street got its
   // signs; now the same thing you learned it from is the way in.
   '药店': { zh:'进药店', py:'jìn yàodiàn', en:'go into the pharmacy', secs:2.6, mins:5,

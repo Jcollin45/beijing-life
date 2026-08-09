@@ -637,7 +637,10 @@
     // face up. The phone is the last light in the alley and it is on a window of its own.
     open();
     (() => {
-      const x = -4.40, z = 3.12;
+      // In 杨柳西口 now, three metres east of street-west.js's chess table at (-30.75, -2.05),
+      // which is what Blueprint 4.4 means by "round the same table": near enough to be the same
+      // gathering, far enough that two sets of stools are not inside each other.
+      const x = -27.60, z = -1.60;
       const mazha = (sx, sz, ry, canvas) => {
         for (const s of [-1, 1]) {
           cap(sx + Math.cos(ry) * s * .16, .16, sz + Math.sin(ry) * s * .16, .014, .38, .014,

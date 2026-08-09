@@ -138,9 +138,19 @@
     // ---------------------------------------------------------------- the small units
     // Explicit, not a seeded shuffle: this is an eighteen-metre lane and a random sign row over
     // that distance reads as wallpaper. Each is [centre x, width, name, board colour].
+    //
+    // FOUR, and that is the lane's real capacity — measured, after an attempt to fit six proved
+    // it is not. STREET-BLUEPRINT.md 4.2 asked for twenty units re-dealt down here; that number
+    // was written before the lane had a length. It has one now, and the arithmetic is:
+    //
+    //   north  x 41.60 .. 59.00, less 北京新天地 at 43.00 .. 50.20  →  50.20 .. 59.00 = 8.80 m
+    //   south  x 41.60 .. 59.00, less 大超市    at 48.00 .. 57.60  →  41.60 .. 48.00 = 6.40 m
+    //
+    // 8.80 m takes two at 3.40 with a 0.40 gap; 6.40 m takes a 3.40 and a 2.20. A fifth anywhere
+    // is under 1.5 m of frontage, which is a doorway, not a shop. Twenty was never on.
     const UNITS = [
       [ 1, 43.70, 3.40, '面包房', C('#b8862f')],
-      [ 1, 46.70, 2.20, '花店',   C('#2f7a4f')],
+      [ 1, 46.60, 2.20, '花店',   C('#2f7a4f')],
       [-1, 52.70, 3.40, '奶茶店', RED],
       [-1, 56.50, 3.40, '书店',   C('#1f4f8f')],
     ];
