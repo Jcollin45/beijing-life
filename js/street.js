@@ -724,13 +724,29 @@ const Street = Lazy('Street', () => {
   // BLADE line (2.27 .. 2.83) and the awning's own rear edge is at 2.68, so the two want the
   // same 15 cm of air. A real frontage breaks its awning round the sign rather than either one
   // moving, and that is what this does.
+  //
+  // THE VALANCE BREAKS WITH IT, and the first pass at this did not — which is the whole of the
+  // bug L2 found and the lead confirmed off the live site at (18.80, 1.10). Skipping two slats
+  // opened 1.20 m of daylight in the canvas and then ran a solid 6.10 m rail straight across it
+  // at y 2.49 .. 2.71, through the middle of a 侧招 whose panel is 2.27 .. 2.83 and whose case
+  // reaches z czb+1.345 — 5 mm short of the rail's own back face. A gap in the slats with a bar
+  // across it is not a gap: the sign's upper character was behind the bar and only the lower one
+  // read. The datum does not move, so the rail is cut to the same opening the canvas has —
+  // measured off the skipped slats' own edges rather than off a number typed here, so the two
+  // can never disagree again.
   function awning(x, y, z, n, c1, c2, skip) {
+    let g0 = Infinity, g1 = -Infinity;               // the canvas opening, if there is one
     for (let i = 0; i < n; i++) {
       const sx = x + (i - (n - 1) / 2) * .60;
-      if (skip !== undefined && Math.abs(sx - skip) < .45) continue;
+      if (skip !== undefined && Math.abs(sx - skip) < .45) {
+        g0 = Math.min(g0, sx - .30); g1 = Math.max(g1, sx + .30); continue;
+      }
       box(sx, y, z + .78, .60, .10, 1.30, i % 2 ? c2 : c1, { hard: true, rx: -.30, gloss: .24 });
     }
-    box(x, y - .32, z + 1.34, n * .60 + .10, .22, .10, c2, { hard: true, gloss: .24 });
+    const x0 = x - n * .30 - .05, x1 = x + n * .30 + .05;
+    for (const [a, b] of (g1 > g0 ? [[x0, g0], [g1, x1]] : [[x0, x1]]))
+      if (b - a > .10)
+        box((a + b) / 2, y - .32, z + 1.34, b - a, .22, .10, c2, { hard: true, gloss: .24 });
   }
 
   // 卷帘门 housing — the boxed-in roller drum every Chinese shopfront has over its glass. Three
