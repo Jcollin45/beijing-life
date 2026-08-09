@@ -117,6 +117,12 @@ let hoverThing = null;        // what the cursor is over
 let reachThing = null;        // what the player is standing next to
 let activeThing = null;       // what E / click will actually open
 let useThing = null;          // what Q will operate: the nearest thing that does something
+// 465. Everything usable within reach this frame, in the order the frame loop found it, so a
+// player who cannot aim can step through them instead. Filled by the loop that already picks
+// `useThing` rather than by a second pass, and its length is reset rather than the array
+// reallocated — this runs sixty times a second.
+const nearUsables = [];
+let cycleIdx = -1, cyclePick = null;
 let cardOpen = false, bookOpen = false;
 // A conversation is a modal like the word card, and everything the card blocks it blocks too.
 let talkOpen = false, talkAt = null;
@@ -1873,6 +1879,18 @@ addEventListener('keydown', e => {
   if (k === 'q') { e.preventDefault(); startUse(useThing); return; }
   if (k === 'r') { e.preventDefault(); if (!cardOpen && !talkOpen) review(); return; }
   if (k === 'f') { e.preventDefault(); recenterCamera(); return; }
+  // 465. Tab steps through everything usable within reach, so no fixture ever needs the camera
+  // aimed at it — a tap, a switch, a lift button in a row of them. Only while the world has
+  // focus: a card, a conversation or a quiz owns Tab for its own rows (item 468).
+  if (k === 'tab' && started && !cardOpen && !talkOpen && !quiz) {
+    e.preventDefault(); cycleNear(); return;
+  }
+  // 470. 楼层表 — the whole building on one screen, from anywhere in it.
+  if (k === 'b') {
+    e.preventDefault();
+    if (started && place === 'home' && !cardOpen && !talkOpen) openBuildingMap();
+    return;
+  }
   // Space jumps. preventDefault unconditionally, even when `jump()` refuses: the page would
   // otherwise scroll, and if a touch button happens to hold focus the browser would fire its
   // click instead — pressing space to hop would open the notebook. Repeat events are ignored
@@ -2015,7 +2033,11 @@ function lookSens() {
 function orbit(dx, dy) {
   const s = lookSens();
   CAM.tYaw -= dx * s;
-  CAM.tPitch = clamp(CAM.tPitch + dy * s * 0.72, 0.05, 1.22);
+  // 512. 1.22 rad is 70 degrees, and the ceiling limiter answers that in a 2.60 m room with a
+  // 1.55 m top-down of the player's own head. It is legible as a plan view and it was never
+  // chosen as one — the wheel simply ran out of travel there. 1.05 rad is 60 degrees, which is
+  // still a steep look-down over a table and still short of the pose the limiter has to rescue.
+  CAM.tPitch = clamp(CAM.tPitch + dy * s * 0.72, 0.05, 1.05);
 }
 // Swing back behind the player, whichever way they are facing.
 function recenterCamera() {
@@ -2105,6 +2127,11 @@ cv.addEventListener('wheel', e => {
 // Hiding is relative to the room the player is standing in, so the cutaway opens up the
 // bathroom exactly the way it opens up the apartment.
 let hideX = 0, hideZ = 0, room = World.zones[0];
+// 509. The box the cutaway is measured against, which is not always the box the body may walk
+// in. A zone may declare `cut` when its walkable plate contains something the player can never
+// stand in — the corridor on deck 2 is a 12.00 x 3.00 m plate with two lift shafts owning
+// 1.30 m of its depth. Derefed once a frame beside hideX/hideZ, never per prop.
+let cutRoom = World.zones[0];
 // The exact point lights submitted this frame. Empty outside diagnostic reads; populated from the
 // already-ranked list, so exposing it adds no renderer walk and lets mall QA prove shop ownership.
 let selectedLightDebug = [];
@@ -2254,9 +2281,19 @@ function syncMovingCulls(s) {
     q.cull[q.i + 2] = q.p.cz;
   }
 }
+// 515. The band was 0.32 m and it was set when the eye spent part of each orbit INSIDE the room,
+// so it only had to reach far enough to take the near wall. The flat now declares orbit limits
+// of 1.90-2.97 m in rooms 1.20-4.00 m across, which puts the eye outside the room through almost
+// every wall for almost every yaw — and the band is then the only thing deciding how much of the
+// NEXT room survives. At 0.32 the first 0.32 m past a partition went, which is the partition and
+// nothing standing against it; skirting, sockets and the near edge of anything pushed to the
+// wall stayed, floating in front of a wall that had been taken. 0.42 takes the wall and the
+// 10 cm of clutter attached to it. It is not free: 0.42 also takes 10 cm more of whatever the
+// player is meant to see past that wall, which is why it is 0.42 and not the 0.60 that would
+// clear a chair.
 function hiddenAt(px, pz) {
-  return (hideX > 0 && px > room.x1 - 0.32) || (hideX < 0 && px < room.x0 + 0.32) ||
-         (hideZ > 0 && pz > room.z1 - 0.32) || (hideZ < 0 && pz < room.z0 + 0.32);
+  return (hideX > 0 && px > cutRoom.x1 - 0.42) || (hideX < 0 && px < cutRoom.x0 + 0.42) ||
+         (hideZ > 0 && pz > cutRoom.z1 - 0.42) || (hideZ < 0 && pz < cutRoom.z0 + 0.42);
 }
 // Tagged parts hide as one object, so a fixture never loses half of itself to the cutaway.
 function hiddenProp(p) {
@@ -4402,6 +4439,13 @@ function npcAwake(n) {
     const socialCast=mallSocialActive(n);
     const foodQueueCast=n.mallFoodQueueSlot!==undefined&&
       n.mallFoodQueueSlot<mallFoodQueueCountAt();
+    // These are public assignments that temporarily supersede an actor's ordinary rota.  The
+    // closed-owner rejection above stays first and authoritative; once it has passed, an event
+    // ingress/egress actor, an active social/food formation, or a staff beat explicitly authored
+    // on the public side must be awake long enough for npcTarget() to place (or retire) that role.
+    // Falling through to `n.hours` made five of six 10:00 event actors sleep through their own
+    // 09:48–10:00 ingress and could hide a closer already moved outside the shutter.
+    if(eventCast||socialCast||foodQueueCast||(staffBeat&&staffBeat.public))return true;
     if(!eventCast&&!socialCast&&!foodQueueCast&&(n.hz==='顾客'||n.hz==='小孩')&&
        (n.mallCrowdSlot===undefined?1:n.mallCrowdSlot)>=mallCrowdProfileAt().threshold)
       return false;
@@ -6449,7 +6493,7 @@ function mallCarryFor(n,value=minutes) {
   // carrier/not-carrier and object choice do not collapse into the same repeating sequence.
   const gate=((n.mallCrowdSlot||0)+period*.193+floor*.071)%1;
   if(gate>=.55)return null;
-  const pick=((n.seed*13+floor*7+period*5)%11+11)%11;
+  const pick=((n.seed*13+floor*7+period*6)%11+11)%11;
   return pick<6?`shopBag${pick}`:MALL_PURCHASE_KINDS[pick-6];
 }
 
@@ -7808,7 +7852,7 @@ function openKitchen(th) {
 // omits four of them is the same lie in the other direction.
 const HOME_FLOORS = [
   { n:  1, deck:  0, hz: '一楼',  py: 'yī lóu',      en: '大堂 — the lobby, the letterboxes, the porter' },
-  { n:  2, deck:  2, hz: '二楼',  py: 'èr lóu',      en: '走廊 — your corridor, and 202' },
+  { n:  2, deck:  2, hz: '二楼',  py: 'èr lóu',      en: '走廊 — your corridor, and 202', home: true },
   { n:  3, deck:  3, hz: '三楼',  py: 'sān lóu',     en: '老李家 — the retired couple' },
   { n:  4, deck:  4, hz: '四楼',  py: 'sì lóu',      en: '物业 · 活动室 — the office and the community room' },
   { n:  5, deck:  5, hz: '五楼',  py: 'wǔ lóu',      en: '小王家 — a young family' },
@@ -7820,6 +7864,18 @@ const HOME_FLOORS = [
   { n: 11, deck: 11, hz: '十一楼', py: 'shíyī lóu',  en: '邻居 — neighbours' },
   { n: 12, deck: 12, hz: '十二楼', py: 'shí\u2019èr lóu', en: '屋顶 — the roof, the laundry and the city' },
 ];
+// 459. The landing indicator over every set of doors and the row in the car panel are two
+// renderings of one fact, and TOWER-STATE.md records the wave where they disagreed on ten
+// floors at once. js/world.js owns the numeral table; this asserts the panel against it at load
+// rather than restating the rule, so the next edit to either one fails loudly here.
+if (typeof floorLabel === 'function')
+  for (const f of HOME_FLOORS)
+    if (floorLabel(f.deck) !== f.hz.replace('楼', ''))
+      console.error('HOME_FLOORS disagrees with the landing indicator on deck ' + f.deck +
+                    ': panel ' + f.hz + ', landing ' + floorLabel(f.deck));
+// 458. Which of the twelve is yours, in a form a non-reader can find: the same 你家 marker the
+// landing indicator carries, on the row and on the arrival toast.
+const homeIsYours = deck => { const f = homeFloorAt(deck); return !!(f && f.home); };
 const HOME_LOBBY_ENTRY = { x: 0, z: -3.48, yaw: 0 };
 // Outside the working shaft, derived from its current face so another shell adjustment cannot turn
 // a supposedly safe save point back into car coordinates.
@@ -7871,6 +7927,16 @@ function openLiftPanel() {
   // the level car prevents a player outside shut doors from operating it through the shaft wall.
   if (st.moving || st.at !== st.on || !World.aboard || !World.aboard(P.x, P.z)) return;
   const live = f => f.deck === st.at || (World.deckLive ? World.deckLive(f.deck) : f.deck === 0 || f.deck === 2);
+  // 460. Nothing in the game says that most of these twelve floors are somebody else's, so a
+  // first-time player who rides to 十楼 finds a building site and no way to know it is not their
+  // flat. One prompt, the first time the panel is ever opened, and never again — it is written
+  // outside the save deliberately, because wiping the save to test something should not make the
+  // game re-teach a building the player already knows.
+  if (!firstRideSeen()) {
+    markFirstRide();
+    toast('你家在二楼 202 · <span class="dim">202 is yours, on 二楼. The other floors are neighbours — B opens 楼层表</span>');
+    Vocab.sentenceHTML('我家在二楼。');
+  }
   Pick.show({
     title: '电梯 · 选楼层',
     sub: '按一个楼层 · pick a floor — the doors will close and the car will go',
@@ -7907,9 +7973,49 @@ function openLiftPanel() {
   });
 }
 
+// 465. Step to the next usable thing within reach. Proximity picking is right almost always and
+// wrong exactly when two things share a standing spot — the tap and the mirror over it, four
+// hobs, a row of letterboxes. This does not change what is reachable, only which one Q means.
+function cycleNear() {
+  if (!nearUsables.length) { toast('这儿没有能用的东西 · <span class="dim">nothing within reach</span>'); return; }
+  const from = cyclePick ? nearUsables.indexOf(cyclePick) : cycleIdx;
+  cycleIdx = (from + 1) % nearUsables.length;
+  cyclePick = nearUsables[cycleIdx];
+  activeThing = useThing = cyclePick;
+  toast(`${cyclePick.hz} · <span class="dim">${cycleIdx + 1}/${nearUsables.length} — Tab for the next, Q to use</span>`);
+}
+
+// 470. The building on one screen. Twelve storeys were legible only from inside the car, which
+// is the one place you already know where you are going; the map on the HUD shows the city and
+// stops at the front door. Read-only on purpose — this is a directory, not a second call panel,
+// and the lift is still the only thing that moves you. UI rather than a modelled board, so it
+// costs nothing per frame and is the same in the lobby, the corridor and the flat.
+function openBuildingMap() {
+  const st = World.liftState ? World.liftState() : null;
+  const here = World.level ? World.level() : 2;
+  Pick.show({
+    title: '楼层表 · 十八号楼',
+    sub: 'B — the whole building. 你家 is 202 on 二楼 · the lift is the only way up',
+    rows: HOME_FLOORS.map(f => {
+      const live = !World.deckLive || World.deckLive(f.deck);
+      const marks = [];
+      if (f.home) marks.push('你家');
+      if (f.deck === here) marks.push('你在这儿');
+      if (st && st.at === f.deck) marks.push('电梯');
+      return { hz: f.hz, py: f.py, right: marks.length ? marks.join(' · ') : String(f.n),
+        en: live ? f.en : `${f.en} · 还没盖好 — nothing built up there yet`, off: !live };
+    }),
+    onPick() { return false; },
+  });
+}
+
 // The mall's three decks share one scene, so this selector changes the active collision/render
 // layer and places the player on the public side of the same shaft. Unlike the old flavour-only
 // call button, choosing a row now completes an actual vertical journey.
+const FIRSTRIDE_KEY = 'bjlife.firstride.v1';
+const firstRideSeen = () => { try { return !!localStorage.getItem(FIRSTRIDE_KEY); } catch (e) { return true; } };
+const markFirstRide = () => { try { localStorage.setItem(FIRSTRIDE_KEY, '1'); } catch (e) { /* storage blocked */ } };
+
 function openMallLiftPanel() {
   if (place !== 'mall' || cardOpen || talkOpen) return;
   const here = Mall.level();
@@ -12905,9 +13011,17 @@ function useLabel(hz, th) {
   // saying the doors have opened while the car is still three metres below you.
   if (place === 'home' && d.liftCall && World.liftState) {
     const st = World.liftState();
-    if (st.moving)
-      return { ...d, zh:'等一下', py:'děng yíxià', en:'the car is on its way',
-               block:'电梯正在运行，等一下。', blockTr:'The lift is moving — wait a moment.' };
+    if (st.moving) {
+      // 461. Which floor it is going to and how many seconds are left, because the old line said
+      // only that it was busy — and a player told to wait with no idea how long presses again.
+      // Both numbers come off `liftState`; neither is new information the game had to invent.
+      const toF = homeFloorAt(st.to);
+      const liftEta = Math.max(1, Math.ceil(st.eta || 0));
+      return { ...d, zh:'等一下', py:'děng yíxià',
+               en:`the car is going to ${toF ? toF.hz : 'another floor'} — about ${liftEta}s`,
+               block:`电梯到${toF ? toF.hz : '别的楼层'}，还要${liftEta}秒。`,
+               blockTr:`The car is on its way to ${toF ? toF.hz : 'another floor'} — about ${liftEta} seconds.` };
+    }
     if (st.at === st.on && st.door !== 'shut')
       return { ...d, zh:'门开着', py:'mén kāi zhe', en:'the doors are open — step in',
                block:'门开着呢，进去吧。', blockTr:'The doors are already open. Step in.' };
@@ -14470,7 +14584,7 @@ function frame(now) {
       // Orbiting from the keyboard leaves the mouse free while you walk.
       const rate = (keys.shift ? 2.8 : 1.6) * dt;
       CAM.tYaw += kx * rate;
-      CAM.tPitch = clamp(CAM.tPitch + ky * rate * 0.52, 0.05, 1.22);
+      CAM.tPitch = clamp(CAM.tPitch + ky * rate * 0.52, 0.05, 1.05);   // 512, same clamp as the mouse
       CAM.spin = 0;
     }
   }
@@ -14598,7 +14712,8 @@ function frame(now) {
     resetMallLightSelection(mallLightSelectionState,'no-lights');
   }
 
-  const tgt = [CAM.fx, CAM.lookY + (P.lift || 0), CAM.fz];
+  const tgt = [CAM.fx, (Math.abs(CAM.lookY - 1.10) < 1e-6 && CAM.rlook !== undefined
+                        ? CAM.rlook : CAM.lookY) + (P.lift || 0), CAM.fz];   // 513
   // `let`, not `const`: the lift writes its own framing below and `cam.up` further down reads
   // these back, so all three have to be recomputed together or the horizon tilts.
   let cp = Math.cos(CAM.pitch), sp = Math.sin(CAM.pitch);
@@ -14666,6 +14781,14 @@ function frame(now) {
   CAM.px = P.x; CAM.pz = P.z; CAM.plift = P.lift || 0;
   CAM.near = (CAM.near === undefined || !walked) ? wantNear
                                     : lerp(CAM.near, wantNear, 1 - Math.pow(0.08, dt));
+  // 513. A room may also say what height to aim at. 1.10 is chest height and it is right under
+  // 3 m of ceiling; under 2.60 m an eye 2.2-2.9 m back aimed at 1.10 gives a third of the frame
+  // to the slab overhead. Eased on the same curve and gated the same way as CAM.near, and only
+  // consulted by `tgt` while nothing else owns lookY — sitting, talking and the aeroplane all
+  // set it away from 1.10 and keep it, which is the test used rather than a second flag.
+  const wantLook = room.lookY || 1.10;
+  CAM.rlook = (CAM.rlook === undefined || !walked) ? wantLook
+                                    : lerp(CAM.rlook, wantLook, 1 - Math.pow(0.08, dt));
   dist = Math.min(dist, CAM.near);
   const clearWall = (i, lo, hi) => {
     if (Math.abs(dir[i]) < 1e-4) return;
@@ -15080,11 +15203,13 @@ function frame(now) {
   // marked dynamic are the exception: traffic and similar movers rewrite `p.cx/cy/cz` with their
   // matrices, so refresh only their recorded slots before the shadow and colour visibility tests.
   if (scene.syncDynamicCulls) scene.syncDynamicCulls();
-  hideX = scene.cutaway && eye[0] > room.x1 ? 1 : scene.cutaway && eye[0] < room.x0 ? -1 : 0;
-  hideZ = scene.cutaway && eye[2] > room.z1 ? 1 : scene.cutaway && eye[2] < room.z0 ? -1 : 0;
+  cutRoom = room.cut || room;
+  hideX = scene.cutaway && eye[0] > cutRoom.x1 ? 1 : scene.cutaway && eye[0] < cutRoom.x0 ? -1 : 0;
+  hideZ = scene.cutaway && eye[2] > cutRoom.z1 ? 1 : scene.cutaway && eye[2] < cutRoom.z0 ? -1 : 0;
 
   // ---- what is selected: the cursor wins, otherwise whatever you are standing at
   reachThing = null; useThing = null;
+  nearUsables.length = 0;
   let bestScore = Infinity, bestUse = Infinity;
   for (const th of scene.things) {
     if (!thingOnCurrentDeck(th)) continue;
@@ -15094,7 +15219,10 @@ function frame(now) {
     if (score < bestScore) { bestScore = score; reachThing = th; }
     // The nearest usable thing is tracked separately, or a desk would shadow the computer
     // standing on it and there would be no way to reach the thing you actually want.
-    if (canUse(th) && inReach(th) && score < bestUse) { bestUse = score; useThing = th; }
+    if (canUse(th) && inReach(th)) {
+      nearUsables.push(th);
+      if (score < bestUse) { bestUse = score; useThing = th; }
+    }
   }
   // a label can be hidden while the cursor still sits on it; do not let hover stick
   if (hoverLabel && hoverLabel.el.style.pointerEvents === 'none') hoverLabel = null;
@@ -15102,6 +15230,12 @@ function frame(now) {
   activeThing = hoverThing || reachThing;
   // Pointing at something usable within arm's length aims Q at that instead.
   if (activeThing && canUse(activeThing) && inReach(activeThing)) useThing = activeThing;
+  // 465. And a Tab choice outranks proximity until the player aims at something or walks away
+  // from it. Aiming clears it, because a cursor is a stronger statement than a key pressed four
+  // seconds ago; walking out of reach clears it because the list no longer holds it.
+  if (hoverThing) cyclePick = null;
+  if (cyclePick && nearUsables.indexOf(cyclePick) >= 0) { activeThing = cyclePick; useThing = cyclePick; }
+  else cyclePick = null;
   // A man standing in your doorway holding your dinner outranks the doorway itself. The door's
   // focus point sits half a metre further into the room than he does, so on distance alone Q
   // would offer to step outside past him, which is nobody's idea of answering the door. Aiming

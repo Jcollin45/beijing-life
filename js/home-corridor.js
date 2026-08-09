@@ -881,13 +881,25 @@ FlatFit['corridor'] = A => {
   //
   // The 物业 sells the wall beside the lift, and this is what is on it: an invented estate agent,
   // back-lit, the one warm thing in a corridor of cold tubes. 0.42 x 0.60 = 0.25 m2, so glow .05.
+  //
+  // THREE advertisers, not one. The 物业 sells this slot by the month and the frame outside every
+  // landing had the same estate agent in it, twelve storeys of one poster — which reads as a
+  // texture repeat rather than as a building. The slot is keyed to the deck, so a player who walks
+  // the stairs sees the wall change hands. All three names are invented; no real brand appears
+  // anywhere in this game.
+  const ADS = [
+    ['安居房产', '本小区二手房', '租售登记',   '八八六二七', C('#8f2c22')],
+    ['万家家政', '钟点保洁月嫂', '上门登记',   '七三四九一', C('#2b5f4a')],
+    ['顺路搬家', '楼上楼下小件', '随叫随到',   '五二八八零', C('#1d4f7a')],
+  ];
+  const AD = ADS[DECKNO % ADS.length];
   const AX = -0.55;
   box(AX, Y + 1.46, ZS + .035, .50, .70, .07, col.steelX, { hard: true, gloss: .40, ...MAT.metal });
   box(AX, Y + 1.46, ZS + .078, .42, .60, .006, C('#f2e7c8'), { hard: true, mode: 1, glow: .05 });
-  G(AX, Y + 1.66, ZS + .090, 0, '安居房产', { size: .054, gap: .012, color: C('#8f2c22') });
-  G(AX, Y + 1.56, ZS + .090, 0, '本小区二手房', { size: .034, gap: .007, color: C('#3a3a3a') });
-  G(AX, Y + 1.48, ZS + .090, 0, '租售登记', { size: .034, gap: .007, color: C('#3a3a3a') });
-  G(AX, Y + 1.34, ZS + .090, 0, '八八六二七', { size: .040, gap: .009, color: C('#1d5c8a') });
+  G(AX, Y + 1.66, ZS + .090, 0, AD[0], { size: .054, gap: .012, color: AD[4] });
+  G(AX, Y + 1.56, ZS + .090, 0, AD[1], { size: .034, gap: .007, color: C('#3a3a3a') });
+  G(AX, Y + 1.48, ZS + .090, 0, AD[2], { size: .034, gap: .007, color: C('#3a3a3a') });
+  G(AX, Y + 1.34, ZS + .090, 0, AD[3], { size: .040, gap: .009, color: C('#1d5c8a') });
   G(AX, Y + 1.24, ZS + .090, 0, '一楼大堂', { size: .026, gap: .006, color: C('#6a6a6a') });
 
   // =================================================================== 电表箱 the meter bank
@@ -1145,9 +1157,20 @@ FlatFit['corridor'] = A => {
                                                                      tag: '快递' });
   box(D203 - .30, FL + .262, ZN - .30, .30, .012, .24, C('#cdae86'),
       { hard: true, gloss: .06, ry: -.12 });
-  box(D203 - .30, FL + .13, ZN - .445, .13, .09, .010, col.paper, { hard: true, gloss: .05,
-                                                                    ry: -.12 });
-  G(D203 - .30, FL + .15, ZN - .462, PI, '快递', { size: .034, gap: .006, color: C('#7a4a2a') });
+  // The waybill, and the whole point of it is the flat number. A parcel with 快递 stencilled on it
+  // is scenery; a parcel with YOUR door on the label is a thing you have to do something about. It
+  // is against 203's frame because that is where a courier leaves it when nobody is in at 202 —
+  // one door out, which is the ordinary way this goes wrong and the reason to pick it up. The
+  // 取件码 is the same word that is already on the lockers by the lift, so the two objects join.
+  //
+  // This module builds deck 2 (DECK_OF.corridor), so 二零二 is literal rather than off FN(2): the
+  // glyph atlas is Chinese, and 收件人 lines are written in characters on a real waybill anyway.
+  G(D203 - .30, FL + .225, ZN - .462, PI, '快递', { size: .030, gap: .006, color: C('#7a4a2a') });
+  box(D203 - .30, FL + .118, ZN - .445, .17, .115, .010, col.paper, { hard: true, gloss: .05,
+                                                                      ry: -.12 });
+  G(D203 - .30, FL + .155, ZN - .462, PI, '收件人', { size: .019, gap: .004, color: C('#3a3630') });
+  G(D203 - .30, FL + .122, ZN - .462, PI, '二零二室', { size: .022, gap: .004, color: C('#1d2226') });
+  G(D203 - .30, FL + .088, ZN - .462, PI, '取件码四七', { size: .015, gap: .003, color: C('#6a6660') });
   shade(D203 - .30, ZN - .30, .46, .38, .28, MATY + .006);
   stop(D203 - .52, D203 - .08, ZSHOE + .12, ZN);
   // and the pot plant in the north-east corner, which is outside the body's reach anyway

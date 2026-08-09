@@ -168,6 +168,32 @@ render gate (`.render-gate.js`).
 | `node .bootcheck.js` | `bootOverlay:false, fails:[], errors:[]` | ~300 s timeout |
 | `AUDIT_PORT=<unique> node .audit.js APT-F` | renders the flat. **Open the PNGs** | gate |
 | `node .fpscheck.js home` | read `ms` and `p95Ms`, not `fps`. `hotelLift` is the control at 3.0/5.0 ms | gate, real GPU |
+| `node .pixdiff.js APT-` | compares the frames above against `.pixbase/`. `--record` accepts new ones | pure node |
+
+### The camera index
+
+Six prefixes, all in `.audit.js`, all rendered by `AUDIT_PORT=<unique> node .audit.js <prefix>`.
+A prefix is an argument, so `node .audit.js APT-` renders the whole building and `node .audit.js
+APT-R-kitchen` renders one room. Deliberately **not** a line count of the file: an earlier version
+of this section pinned one and it was stale within the day.
+
+| prefix | shots | what it is for |
+|---|---|---|
+| `APT-F` | `APT-F01`..`APT-F12` | one overview per physical storey at 13:00 — the floor-by-floor gate. Pinned at exactly twelve by TODO item 410; a thirteenth two-digit label would read as a thirteenth storey |
+| `APT-N` | `APT-N01`..`APT-N12` | the same twelve eyes at 21:00. Lamps, window tints and the roof's city vista are only ever accepted in daylight otherwise |
+| `APT-R` | `APT-R-entry` … `APT-R-hall` | one camera per room of flat 202 on deck 2, named for the room, in this document's own room order. Before these, ten rooms shared `APT-F02` |
+| `APT-CORR` | `-01` `-02` `-09` | the landing: east along its 12 m, flat 202's own front door, and a deck-9 landing that is not yours |
+| `APT-LIFT` | `-01` `-02` | the car — from the landing with the doors open on deck 2, and from inside it on deck 6. The car is deck 1, which `APT-F` deliberately skips |
+| `APT-SUN` | four times of day | the daylight patch on deck 3, proving the shaft moves on a storey that is not the one the window was authored from |
+| `APT-ELEV` | the tower from the street | exterior |
+
+Camera arithmetic that bites, and is why these numbers are not round: the shot's `c` is
+`[yaw, pitch, distance]` and the camera orbits **behind** the eye, so a distance longer than the
+clear run behind the eye puts it through a wall — and every surface in this renderer is
+single-sided, so the frame comes back as the unlit back of the room rather than as an obvious
+error. Inside the 1.30 m lift car that limit is about 0.40 m; in the corridor the eye must leave
+room before the back wall at `z 6.2`. Pitch has its own trap: a `.36` pitch hits the low apartment
+ceiling limiter and silently collapses a requested 7.2 m overview into a close-up.
 
 **A render proves nothing about walkability.** `TOWER-STATE.md` makes this point and it is the one
 that keeps costing time here: a fixture can look perfectly placed in a shot and be unreachable, and

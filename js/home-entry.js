@@ -354,6 +354,14 @@ FlatFit['entry'] = A => {
     'dinner arrives — the two of you either side of this threshold, one of you in slippers.',
     { focus:[DCX, 2.25], reach:1.6 });
 
+  // The lock is its own card. 门 is the leaf and 钥匙 is what you carry; 门锁 is the part of a
+  // 防盗门 a tenant actually touches twice a day, and it is the word on every notice about one.
+  // No new geometry — the thumb-turn, the escutcheon and the chain above it are already built on
+  // the opening edge, and a second plate over them would be coplanar with the first.
+  A.th('门锁', DCX + .12, F + 1.05, DZ - .09, '出门别忘了锁门。', "Don't forget to lock up.",
+    '门 door + 锁 a lock, and as a verb 锁 is to lock. 反锁 is to deadlock it from the inside.',
+    { focus:[DCX, 2.25], reach:1.4 });
+
   // ================================================================ 春联 the couplets
   //
   // Pasted on the wall inside, flanking the door. Outside would be more usual and is the 走廊's

@@ -75,6 +75,19 @@
 //
 // Materials: `matAmt` about .30 and never over .40, `nrmAmt` about 0.3 and never the default 1
 // — see the note in the shell below, which is where those two numbers were got wrong first.
+// ---- 459. One numeral table, shared. The landing indicator over the doors and the row in the
+// car panel are two renderings of the same fact, and TOWER-STATE.md records the wave where they
+// disagreed: all ten new floors were labelled the second floor because buildShafts held its own
+// copy of the rule. Top level in this file, so js/game.js can assert HOME_FLOORS against it
+// rather than restate it. Deck 0 is floor 1; deck N is floor N.
+const FLOOR_NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
+const floorLabel = deck => FLOOR_NUM[deck === 0 ? 1 : deck] || String(deck);
+// ---- 469. The ride is the longest continuous camera motion in the game and the stylesheet
+// already honours the OS preference (index.html:1336); the car did not.
+const prefersReducedMotion = () => {
+  try { return !!(window.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches); }
+  catch (e) { return false; }
+};
 const FlatFit = {};
 
 const World = Lazy('World', () => {
@@ -436,8 +449,12 @@ const World = Lazy('World', () => {
   // because eleven floors at four seconds each is a loading screen and not a lift. A real car does
   // most of its travel at line speed, so the cap is where this stops being linear.
   const RIDE_1 = 2.6, RIDE_MAX = 7.5;
+  // Reduced motion does not skip the ride: the doors, the indicator and the arrival still have to
+  // happen or the lift stops being a place. It caps the moving part at one storey worth, so
+  // eleven floors is 2.6 s of travelling car instead of 7.5.
   const rideSecs = (from, to) =>
-    Math.min(RIDE_MAX, RIDE_1 + Math.abs(deckY(to) - deckY(from)) / STOREY * 0.55);
+    prefersReducedMotion() ? RIDE_1
+      : Math.min(RIDE_MAX, RIDE_1 + Math.abs(deckY(to) - deckY(from)) / STOREY * 0.55);
   const CLOSE_T = 0.9;             // grace after a floor is chosen, so the 叮 is not stepped on
   // `carAt` is where the car is. `floor`, above, is where *you* are. Keeping them apart is the
   // whole of it: the car can be downstairs while you are up, which is the only reason a call
@@ -561,6 +578,11 @@ const World = Lazy('World', () => {
     return {
       at: carAt, on: floor, moving: !!ride, door, open: doorK,
       riding: !!(ride && ride.rider),
+      // 461. Where it is going and how much of the ride is left, in seconds of real time. A
+      // refusal is not a wait: the landing button could say the car was busy and nothing else,
+      // so the player pressed it again. Both are already here; they were just never handed out.
+      to: ride ? ride.to : carAt,
+      eta: ride ? Math.max(0, ride.secs - ride.t) : 0,
       // Across one storey, not the whole shaft: the sound has to swell as the car arrives at
       // *your* floor, and on a twelve-floor shaft dividing by the full 34 m makes that inaudible.
       near: clamp(1 - Math.abs(CAR.y - deckY(floor)) / STOREY, 0, 1),
@@ -847,9 +869,14 @@ const World = Lazy('World', () => {
       // two-deck building and labels every one of the ten new floors 二. `NUM` is the same mapping
       // the car's own panel uses — deck 0 is floor 1, deck N is floor N — so the landing and the
       // button agree by construction rather than by two people writing the same rule twice.
-      const NUM = ['', '一', '二', '三', '四', '五', '六', '七', '八', '九', '十', '十一', '十二'];
-      B.glyphs(cx, y0 + DOORH + .34, zf - .05, Math.PI, NUM[f === 0 ? 1 : f] || String(f),
+      B.glyphs(cx, y0 + DOORH + .34, zf - .05, Math.PI, floorLabel(f),
         { size: .17, color: C('#ff9a4d'), mode: 1, glow: .16, tag: '电梯' });
+      // 458. Which floor is yours, on the landing, without reading English. Deck 2 only, one
+      // glyph, and deliberately not a second indicator: it sits beside the numeral the player
+      // is already looking at when the doors open.
+      if (f === 2)
+        B.glyphs(cx + .40, y0 + DOORH + .34, zf - .05, Math.PI, '家',
+          { size: .13, color: C('#8fd6a0'), mode: 1, glow: .12, tag: '电梯' });
       // The colliders start at the plane of the shaft, not five centimetres in front of it. On
       // the upper deck the walkway past these is 0.71 m wide and `clampMove` spends 0.60 of that
       // on the body radius, so five centimetres of collider standing proud of the geometry it
@@ -1410,14 +1437,35 @@ const World = Lazy('World', () => {
     // Both are under the 3.00 m WALL_MIN in js/game.js, so both also opt out of `clearWall`, which
     // is the point: a 3 m deep box was stepping the eye 1.96 m every time the player panned past
     // its long walls (.camsweep.js).
+    // 513. lookY 1.10 is chest height and it is right in a room with 3 m of head clearance.
+    // These two have 2.60, and an eye 2.2-2.9 m back aimed at 1.10 spends the top of the frame
+    // on ceiling. 1.02 is 8 cm, deliberately small: enough to buy the ceiling back, not enough
+    // to be a different camera. Read per frame in js/game.js beside room.near and eased on the
+    // same curve, so a doorway between a declared room and an undeclared one is not a cut.
     ZONE[2].push({ id: 'main', x0: FLAT.x0, x1: FLAT.x1, z0: FLAT.z0, z1: FLAT.z1,
-                   light: [0, y2 + FLAT.h - .40, -.20], ceil: y2 + FLAT.h - .06, near: 2.90 });
+                   light: [0, y2 + FLAT.h - .40, -.20], ceil: y2 + FLAT.h - .06, near: 2.90,
+                   lookY: 1.02 });
+    // 509. The corridor walks the full 12.00 x 3.00 m plate, but the two shafts own z 4.90..6.20
+    // across the middle of it, so the strip a body can stand on in front of the doors is
+    // CORR.z0..LIFT.z0. hiddenAt was measuring its hide band off 1.30 m of rectangle nobody can
+    // occupy, which put the band inner edge behind the player instead of in front of them. The
+    // cut box is the cutaway box and nothing else: clampMove still gets the full plate, so where
+    // the body may walk does not change. Derived from the shell own LIFT box rather than
+    // re-measured, because js/home-corridor.js:14 and lane 5 disagree by 1.20 m and item 510 is
+    // still open on which of them is right.
     ZONE[2].push({ id: 'corr', x0: CORR.x0, x1: CORR.x1, z0: CORR.z0, z1: CORR.z1,
-                   light: [0, y2 + CORR.h - .34, 4.10], ceil: y2 + CORR.h - .06, near: 2.20 });
+                   light: [0, y2 + CORR.h - .34, 4.10], ceil: y2 + CORR.h - .06, near: 2.20,
+                   lookY: 1.02,
+                   cut: { x0: CORR.x0, x1: CORR.x1, z0: CORR.z0, z1: LIFT.z0 } });
     // The doorway itself, so a body standing in the flat and a body standing in the corridor are
     // in one walkable region rather than two that touch.
+    // 508. It was the one deck-2 zone with no orbit limit, so the first frame roomAt ever does
+    // return it the eye jumps to the 12 m default for the width of a doorway. 2.20 is the
+    // corridor limit, the tighter of the two rooms it joins: a doorway is never the place to
+    // open the shot out.
     ZONE[2].push({ id: 'gap', x0: 3.40, x1: 4.40, z0: FLAT.z1 - .70, z1: FLAT.z1 + .70,
-                   light: [3.90, y2 + CORR.h - .34, 3.60], ceil: y2 + CORR.h - .06 });
+                   light: [3.90, y2 + CORR.h - .34, 3.60], ceil: y2 + CORR.h - .06,
+                   near: 2.20, lookY: 1.02 });
     ZONE[2].push(carZone);
     // The inside of the car is its own room on EVERY deck it can reach, not just the two it used
     // to. Without this `roomAt` hands the car the corridor's lamp and the corridor's cutaway box

@@ -540,6 +540,13 @@ FlatFit['living'] = A => {
   // 402 — the set is a light, not a glow quad. Blue, weak and low; js/gl.js takes the eight
   // nearest lights, so a third fitting in this room costs the sort and nothing in the draw.
   light(X, 1.05, SCZ - .45, C('#5b829a'), .26, 2.30);
+  // 402 — and the strip under the console, which is the one fitting in a Chinese living room that
+  // is always on. It grounds the cabinet: without it the carcass and the boards meet on a hard
+  // line and the unit reads as pasted onto the floor. One prop and one light; the light sits at
+  // .10 so it washes the boards rather than the cabinet front.
+  box(X, .052, TZ - .265, 1.52, .010, .016, C('#f4e2c0'),
+      { tag: '客厅电视', hard: true, mode: 1, glow: .16 });
+  light(X, .10, TZ - .30, C('#ffe2b4'), .22, 1.60);
   sha(X, TZ, 2.05, .95, .38);
   stop(X - .98, X + .98, TZ - .24, SW);
   th('电视', X, 1.34, SCZ - .16, '电视里在说中文。', 'They are speaking Chinese on TV.',
@@ -741,8 +748,8 @@ FlatFit['living'] = A => {
   // a floor — as the border. The same red is at the front door on the 春联 and nowhere else in the
   // flat. Four bands are kept because the geometry and the prop count are unchanged; three of them
   // are now near neighbours, so it reads as a bordered rug rather than as concentric stripes.
-  [[0, C('#8a4a3c')], [.30, C('#c2b294')], [.92, C('#b5a78f')], [1.34, C('#c2b294')]]
-    .forEach(([inset, c], i) =>
+  [[0, C('#8f4436')], [.30, C('#c2b294')], [.92, C('#b5a78f')], [1.34, C('#c2b294')]]
+    .forEach(([inset, c], i) => // 489: the border red is FLAT_PALETTE.accent, floor-darkened, and it is the only red here.
       flat(RGX, .005 + i * .0035, RGZ, RGW - inset, RGD - inset, c,
         { mode: 7, gloss: G.fabric, ...MAT_RUG }));
   // Fringe on the short ends, which on this rug are the ones facing the walls, not the sofa.
@@ -897,6 +904,19 @@ FlatFit['living'] = A => {
     { focus: [TX - .10, TTZ - .82], reach: 1.5 });
   sha(TX, TTZ, 1.58, .96, .33);
   stop(TX - .68, TX + .68, TTZ - .38, TTZ + .38);
+  // 402 — 台灯 on the far corner of the tea table, and it owns a real light. This room had three
+  // light calls against 老李家's ten, and the two that existed were both overhead: a 3.20 m ceiling
+  // drum and a floor lamp in the window corner, so everything between the sofa and the console was
+  // lit from above and read flat. A lamp at .55 m is the only fitting in here at sitting height.
+  //
+  // Drum shade built as a `cyl`, not a `taper` — a taper's direction is a guess from the call site
+  // and a cone the wrong way up is a funnel. The saucer at TX + .44 / TTZ + .19 is 0.41 m away and
+  // the remote at TX - .52 is on the other end; measured against both, not placed by eye.
+  const TLX = TX + .50, TLZ = TTZ - .21;
+  cyl(TLX, TOP + .012, TLZ, .058, .024, col.woodD, { mode: 6, ...MAT_TRIM });
+  cyl(TLX, TOP + .120, TLZ, .009, .200, col.woodD, { mode: 6, ...MAT_TRIM });
+  cyl(TLX, TOP + .295, TLZ, .086, .150, C('#efe0c4'), { mode: 1, glow: .12, gloss: G.matte });
+  light(TLX, TOP + .30, TLZ, C('#ffd9a4'), .34, 1.90);
   th('茶几', TX, .70, TTZ - .40, '茶几上有一杯茶。', 'There is a cup of tea on the tea table.',
     '茶 tea + 几 small table. It is a tea table before it is a coffee table.',
     { focus: [TX, TTZ - .82], reach: 1.4 });

@@ -180,6 +180,22 @@ const Talk = (() => {
                 { zh: '我不知道。', en: 'I do not know.' },
               ],
               gain: { mood: 3 } },
+            // Item 313, the middle rung: challenge, then nod, then greet. One of his questions
+            // followed is a nod and not a name — he has placed the face and stops demanding to
+            // know who you are, but he still has not got the flat number off you, so he offers it
+            // himself for confirming. `alts` is first-match (js/talk.js:1781), so this branch has
+            // to sit *after* the knows>=2 one or it would shadow the parcel and the greeting
+            // stage would never be reachable.
+            { when: s => s.knows >= 1,
+              ask: ['您是二层的吧？', 'You are on the second floor, are you not?'],
+              opts: [
+                { zh: '对，二零二。', en: 'That is right — 202.', ok: true,
+                  then: ['记住了，二零二。', 'Noted — 202.'] },
+                { zh: '是我，师傅。', en: 'It is me, master.', ok: true,
+                  then: ['嗯，眼熟。上去吧。', 'Mm. A familiar face. Go on up.'] },
+                { zh: '我不知道。', en: 'I do not know.' },
+              ],
+              gain: { mood: 2 } },
           ] },
         { ask: ['您家的水龙头修好了没有？', 'Has that tap of yours been fixed?'],
           opts: [

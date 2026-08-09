@@ -526,8 +526,11 @@ FlatFit['lobby'] = A => {
   // — see the note over `exitSign` in js/home-corridor.js — and the lobby is the room with the
   // most signwriting in the building.
   A.box(0, Y + 2.30, -3.995, 1.98, .19, .03, red, { hard: true, gloss: .16 });
-  A.glyph(0, Y + 2.30, -4.012, Math.PI, '杨柳胡同十八号楼',
-    { size: .145, color: gold, mode: 1, gloss: .18 });
+  // The header names the unit as well as the block. Every 单元门 in the city has its own number on
+  // it and the lobby glosses 单元门 as a word the player is expected to know, so the plate has to
+  // be the place they read it. Eleven characters on a 1.98 m board, so the size comes down.
+  A.glyph(0, Y + 2.30, -4.012, Math.PI, '杨柳胡同十八号楼二单元',
+    { size: .105, color: gold, mode: 1, gloss: .18 });
   // And on the lobby side, the line every one of these headers has on it.
   A.glyph(0, Y + 2.30, -3.828, 0, '出入请随手关门', { size: .095, color: C('#4a4438') });
 
@@ -979,13 +982,24 @@ FlatFit['lobby'] = A => {
   // glyph quads and swapping them at runtime would mean rebuilding the board every frame for a
   // thing nobody reads twice in one visit. The 停水 slip carries no weekday and is therefore always
   // up, which is what makes it agree with the street door instead of contradicting it.
+  //
+  // The sixth field is the BODY, and it is real copy rather than the four grey bars that used to
+  // stand in for one. A headline over ruled lines is a sign that says "there is Chinese here" to a
+  // player learning Chinese; every word below has a js/vocab.js row, so the body is glossable and
+  // the board is the best readable text in the building rather than a picture of a board.
+  //
+  // 电梯维修 is no longer always up. A notice that is true every day of the year teaches the player
+  // to stop reading the case, and 刘师傅 already says 二号梯停用 out loud. The real fix is an
+  // out-of-service state on the car in js/world.js, which this lane does not own — QUEUED, item
+  // 288. Until it lands the slip runs on a weekday key like every other slip, so the board is
+  // wrong two days a week instead of right for the wrong reason.
   const NOTICE_DAY = [
-    ['停水通知', C('#8c2f22'), '明日全天停水', 4, col.white,    -1],   // always up; = 门口的通知
-    ['电梯年检', C('#33383c'), '二号梯停用',   4, col.white,    -1],   // always up; = 此梯停用
-    ['物业通知', C('#8c2f22'), '楼道禁停电动车', 3, C('#e8ccc2'), -1],
-    ['缴费通知', C('#8c2f22'), '本月物业费',   3, C('#e8ccc2'),  1],   // 星期一
-    ['垃圾分类', C('#33383c'), '厨余请沥干',   3, col.white,     4],   // 星期四
-    ['社区通知', C('#8c2f22'), '周末免费理发', 3, C('#e8ccc2'),  6],   // 星期六
+    ['停水通知', C('#8c2f22'), '明日全天停水', '本周六停水请各位住户提前储水备用', col.white,    -1],
+    ['电梯维修', C('#33383c'), '二号梯停用',   '二号梯停用维修请改乘一号梯上下',   col.white,     3],   // 星期三
+    ['物业通知', C('#8c2f22'), '楼道禁停电动车', '楼道内禁止停放和充电电动车',     C('#e8ccc2'), -1],
+    ['缴费通知', C('#8c2f22'), '本月物业费',   '本月物业费请于十五日前交清',       C('#e8ccc2'),  1],   // 星期一
+    ['垃圾分类', C('#33383c'), '厨余请沥干',   '厨余垃圾请沥干水分再投绿桶',       col.white,     4],   // 星期四
+    ['社区通知', C('#8c2f22'), '周末免费理发', '本周日上午在大堂免费理发',         C('#e8ccc2'),  6],   // 星期六
   ];
   // Three slots, and the slips that are up today fill them: the standing ones first, then whatever
   // is keyed to this weekday. `A.day` is not a thing the shell offers, so this uses the real one —
@@ -994,17 +1008,19 @@ FlatFit['lobby'] = A => {
     const up = NOTICE_DAY.filter(n => n[5] < 0 || n[5] === day);
     return up.slice(0, 3);
   }
-  const notices = noticeFor(new Date().getDay()).map(([head, hc, sub, lines, paper], i) =>
-    [NZ - .62 + i * .62, paper, head, hc, sub, lines]);
-  for (const [nz, paper, head, hc, sub, lines] of notices) {
+  const notices = noticeFor(new Date().getDay()).map(([head, hc, sub, body, paper], i) =>
+    [NZ - .62 + i * .62, paper, head, hc, sub, body]);
+  for (const [nz, paper, head, hc, sub, body] of notices) {
     A.box(-5.933, Y + 1.575, nz, .006, .82, .54, paper, { hard: true, gloss: .06 });
     A.glyph(-5.918, Y + 1.880, nz, Math.PI / 2, head,
       { size: .088, color: hc, lift: 0, gloss: .08 });
     A.glyph(-5.918, Y + 1.735, nz, Math.PI / 2, sub,
       { size: .050, color: C('#4a4640'), lift: 0, gloss: .08 });
-    for (let i = 0; i < lines; i++)
-      A.box(-5.922, Y + 1.615 - i * .085, nz - (i === lines - 1 ? .09 : 0),
-        .004, .011, i === lines - 1 ? .34 : .48, C('#8f8a81'), { hard: true });
+    // Wrapped in code rather than in the table so the copy stays one sentence at the point it is
+    // written. Eight characters at .038 with a .008 gap is .368 across a .54 slip.
+    for (let i = 0; i * 8 < body.length; i++)
+      A.glyph(-5.918, Y + 1.600 - i * .075, nz, Math.PI / 2, body.slice(i * 8, i * 8 + 8),
+        { size: .038, gap: .008, color: C('#4a4640'), lift: 0, gloss: .08 });
     A.box(-5.922, Y + 1.24, nz + .17, .004, .052, .20, C('#a8342a'), { hard: true });
   }
   A.box(-5.898, Y + 1.575, NZ, .016, 1.06, 1.82, glassC, { hard: true, alpha: .20, gloss: .80 });

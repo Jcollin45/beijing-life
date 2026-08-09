@@ -3056,15 +3056,19 @@ const HOME_USE_FLOOR = {
               gain:{ food:14, mood:10, rest:-4 }, pose:{ type:'cook', hold:'ladle' }, wok:true,
               done:'火大油热，一锅菜出来了。',
               doneTr:'High flame, hot oil, and the dish is out of the pan.' },
-    // The `food` gain is not decoration and must not be dropped: `useLabel` overwrites it with the
-    // gain of whatever the fridge is about to hand you, but on the two paths where it hands you
-    // nothing — cookable-but-not-ready, and empty — the row's own gain is what survives, and
-    // `.towercheck.js` requires the player flat's 冰箱 to still be the thing you eat from.
-    // Lane 6's `gain:{ mood:2 }` alone made this deck-2 row shadow that and fail.
-    '冰箱': { zh:'看看冰箱', py:'kànkan bīngxiāng', en:'see what is in the fridge', secs:2.0, mins:3,
-              gain:{ food:42, mood:4 }, pose:{ type:'eat', hold:'meal' }, fridge:true,
-              done:'还有点儿菜，快到日子了。',
-              doneTr:'A little food left, and it is close to its date.' },
+    // There is deliberately no deck-2 '冰箱' row. One was added here and it was pure loss: every
+    // word it carried was dead, and the one thing that survived was wrong.
+    //
+    // `useLabel`'s `d.fridge` branch (js/game.js:13246) rewrites zh/py/en/done/doneTr on all three
+    // of its paths — the lot it is handing you, cookable-but-not-ready, and empty — so a deck-2
+    // row's own sentence is never once displayed. Its gain, pose and `fridge:true` were byte-copies
+    // of the global row. The only field that reached the player was the duration, and it read
+    // secs:2.0 / mins:3 against the global row's 3.4 / 20: eating dinner in three minutes.
+    //
+    // Deck 2 therefore falls through to `USE['冰箱']` (js/data.js:1682) — the real eat action, with
+    // the pantry chain hanging off `fridge:true`. Same reasoning is why there is no deck-2 '厨房':
+    // `USE['厨房']` carries `cook:true`, and shadowing it would break the dish picker.
+    // A flat-only fridge verb would have to be added *inside* that branch in game.js, not here.
     '案板': { zh:'切菜', py:'qiē cài', en:'prepare the vegetables', secs:4.6, mins:25,
               gain:{ food:5, mood:7, rest:-3 }, pose:{ type:'reach' }, board:true,
               done:'菜切好了，粗细都差不多。',

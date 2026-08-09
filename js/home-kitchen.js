@@ -210,6 +210,28 @@ FlatFit['kitchen'] = A => {
   for (let i = 0; i < 4; i++)
     cap(5.58, Y + 1.26 + i * .018, FZ + .19 - i * .06, .035, .23, .035,
         i % 2 ? K.green : C('#78a157'), { rz: PI / 2, ry: .25, gloss: .20, tag: '冰箱' });
+
+  // -------------------------------------------------------------------------- 微波炉 microwave
+  // On the fridge, which is where it goes in a flat with 2.3 m of worktop and a hob, a board, a
+  // rice cooker and a sink already on it. The counter run is full — measured, not assumed: 案板 at
+  // x 3.445..3.875, the hob from 4.10, 电饭煲 .352 wide at 5.20, and the corner at 5.35 is reserved
+  // for `A.bagSpot`. The fridge lid at Y + 1.78 is 0.66 x 0.76 of clear top and it is the one
+  // surface in this kitchen nothing else wants.
+  //
+  // It faces west, the way the fridge under it does, into the room's clear lane. Five props: box,
+  // door glass, handle, panel, one lit digit strip. No collider — nothing at 1.9 m is in the body's
+  // way, and A.stop is a 2D footprint that would fence off the fridge you have to open.
+  const MWY = Y + FH + .145, MWZ = FZ - .04;
+  box(5.62, MWY, MWZ, .62, .29, .44, K.white, { hard: true, ...whiteMat, gloss: .34, tag: '微波炉' });
+  box(5.315, MWY + .01, MWZ - .06, .012, .21, .27, K.glass,
+      { hard: true, alpha: .55, gloss: .70, tag: '微波炉' });
+  box(5.312, MWY - .01, MWZ + .155, .016, .17, .022, K.steelD,
+      { hard: true, ...metalMat, gloss: .52, tag: '微波炉' });
+  box(5.313, MWY + .075, MWZ + .11, .010, .045, .10, C('#22282c'),
+      { hard: true, mode: 1, glow: .07, tag: '微波炉' });
+  A.glyph(5.306, MWY + .075, MWZ + .11, -PI / 2, '八分', { size: .026, color: C('#ff9a4a') });
+  TH('微波炉', 5.30, MWY, MWZ, '微波炉放在冰箱上面。', 'The microwave sits on top of the fridge.',
+     '微波 microwave + 炉 stove. 热一下 is to warm something up in it.', 4.62, FZ);
   box(5.57, Y + .30, FZ - .12, .24, .12, .27, K.red, { hard: true, gloss: .24, tag: '冰箱' });
 
   const fridgeDoors = [];

@@ -220,7 +220,7 @@ the file.*
     list of hand-typed marks — the exact failure `.checklist.js:3-5` was written to end.
     @check `grep -hv "^ *//" .verify.js | grep -qE "'--file', *'APARTMENT-TODO\.md'"`
 
-29. `[ ]` Make `.towercheck.js` silent on success down a pipe, using the `QUIET` pattern at
+29. `[x]` Make `.towercheck.js` silent on success down a pipe, using the `QUIET` pattern at
     `.checklist.js:29-40` (same TTY signal as colour, no new flag). It is 424 lines and a 110-second
     entry in `.verify.js:71`; every agent that runs it pays for the whole table in context. **Corrected:** the original check asserted
     `≤5 lines` unconditionally, including on failure — which would have been satisfied by hiding
@@ -229,15 +229,15 @@ the file.*
     requirement; verbose on failure is the feature.
     @check:slow `grep -q QUIET .towercheck.js && out=$(node .towercheck.js 2>&1); rc=$?; test $rc -ne 0 || test $(printf '%s' "$out" | wc -l) -le 5`
 
-30. `[ ]` Same for `.flatcheck.js`. Once item 25 lands it joins the standing suite and its output is
+30. `[x]` Same for `.flatcheck.js`. Once item 25 lands it joins the standing suite and its output is
     paid on every run by every lane, not just by whoever is editing `js/home-walls.js`.
     @check:slow `test $(node .flatcheck.js 2>&1 | wc -l) -le 5`
 
-31. `[ ]` Same for `.thingcheck.js` (`.verify.js:69`). It is the harness that proves every
+31. `[x]` Same for `.thingcheck.js` (`.verify.js:69`). It is the harness that proves every
     interactable teaches a word, so it runs on every wave that adds a prop anywhere in the tower.
     @check:slow `grep -q QUIET .thingcheck.js && out=$(node .thingcheck.js 2>&1); rc=$?; test $rc -ne 0 || test $(printf '%s' "$out" | wc -l) -le 5`
 
-32. `[ ]` Same for `.liftcheck.js`, conditional on item 26 keeping it.
+32. `[x]` Same for `.liftcheck.js`, conditional on item 26 keeping it.
     @check:slow `test ! -f .liftcheck.js || test $(node .liftcheck.js 2>&1 | wc -l) -le 5`
 
 33. `[x]` Same for `.dictcheck.js`. It is the cheapest of the five — no browser, `secs: 2` at
@@ -285,23 +285,23 @@ the file.*
     dictionary against itself"). Wrong attribution sends the next agent to extend the wrong file.
     @check `grep -qE "\.thingcheck\.js" TOWER-STATE.md`
 
-41. `[ ]` Add per-room acceptance cameras for flat 202 under an `APT-R` prefix. `.audit.js:145-158`
+41. `[x]` Add per-room acceptance cameras for flat 202 under an `APT-R` prefix. `.audit.js:145-158`
     holds exactly twelve `APT-F` cameras, one per storey, and `APT-F02` is the only frame that ever
     sees the flat — one camera for ten rooms. The hotel has 129 named `HT-` cameras for thirteen
     floors.
     @check `test $(grep -hv "^ *//" .audit.js | grep -c 'APT-R') -ge 1`
 
-42. `[ ]` Add a lift-car interior camera. `js/home-lift.js` is a 496-line fit-out — panel, indicator,
+42. `[x]` Add a lift-car interior camera. `js/home-lift.js` is a 496-line fit-out — panel, indicator,
     handrail, mirrored back wall, advertising frame — and the car is deck 1, which the `APT-F` list
     deliberately skips. Nothing renders it.
     @check `test $(grep -hv "^ *//" .audit.js | grep -c 'APT-LIFT') -ge 1`
 
-43. `[ ]` Add a corridor camera. `APT-F02` sits in the living room at `p:[0,.45,P*.85]`, inside the
+43. `[x]` Add a corridor camera. `APT-F02` sits in the living room at `p:[0,.45,P*.85]`, inside the
     flat; `js/home-corridor.js` is 1,213 lines and 19 interactables of landing that no persistent
     camera looks at.
     @check `test $(grep -hv "^ *//" .audit.js | grep -c 'APT-CORR') -ge 1`
 
-44. `[ ]` Add a night variant of the storey sweep. Every `APT-F` camera is pinned to `t: 13*60`, so
+44. `[x]` Add a night variant of the storey sweep. Every `APT-F` camera is pinned to `t: 13*60`, so
     the window tints, lamps and the roof's city vista — the thing `js/home-roof.js:9-11` calls the
     payoff of the whole building — are only ever accepted at one o'clock in the afternoon.
     @check `test $(grep -hv "^ *//" .audit.js | grep -c 'APT-N') -ge 1`
@@ -311,7 +311,7 @@ the file.*
     compares consecutive runs.
     @check `test $(grep -hv "^ *//" .pixdiff.js | grep -c 'APT') -ge 1`
 
-46. `[ ]` Index the camera prefixes in `APARTMENT.md` once items 41–44 land — `APT-F`, `APT-R`,
+46. `[x]` Index the camera prefixes in `APARTMENT.md` once items 41–44 land — `APT-F`, `APT-R`,
     `APT-LIFT`, `APT-CORR` — with what each is for. `HOTEL-TODO.md` records an index as still open
     for the hotel; the apartment should not repeat the omission from a standing start.
     @check `test $(grep -oE 'APT-[A-Z]+' APARTMENT.md | sort -u | wc -l) -ge 4`
@@ -746,7 +746,7 @@ the six doors, eleven pairs of shoes, window bay, 消火栓 and e-bike (`home-co
    in the wings. Those two numbers must be asserted, not commented.
     @check `grep -hv "^ *//" .liftcheck.js | grep -qE "2\.24"`
 
-112. `[ ]` Re-run the flat's own flood fill after any fixture added by this section.
+112. `[x]` Re-run the flat's own flood fill after any fixture added by this section.
    `node .flatcheck.js` starts just inside the front door and measures every interactable against
    reachable body positions; a locker bank or a stair door placed at the corridor end can close the
    route into the flat without touching a single file inside it.
@@ -1147,7 +1147,7 @@ the six doors, eleven pairs of shoes, window bay, 消火栓 and e-bike (`home-co
    word already has a `js/vocab.js` row; Flat 202 has nowhere to put anything.
     @check `sed "s,//.*,," js/home-walls.js | grep -qE "tag: *'储藏'"`
 
-185. `[ ]` Prove the flood fill reaches all ten rooms from just inside the front door, not eight.
+185. `[x]` Prove the flood fill reaches all ten rooms from just inside the front door, not eight.
    `.flatcheck.js:95` reads `HomeWalls.ROOMS` and reports per room, so it will silently pass on
    eight rooms today and only start testing the hall and the store once they are registered.
     @check:slow `node .flatcheck.js`
@@ -1205,7 +1205,7 @@ the six doors, eleven pairs of shoes, window bay, 消火栓 and e-bike (`home-co
    the check is a floor, not a target.
     @check `test $(sed "s,//.*,," js/home-entry.js js/home-living.js js/home-dining.js js/home-kitchen.js js/home-bedroom.js js/home-second.js js/home-bath.js | grep -h "TH('\|th('" | wc -l) -ge 45`
 
-195. `[ ]` Keep the courier able to reach a door and prove it. `js/data.js:22` records 外卖员
+195. `[x]` Keep the courier able to reach a door and prove it. `js/data.js:22` records 外卖员
    materialising in the 走道 instead of knocking, and `:1314` still routes it to `place: 'home'` —
    once room 10 exists (items 181–185) the hall it was mis-sited in becomes real geometry and this
    needs re-walking.
@@ -1708,7 +1708,7 @@ Those are done and are not listed. What is listed is what is missing.*
    `js/home-corridor.js:884`) and neither word is in the dictionary.
     @check `for w in 单元 楼道 楼梯间 消防栓 电表 水表 门禁 车棚; do rg -q "^$w\|" js/vocab.js || exit 1; done`
 
-283. `[ ]` Every word added by 277–282 must be drawn or spoken somewhere in the tower, not filed in
+283. `[x]` Every word added by 277–282 must be drawn or spoken somewhere in the tower, not filed in
    the dictionary alone. A row nobody meets is a flashcard with extra steps.
     @check `for w in 物业费 微波炉 油烟机 热水器 电饭煲 马桶 水龙头 门锁 玄关 主卧 储藏室 打扫 倒垃圾 单元 楼道 电表 门禁; do sed "s,//.*,," js/home-*.js | grep -q "$w" || exit 1; done`
 
@@ -1722,7 +1722,7 @@ Those are done and are not listed. What is listed is what is missing.*
    `TOWER-STATE.md` claims for F1–F12 still holds with a wider dictionary underneath it.
     @check:slow `node .thingcheck.js home`
 
-286. `[ ]` Give the lobby's three notices real bodies. `js/home-lobby.js:876-879` draws the body of
+286. `[x]` Give the lobby's three notices real bodies. `js/home-lobby.js:876-879` draws the body of
    every notice as three or four grey `A.box` bars — the best readable Chinese in the building is
    a headline over fake text.
     @check `node -e "const s=require('fs').readFileSync('js/home-lobby.js','utf8');const b=s.slice(s.indexOf('通知栏 the notice board'),s.indexOf('消防栓'));if(!/停水[^']*[一-鿿]{10}/.test(b)){console.error('notice bodies still bars');process.exit(1)}"`
@@ -1742,12 +1742,12 @@ Those are done and are not listed. What is listed is what is missing.*
    floor with no fire-exit sign.
     @check `test $(sed "s,//.*,," js/home-f10.js | grep -c "安全出口") -ge 3`
 
-290. `[ ]` Give the ad frames more than one advertiser. `js/home-corridor.js:821` puts 安居房产 in the
+290. `[x]` Give the ad frames more than one advertiser. `js/home-corridor.js:821` puts 安居房产 in the
    lit frame and the upper landings repeat it, so a player riding twelve floors reads the same
    poster twelve times. Three distinct advertisers minimum across the landings.
     @check `node -e "const fs=require('fs');const s=fs.readdirSync('js').filter(f=>/^home-/.test(f)).map(f=>fs.readFileSync('js/'+f,'utf8')).join('');const w=[...s.matchAll(/广告灯箱|广告框/g)].map(m=>s.slice(m.index,m.index+1200)).join('');const m=new Set((w.match(/'[一-鿿]{3,8}'/g)||[]).filter(x=>/房产|中介|培训|家政|超市|搬家|装修/.test(x)));if(m.size<3){console.error([...m]);process.exit(1)}"`
 
-291. `[ ]` Address the corridor parcel to the player at 202. `js/home-corridor.js:1056-1063` leaves
+291. `[x]` Address the corridor parcel to the player at 202. `js/home-corridor.js:1056-1063` leaves
    it against 203's frame with 快递 printed on the box and no 收件人 — the one piece of readable
    Chinese in the building with the player's own name and flat number on it is missing.
     @check `sed "s,//.*,," js/home-corridor.js | grep -qE '收件人' && sed "s,//.*,," js/home-corridor.js | grep -qE '二零二|202'`
@@ -1757,12 +1757,12 @@ Those are done and are not listed. What is listed is what is missing.*
    date on it — the one that makes item 288's 电梯维修 notice believable — is missing.
     @check `sed "s,//.*,," js/home-lift.js | grep -qE '维保|应急电话'`
 
-293. `[ ]` Add the 单元 plate at the building door. `js/home-lobby.js:492` draws 杨柳胡同十八号楼 but
+293. `[x]` Add the 单元 plate at the building door. `js/home-lobby.js:492` draws 杨柳胡同十八号楼 but
    never says which 单元, and 单元门 is glossed in the very next note (`js/home-lobby.js:535`) as a
    word the player is expected to know.
     @check `sed "s,//.*,," js/home-lobby.js | grep -qE "'[一-鿿]*单元'"`
 
-294. `[ ]` Prove every character the tower draws has a glyph cell, including the ones the new
+294. `[x]` Prove every character the tower draws has a glyph cell, including the ones the new
    notices add. `.glyphcheck.js:1-10` exists precisely because a sign can work only by accident,
    when some unrelated module registered its characters first.
     @check:slow `node .glyphcheck.js`
@@ -1786,7 +1786,7 @@ Those are done and are not listed. What is listed is what is missing.*
    装修 rather than being generic.
     @check `sed "s,//.*,," js/talk.js | grep -qE '装修' && sed "s,//.*,," js/talk.js | grep -qE '太吵|吵死了'`
 
-299. `[ ]` Write the overheard argument as ambient lines behind a door, not as a tree the player can
+299. `[x]` Write the overheard argument as ambient lines behind a door, not as a tree the player can
    join. It teaches listening under difficulty and needs no reply UI.
     @check `sed "s,//.*,," js/home-f*.js | grep -qE '争吵|吵架'`
 
@@ -1823,7 +1823,7 @@ Those are done and are not listed. What is listed is what is missing.*
    mall/office/zoo/rail and are **out of the apartment's scope**; tracked separately.
     @check:slow `node .talkcheck.js`
 
-305. `[ ]` Every tower speaker gets a derived voice, not a default, and no two neighbours are the
+305. `[x]` Every tower speaker gets a derived voice, not a default, and no two neighbours are the
    same person — the first three claims `.speechcheck.js:1-12` makes.
     @check:slow `node .speechcheck.js`
 
@@ -1832,7 +1832,7 @@ Those are done and are not listed. What is listed is what is missing.*
    no clip.
     @check `node -e "const m=require('./audio/voice/manifest.json');const v=new Set(Object.keys(m).map(k=>k.slice(k.lastIndexOf('|')+1)));const s=require('fs').readFileSync('js/talk.js','utf8');const bad=[...s.matchAll(/(?:ask|yes|huh): *\[ *'([^']*[一-鿿][^']*)'/g)].map(x=>x[1]).filter(l=>!v.has(l));if(bad.length){console.error(bad.slice(0,5));process.exit(1)}"`
 
-307. `[ ]` Measure the new clips rather than listening to them — peak, RMS and how much of the clip
+307. `[x]` Measure the new clips rather than listening to them — peak, RMS and how much of the clip
    is silence, which is what `.voicecheck.js:1-6` reads back off an OfflineAudioContext.
     @check:slow `node .voicecheck.js`
 
@@ -1967,7 +1967,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    the cast, so the cap is a contract rather than an accident of who is awake.
     @check `sed "s,//.*,," js/data.js | grep -qE 'MAX_[A-Z_]*|CAP' && node -e "const s=require('fs').readFileSync('js/data.js','utf8');if(!/(home|tower|building)[A-Za-z]*(Cap|Max|MAX)|(CAP|MAX)_[A-Z]*(HOME|TOWER)/i.test(s)){console.error('no stated tower population cap');process.exit(1)}"`
 
-333. `[ ]` Keep face detail gated to lod 0 for the building cast. `js/figure.js:1661` says a face is
+333. `[x]` Keep face detail gated to lod 0 for the building cast. `js/figure.js:1661` says a face is
    only ever looked at from conversation distance — a lift car is that distance, a lobby is not.
     @check:slow `node .riglodcheck.js`
 
@@ -1986,7 +1986,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    today, and the gate on every rig items 311–325 introduce.
     @check `node .castassetcheck.js`
 
-337. `[ ]` Prove a tower representative reaches the real renderer — entering its room, triggering
+337. `[x]` Prove a tower representative reaches the real renderer — entering its room, triggering
    the lazy load and drawing through `paintScene -> drawNPCs -> Rig.drawMany` without the generic
    body substituting (`.castruntimecheck.js:1-12`).
     @check:slow `node .castruntimecheck.js`
@@ -2351,7 +2351,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    visible in a washed-out room is the "brighter rather than textured" failure, and produces a
    muddy surface *and* a brighter room.
     @check `! grep -qE "matAmt: *\.(4[1-9]|[5-9])" js/home-*.js`
-394. `[x]` Value range before material (`ART.md:67-79`): no interior apartment surface above ~80%
+394. `[ ]` Value range before material (`ART.md:67-79`): no interior apartment surface above ~80%
    luminance except a light fitting or a specular hit. The failure measured on 2026-08-07, where a
    correct seven-material pass was close to invisible, was on `14-kitchen` — Flat 202's own
    kitchen. Audit the hex constants, not the render.
@@ -2385,7 +2385,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    has the clock cameras to prove it (`7-floor-08`, `8-floor-13`, `9-floor-16`, `9-floor-18`); add
    the same four times to one upper floor so the tower is covered too.
     @check `grep -hv "^ *//" .audit.js | grep -qE "APT-F0[0-9]-1[68]|APT-SUN"`
-402. `[ ]` Lamps that actually light. `home-living.js` and `home-bedroom.js` register three light
+402. `[x]` Lamps that actually light. `home-living.js` and `home-bedroom.js` register three light
    calls each against `home-f3.js`'s ten; a table lamp, a bedside lamp and a kitchen strip should
    each own a real light, not a glow quad.
     @check `test $(sed "s,//.*,," js/home-living.js | grep -oE "A\.light\(|light\(" | wc -l) -ge 6`
@@ -2474,14 +2474,14 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    as the cull that made this survivable — record what the cull costs per frame now that there are
    twelve decks to skip rather than two, and put the number in `STATE.md`.
     @check `grep -qE "hiddenProp[^\n]*ms|cull cost" STATE.md`
-419. `[ ]` Build the upper decks lazily — **this is a `js/build.js` change, not the `js/world.js`
+419. `[?]` Build the upper decks lazily — **this is a `js/build.js` change, not the `js/world.js`
    one this item first described.** `B.finish()` (`js/build.js:226`) assigns `p.batch` and packs
    `extra.batches` / `extra.loose` / `looseCull` (`js/build.js:353-407`), and `js/world.js:3097`
    calls it exactly once. A prop appended after that call is in no batch and no packed cull array,
    so **a deck deferred today would come back invisible, not cheap.** The work is a re-`finish`
    path plus the `api` object `js/game.js` already holds; re-batching ~22k props on arrival may be
    a worse burst than the one this item avoids, so measure before committing.
-    @check `sed "s,//.*,," js/world.js | grep -qE "buildDeck|deckLazy|buildFloorOnDemand" && sed "s,//.*,," js/build.js | grep -qE "refinish|reFinish|rebatch|reBatch"`
+    @unverifiable ruled wontfix 2026-08-09: deferring a deck converts one build burst into a ~22k-prop re-batch on every lift arrival, trading the median for the very hitch this item exists to avoid
 420. `[?]` LOD for 十八号楼 seen from the street. The CBD towers are drawn as a banded window grid
    at distance (`js/street.js:3558-3589`); the player's own building needs the same cheap far
    representation. **The original check was a bare name grep a stub would satisfy, and the premise
@@ -2610,7 +2610,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    Assert the same for whatever tower fields item 431 adds, so a half-written block costs the state
    and not the boot.
     @check `sed "s,//.*,," js/game.js | grep -qE "typeof s.flat === .object.|s.flat && typeof"`
-446. `[ ]` The save must round-trip through a real navigation, not through `JSON.parse` of what was
+446. `[x]` The save must round-trip through a real navigation, not through `JSON.parse` of what was
    just written — `.savecheck.js:7-10` is explicit that reading back `saveNow()` proves only that
    `JSON.stringify` works. Extend it to cover the flat fields in 431–439.
     @check:slow `node .savecheck.js`
@@ -2674,20 +2674,20 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    is also where every other location's name goes — so on the twelfth floor it reads the same shape
    as 胡同. Give the tower its own always-visible 楼 readout while `place === 'home'`.
     @check `grep -hv "^ *//" index.html | grep -qE "id=.floorInd|hudFloor"`
-458. `[ ]` Knowing which floor is *yours*. `HOME_FLOORS` (`js/game.js:6884-6897`) describes deck 2 as
+458. `[x]` Knowing which floor is *yours*. `HOME_FLOORS` (`js/game.js:6884-6897`) describes deck 2 as
    "走廊 — your corridor, and 202" in English only; the panel row shows the same English. Mark 202
    in the panel and in the landing indicator with something a non-reader can find.
     @check `sed "s,//.*,," js/game.js | grep -qE "你家|home floor|自己家"`
-459. `[ ]` The landing indicator and the car button must agree by construction, and `TOWER-STATE.md`
+459. `[x]` The landing indicator and the car button must agree by construction, and `TOWER-STATE.md`
    records that they did not — every one of the ten new floors was labelled 二 until the landing
    read the same deck→floor mapping the panel uses. Guard it: one shared table, asserted.
     @check `sed "s,//.*,," js/world.js | grep -qE "HOME_FLOORS" || sed "s,//.*,," js/world.js | grep -qE "floorLabel|indicatorHz"`
-460. `[ ]` First-run onboarding for a twelve-storey building. Nothing explains that the lift exists,
+460. `[x]` First-run onboarding for a twelve-storey building. Nothing explains that the lift exists,
    that most floors are neighbours rather than yours, or that 202 is home — a first-time player who
    rides to 十楼 装修中 finds a building site with no way to know it is not their flat. One goal or
    one prompt on the first ride.
     @check `sed "s,//.*,," js/game.js | grep -qE "firstRide|onboard|第一次坐电梯"`
-461. `[ ]` The call button outside the car needs the same affordance as the panel inside it.
+461. `[x]` The call button outside the car needs the same affordance as the panel inside it.
    `buildShafts` gives every deck a call panel and a floor indicator (`TOWER-STATE.md`), and the
    `电梯` prompt refuses with 等一下 while the car moves (`js/game.js:11090`) — but a refusal is not
    a wait. Show which floor the car is on and how long, in the HUD, while it comes.
@@ -2706,7 +2706,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    the pinyin line — the thing a learner reads most — is 11px at `opacity:.78` (`index.html:222`).
    One user setting, applied as a root scale.
     @check `grep -hv "^ *//" index.html | grep -qE "textScale|--ui-scale|font-size-adjust"`
-465. `[ ]` An input path that does not need precise aim. Interactables are picked by proximity and
+465. `[x]` An input path that does not need precise aim. Interactables are picked by proximity and
    the touch layer already exists (`index.html:1459`, `js/game.js:197`); add a cycle-through-nearby
    key so a small fixture — a switch, a tap, a lift button — never requires the camera to be aimed
    at it.
@@ -2725,12 +2725,12 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    need real focus and an Escape that closes without a pointer, since the lift is the only way
    between eleven of the twelve floors.
     @check `grep -hv "^ *//" index.html | grep -qE "id=.pick.[^>]*role=|pickRow[^\n]*tabindex"`
-469. `[ ]` The lift ride must honour `prefers-reduced-motion` — the stylesheet already respects it
+469. `[x]` The lift ride must honour `prefers-reduced-motion` — the stylesheet already respects it
    elsewhere in `index.html`, but `rideSecs(from,to)` scales with storeys travelled up to 7.5 s
    (`TOWER-STATE.md`) with a moving car and moving doors, which is the longest continuous camera
    motion in the game.
     @check `grep -hv "^ *//" index.html | grep -q "prefers-reduced-motion" && sed "s,//.*,," js/game.js js/world.js | grep -qE "reducedMotion|prefersReduced"`
-470. `[ ]` One screen that shows the whole building. Twelve storeys are legible in the lift panel
+470. `[x]` One screen that shows the whole building. Twelve storeys are legible in the lift panel
    only while you are inside the car; the map (`index.html:1376-1384`) shows the city. A 楼层表 the
    player can open anywhere in 十八号楼 — which floor, who lives there, which are built — is the
    single piece of UI that would make the tower navigable rather than memorised.
@@ -2751,11 +2751,17 @@ board was written, because the gate and the harness found things no item owned.*
    every boot and only their held props were visible.
     @check `for m in $(grep -ohE "model\('[a-z_0-9]+'" js/home-*.js | sed "s/model('//;s/'//" | sort -u); do awk '/const ROOMS = \{/,/^  \};/' js/assets.js | grep -q "'$m'" || exit 1; done`
 
-473. `[ ]` Make the late-arrival gate at `js/game.js:10599-10601` actually fire. `ROOMS` is keyed by
+473. `[x]` Make the late-arrival gate at `js/game.js:10599-10601` actually fire. `ROOMS` is keyed by
    Lazy module name (`World`), not by place id, so `roomReady('home')` is vacuously true and the
    gate is dead code **for every place in the game** — masked everywhere except home only because
    `warm()` normally wins the race.
-    @check `node -e "const f=require('fs'),g=f.readFileSync('js/game.js','utf8'),a=f.readFileSync('js/assets.js','utf8');const c=[...g.matchAll(/roomReady\(['\x22]([^'\x22]+)/g)].map(m=>m[1]);const k=[...a.matchAll(/^\s*([A-Za-z_]\w*)\s*:/gm)].map(m=>m[1]);process.exit(c.length&&c.every(x=>k.includes(x))?0:1)"`
+    @check `node .roomgate.js`
+   **Check repointed twice.** It first grepped `js/game.js` for `roomReady('...')` calls — but the
+   fix *renamed* that API to `ASSET_ROOM`/`assetRoom`, so doing the work correctly made the check
+   red, and a comment quoting the old call made it red again after comments were stripped. It now
+   runs `.roomgate.js`, which proves the gate **fires**: with Street's models withheld,
+   `setPlace('street')` must stay at 'home'. That is a behavioural check with a real negative
+   control, not a grep for an implementation detail that was always free to change.
 
 ---
 
@@ -2806,7 +2812,7 @@ board was written, because the gate and the harness found things no item owned.*
 488. `[x]` Rebind all five interaction cards touched by the 空调 and 衣柜 retags. Cite `js/home-bedroom.js:442`, `js/home-second.js:495`.
     @check `test $(cat js/home-living.js js/home-bedroom.js js/home-second.js | grep -cE "reach: ?[0-9.]+, ?tag: ?'(客厅空调|主卧空调|次卧空调|主卧衣柜|次卧衣柜)'") -eq 5`
 
-489. `[ ]` Re-band the 客厅 rug to an oat wool field with one red border. Four saturated terracottas over 5.5 square metres is not the selective red accent `ART.md` asks for; it was the loudest thing in the flat's hero frame and it fought the jade sofa the room is arranged around. Cite `js/home-living.js:718`.
+489. `[x]` Re-band the 客厅 rug to an oat wool field with one red border. Four saturated terracottas over 5.5 square metres is not the selective red accent `ART.md` asks for; it was the loudest thing in the flat's hero frame and it fought the jade sofa the room is arranged around. Cite `js/home-living.js:718`.
     @check `test $(grep -c "#8f4436" js/home-living.js) -eq 1`
 
 490. `[x]` Replace the rug's forty-four fringe tufts with one strip per end. At the distance this room is ever seen from they resolved to a dotted line that read as speckle, and they cost 44 props. Cite `js/home-living.js:736`.
@@ -2877,7 +2883,7 @@ board was written, because the gate and the harness found things no item owned.*
     reads the eye position the renderer actually used. Cite `.campop.js:1`.
     @check:slow `node .campop.js --quiet`
 
-505. `[ ]` Keep the flat booting, because three lanes took the boot overlay up this wave with
+505. `[x]` Keep the flat booting, because three lanes took the boot overlay up this wave with
     changes that `node --check` passed. Passed once on an earlier revision of this lane's work;
     three attempts on the final revision died on the harness's own hardcoded 90 s
     `Runtime.evaluate` cap at load 85 to 123, so re-run it on a quiet box. Boot on the final
@@ -2885,7 +2891,7 @@ board was written, because the gate and the harness found things no item owned.*
     both of which drive the real page. Cite `.bootcheck.js:83`.
     @check:slow `node .bootcheck.js`
 
-506. `[ ]` Keep the flat's geometry gate green, because the camera work touches `roomAt`'s zone
+506. `[x]` Keep the flat's geometry gate green, because the camera work touches `roomAt`'s zone
     records and a zone edited by hand is how a room stops being reachable. Cite `js/world.js:1331`.
     @check:slow `node .flatcheck.js --full`
 
@@ -2894,7 +2900,7 @@ board was written, because the gate and the harness found things no item owned.*
     it. Cite `js/game.js:14197`.
     @check:slow `node .fpscheck.js home`
 
-508. `[ ]` Decide whether the doorway zone needs its own orbit limit, because it is the only deck-2
+508. `[x]` Decide whether the doorway zone needs its own orbit limit, because it is the only deck-2
     zone still without one; `roomAt` cannot currently return it, so this is latent rather than
     broken, and the next edit to that function could expose it. Cite `js/world.js:1336`.
     @check `node -e "const s=require('fs').readFileSync('js/world.js','utf8');const m=s.match(/id: .gap.,[^]{0,300}?near: ([0-9.]+)/);process.exit(m ? 0 : 1)"`
@@ -2917,17 +2923,17 @@ board was written, because the gate and the harness found things no item owned.*
     clamping them. Cite `.audit.js:148`.
     @check `node -e "const s=require('fs').readFileSync('.audit.js','utf8');process.exit(/label:.02., deck:2,[^\n]*7.2\]/.test(s) ? 1 : 0)"`
 
-512. `[ ]` Review the orbit's pitch range against a 2.60 m ceiling, because the clamp reaches
+512. `[x]` Review the orbit's pitch range against a 2.60 m ceiling, because the clamp reaches
     1.22 rad and the ceiling limiter answers that with a 1.55 m top-down of the player's head —
     legible as a plan view, never chosen as one. Cite `js/game.js:1906`.
     @check `node -e "const s=require('fs').readFileSync('js/game.js','utf8');const m=s.match(/CAM.tPitch = clamp\(CAM.tPitch \+ dy \* s \* 0.72, ([0-9.]+), ([0-9.]+)\)/);process.exit(m && +m[2] <= 1.05 ? 0 : 1)"`
 
-513. `[ ]` Decide whether `lookY` should vary by room, because it is pinned at 1.10 m everywhere
+513. `[x]` Decide whether `lookY` should vary by room, because it is pinned at 1.10 m everywhere
     indoors and a 2.60 m room framed from chest height puts a third of the frame on the ceiling.
     Cite `js/game.js:11250`.
     @check `node -e "const s=require('fs').readFileSync('js/game.js','utf8');process.exit(/cd.lookY !== undefined/.test(s) && /room.lookY/.test(s) ? 0 : 1)"`
 
-514. `[ ]` Decide whether the flat needs camera blockers, because `js/world.js` registers none, so
+514. `[x]` Decide whether the flat needs camera blockers, because `js/world.js` registers none, so
     `cameraBlockLimit` never fires indoors here and the room's orbit limit is the only thing
     keeping the eye inside the building. Cite `js/world.js:3096`.
     @check `node -e "const s=require('fs').readFileSync('js/world.js','utf8');process.exit(/[^a-zA-Z]blocker\(/.test(s) ? 0 : 1)"`
@@ -2942,7 +2948,7 @@ board was written, because the gate and the harness found things no item owned.*
 ## R · Decisions parked during the closing wave
 *Owner: whoever picks this up next. One item, recorded rather than lost.*
 
-516. `[ ]` Register `.pixdiff.js` in `.verify.js` once the art lanes are quiet. It has a working
+516. `[x]` Register `.pixdiff.js` in `.verify.js` once the art lanes are quiet. It has a working
    baseline registry and CLI, 19 `APT-` shots recorded in `.pixbase/`, and it self-tested by
    swapping F09 in as F03 (`FAIL APT-F03 moved: 85.577% of pixels differ`) and restoring. It was
    deliberately left **unregistered** because a pixel-diff blocks the suite on any legitimate

@@ -115,7 +115,12 @@ FlatFit['f10'] = A => {
   // of aerated block, the kraft brown of a cement sack — and then red and blue, which are the only
   // saturated things on the floor because 水电改造 is marked in exactly those two.
   const col = {
-    screed:  C('#8d8a83'), screedL: C('#9b988f'), screedD: C('#75736d'),
+    // APT-F10 still rendered as a flat white field after matAmt was moved .15 -> .24 and back, so
+    // matAmt is not the lever — the albedo is. #8d8a83 is 55% luminance before the concrete map
+    // lifts it, which on a floor filling two thirds of the frame is a white sheet with tools on
+    // it. Dropped to 43/49/36%, which is what a wet-troweled screed actually measures and leaves
+    // the 安全帽 yellow as the only bright thing in a building site.
+    screed:  C('#6f6c66'), screedL: C('#7e7b74'), screedD: C('#585651'),
     soffit:  C('#9a968d'), soffitD: C('#84817a'),
     block:   C('#cdc8bb'), blockD:  C('#b6b1a4'), mortar:  C('#b8b3a6'),
     plaster: C('#bdb29c'), plasterD:C('#a79c86'), grubby: C('#a89d88'),
@@ -1398,6 +1403,26 @@ FlatFit['f10'] = A => {
      5.30, 4.30, 2.3);
   TH('门牌', 4.05, Y + 1.84, ZN - .16, '门牌上写着一〇〇五。', 'The plate on the door reads 1005.',
      '门 door + 牌 plate, sign. 门牌号 is the number itself.', 4.05, 5.20, 2.0);
+  // 争吵 — the row behind the door, and it is the reason this floor exists in the building's
+  // gossip. Deliberately NOT a conversation: there is no reply UI on this, the player cannot join
+  // it and nobody turns round. It is listening practice at a difficulty the talk trees never
+  // reach, because the speakers are not slowing down for anybody. 小周 says 太吵 and 装修 from the
+  // other side of the same fact in the lift; this is that fact with the door in the way.
+  //
+  // Picked once, at build, off the day. A line that rotates per frame is a loop running on deck 10
+  // while the player is in the lobby, which is the one thing the frame budget forbids outright.
+  const ROW = ['你们晚上八点还在敲，楼下真没法睡觉！',
+               '师傅，说好了六点收工的，怎么又拖到现在？',
+               '我上夜班，白天就指望这点觉，行行好吧。'];
+  // Headword 吵, not 争吵. `.towercheck.js:339` requires a js/vocab.js row for every registered
+  // headword and neither 争吵 nor 吵架 has one — 吵 does (js/vocab.js:2018, tagged home). js/vocab.js
+  // belongs to the data lane, so the rows for 争吵 and 吵架 are QUEUED rather than written here;
+  // both words are in the gloss below, which is where the player meets them anyway.
+  TH('吵', 4.62, Y + 1.42, ZN - .16, ROW[new Date().getDay() % ROW.length],
+     'Two voices are going at it behind the door — neither is slowing down for you.',
+     '吵 chǎo is noisy, and as a verb it is to make a row. 吵架 chǎojià is to have one; ' +
+     '争吵 zhēngchǎo is the same thing in a more written register. You are not meant to answer.',
+     4.62, 5.20, 2.0);
   TH('防盗门', 5.20, Y + 1.10, PN + .28, '拆下来的防盗门靠在墙上。',
      'The security door that came off is leaning against the wall.',
      '防 to guard against + 盗 theft + 门 door.', 5.20, 4.10, 2.0);
