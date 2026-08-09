@@ -77,7 +77,7 @@
   'use strict';
 
   try { Glyphs.need('北京新天地大超市购物中心步行街奶茶店书店花店面包房' +
-                    '微信支付宝今日特价鲜绿植珍珠可回收物其他垃圾单车停放'); } catch (_) {}
+                    '扫码支付可刷卡今日特价鲜绿植珍珠可回收物其他垃圾单车停放'); } catch (_) {}
 
   // ---------------------------------------------------------------- the lane, measured
   const LX0 = 41.60;            // the mouth, on the far building line
@@ -140,11 +140,13 @@
     // this district is actually against (street-retail.js:12).
     const pay = (x, y, z, nn) => {
       const yw = yawOf(nn), o = { hard: true, gloss: .30 };
+      // GENERIC. The brief named two real companies' marks and the brief was wrong — see the
+      // same correction in js/street-retail.js. Nothing in this game carries a real brand.
       box(x - .30, y, z, .17, .17, .010, C('#1aa34a'), o);
-      glyphs(x - .30, y, z + nn * .012, yw, '微信',
+      glyphs(x - .30, y, z + nn * .012, yw, '扫码',
         { size: .054, gap: .014, vertical: true, color: C('#f2f7f2'), mode: 1, lift: .004 });
       box(x - .07, y, z, .17, .17, .010, C('#1678ff'), o);
-      glyphs(x - .07, y, z + nn * .012, yw, '支付宝',
+      glyphs(x - .07, y, z + nn * .012, yw, '可刷卡',
         { size: .044, gap: .010, vertical: true, color: C('#f0f5ff'), mode: 1, lift: .004 });
     };
 

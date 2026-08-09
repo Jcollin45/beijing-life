@@ -32,7 +32,7 @@ ticket, it is a wish.
 | A1 | **卷帘门 housings.** Every Chinese shop has a roller-shutter box over its glass. The parade's units have shutters; 老李面馆, 幸福超市 and 五金电器 have none — their glass just stops. | `street.js` | the box sits under the fascia band (top ≤ 3.12) and clear of the 超市 awning at 3.16 | a 20–26 cm housing across each of the three, visible in an elevation shot from z 3.05 |
 | A2 | **门帘 / strip curtains** on 超市 and 五金. 面馆 has one and it is the best thing on that frontage. | `street-retail.js` | `alpha` ≤ .35, and no collider — they hang inside the unreachable strip | both doorways read as passable from 10 m |
 | A3 | **营业时间 plates.** A small hours plate beside every door. Six shops, six plates. | `street-retail.js` | `mode: 1`, **no glow** — text is geometry, the plate is not lit | readable at `reach`, and the hours match `HOURS` in `street-retail.js:60` |
-| A4 | **支付 decals** — 微信支付 / 支付宝 stickers on every glass door. The single most characteristic thing on a Chinese shopfront and the district has none. | `street-retail.js`, `street-lane.js` | flat quads on the glass, `mode: 1` no glow, ≤ 18 cm | at least two per door on all eleven named shops |
+| A4 | **支付 decals** — payment stickers on every glass door. The single most characteristic thing on a Chinese shopfront and the district has none. **GENERIC MARKS ONLY: 扫码支付 / 可刷卡 / 移动支付.** ~~微信支付 / 支付宝~~ — this ticket originally named two real companies' trademarks, both lanes implemented it correctly, and seven of them shipped live before the gate caught it. Nothing in this game carries a real brand; that is why the billboard says 可乐, the shared bikes wear an invented operator's colour and the office plate says 文化传媒. | `street-retail.js`, `street-lane.js` | flat quads on the glass, `mode: 1` no glow, ≤ 18 cm, **no real brand, ever** | at least two per door on all eleven named shops, and `grep -r '微信\|支付宝' js/` returns nothing |
 | A5 | **营业执照 / 健康证** frames inside the glass — the pair of framed certificates every shop hangs where the street can see them. | `street-retail.js` | behind the pane, so no `ob`, no tag | visible through the glass on 面馆, 超市, 药店, the lane's four |
 | A6 | **A-boards (立牌)** on the pavement — the folding sign with today's price on it. | `street-retail.js`, `street-lane.js` | needs a collider **only** if it stands outside the unreachable strip; measure each | three in the alley, two in the lane, none narrowing a run below 3.35 m |
 | A7 | **Awnings for 面馆 and 五金.** Only 超市 has one, so its stretch reads richer than its neighbours' for no reason in the fiction. | `street.js` | front edge ≤ z ez+1.30 (the 超市's), top clear of the blade band at 2.83 | three awnings on the alley, all with the same projection |
@@ -84,6 +84,44 @@ ticket, it is a wish.
 |---|---|---|---|
 | **E1** | **A frame-rate number for the district, before and after this list.** Nothing in today's work has been measured for cost; see `memory: frame-rate-measurement` for the flag that can actually time a frame and the two traps that lie. | harness | a before/after ms figure at the same camera on the live site, recorded here |
 | E2 | **An emissive-quad census.** Count `mode: 1, glow > 0` props in the street scene now, and after. The ceiling is documented but the current number is not. | harness | a number in this file |
+
+### E1 · answered 2026-08-09 — no regression, but the district misses 60 fps and always did
+
+Three runs each, quiet machine, exclusive gate slot, `ANGLE Metal Renderer: Apple M3`.
+
+| | med ms | p95 ms | props |
+|---|---|---|---|
+| before (`2a9c079`) | 9.7 / 9.3 / 8.8 → **9.3** | 22.9 / 20.0 / 19.6 → **20.0** | 15,848 |
+| after (live, `b07a3900`) | 9.7 / 8.9 / 9.1 → **9.1** | 22.9 / 19.5 / 18.9 → **19.5** | 16,740 |
+
+**This wave cost nothing measurable** — both deltas are inside run-to-run spread. But **p95 ~19–20 ms
+against a 16.7 ms budget is ~50 fps at the 95th percentile** while the median reports >100 fps. That
+is pre-existing and still open.
+
+Two things this cost to learn, both worth keeping:
+- **The installed Google Chrome headless is wedged on this machine** (hangs at init, never binds
+  devtools). Every harness works again with
+  `export CHROME=".../ms-playwright/chromium_headless_shell-1234/chrome-mac-arm64/../chrome-headless-shell-mac-arm64/chrome-headless-shell"`.
+- **`.fpscheck.js:347` and `.audit.js:2194` hardcode `http://127.0.0.1:8000`**, so neither can
+  measure the live site the project's own rule requires. Both need a URL env var.
+
+### E2 · answered 2026-08-09 — +13 emissive quads
+
+Counted on the built scene (`scene.props`, `mode === 1 && glow > 0`), **pinned to 19:00** — `glow` is
+rewritten by the day/night tick, so an unpinned census is not reproducible (it drifted 1,680→1,684
+across two runs before pinning). A source grep cannot answer this: it conflates the `glow:` material
+property with `build.js`'s `glow()` floor-pool helper, and misses every procedural loop.
+
+| | props | mode 1 | **emissive** |
+|---|---|---|---|
+| before (`2a9c079`) | 15,848 | 2,838 | **1,719** |
+| after (live) | 16,740 | 3,295 | **1,732** |
+| delta | +892 | +457 | **+13** |
+
+**Budget respected.** The +457 new `mode: 1` props carry no glow — the cheap form A3/A4/D3/D5 ask
+for. D2 confirmed as one quad per block, not per unit. L4 added zero emissive.
+
+> Full gate report, including a REJECT on item A4, in `.reports/GATE-storefronts.md`.
 
 ---
 

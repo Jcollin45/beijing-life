@@ -310,13 +310,20 @@
           { size: .052, gap: .005, color: INK, mode: 1, gloss: .08, lift: .004 }));
     }
 
-    // 支付 — the 微信支付 / 支付宝 stickers on the glass, which are the single most characteristic
-    // thing on a Chinese shopfront and the thing the district had none of. Stacked rather than
-    // side by side: the clear slots left on these three doors are 20 cm wide and none of them
-    // takes a pair across. 16 cm each, under the 18 cm the brief allows.
+    // 支付 — the payment stickers on the glass, which are the single most characteristic thing on
+    // a Chinese shopfront and the thing the district had none of. Stacked rather than side by
+    // side: the clear slots left on these three doors are 20 cm wide and none of them takes a
+    // pair across. 16 cm each, under the 18 cm the brief allows.
+    //
+    // GENERIC, and that is not a style choice. The brief (STOREFRONT-UPGRADES.md A4) named two
+    // real companies' marks; this lane implemented the brief correctly and the brief was wrong.
+    // Nothing in this game carries a real brand — 可乐 on the billboard, an invented operator's
+    // colour on the shared bikes, 文化传媒 on the office plate. 扫码支付 and 可刷卡 say exactly
+    // what the sticker says without being anybody's trademark, and 扫码 is already a word the
+    // street teaches.
     function payDecals(x, y, z, ry = 0) {
       const [sn, cs] = fwd(ry), o = ry ? { ry } : {};
-      for (const [oy, c, t] of [[.10, C('#2f9c4f'), '微信支付'], [-.10, C('#2f7fc4'), '支付宝']]) {
+      for (const [oy, c, t] of [[.10, C('#2f9c4f'), '扫码支付'], [-.10, C('#2f7fc4'), '可刷卡']]) {
         box(x, y + oy, z, .16, .16, .008, c, { hard: true, mode: 1, gloss: .12, ...o });
         box(x + sn * .006, y + oy + .022, z + cs * .006, .075, .054, .005, C('#f4f7f4'),
           { hard: true, mode: 1, gloss: .10, ...o });
