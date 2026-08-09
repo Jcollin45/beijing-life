@@ -415,7 +415,36 @@ collider.
 district: **2 → 3** (+z alley, −x parade, **+x west footway**). Corners: **0 → 1** — the corner
 block turns from 五金电器 on the hutong to 药店 and 银行 on the road, and it cost no new mass.
 
-### Wave 3 — the 步行街 is NOT built, and here is the case against it
+### Wave 3 — the 步行街 is BLOCKED, and this is the measurement that blocks it
+
+Attempted, and it does not fit. Not "expensive" — **there is nowhere on the reachable far pavement
+to put its mouth.** A pedestrian lane opening off `x = 41.60` has to be entered from the `road`
+zone, which ends at `x = 39.80`; the body reaches `x = 39.50`. So the mouth has to be a gap in the
+parade with 4 m or more of clear pavement in front of it. Every metre of that pavement between
+z −13.5 and 13.5 is already spoken for:
+
+| z | what stands there |
+|---|---|
+| −13.5 .. −5.60 | 北京新天地, a full-height mall entrance 7.20 m wide (`street.js:2991`) |
+| −5.68 .. −3.68 | the 商务区 metro mouth, its stair pit and canopy (`street.js:3067`, x to 40.15) |
+| −3.68 .. −1.20 | **2.48 m clear — the only gap, and too narrow for a lane** |
+| −1.20 .. 0.00 | the bike rank, five machines (`street-civic.js:503`) |
+| 0.68 | the 保安 podium |
+| 2.20 | 公司, the office threshold |
+| 3.24 | the courier's trolley and parcels |
+| 4.30, 11.90 | hedge planters |
+| 6.10 | the camera mast |
+| 6.50 | 大超市 |
+| 8.60 | 公示栏 |
+
+Freeing 4 m means moving the metro mouth or the mall entrance first — each a larger job than the
+lane, and the metro's furniture is built across two files against the shell's mouth position.
+
+**So the lane is not deferred on taste. It is blocked on ground.** The route to it, if it is ever
+wanted, is: move the 商务区 metro mouth south to z −11.60 *first* (Part 4.1 already proposes this,
+for its own reasons), which opens z −5.68 .. −1.20 to 4.48 m — and then the lane fits.
+
+### The case against it anyway, which stands
 
 It was designed to solve finding 1, and finding 1 is now 5 doors on that line, not 7. What it
 would still cost:
