@@ -330,6 +330,12 @@
       { hard: true, mode: 1, alpha: .70, gloss: G.glass, tag: '购物中心' }), .16);
     emis(box(MX, 2.12, MZ + MN * 1.10, 5.22, 3.86, .05, WARMI,
       { hard: true, mode: 1, glow: .08, tag: '购物中心' }), .42);
+    // ---- A13, the mall's half. Its slot is narrower than 大超市's: the pane's back face is at
+    // -6.9975 and the GLASSD frame's front at -7.010, so 12.5 mm to work in. One dark box inset
+    // 0.45 m off the glass, plus a floor line, which is what turns a shopping centre's glazing
+    // into two storeys of atrium rather than one sheet. No new emissive here either.
+    box(MX, 3.08, MZ + MN * 1.205, 4.82, 4.65, .008, C('#1a1f26'), { hard: true, gloss: .12 });
+    box(MX, 2.30, MZ + MN * 1.213, 4.60, .09, .006, C('#454e59'), { hard: true, gloss: .16 });
     for (const s of [-1, 1]) {
       box(MX + s * .82, 1.50, MZ + MN * 1.34, .10, 2.88, .14, col.gold,
         { hard: true, gloss: G.metal, tag: '购物中心' });
@@ -374,6 +380,24 @@
       { hard: true, mode: 1, alpha: .62, gloss: G.glass, tag: '大超市' }), .14);
     emis(box(SX, 2.10, SZ + SN * .98, 8.40, 3.60, .05, COOLI,
       { hard: true, mode: 1, glow: .07, tag: '大超市' }), .40);
+    // ---- A13 · the reveal, which is A11's own fix applied to the anchor it skipped. Before this,
+    // 9.60 m of hypermarket was a lit box: a COOLI panel at glow .07 straight behind a .62-alpha
+    // pane, read from four metres away in a 6.80 m lane instead of across a 9.84 m carriageway.
+    //
+    // Same construction as street.js:2965 and the same two constraints. **No new emissive** — the
+    // lane is at 102 quads and this is plain geometry. And it has to live in the 3 cm slot between
+    // the pane's back face at -11.565 and the lit panel's front at -11.595, because every surface
+    // in this renderer is single-sided and there is no building a box you can see the inside of.
+    //
+    // Inset 0.45 m on every side of the glass, so what is left of the COOLI reads as the light
+    // spilling round a dark interior rather than as the interior itself.
+    box(SX, 2.10, SZ + SN * 1.012, 8.00, 3.30, .010, C('#1d232a'), { hard: true, gloss: .12 });
+    // Aisle ends and a shelf line, in the last free millimetres in front of the reveal. Plain
+    // geometry costs nothing here and it is the difference between a dark panel and a shop.
+    for (const s of [-2.7, -.9, .9, 2.7])
+      box(SX + s, 1.90, SZ + SN * 1.026, .16, 2.60, .008, C('#39424c'), { hard: true, gloss: .14 });
+    for (const y of [1.15, 2.35])
+      box(SX, y, SZ + SN * 1.026, 7.60, .10, .008, C('#4a545f'), { hard: true, gloss: .14 });
     box(SX, 5.05, SZ + SN * 1.10, 9.20, 1.10, .26, REDD, { hard: true, gloss: .26, tag: '大超市' });
     emis(box(SX, 4.46, SZ + SN * 1.24, 9.00, .08, .03, C('#f2e4c4'),
       { hard: true, mode: 1, glow: .12, tag: '大超市' }), .85);
