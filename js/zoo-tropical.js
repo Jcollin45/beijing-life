@@ -102,6 +102,25 @@ const ZooTropical = Lazy('ZooTropical', () => {
     }
   }
 
+  function butterflyAirlockSide(x, r, start) {
+    const gateZ=5.8, half=.75;
+    const runs=[[r[2],gateZ-half],[gateZ+half,r[3]]];
+    let part=start;
+    for(const [z0,z1] of runs) {
+      const z=(z0+z1)/2, d=z1-z0;
+      box(x,.32,z,.10,.64,d,col.brickD,
+        tagged('T04-butterfly/G'+String(part++).padStart(2,'0'),'蝴蝶',
+          {hard:true,mat:'brick',matScale:.5,matAmt:.30}));
+      box(x,1.28,z,.08,1.28,d,col.glass,
+        tagged('T04-butterfly/G'+String(part++).padStart(2,'0'),'蝴蝶',
+          {hard:true,mode:1,alpha:.30,gloss:.85}));
+      solid(x-.05,x+.05,z0,z1);
+    }
+    box(x,2.12,gateZ,.10,.18,half*2,col.steel,
+      tagged('T04-butterfly/G'+String(start+8).padStart(2,'0'),'蝴蝶',
+        {hard:true,gloss:.48}));
+  }
+
   function board(st, color) {
     const [x, y, z] = st.position, focus = st.focus;
     const dx = focus[0] - x, dz = focus[1] - z;
@@ -120,19 +139,25 @@ const ZooTropical = Lazy('ZooTropical', () => {
   }
 
   function bench(o) {
-    const [x,,z] = o.at, ry = o.faceYaw || 0, T = tagged(o.id, '长椅');
+    const [x,,z] = o.at, ry = o.faceYaw || 0;
     const s = Math.sin(ry), c = Math.cos(ry);
+    let part = 1;
     for (let i = -2; i <= 2; i++)
       box(x, .48 + i * .07, z - c * i * .025, 1.65, .07, .14, col.trunk,
-        { ...T, hard:true, ry, mat:'wood', matScale:.48, matAmt:.36 });
+        tagged(o.id + '/G' + String(part++).padStart(2,'0'), '长椅',
+          { hard:true, ry, mat:'wood', matScale:.48, matAmt:.36 }));
     for (const q of [-.68,.68])
-      box(x + c * q, .24, z - s * q, .08, .48, .08, col.steel, { ...T, hard:true, ry });
-    const fx = x + s * .95, fz = z + c * .95;
-    markThing(thing('长椅', x, .72, z, '在温室的长椅上休息一会儿。',
+      box(x + c * q, .24, z - s * q, .08, .48, .08, col.steel,
+        tagged(o.id + '/G' + String(part++).padStart(2,'0'), '长椅', { hard:true, ry }));
+    // Stand on the quiet outer side of each niche. The old front focus coincided with TO07's
+    // inflated bin body at the west bench; this one remains inside the niche's actor inset.
+    const fx = x - s * .48, fz = z - c * .48;
+    const th=markThing(thing('长椅', x, .72, z, '在温室的长椅上休息一会儿。',
       'Rest on the greenhouse bench for a moment.',
       '长椅 is a long public bench.', { focus:[fx,fz], reach:1.9 }), 'TH-' + o.id);
-    const hx=Math.abs(Math.cos(ry))*.86+Math.abs(Math.sin(ry))*.30;
-    const hz=Math.abs(Math.sin(ry))*.86+Math.abs(Math.cos(ry))*.30;
+    th.seat={at:[x,z],yaw:ry,seatY:.48};th.stand=[fx,fz];
+    const hx=Math.abs(Math.cos(ry))*.86+Math.abs(Math.sin(ry))*.12;
+    const hz=Math.abs(Math.sin(ry))*.86+Math.abs(Math.cos(ry))*.12;
     solid(x-hx,x+hx,z-hz,z+hz);
   }
 
@@ -151,12 +176,14 @@ const ZooTropical = Lazy('ZooTropical', () => {
     // Steel greenhouse roof, translucent enough that the indoor lighting still reads.
     flat(0, H, 0, bounds.x1 - bounds.x0, bounds.z1 - bounds.z0, col.sky,
       { blueprintId:'TR01-roof-glass', mode:1, alpha:.24, gloss:.88 });
+    let roofBeam = 1;
     for (let x = -12; x <= 12; x += 2)
       box(x, H - .06, 0, .075, .12, 20, col.steel,
-        { hard:true, blueprintId:'TR02/G' + (x + 12), gloss:.52 });
+        { hard:true, blueprintId:'TR02/G' + String(roofBeam++).padStart(2,'0'), gloss:.52 });
+    roofBeam = 1;
     for (let z = -9; z <= 9; z += 3)
       box(0, H - .08, z, 26, .10, .075, col.steelL,
-        { hard:true, blueprintId:'TR03/G' + (z + 9), gloss:.52 });
+        { hard:true, blueprintId:'TR03/G' + String(roofBeam++).padStart(2,'0'), gloss:.52 });
     // Warm/cool alternating grow lights keep the foliage dimensional after sunset.
     for (const [x,z,c] of [[-6,-6,[.85,.95,.78]],[6,-6,[.72,.90,1]],[-6,6,[.85,.95,.78]],
                             [6,6,[.72,.90,1]],[0,0,[1,.84,.62]]]) {
@@ -170,14 +197,21 @@ const ZooTropical = Lazy('ZooTropical', () => {
       const r = room.rect;
       if (room.id === 'T00-lobby') continue;
       if (room.id === 'T06-atrium') {
-        rectFlat(room.id + '/G01', r, col.soil, { mode:17, gloss:.06 });
+        rectFlat(room.id + '/G00', r, col.soil, { mode:17, gloss:.06 });
         continue;
       }
       const ground = room.id === 'T01-crocodile' || room.id === 'T02-river-aquarium' ?
         col.waterD : room.id === 'T04-butterfly' ? col.leafD : col.soil;
-      rectFlat(room.id + '/G01', r, ground,
+      rectFlat(room.id + '/G00', r, ground,
         { mode: room.id === 'T01-crocodile' || room.id === 'T02-river-aquarium' ? 16 : 17,
           gloss: room.id === 'T01-crocodile' || room.id === 'T02-river-aquarium' ? .72 : .07 });
+      if (room.id === 'T04-butterfly') {
+        // A true west-to-east walk-through exhibit: two 1.5 m airlock cuts, solid glass only
+        // beside them, and no full-room collider. The route zone below overlaps both public loops.
+        butterflyAirlockSide(r[0],r,1);
+        butterflyAirlockSide(r[1],r,5);
+        continue;
+      }
       const f = room.publicFocus;
       let side = 'z0';
       if (f[0] < r[0]) side='x0'; else if (f[0] > r[1]) side='x1';
@@ -225,15 +259,20 @@ const ZooTropical = Lazy('ZooTropical', () => {
     for (let i=0;i<13;i++) {
       const a=i/13*Math.PI*2, rad=.62-i*.025;
       ball(-6.1+Math.cos(a)*rad,.22+i*.012,5.7+Math.sin(a)*rad,
-        .25,.10,.18,i%2?col.snake:col.gold,tagged('T03-snake/G'+i,'蛇',{gloss:.12}));
+        .25,.10,.18,i%2?col.snake:col.gold,
+        tagged('T03-reptile/G'+String(10+i).padStart(2,'0'),'蛇',{gloss:.12}));
     }
-    capsule(-6.0,.95,6.4,.13,3.8,.13,col.trunk,{rx:Math.PI/2,rz:.18,tag:'蛇'});
-    ball(-3.8,.24,5.5,.70,.20,.28,col.lizard,tagged('T03-lizard/G01','蜥蜴'));
+    capsule(-6.0,.95,6.4,.13,3.8,.13,col.trunk,
+      tagged('T03-reptile/G23','蛇',{rx:Math.PI/2,rz:.18}));
+    ball(-3.8,.24,5.5,.70,.20,.28,col.lizard,tagged('T03-reptile/G24','蜥蜴'));
+    let reptilePart=25;
     for (const s of [-1,1]) for (const z of [-.32,.32])
       capsule(-3.8+s*.58,.18,5.5+z,.48,.09,.10,col.lizard,
-        { rz:Math.PI/2+s*.24,ry:z,tag:'蜥蜴' });
-    taper(-4.7,.24,5.5,.90,.18,.16,col.lizard,{rz:Math.PI/2,tag:'蜥蜴'});
-    rocks(-3.8,6.7,'T03-rock');
+        tagged('T03-reptile/G'+String(reptilePart++).padStart(2,'0'),'蜥蜴',
+          { rz:Math.PI/2+s*.24,ry:z }));
+    taper(-4.7,.24,5.5,.90,.18,.16,col.lizard,
+      tagged('T03-reptile/G29','蜥蜴',{rz:Math.PI/2}));
+    rocks(-3.8,6.7,'T03-reptile',30);
 
     // T04 walk-through butterfly greenhouse. Only the butterflies move; the foliage uses mode 15.
     for (let i=0;i<15;i++) {
@@ -268,11 +307,12 @@ const ZooTropical = Lazy('ZooTropical', () => {
       { hard:true,blueprintId:'T05-mesh',tag:'果蝠',mode:1,alpha:.16,gloss:.15 });
   }
 
-  function rocks(x,z,id) {
+  function rocks(x,z,id,start=1) {
     for (let i=0;i<4;i++) {
       const a=i*1.8, r=.25+i*.08;
       ball(x+Math.cos(a)*.48,.16+r*.25,z+Math.sin(a)*.40,r,r*.55,r*.8,
-        i%2?col.rock:col.rockL,{blueprintId:id+'/G'+i,gloss:.05});
+        i%2?col.rock:col.rockL,
+        {blueprintId:id+'/G'+String(start+i).padStart(2,'0'),gloss:.05});
     }
   }
   function tropicalPlant(x,z,h) {
@@ -298,13 +338,49 @@ const ZooTropical = Lazy('ZooTropical', () => {
         for(const s of [-1,1]) cyl(x,.82,z+s*.62,.05,1.64,col.steel,{tag:'导游图'});
         box(x,1.55,z, .10,1.75,1.55,col.teal,{hard:true,tag:'导游图',blueprintId:o.id});
         glyphs(x-.06,2.12,z,o.yaw,'热带馆导游图',{size:.14,color:col.white,mode:1,tag:'导游图'});
+        const yaw=o.yaw||0,nx=Math.sin(yaw),nz=Math.cos(yaw),tx=Math.cos(yaw),tz=-Math.sin(yaw);
+        const point=(u,v,d=.064)=>[x+tx*u+nx*d,v,z+tz*u+nz*d];
+        const panel=point(0,1.48,.058);
+        box(panel[0],panel[1],panel[2],1.25,.94,.014,col.cream,
+          {hard:true,ry:yaw,tag:'导游图',mode:1,gloss:.10});
+        const bw=bounds.x1-bounds.x0,bd=bounds.z1-bounds.z0,sx=.044,sy=.039;
+        const mapU=wx=>(wx-(bounds.x0+bounds.x1)/2)*sx;
+        const mapY=wz=>1.48+(wz-(bounds.z0+bounds.z1)/2)*sy;
+        const mapRect=(r,fill,d=.070)=>{
+          const q=point(mapU((r[0]+r[1])/2),mapY((r[2]+r[3])/2),d);
+          return box(q[0],q[1],q[2],Math.max(.018,(r[1]-r[0])*sx),
+            Math.max(.014,(r[3]-r[2])*sy),.012,fill,
+            {hard:true,ry:yaw,tag:'导游图',mode:1,gloss:.08});
+        };
+        S.paths.forEach(p=>mapRect(p.rect,col.pathD,.071));
+        const roomColor={T00:col.gold,T01:col.croc,T02:col.blue,T03:col.orange,
+          T04:col.pink,T05:col.purple,T06:col.leaf};
+        const roomLabel={T00:'入口',T01:'鳄',T02:'鲟',T03:'蛇',T04:'蝶',T05:'蝠',T06:'中庭'};
+        S.rooms.forEach(room=>{
+          const stem=room.id.slice(0,3),q=mapRect(room.rect,roomColor[stem]||col.leaf,.074);
+          const p=point(mapU((room.rect[0]+room.rect[1])/2),
+            mapY((room.rect[2]+room.rect[3])/2),.082);
+          glyphs(p[0],p[1],p[2],yaw,roomLabel[stem]||room.label,
+            {size:stem==='T06'?.043:.050,gap:.004,color:col.white,mode:1,tag:'导游图'});
+        });
+        const here=point(mapU(S.spawn.at[0]),mapY(S.spawn.at[1]),.086);
+        ball(here[0],here[1],here[2],.045,.045,.018,col.red,{tag:'导游图',mode:1,gloss:.16});
+        const out=point(mapU(S.exit.at[0]),mapY(S.exit.at[1]),.086);
+        box(out[0],out[1],out[2],.075,.055,.016,col.orange,
+          {hard:true,ry:yaw,tag:'导游图',mode:1});
+        const north=point(.48,1.91,.083);
+        glyphs(north[0],north[1],north[2],yaw,'北',{size:.065,gap:0,color:col.red,mode:1,tag:'导游图'});
+        const legend=point(-.33,1.02,.083);
+        glyphs(legend[0],legend[1],legend[2],yaw,'红点:您在这里  橙色:出口',
+          {size:.045,gap:.002,color:col.charcoal,mode:1,tag:'导游图'});
         markThing(thing('导游图',x,1.6,z,'看看热带馆导游图。','Look at the Tropical House map.',
           '六个展区围绕雨林中庭。',{focus:[-9.1,-2.2],reach:2.1}), 'TH-'+o.id);
       } else if (o.type === 'waterfall') {
         const sc=o.scale;
         box(x,y,z,sc[0],sc[1],sc[2],col.rockD,{hard:true,blueprintId:o.id});
         for(let i=0;i<7;i++) moving(box(x+(i-3)*.20,y,z-.34, .15,sc[1]*.90,.035,col.waterL,
-          {hard:true,mode:1,alpha:.66,glow:.03}),o.id+'/G'+i,i*.4,.05);
+          {hard:true,mode:1,alpha:.66,glow:.03}),
+          o.id+'/G'+String(i+1).padStart(2,'0'),i*.4,.05);
         waterGlows.push(glow(M.trs(x,.025,z-.75,0,2.4,1,1.8),col.waterL,.22,false));
       } else if (o.type === 'tropical-tree') {
         capsule(x,o.height*.38,z,.22,o.height*.76,.22,col.trunk,{blueprintId:o.id,gloss:.14});
@@ -330,7 +406,7 @@ const ZooTropical = Lazy('ZooTropical', () => {
 
     // The waterfall's receiving pool and the planted atrium are the visual centre of the loop.
     flat(0,.018,6.8,3.4,2.6,col.water,{mode:16,gloss:.82,blueprintId:'T06-pool'});
-    rocks(-.75,6.9,'T06-rock-west'); rocks(.85,6.5,'T06-rock-east');
+    rocks(-.75,6.9,'T06-atrium',20); rocks(.85,6.5,'T06-atrium',24);
     for(const [x,z,h] of [[-.6,-6.7,2.6],[.65,-4.8,2.2],[-.55,-1.5,2.8],[.55,2.2,2.3]])
       tropicalPlant(x,z,h);
 
@@ -370,6 +446,8 @@ const ZooTropical = Lazy('ZooTropical', () => {
     id:p.id, x0:p.rect[0], x1:p.rect[1], z0:p.rect[2], z1:p.rect[3],
     light:[0,H-.5,0], wet:1.35,
   }));
+  walk.push({id:'T04-butterfly-walk-through',x0:1,x1:9,z0:3,z1:8.5,
+    light:[4.5,H-.5,5.8],wet:1.55});
   const rooms=S.rooms;
   return B.finish({
     tick,setNight,RX:13,RZ:10,H,OUT:{x:S.exit.arrival[0],z:S.exit.arrival[1],yaw:S.exit.yaw},

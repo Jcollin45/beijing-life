@@ -147,9 +147,9 @@ const Zoo = Lazy('Zoo', () => {
   // to the rock pile rather than anything like a collision surface: it only has to be near enough
   // that a body standing on it looks like it is standing on the rock.
   const HILL = { x: 0, z: 0, rx: 2.9, rz: 2.4, h: 1.95 };
-  function liftAt(x, z) {
+  function liftAt(x, z, currentLift = 0) {
     if (typeof expansion !== 'undefined' && expansion && expansion.liftAt) {
-      const e = expansion.liftAt(x, z);
+      const e = expansion.liftAt(x, z, currentLift);
       if (e) return e;
     }
     const u = (x - HILL.x) / HILL.rx, v = (z - HILL.z) / HILL.rz;
@@ -171,6 +171,7 @@ const Zoo = Lazy('Zoo', () => {
     for (const s2 of [-1, 1])
       capsule(cx + s2 * .30, h * .70, cz + s2 * .16, .07, h * .24, .07, col.trunk,
         { rz: s2 * .58, gloss: G.wood });
+    const crownStart=B.props.length;
     ball(cx, h * .665, cz, 1.24, .38, 1.24, col.leafU, { gloss: .08, mode: 15 });
     const RING = [[.715, 1.00, 5, .82, [1, 3, 3]], [.845, 1.14, 6, .90, [3, 0, 1]],
                   [.965, .76, 4, .78, [2, 0, 2]], [1.055, 0, 1, .72, [2, 2, 2]]];
@@ -182,6 +183,9 @@ const Zoo = Lazy('Zoo', () => {
         ball(cx + Math.sin(a) * rad, h * ry0 + ((li % 3) - 1) * .11, cz + Math.cos(a) * rad,
           cr, cr * .78, cr, T5[tone[i % 3]], { gloss: .12, mode: 15, ry: a });
       }
+    B.props.slice(crownStart).forEach(p=>{p.zooLodMax=34;});
+    const crownProxy=ball(cx,h*.82,cz,1.72,1.42,1.72,col.leafU,{gloss:.08,mode:15});
+    crownProxy.zooLodMin=34;
     solid(cx - .28, cx + .28, cz - .28, cz + .28);
     shade(cx, cz, 3.0, 3.0, .26);
   }
@@ -262,10 +266,11 @@ const Zoo = Lazy('Zoo', () => {
     const hz = Math.abs(Math.sin(ry)) * .84 + Math.abs(Math.cos(ry)) * .38;
     solid(cx - hx, cx + hx, cz - hz, cz + hz);
     shade(cx, cz, 2.0, 1.0, .24);
-    thing('长椅', cx + Math.sin(ry) * .9, .95, cz + Math.cos(ry) * .9,
+    const th=thing('长椅', cx + Math.sin(ry) * .9, .95, cz + Math.cos(ry) * .9,
       '坐在长椅上休息一下。', 'Sit on the bench and rest a while.',
       '长 long + 椅 chair. 休息 is to rest.',
       { focus: [cx + Math.sin(ry) * 1.2, cz + Math.cos(ry) * 1.2], reach: 1.9 });
+    th.seat={at:[cx,cz],yaw:ry,seatY:.48};th.stand=th.focus.slice();
   }
 
   // 垃圾桶 a bin. Placed on the centre of a run of benches rather than in the gap between two
@@ -1032,35 +1037,38 @@ const Zoo = Lazy('Zoo', () => {
     // counter this close to a wall has to face away from it.
     {
       const TX = GX + 6.4, TZ = -RZ + 1.5;
-      box(TX, 1.35, TZ, 3.20, 2.70, 2.20, col.render,
+      box(TX, 1.35, TZ, 3.20, 2.70, 1.50, col.render,
         { tag: '售票处', hard: true, gloss: G.paint, ...MAT.plast });
-      box(TX, 2.82, TZ, 3.70, .24, 2.70, col.roofR,
+      box(TX, 2.82, TZ, 3.70, .24, 2.10, col.roofR,
         { tag: '售票处', hard: true, gloss: .20, ...MAT.roof });
       // the window itself: an opening in the +z face with a counter under it
-      box(TX, 1.30, TZ + 1.12, 1.60, .90, .10, col.black, { tag: '售票处', hard: true, gloss: .12 });
-      box(TX, .84, TZ + 1.20, 1.90, .10, .34, col.concL,
+      box(TX, 1.30, TZ + .77, 1.60, .90, .10, col.black, { tag: '售票处', hard: true, gloss: .12 });
+      box(TX, .84, TZ + .88, 1.90, .10, .25, col.concL,
         { tag: '售票处', hard: true, gloss: .22, ...MAT.concF });
-      box(TX, 2.32, TZ + 1.14, 2.60, .40, .10, col.blueSign,
+      box(TX, 2.32, TZ + .79, 2.60, .40, .10, col.blueSign,
         { tag: '售票处', hard: true, gloss: .26 });
-      for (const g of glyphs(TX, 2.32, TZ + 1.21, 0, '售票处',
+      for (const g of glyphs(TX, 2.32, TZ + .86, 0, '售票处',
           { size: .21, gap: .06, color: col.white, mode: 1, tag: '售票处' })) litten(g, .9);
       // 票价 on a small board beside the window, which is the number the word is for
-      box(TX - 2.05, 1.55, TZ + 1.05, .70, 1.00, .07, col.white,
+      box(TX - 2.05, 1.55, TZ + .72, .70, 1.00, .07, col.white,
         { tag: '售票处', hard: true, gloss: .20 });
-      glyphs(TX - 2.05, 1.82, TZ + 1.10, 0, '门票',
+      glyphs(TX - 2.05, 1.82, TZ + .77, 0, '门票',
         { size: .13, gap: .04, color: col.charcoal, mode: 1, tag: '售票处' });
-      glyphs(TX - 2.05, 1.52, TZ + 1.10, 0, '十五元',
+      glyphs(TX - 2.05, 1.52, TZ + .77, 0, '十五元',
         { size: .13, gap: .04, color: col.red, mode: 1, tag: '售票处' });
       // The light in the booth, which spills out of the hatch onto the counter and the plaza in
       // front of it. Sat at the opening rather than inside the box: the walls are single-sided
       // and a light behind them lights the back of the hut, which nobody ever sees.
-      light(TX, 1.70, TZ + 1.35, [1.00, 0.90, 0.70], .70, 3.6);
-      solid(TX - 1.7, TX + 1.7, TZ - 1.2, TZ + 1.3);
-      blocker(TX - 1.7, TX + 1.7, TZ - 1.2, TZ + 1.3, 3.2);
-      shade(TX, TZ, 4.0, 3.0, .30);
-      thing('售票处', TX, 1.90, TZ + 1.30, '买一张门票，十五块。', 'One ticket, fifteen yuan.',
+      light(TX, 1.70, TZ + .95, [1.00, 0.90, 0.70], .70, 3.6);
+      // The authored anchor stays exact, while the body ends behind the south-loop centreline.
+      // The earlier 2.5 m-deep collider swallowed the whole route despite the booth itself only
+      // needing a shallow staffed room against the boundary wall.
+      solid(TX - 1.7, TX + 1.7, TZ - .85, TZ + .80);
+      blocker(TX - 1.7, TX + 1.7, TZ - .85, TZ + .80, 3.2);
+      shade(TX, TZ, 4.0, 2.4, .30);
+      thing('售票处', TX, 1.90, TZ + .90, '买一张门票，十五块。', 'One ticket, fifteen yuan.',
         '售 to sell + 票 ticket + 处 place. 门票 is the admission ticket itself.',
-        { focus: [TX, TZ + 2.4], reach: 2.2 });
+        { focus: [TX, TZ + 1.9], reach: 2.2 });
     }
 
     // ---- 导游图 the map board, on the other side of the gate path
@@ -1071,7 +1079,7 @@ const Zoo = Lazy('Zoo', () => {
       for (const s of [-1, 1])
         cyl(MPX + s * 1.18, .82, MPZ, .06, 1.64, col.steelD,
           { tag: '导游图', gloss: G.metal });
-      box(MPX, 1.78, MPZ, 3.05, 2.02, .10, col.white,
+      const mapBacking = box(MPX, 1.78, MPZ, 3.05, 2.02, .10, col.white,
         { tag: '导游图', hard: true, gloss: .22 });
       box(MPX, 1.68, MPZ - .06, 2.79, 1.60, .02, col.grassD,
         { tag: '导游图', hard: true, mode: 1 });
@@ -1085,34 +1093,56 @@ const Zoo = Lazy('Zoo', () => {
         { tag: '导游图', hard: true, mode: 1, glow: .06 }), .70);
       const mapLamp = light(MPX, 2.66, MPZ - .34, [1.00, .88, .67], .48, 2.8);
 
+      const mapPlan = window.ZOO_BLUEPRINT, sb = mapPlan.site.bounds;
       const mapW = 2.52, mapH = 1.04, mapY = 1.64;
-      const mapX = x => MPX - x / (RX * 2) * mapW;
-      const mapZ = z => mapY + z / (RZ * 2) * mapH;
-      const mapLine = (x, z, w, d) => box(mapX(x), mapZ(z), MPZ - .078,
-        w / (RX * 2) * mapW, d / (RZ * 2) * mapH, .012, col.cream,
+      const mapX = x => MPX - (x - (sb.x0 + sb.x1) / 2) / (sb.x1 - sb.x0) * mapW;
+      const mapZ = z => mapY + (z - (sb.z0 + sb.z1) / 2) / (sb.z1 - sb.z0) * mapH;
+      const mapLine = (x, z, w, d, color = col.cream, depth = .078) =>
+        box(mapX(x), mapZ(z), MPZ - depth,
+        Math.max(.016, w / (sb.x1 - sb.x0) * mapW),
+        Math.max(.012, d / (sb.z1 - sb.z0) * mapH), .012, color,
         { tag: '导游图', hard: true, mode: 1 });
 
-      // The same circulation hierarchy as the ground: perimeter, cross paths, entrance fork.
-      mapLine(0, -13.2, 40, 2.4); mapLine(0, -4.0, 38, 2.6);
-      mapLine(0, 5.5, 38, 2.6); mapLine(0, 14.4, 40, 2.6);
-      mapLine(-19, 0, 3, 26); mapLine(19, 0, 3, 26);
-      mapLine(-6.5, .7, 2.4, 10); mapLine(4, -4.0, 2.2, 19);
-      mapLine(GX - 2.55, -6.8, 2.2, 5.8); mapLine(GX + 2.55, -6.8, 2.2, 5.8);
+      // Core rectangles and every r2 public segment are projected from the canonical plan.
+      for (const q of mapPlan.preservation.existingCorePaths) {
+        const r = q.rect;
+        mapLine((r.x0+r.x1)/2,(r.z0+r.z1)/2,r.x1-r.x0,r.z1-r.z0);
+      }
+      for (const p of mapPlan.paths.filter(q => q.access === 'public'))
+        for (let i=1;i<p.centerline.length;i++) {
+          const a=p.centerline[i-1],b=p.centerline[i];
+          if (Math.abs(a[0]-b[0]) < 1e-6)
+            mapLine(a[0],(a[1]+b[1])/2,p.width,Math.abs(a[1]-b[1]));
+          else if (Math.abs(a[1]-b[1]) < 1e-6)
+            mapLine((a[0]+b[0])/2,a[1],Math.abs(a[0]-b[0]),p.width);
+        }
 
-      // Habitat blocks share the colors used on their rails, bays and interpretation panels.
+      // Original and expansion habitats share their district/accent identities.
       for (const h of HABITATS) {
         const p = PENS[h.key], cx = (p.x0 + p.x1) / 2, cz = (p.z0 + p.z1) / 2;
-        box(mapX(cx), mapZ(cz), MPZ - .092, (p.x1 - p.x0) / (RX * 2) * mapW,
-          (p.z1 - p.z0) / (RZ * 2) * mapH, .014, h.accent,
+        box(mapX(cx), mapZ(cz), MPZ - .092, (p.x1 - p.x0) / (sb.x1 - sb.x0) * mapW,
+          (p.z1 - p.z0) / (sb.z1 - sb.z0) * mapH, .014, h.accent,
           { tag: '导游图', hard: true, mode: 1 });
         glyphs(mapX(cx), mapZ(cz), MPZ - .105, Math.PI, h.name,
           { size: .055, gap: .006, color: col.white, mode: 1, tag: '导游图' });
       }
+      const districtMap = {D1:col.blue,D2:col.purple,D3:col.green,D4:col.teal,
+        D5:col.orange,D6:col.gold,D7:col.charcoal};
+      for (const h of mapPlan.habitats) {
+        const b=h.bounds,cx=(b.x0+b.x1)/2,cz=(b.z0+b.z1)/2;
+        mapLine(cx,cz,b.x1-b.x0,b.z1-b.z0,districtMap[h.district]||col.leaf,.094);
+      }
+      for (const b of mapPlan.buildings) {
+        const f=b.footprint;
+        mapLine((f.x0+f.x1)/2,(f.z0+f.z1)/2,f.x1-f.x0,f.z1-f.z0,col.charcoal,.101);
+      }
 
-      // Gate marker and legend. Position and words make the map usable without relying on color.
-      const hereX = mapX(GX), hereY = mapZ(-RZ + 1.2);
+      // Both public gates and the legend make the map usable without relying on color.
+      const hereX = mapX(mapPlan.site.mainSpawn.at[0]), hereY = mapZ(mapPlan.site.mainSpawn.at[1]);
       box(hereX, hereY, MPZ - .112, .11, .11, .018, col.red,
         { tag: '导游图', hard: true, mode: 1 });
+      box(mapX(mapPlan.site.secondarySpawn.at[0]),mapZ(mapPlan.site.secondarySpawn.at[1]),
+        MPZ-.112,.09,.09,.018,col.red,{tag:'导游图',hard:true,mode:1});
       glyphs(MPX - .58, .96, MPZ - .08, Math.PI, '您在这里',
         { size: .075, gap: .016, color: col.white, mode: 1, tag: '导游图' });
       box(MPX - 1.15, .96, MPZ - .08, .10, .10, .015, col.red,
@@ -1139,8 +1169,13 @@ const Zoo = Lazy('Zoo', () => {
         '导游 guide + 图 map. Every park and zoo has one at the gate.',
         { focus: [-15.2, -9.0], reach: 2.0 });
       mapThing.blueprintId = 'TH-M100';
-      for (let i = mapFirst; i < B.props.length; i++)
-        if (B.props[i].tag === '导游图') B.props[i].blueprintId = 'M100-south-existing';
+      let mapPart = 1;
+      for (let i = mapFirst; i < B.props.length; i++) {
+        const p = B.props[i];
+        if (p.tag !== '导游图') continue;
+        p.blueprintId = p === mapBacking ? 'M100-south-existing' :
+          'M100-south-existing/G' + String(mapPart++).padStart(2, '0');
+      }
     }
 
     // ---- 小卖部 the kiosk, back against the south wall and serving north.
@@ -1166,29 +1201,29 @@ const Zoo = Lazy('Zoo', () => {
       box(KX, 1.86, KZ + 1.30, 3.00, .07, .90, col.redD, { tag: '小卖部', hard: true, rx: -.22,
         gloss: .22 });
       for (const s2 of [-1, 1])
-        box(KX + s2 * .85, .30, KZ + 1.50, .60, .60, .44, col.plastic,
+        box(KX + s2 * .85, .30, KZ + .85, .60, .60, .44, col.plastic,
           { tag: '小卖部', hard: true, gloss: .24 });
       box(KX, 2.16, KZ + 1.06, 2.20, .34, .09, col.white, { tag: '小卖部', hard: true, gloss: .22 });
       glyphs(KX, 2.16, KZ + 1.12, 0, '小卖部',
         { size: .18, gap: .05, color: col.red, mode: 1, tag: '小卖部' });
       // A strip light under the awning, over the counter and the crates.
       light(KX, 1.72, KZ + 1.28, [1.00, 0.92, 0.74], .65, 3.4);
-      solid(KX - 1.5, KX + 1.5, KZ - 1.1, KZ + 1.7);
-      blocker(KX - 1.5, KX + 1.5, KZ - 1.1, KZ + 1.7, 2.9);
+      solid(KX - 1.5, KX + 1.5, KZ - 1.1, KZ + 1.0);
+      blocker(KX - 1.5, KX + 1.5, KZ - 1.1, KZ + 1.0, 2.9);
       shade(KX, KZ, 3.6, 2.8, .28);
       thing('小卖部', KX, 1.70, KZ + 1.70, '在小卖部买瓶水。', 'Buy a bottle of water at the kiosk.',
         '小 small + 卖 to sell + 部 section. The kiosk in every park, station and campus.',
-        { focus: [KX, KZ + 2.8], reach: 2.2 });
+        { focus: [KX, KZ + 2.15], reach: 2.2 });
     }
 
     // The old north, west and east boundary is deliberately absent.  The expansion builder owns
     // the complete revision-2 perimeter and keeps its visible, body and camera openings aligned.
     // Trees along the paths and in the corners. Placed off the enclosure walls rather than against
     // them: a six-metre crown over a pen hides whatever is standing in it, which is the animal.
-    tree(-19.0, -9.0, 6.0); tree(-19.2, 8.4, 6.2); tree(-19.0, 13.6, 5.6);
-    tree(19.2, -9.4, 5.8); tree(19.0, 8.0, 6.0); tree(19.2, 13.4, 5.8);
-    tree(-16.2, 9.8, 5.2); tree(14.8, 10.8, 5.0); tree(13.0, 14.6, 6.0);
-    tree(-20.3, -11.8, 5.4); tree(13.6, -13.6, 5.6); tree(2.2, -8.2, 5.0);
+    tree(-21.5, -9.0, 6.0); tree(-21.6, 8.4, 6.2); tree(-21.6, 13.6, 5.6);
+    tree(21.5, -9.4, 5.8); tree(21.5, 8.0, 6.0); tree(21.6, 13.4, 5.8);
+    tree(-16.2, 9.8, 5.2); tree(14.8, 10.8, 5.0); tree(12.8, 8.2, 6.0);
+    tree(-20.3, -11.8, 5.4); tree(16.1, -9.8, 5.6); tree(2.2, -8.2, 5.0);
     // and a low hedge along the outside of the loop path, which is what separates path from lawn
     const HEDGE = [col.leafD, col.leafU, col.leafM];
     // Keep the gate, station, ticket queue and kiosk frontage visually open. The old unbroken row
@@ -1206,7 +1241,7 @@ const Zoo = Lazy('Zoo', () => {
     // Benches facing the enclosures, bins beside half of them, and the lamps. This is the layer
     // that makes the place feel visited rather than laid out, and it is the one that has to be
     // kept out of the gaps between pens — a 2 m gap with a bin in it is not a way through.
-    bench(-9.4, -5.65, 0); bench(-1.6, -14.65, 0);
+    bench(-6.5, -8.2, 0); bench(-1.6, -14.65, 0);
     bench(9.6, -14.65, 0); bench(-20.35, -2.4, Math.PI / 2);
     bench(-20.35, 3.0, Math.PI / 2); bench(20.35, -2.0, -Math.PI / 2);
     bench(-5.6, 15.15, Math.PI); bench(12.4, 15.15, Math.PI);
@@ -1245,11 +1280,11 @@ const Zoo = Lazy('Zoo', () => {
       box(MX, .016, MZ + .06 + i * .22 - i * i * .012, 1.84, .01, .055,
         i < 3 ? col.kerb : col.stoneD, { hard: true, gloss: .14 });
     for (const s of [-1, 1]) {
-      box(MX + s * 1.14, .48, MZ + .70, .16, .96, 1.80, col.conc,
+      box(MX + s * 1.10, .48, MZ + .25, .16, .96, 1.10, col.conc,
         { ...ST, hard: true, gloss: G.matte, ...MAT.conc });
-      box(MX + s * 1.14, .98, MZ + .70, .22, .07, 1.86, col.concL,
+      box(MX + s * 1.10, .98, MZ + .25, .22, .07, 1.16, col.concL,
         { ...ST, hard: true, gloss: .20, ...MAT.concF });
-      box(MX + s * 1.20, 1.30, MZ + 1.64, .13, 2.60, .13, col.steelD,
+      box(MX + s * 1.16, 1.30, MZ + .86, .13, 2.60, .13, col.steelD,
         { hard: true, gloss: G.metal, ...MAT.rail });
     }
     box(MX, 2.62, MZ + 1.06, 2.86, .12, 2.00, col.concL,
@@ -1272,11 +1307,16 @@ const Zoo = Lazy('Zoo', () => {
     // the difference between the two colours is most of what says so from the far end of the
     // plaza. Aimed at the stair head, so the treads catch it and the hole reads as a way down.
     light(MX, 2.30, MZ + .55, [0.74, 0.85, 1.00], .80, 4.6);
-    solid(MX - 2.10, MX + 1.30, MZ - .30, MZ + 1.80);
+    // Three measured bodies follow the two side rails and the stair well. The former single
+    // 3.4 × 2.1 m rectangle sealed the preserved west-loop paving and trapped the visitor route
+    // at its first waypoint even though the open centre is visibly an approach to the stairs.
+    solid(MX - 1.18, MX - .94, MZ - .30, MZ + .80);
+    solid(MX + .94, MX + 1.18, MZ - .30, MZ + .80);
+    solid(MX - .90, MX + .90, MZ - .30, MZ + .80);
     shade(MX, MZ + .6, 3.4, 2.6, .28);
     thing('地铁站', MX, 2.92, MZ - .30, '坐地铁回去吧。', "Let's take the subway back.",
       '地铁 subway + 站 stop. The line runs from here back into town.',
-      { focus: [MX + 2.05, MZ - .05], reach: 2.4 }).station = '动物园';
+      { focus: [MX + 2.0, MZ + .90], reach: 2.4 }).station = '动物园';
   }
 
   build();
@@ -1291,7 +1331,7 @@ const Zoo = Lazy('Zoo', () => {
   // eighty bamboo/grass matrices every frame; even with small angles, motion scattered across two
   // enclosures read as the whole zoo shaking. Animals and keepers now provide the living motion,
   // while the elephant enrichment keeps one slow, weighty pendulum animation.
-  function tick(t) {
+  function tick(t, player) {
     const wind = typeof Weather !== 'undefined' && Weather.now ? Weather.now.wind : .18;
     const a = Math.sin(t * .47 + .8) * (.018 + wind * .045) + Math.sin(t * .91) * .007;
     const c = Math.cos(a), s = Math.sin(a);
@@ -1307,7 +1347,7 @@ const Zoo = Lazy('Zoo', () => {
       m[12] = px + c * x - s * y; m[13] = py + s * x + c * y;
       m[14] = b[14]; m[15] = 1;
     }
-    if (expansion && expansion.tick) expansion.tick(t);
+    if (expansion && expansion.tick) expansion.tick(t, player);
   }
   function setNight(k) {
     const soft = k * k * (3 - 2 * k);
@@ -1321,7 +1361,7 @@ const Zoo = Lazy('Zoo', () => {
   }
 
   return B.finish({
-    setNight, tick, liftAt, RX: SITE_RX, RZ: SITE_RZ, OUT, PENS,
+    setNight, tick, liftAt, expansion, RX: SITE_RX, RZ: SITE_RZ, OUT, PENS,
     label: '动物园', labelK: '动物园 · the zoo',
     indoor: false, cutaway: false, near: .18, far: 1080,
     fogNear: 58, fogD: .0032, expose: .52,

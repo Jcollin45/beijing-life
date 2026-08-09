@@ -2384,6 +2384,7 @@ function hiddenAt(px, pz) {
 }
 // Tagged parts hide as one object, so a fixture never loses half of itself to the cutaway.
 function hiddenProp(p) {
+  if (p.renderHidden) return true;
   // Another floor's geometry, in a building where every floor stands in the same (x, z). `-1` and
   // `undefined` are never culled: the first is anything riding the lift car, the second is the
   // shell — the building's own envelope belongs to every deck.
@@ -6105,6 +6106,20 @@ function updateNPCs(dt, now) {
       n.yaw = n.face === undefined ? n.yaw : n.face;
       n.ground = 0; n.animGround = 0; n.wait = 0;
     }
+    // Paired family routes are a formation, not two independent patrol clocks. The child owns a
+    // fully standable route translated 0.50 m from the parent, and follows that same translation
+    // every visible frame so speed easing and independently seeded dwell times cannot pull them
+    // apart. The leader was emitted immediately before the child, so its position is current.
+    const formationLeader=n.pairedWith&&
+      (n._formationLeader||(n._formationLeader=NPCS.find(q=>q.npcId===n.pairedWith)));
+    let formationCovered=0;
+    if(n.awake&&formationLeader&&formationLeader.awake){
+      const ox=n.x,oz=n.z;
+      n.x=formationLeader.x+.50;n.z=formationLeader.z;
+      formationCovered=Math.hypot(n.x-ox,n.z-oz)/Math.max(dt,1e-4);
+      n.leg=formationLeader.leg;n.wait=formationLeader.wait;
+      n.yaw=formationLeader.yaw;n.ground=formationLeader.ground;
+    }
     n._mallOverlapMoved = n.awake && n.place === 'mall' && n.patrol
       ? mallResolveCrowdOverlap(n, dt) : 0;
     n.th.pos[0] = n.x; n.th.pos[2] = n.z;
@@ -6126,7 +6141,7 @@ function updateNPCs(dt, now) {
     const engaged = usingPerson || conversing;
     const speaking = (n.speakUntil || 0) > now;
     const talking = engaged || speaking;
-    const [tx, tz] = npcTarget(n);
+    const [tx, tz] = formationLeader ? [n.x,n.z] : npcTarget(n);
     const dx = tx - n.x, dz = tz - n.z, d = Math.hypot(dx, dz);
     let want = 0, faceYaw = n.yaw;
 
@@ -6139,7 +6154,9 @@ function updateNPCs(dt, now) {
     // pose and the cushion cannot drift apart as the speed envelope settles.
     const arrival = n.seatCandidate||n.mallFoodQueued ? .055
       : !leg && n.place === 'mall' && n.patrol && !n.mallEventActive&&!n.mallFormationActive ? .50 : .30;
-    if (engaged || (n.wait > 0)) {
+    if (formationLeader) {
+      want=formationLeader.ground;faceYaw=formationLeader.yaw;
+    } else if (engaged || (n.wait > 0)) {
       // A stop can become occupied after arrival (including on the very first mall frame, before
       // the grid had an awake snapshot). A patroller gives up the optional dwell immediately;
       // conversations and timed service errands remain authoritative and are never displaced.
@@ -6251,8 +6268,10 @@ function updateNPCs(dt, now) {
     // meant the gait phase kept advancing after an NPC had stopped moving while that speed eased
     // away. Freezing phase on release keeps whichever foot was planted on the floor and lets the
     // stride shrink into the idle instead of taking two sliding steps in place.
-    let covered = 0;
-    if (n._mallOverlapMoved > 0) {
+    let covered = formationLeader ? formationCovered : 0;
+    if (formationLeader) {
+      // Position was copied from the leader above; only gait telemetry continues below.
+    } else if (n._mallOverlapMoved > 0) {
       // Personal-space correction already spent this frame's displacement budget. Do not add a
       // full route step on top of it; that was the only path left to a visible double-speed pop.
       covered = n._mallOverlapMoved / Math.max(dt, 1e-4);
@@ -6330,7 +6349,7 @@ function updateNPCs(dt, now) {
     // ramp, while lift is the room's actual floor under this person's feet. Computing lift here,
     // before posing, removes the old one-frame delay on every stair edge.
     const nextLift = n.place === 'mall' && n.mallFloor > 1 ? Mall.deckY(n.mallFloor)
-      : scene.liftAt ? scene.liftAt(n.x, n.z) : 0;
+      : scene.liftAt ? scene.liftAt(n.x, n.z,n.lift||0) : 0;
     if (dt > 0) {
       // `ground` is the collision controller's speed and is allowed to stop immediately when a
       // counter or another person consumes the step.  A body is not.  Drive the skeleton from a
@@ -14117,7 +14136,10 @@ function startUse(th) {
   }
   // Doing anything else gets you out of the chair, so the seated state and the pose cannot disagree:
   // `act` belongs to the new action from here on.
-  if (sitting && !def.cabinSit) sitting = null;
+  if (sitting && !def.cabinSit) {
+    if(sitting.stand){P.x=sitting.stand[0];P.z=sitting.stand[1];P.vx=P.vz=0;P.speed=0;P.ground=0;}
+    sitting = null;
+  }
   $('#doing .dz').textContent = def.zh;
   $('#doing .dp').textContent = def.py + ' · ' + def.en;
   $('#doing').classList.add('on');
@@ -14143,6 +14165,9 @@ function stopUse(finished) {
     ? { at:[act.at[0], act.at[1]], yaw:act.yaw,
         seatY:act.seatY === undefined ? .50 : act.seatY }
     : null;
+  const localSeat=finished&&(place==='zoo'||place==='zoo_tropical')&&th.seat&&act&&act.at&&
+    act.type==='sit'?{at:[act.at[0],act.at[1]],yaw:act.yaw,
+      seatY:act.seatY===undefined?.48:act.seatY,stand:(th.stand||th.focus).slice()}:null;
   const fix = FIXTURE[th.hz];
   let spoke = null;             // [zh, tr] if a person answered you, which replaces the message
   if (def.mallRide) {
@@ -14159,6 +14184,13 @@ function stopUse(finished) {
     const pose = { type:'sit', at:[P.x, P.z], yaw:P.yaw, seatY:mallSeat.seatY };
     sitting = { hz:th.hz, at:[P.x, P.z], yaw:P.yaw, aisle:P.x,
                 mall:true, pose };
+  }
+  if(localSeat){
+    P.x=localSeat.at[0];P.z=localSeat.at[1];P.vx=P.vz=0;P.speed=0;P.ground=0;
+    if(localSeat.yaw!==undefined)P.yaw=localSeat.yaw;
+    const pose={type:'sit',at:[P.x,P.z],yaw:P.yaw,seatY:localSeat.seatY};
+    sitting={hz:th.hz,at:[P.x,P.z],yaw:P.yaw,aisle:P.x,local:true,
+      stand:localSeat.stand,pose};
   }
   if (finished && endedKind === 'sleep') wakeMotionAt = performance.now();
   // Interrupted halfway into the chair — you never sat down, so you are not sitting.
@@ -14206,7 +14238,9 @@ function stopUse(finished) {
     // The sink empties by however much you actually did, not to zero from any starting point —
     // 饺子 for four and a bowl of soup no longer leave the same sink behind them.
     if (def.washUp) flat.dishes = 0;
-    if (th.hz === '垃圾桶') flat.trash = 0;
+    // Only the apartment bin empties the apartment's persistent rubbish meter. Public bins in
+    // the zoo and Tropical House have their own local actions and must not clean the flat remotely.
+    if (place === 'home' && th.hz === '垃圾桶') flat.trash = 0;
     if (th.hz === '植物') flat.dry = 0;
     // Take the next shirt off the rail and hang up the one you had on — and the one that came off
     // goes on the pile, which is where laundry comes from.
@@ -14358,6 +14392,8 @@ function stopUse(finished) {
   if (def.pay) money = Math.max(0, money + def.pay);
   // 403. The switch belongs to the room the body is standing in, not to the building.
   if (def.light) { lightsOn[lightKey(place, room)] = !roomLit(place, room); }
+  if (def.accessibleRoute && scene.expansion && scene.expansion.toggleAccessibleRoute)
+    scene.expansion.toggleAccessibleRoute();
 
   // ---- shopping. Taking something off a shelf only moves it into the basket; the till is
   // where it turns into money and into food in the fridge at home.
@@ -14681,6 +14717,9 @@ function stopUse(finished) {
     act = { ...sitting.pose, kind:'sit', startedAt:performance.now(),
             hz:sitting.hz, target:th.pos };
   }
+  if((place==='zoo'||place==='zoo_tropical')&&sitting&&sitting.local){
+    act={...sitting.pose,kind:'sit',startedAt:performance.now(),hz:sitting.hz,target:th.pos};
+  }
   // The call button. Somebody comes, which is the whole of what a call button is.
   if (def.ringBell) crewAnswerBell();
   if (def.cabinEquip) {
@@ -14780,6 +14819,7 @@ function frame(now) {
       // front while you are already moving.
       CAM.tYaw = P.yaw;
     }
+    if(sitting.stand){P.x=sitting.stand[0];P.z=sitting.stand[1];P.vx=P.vz=0;P.speed=0;P.ground=0;}
     sitting = null; act = null;
   }
   // Empty and exhausted both slow you down; it is the one hard consequence of neglect.
@@ -14816,6 +14856,9 @@ function frame(now) {
       : scene.clampMove(P.x, P.z, P.x + mx, P.z + mz, 0.30);
     P.x = nx; P.z = nz;
   }
+  // Zoo r2 has raised public surfaces at the lake pavilion and conservation bridge. Keep the
+  // player's floor/camera on their ramps/lifts just as NPC liftAt does.
+  if (place === 'zoo' && scene.liftAt) P.lift = scene.liftAt(P.x, P.z,P.lift||0);
   // ---- the hop.
   //
   // Integrated after the horizontal move and before the gait, because the gait needs to know
@@ -15673,7 +15716,8 @@ function frame(now) {
   // share one footprint and eleven of them must not draw. Outdoors neither is true, and asking
   // the question thirty thousand times to be told no thirty thousand times was most of a
   // millisecond a frame. `drawDeck` and `hideX/hideZ` are both set once a frame, above.
-  const anyHidden = drawDeck >= 0 || hideX !== 0 || hideZ !== 0;
+  const anyHidden = drawDeck >= 0 || hideX !== 0 || hideZ !== 0 ||
+    !!(scene.expansion && scene.expansion.renderChunks);
   // ---- the depth pass, batched.
   //
   // A different visibility test from the one below — against the light's box, not the camera —

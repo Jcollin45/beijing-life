@@ -321,7 +321,11 @@ const Build = (() => {
         // Mode 1 is the renderer's pane/emitter material. Requiring a tag keeps the grouping local
         // to one authored fixture; untagged steam, haze and decorative translucency keep the exact
         // loose draw order they had before.
-        const alphaBatchable = translucent && (p.mode || 0) === 1 && !!p.tag;
+        // `alphaGroup` lets a deliberately unified unpickable layer (for example the zoo's
+        // switchable accessible-route overlay) share the same safe local ordering without
+        // pretending to be an interaction tag.
+        const alphaGroup = p.tag || p.alphaGroup;
+        const alphaBatchable = translucent && (p.mode || 0) === 1 && !!alphaGroup;
         if (translucent && !alphaBatchable) { p.batch = null; continue; }
         const list = alphaBatchable ? alphaBatches : batches;
         const map = alphaBatchable ? alphaByKey : byKey;
@@ -329,7 +333,7 @@ const Build = (() => {
         // enormous static box/ball batches would make one changing car invalidate thousands of
         // cached facade and paving visibility tests every frame.
         const key = (p.dynamic ? 'dynamic|' : 'static|') +
-          (alphaBatchable ? 'alpha|' + p.tag + '|' : '') +
+          (alphaBatchable ? 'alpha|' + alphaGroup + '|' : '') +
           (p.ch ? 'ch|' : '') + (p.mesh || 'box') + '|' + (p.mode || 0) + '|' +
           (p.round === undefined ? 'd' : p.round) + '|' + (p.bevel === undefined ? 'd' : p.bevel) +
           '|' + (p.tex ? texId(p.tex) : 0) + '|' + (p.mat ? texId(p.mat) : 0) +
@@ -453,7 +457,7 @@ const Build = (() => {
         pick(origin, dir, skip) {
           let bestT = Infinity, best = null, bestProp = null;
           for (const p of props) {
-            if (!p.ob || (skip && skip(p))) continue;
+            if (!p.ob || p.renderHidden || (skip && skip(p))) continue;
             const t = hitBox(origin, dir, p.ob);
             if (t === null || t >= bestT) continue;
             bestT = t; best = p.tag || null; bestProp = p;
