@@ -105,7 +105,10 @@ const CampusInteriors = (() => {
       s.fixtureId=f.id;
     };
     const realLight = (x,y,z,temp=3800,power=.72,radius=3.0) => {
-      if (liveLights++ >= 10) return;
+      // Keep every authored room luminaire available. The main renderer already ranks all scene
+      // lights by player distance and submits only the nearest eight to the shader, so truncating
+      // this list during construction made late-authored rooms dark without saving GPU work.
+      if (liveLights++ >= 48) return;
       const warm=clamp((4200-temp)/1700,0,1);
       lights.push(B.light(x,y,z,[1,.90+.07*(1-warm),.76+.19*(1-warm)],power,radius));
     };
@@ -179,10 +182,18 @@ const CampusInteriors = (() => {
           prop(`${room.id}/${side}`,mid,y,fixed,len,h,th,finish.wall,o));
         const s=vertical?solid(fixed-th/2,fixed+th/2,s0,s1):solid(s0,s1,fixed-th/2,fixed+th/2);
         s.partitionId=`${room.id}/${side}`;
-        // Split trim follows the same authored openings as the wall, so it never bridges a door.
-        vertical?
-          prop(`${room.id}/${side}/SKIRT`,fixed,.065,mid,th+.035,.13,len,finish.trim):
-          prop(`${room.id}/${side}/SKIRT`,mid,.065,fixed,len,.13,th+.035,finish.trim);
+        // Split skirting and a shallow two-step ceiling reveal follow the same authored openings
+        // as the wall, so the finish never bridges a door. The layered profile makes the room
+        // perimeter read as constructed architecture instead of raw intersecting boxes.
+        if(vertical){
+          prop(`${room.id}/${side}/SKIRT`,fixed,.065,mid,th+.035,.13,len,finish.trim,{round:.008});
+          prop(`${room.id}/${side}/CROWN-A`,fixed,H-.055,mid,th+.050,.11,len,finish.trim,{round:.008});
+          prop(`${room.id}/${side}/CROWN-B`,fixed,H-.125,mid,th+.030,.035,len,'M-ACOUSTIC',{round:.006});
+        } else {
+          prop(`${room.id}/${side}/SKIRT`,mid,.065,fixed,len,.13,th+.035,finish.trim,{round:.008});
+          prop(`${room.id}/${side}/CROWN-A`,mid,H-.055,fixed,len,.11,th+.050,finish.trim,{round:.008});
+          prop(`${room.id}/${side}/CROWN-B`,mid,H-.125,fixed,len,.035,th+.030,'M-ACOUSTIC',{round:.006});
+        }
       }
       // An open leaf and a labelled lintel show where the omitted wall segment is.
       for(const door of (room.doors||[]).filter(q=>q.side===side)){
@@ -190,7 +201,7 @@ const CampusInteriors = (() => {
         let leafX=dx,leafZ=dz;
         if(vertical){leafZ=dz-door.width/2;leafX=dx+(side==='west'?1:-1)*door.width*.39;}
         else{leafX=dx-door.width/2;leafZ=dz+(side==='south'?1:-1)*door.width*.39;}
-        prop(door.id,leafX,1.05,leafZ,door.width*.78,2.10,.07,'M-OAK-DARK',{ry:yaw+Math.PI/2});
+        prop(door.id,leafX,1.05,leafZ,door.width*.78,2.10,.07,'M-OAK-DARK',{ry:yaw+Math.PI/2,round:.012,bevel:.006});
         const frameMat=finish.trim||accent,post=.075;
         if(vertical){
           prop(`${door.id}/FRAME-A`,dx,1.08,dz-door.width/2-post/2,.13,2.16,post,frameMat);
@@ -205,6 +216,11 @@ const CampusInteriors = (() => {
         prop(`${door.id}/VISION`,leafX,1.48,leafZ,door.width*.20,.54,.078,'M-GLASS',{ry:yaw+Math.PI/2,alpha:.42});
         const [hx,hz]=rotated(leafX,leafZ,door.width*.27,-.055,yaw+Math.PI/2);
         prop(`${door.id}/HANDLE`,hx,1.00,hz,.20,.035,.035,'M-STAINLESS',{ry:yaw+Math.PI/2});
+        const [kx,kz]=rotated(leafX,leafZ,0,-.039,yaw+Math.PI/2);
+        prop(`${door.id}/KICK`,kx,.19,kz,door.width*.62,.28,.012,'M-STAINLESS',{ry:yaw+Math.PI/2,round:.006});
+        const [cx,cz]=rotated(leafX,leafZ,door.width*.13,-.045,yaw+Math.PI/2);
+        prop(`${door.id}/CLOSER`,cx,1.94,cz,door.width*.28,.055,.035,'M-STEEL-DARK',{ry:yaw+Math.PI/2,round:.010});
+        prop(`${door.id}/THRESHOLD`,dx,.018,dz,vertical?.16:door.width+.12,.035,vertical?door.width+.12:.16,'M-BRASS',{round:.006});
         const label=room.label.length>12?room.label.slice(0,12):room.label;
         glyphs(dx,2.28,dz,yaw+(side==='south'||side==='west'?0:Math.PI),label,
           {size:.105,gap:.022,color:C0('M-SCREEN'),mode:1,tag:door.id,lift:.014});
@@ -217,10 +233,12 @@ const CampusInteriors = (() => {
       // A visible under-frame, separate crowned cushion and inset back pad keep the chair from
       // reading as two perpendicular slabs.  Every part remains inside the declared footprint.
       localBox(f,0,ground+.37,0,w*.88,.12,d*.76,'M-STEEL-DARK',{round:.018,bevel:.012});
-      localBox(f,0,ground+.47,-d*.03,w,.16,d*.84,material,{mode:7,round:.065,gloss:.045});
-      localBox(f,0,ground+.70,d*.38,w*.94,.48,.075,'M-STEEL-DARK',{round:.026});
-      localBox(f,0,ground+.70,d*.345,w*.82,.34,.09,material,{mode:7,round:.055,gloss:.045});
-      localBox(f,0,ground+.49,-d*.405,w*.82,.025,.025,material,{mode:7,round:.012});
+      // Blueprint yaw zero means the sitter faces local +z.  Keep the back at -z so authored
+      // chair directions, workstation screens and room sightlines all share that convention.
+      localBox(f,0,ground+.47,d*.03,w,.16,d*.84,material,{mode:7,round:.065,gloss:.045});
+      localBox(f,0,ground+.70,-d*.38,w*.94,.48,.075,'M-STEEL-DARK',{round:.026});
+      localBox(f,0,ground+.70,-d*.345,w*.82,.34,.09,material,{mode:7,round:.055,gloss:.045});
+      localBox(f,0,ground+.49,d*.405,w*.82,.025,.025,material,{mode:7,round:.012});
       for(const dx of [-w*.38,w*.38])for(const dz of [-d*.32,d*.32])
         localBox(f,dx,ground+.20,dz,.042,.40,.042,'M-STEEL-DARK',{round:.010,bevel:.008});
     }
@@ -231,6 +249,18 @@ const CampusInteriors = (() => {
       for(const dx of [-w*.42,w*.42])for(const dz of [-d*.36,d*.36])
         localBox(f,dx,y+(h-.14)/2,dz,.052,h-.14,.052,'M-STEEL-DARK',{round:.012});
       localBox(f,0,y+.055,0,w*.78,.055,d*.70,'M-STEEL-DARK',{round:.018});
+    }
+    function renderSideTable(f,w,h,d) {
+      const y=f.at[1]-base;
+      renderTable(f,w,h,d,f.material);
+      localBox(f,0,y+h*.58,0,w*.72,h*.34,d*.70,'M-OAK-DARK',{round:.025,bevel:.012});
+      localBox(f,0,y+h*.62,-d*.37,w*.58,h*.18,.035,f.material,{round:.018,bevel:.008});
+      localBox(f,w*.23,y+h*.62,-d*.40,.035,.035,.025,'M-BRASS',{round:.010});
+      // A small reading lamp and book make the table feel occupied while staying inside its
+      // measured footprint; these are decorative parts of the composed prefab, not new bodies.
+      localCyl(f,-w*.20,y+h+.10,d*.06,.025,.20,'M-BRASS',{gloss:.40});
+      localBall(f,-w*.20,y+h+.23,d*.06,w*.13,.09,d*.13,'M-WALL-WARM',{mode:7,glow:.08});
+      localBox(f,w*.14,y+h+.025,-d*.08,w*.30,.035,d*.34,'M-FABRIC-RED',{round:.008,ry:.05});
     }
     function renderCompositeTable(f,w,h,d,reading=false) {
       const top={...f,at:[...f.at]},topW=w*(reading?.72:.70),topD=d*(reading?.46:.50);
@@ -275,6 +305,25 @@ const CampusInteriors = (() => {
         const chair={...f,id:`${f.id}/TASK-CHAIR`,at:[...f.at]};
         [chair.at[0],chair.at[2]]=rotated(f.at[0],f.at[2],0,-d*.24,f.yaw||0);
         renderChair(chair,Math.min(.42,w*.42),.82,Math.min(.36,d*.52),'M-FABRIC-BLUE');
+        if(f.prefab==='PF-LANGUAGE-DESK'){
+          localBox(f,-w*.46,y+h+.25,d*.10,.035,.48,d*.46,'M-ACOUSTIC',{round:.012});
+          localBox(f,w*.46,y+h+.25,d*.10,.035,.48,d*.46,'M-ACOUSTIC',{round:.012});
+          localBall(f,-w*.22,y+h+.12,-d*.04,.12,.10,.035,'M-STEEL-DARK',{gloss:.20});
+          localBox(f,-w*.31,y+h+.11,-d*.04,.028,.18,.028,'M-STEEL-DARK',{round:.010,rz:-.45});
+        } else if(f.prefab==='PF-OFFICE-DESK'){
+          localBox(f,-w*.31,y+h+.055,-d*.06,w*.18,.07,d*.20,'M-STEEL-DARK',{round:.025});
+          localBox(f,-w*.31,y+h+.12,-d*.06,w*.14,.035,d*.15,'M-SCREEN',{round:.015,glow:.07});
+          localCyl(f,w*.32,y+h+.11,-d*.03,.022,.20,'M-BRASS',{gloss:.36});
+          localBall(f,w*.32,y+h+.25,-d*.03,w*.09,.07,d*.12,'M-WALL-WARM',{mode:7,glow:.08});
+        } else if(f.prefab==='PF-DORM-DESK'){
+          localCyl(f,w*.31,y+h+.10,-d*.02,.020,.18,'M-BRASS',{gloss:.34});
+          localBall(f,w*.31,y+h+.22,-d*.02,w*.09,.065,d*.11,'M-WALL-WARM',{mode:7,glow:.08});
+          localBox(f,-w*.28,y+h+.025,-d*.08,w*.25,.035,d*.28,'M-FABRIC-BLUE',{round:.008,ry:-.04});
+          localBox(f,-w*.24,y+h+.050,-d*.06,w*.22,.025,d*.24,'M-FABRIC-RED',{round:.007,ry:.035});
+        } else {
+          localBox(f,w*.34,y+.25,d*.19,w*.17,.46,d*.27,'M-STEEL-DARK',{round:.022});
+          localBox(f,w*.34,y+.32,d*.045,w*.11,.08,.025,'M-SCREEN',{round:.010,glow:.06});
+        }
       } else {
         renderTable(f,w,h,d,f.material);
         localBox(f,0,y+.38,d*.43,w*.92,.64,.06,'M-LAB-BLUE',{bevel:.012});
@@ -299,13 +348,17 @@ const CampusInteriors = (() => {
       const sections=Math.max(2,Math.round(w/.72)),sw=w/sections;
       for(let i=0;i<sections;i++){
         const dx=-w/2+(i+.5)*sw;
-        localBox(f,dx,y+h*.49,-d*.04,sw-.035,.18,d*.80,material,{mode:7,round:.065,gloss:.045});
-        localBox(f,dx,y+h*.74,d*.35,sw-.035,h*.40,.10,material,{mode:7,round:.050,gloss:.045});
+        localBox(f,dx,y+h*.49,d*.04,sw-.035,.18,d*.80,material,{mode:7,round:.065,gloss:.045});
+        localBox(f,dx,y+h*.74,-d*.35,sw-.035,h*.40,.10,material,{mode:7,round:.050,gloss:.045});
       }
-      localBox(f,0,y+h*.72,d*.39,w*.96,h*.46,.055,'M-STEEL-DARK',{round:.018});
+      localBox(f,0,y+h*.72,-d*.39,w*.96,h*.46,.055,'M-STEEL-DARK',{round:.018});
       for(const dx of [-w*.40,w*.40]){
         localBox(f,dx,y+h*.20,-d*.20,.055,h*.40,.055,'M-STEEL-DARK',{round:.012});
         localBox(f,dx,y+h*.20,d*.20,.055,h*.40,.055,'M-STEEL-DARK',{round:.012});
+      }
+      for(const dx of [-w*.47,w*.47]){
+        localBox(f,dx,y+h*.52,-d*.03,w*.055,h*.28,d*.72,'M-STEEL-DARK',{round:.025});
+        localBox(f,dx,y+h*.62,-d*.04,w*.085,h*.14,d*.68,material,{mode:7,round:.040,gloss:.04});
       }
     }
 
@@ -366,6 +419,67 @@ const CampusInteriors = (() => {
       localBox(f,w*.16,y+h*.50,-d*.54,.07,.07,.04,'M-SAFETY-RED',{glow:.08});
     }
 
+    function renderWallRun(f,w,h,d) {
+      const y=f.at[1]-base,isGlass=f.material==='M-GLASS';
+      const floorLayer=h<=.08&&y<.20,ceilingLayer=h<=.10&&y>H-.62;
+      const faceAlongX=d<=w,span=faceAlongX?w:d,thin=faceAlongX?d:w;
+      const soft=/curtain|blind/i.test(`${f.label||''} ${f.purpose||''}`);
+      const textile=mat(f.material).texture==='fabric';
+      const trim=soft||textile?f.material:f.material==='M-RUBBER'?'M-STEEL-DARK':
+        f.material==='M-ACOUSTIC'?accent:f.material==='M-GLASS'?'M-STEEL-DARK':'M-OAK-DARK';
+      // Every architectural layer is an assembly. Rugs and floor insets receive a recessed
+      // border, acoustic rafts gain separated baffles, glazing receives a proper frame and
+      // mullion, and wall panels/curtains gain shadow joints or pleats. This removes the last
+      // one-cuboid visual fallback without changing any authored footprint or collision.
+      if(floorLayer){
+        localBox(f,0,y,0,w,h,d,f.material,{round:Math.min(.025,w*.04,d*.04),bevel:.008,gloss:.035});
+        const edge=Math.max(.018,Math.min(.045,Math.min(w,d)*.055));
+        localBox(f,0,y+h*.54,-d*.47,w*.92,.012,edge,trim,{round:.006,gloss:.05});
+        localBox(f,0,y+h*.54,d*.47,w*.92,.012,edge,trim,{round:.006,gloss:.05});
+        localBox(f,-w*.47,y+h*.54,0,edge,.012,d*.82,trim,{round:.006,gloss:.05});
+        localBox(f,w*.47,y+h*.54,0,edge,.012,d*.82,trim,{round:.006,gloss:.05});
+        return;
+      }
+      if(ceilingLayer){
+        localBox(f,0,y,0,w,h,d,f.material,{round:.025,bevel:.010,gloss:.035});
+        const n=Math.max(2,Math.min(5,Math.round(span/.62)));
+        for(let i=0;i<n;i++){
+          const u=-span*.39+i*(span*.78/(n-1));
+          if(faceAlongX)localBox(f,u,y-h*.62,0,Math.min(.075,w*.10),h*.45,d*.90,trim,{round:.012});
+          else localBox(f,0,y-h*.62,u,w*.90,h*.45,Math.min(.075,d*.10),trim,{round:.012});
+        }
+        return;
+      }
+      if(isGlass){
+        localBox(f,0,y,0,w,h,d,f.material,{round:.010,alpha:.32,gloss:.72});
+        const bar=Math.max(.025,Math.min(.065,span*.035));
+        if(faceAlongX){
+          for(const dx of [-w*.47,0,w*.47])localBox(f,dx,y,0,bar,h*.98,thin*1.04,trim,{round:.008});
+          for(const dy of [-h*.47,h*.47])localBox(f,0,y+dy,0,w*.96,bar,thin*1.04,trim,{round:.008});
+        } else {
+          for(const dz of [-d*.47,0,d*.47])localBox(f,0,y,dz,thin*1.04,h*.98,bar,trim,{round:.008});
+          for(const dy of [-h*.47,h*.47])localBox(f,0,y+dy,0,thin*1.04,bar,d*.96,trim,{round:.008});
+        }
+        return;
+      }
+      localBox(f,0,y,0,w,h,d,f.material,{round:Math.min(.018,thin*.22),bevel:.008});
+      const n=soft?5:Math.max(2,Math.min(5,Math.round(span/1.0)));
+      for(let i=1;i<n;i++){
+        const u=-span/2+i*span/n;
+        if(faceAlongX)localBox(f,u,y,thin*.38,soft?.035:.022,h*.92,Math.max(.012,thin*.18),trim,{round:.008});
+        else localBox(f,thin*.38,y,u,Math.max(.012,thin*.18),h*.92,soft?.035:.022,trim,{round:.008});
+      }
+      // A fine top and bottom reveal makes even a very narrow datum read as intentionally fixed
+      // architecture instead of an isolated floating box.
+      if(faceAlongX){
+        localBox(f,0,y-h*.47,thin*.30,w*.96,Math.max(.012,h*.025),Math.max(.012,thin*.16),trim,{round:.006});
+        localBox(f,0,y+h*.47,thin*.30,w*.96,Math.max(.012,h*.025),Math.max(.012,thin*.16),trim,{round:.006});
+      } else {
+        localBox(f,thin*.30,y-h*.47,0,Math.max(.012,thin*.16),Math.max(.012,h*.025),d*.96,trim,{round:.006});
+        localBox(f,thin*.30,y+h*.47,0,Math.max(.012,thin*.16),Math.max(.012,h*.025),d*.96,trim,{round:.006});
+      }
+    }
+
     const collide=/BED|TABLE|DESK|COUNTER|BENCH|BOOK|SHELF|CABINET|LOCKER|RANGE|FRIDGE|FREEZER|LAB-|FUME|ROBOT|MICRO|EXAM|PHARM|CCTV|WARDROBE|STAIR|TOILET|BASIN|SHOWER|LAUNDRY|WAIT-CHAIRS|LECTURE-SEAT|SELF-CHECK|DIRECTORY/;
     const nonBodyFloorPrefabs=new Set(['PF-EXTINGUISHER','PF-BIN','PF-LIFT']);
     function renderFixture(f) {
@@ -377,16 +491,26 @@ const CampusInteriors = (() => {
         shade(f.at[0],f.at[2],(c*w+s*d)*.92,(s*w+c*d)*.92,.16,.022);
       }
       switch(f.prefab){
+        case 'PF-WALL-RUN': renderWallRun(f,w,h,d); break;
         case 'PF-CEILING-LIGHT': {
           localBox(f,0,y,0,w,h,d,'M-STEEL-DARK',{round:.018,bevel:.010});
           const q=localBox(f,0,y-.012,0,w*.88,h*.52,d*.76,'M-WALL-WHITE',{round:.022,glow:.24}); lit.push(q);
-          realLight(f.at[0],Math.min(H-.15,y-.08),f.at[2],f.temperatureK||3800,.72,3.2); break;
+          for(const dx of [-w*.42,w*.42])for(const dz of [-d*.38,d*.38])
+            localBox(f,dx,y-.018,dz,w*.06,h*.60,d*.08,'M-BRASS',{round:.006});
+          realLight(f.at[0],Math.min(H-.15,y-.08),f.at[2],f.temperatureK||3800,
+            clamp((f.lumens||1700)/2300,.52,.92),clamp(2.7+Math.max(w,d)*.42,3.0,3.8)); break;
         }
         case 'PF-PENDANT':
-          localBox(f,0,y+.35,0,.025,.70,.025,'M-STEEL-DARK');
+          // Clamp the suspension to the actual underside of this floor's ceiling.  Authored
+          // shades can sit at different heights, but the stem must never pierce the slab above.
+          {
+            const stem=Math.max(.08,Math.min(.65,H-y-.03));
+            localBox(f,0,y+stem/2,0,.025,stem,.025,'M-STEEL-DARK');
+          }
           localBall(f,0,y,0,w*.43,h*.34,d*.43,f.material,{mode:7,gloss:.14,glow:.16});
           localCyl(f,0,y-h*.28,0,Math.min(w,d)*.31,.035,'M-BRASS',{gloss:.36});
-          realLight(f.at[0],y-.25,f.at[2],f.temperatureK||3300,.55,2.3); break;
+          realLight(f.at[0],y-.25,f.at[2],f.temperatureK||3300,
+            clamp((f.lumens||900)/1800,.42,.72),clamp(1.9+Math.max(w,d)*.65,2.1,2.7)); break;
         case 'PF-EMERGENCY-LIGHT':
           localBox(f,0,y,0,w,h,d,'M-WALL-WHITE',{round:.035,bevel:.012});
           localBox(f,0,y-.018,-d*.52,w*.76,h*.54,.025,'M-WALL-WHITE',{round:.028,glow:.24});
@@ -448,7 +572,8 @@ const CampusInteriors = (() => {
           renderCabinet(f,w,h,d,2,1,'M-OAK-DARK');
           localBox(f,0,y+h+.03,-d*.08,w*.94,.10,d*.82,f.material);
           localBox(f,w*.24,y+h+.22,-d*.18,.34,.26,.05,'M-SCREEN',{glow:.12}); break;
-        case 'PF-MEETING-TABLE': case 'PF-SIDE-TABLE': case 'PF-ART-TABLE': case 'PF-PREP-TABLE': renderTable(f,w,h,d); break;
+        case 'PF-SIDE-TABLE': renderSideTable(f,w,h,d); break;
+        case 'PF-MEETING-TABLE': case 'PF-ART-TABLE': case 'PF-PREP-TABLE': renderTable(f,w,h,d); break;
         case 'PF-COMPUTER-DESK': case 'PF-LANGUAGE-DESK': case 'PF-OFFICE-DESK': case 'PF-DORM-DESK': renderWorkstation(f,w,h,d); break;
         case 'PF-LAB-BENCH': case 'PF-MICROSCOPE': case 'PF-ROBOTICS': renderWorkstation(f,w,h,d,true); break;
         case 'PF-BOOKCASE': case 'PF-BOOKSTACK': renderShelf(f,w,h,d,true); break;
@@ -479,8 +604,10 @@ const CampusInteriors = (() => {
           localBox(f,0,y+.42,0,w*.95,.22,d*.94,'M-WALL-WHITE',{mode:7,round:.075,gloss:.025});
           localBox(f,-w*.08,y+.545,-d*.13,w*.78,.11,d*.54,f.material,{mode:7,round:.060,gloss:.04});
           localBox(f,-w*.08,y+.602,-d*.12,w*.70,.025,d*.46,'M-WALL-WHITE',{mode:7,round:.025,gloss:.025});
+          for(const dx of [-w*.27,-w*.08,w*.11])localBox(f,dx,y+.617,-d*.12,.018,.014,d*.40,'M-OAK-DARK',{round:.005,gloss:.03});
           localBall(f,w*.25,y+.56,d*.30,w*.22,.075,d*.17,'M-FABRIC-BLUE',{mode:7,gloss:.035,ry:-.06});
           localBox(f,-w*.43,y+.50,0,.035,.44,d*.90,'M-BRASS',{round:.012});
+          localBox(f,w*.43,y+.50,0,.035,.44,d*.90,'M-BRASS',{round:.012});
           break;
         case 'PF-PLANT':
           cyl(f.at[0],y+.22,f.at[2],w*.32,.44,C0('M-OAK'),opts('M-OAK',{tag:f.id}));
@@ -652,7 +779,17 @@ const CampusInteriors = (() => {
           localBox(f,w*.24,y+h*.28,0,.035,h*.25,.035,'M-SAFETY-YELLOW',{round:.010,rz:-.42});
           localBox(f,0,y+.025,0,w*.70,.05,d*.70,'M-STEEL-DARK',{round:.025}); break;
         case 'PF-CCTV-DESK':
-          renderTable(f,w,h,d,'M-OAK-DARK'); for(const dx of [-.65,-.22,.22,.65])localBox(f,dx,y+h+.27,.05,.36,.30,.05,'M-SCREEN',{glow:.12}); break;
+          renderTable(f,w,h,d,'M-OAK-DARK');
+          for(const dx of [-w*.39,-w*.13,w*.13,w*.39]){
+            localBox(f,dx,y+h+.27,d*.08,w*.21,.30,.045,'M-STEEL-DARK',{round:.020,bevel:.008});
+            localBox(f,dx,y+h+.27,d*.052,w*.18,.25,.025,'M-SCREEN',{round:.012,glow:.14});
+            localBox(f,dx,y+h+.09,d*.08,.035,.16,.035,'M-STEEL-DARK',{round:.010});
+          }
+          localBox(f,-w*.18,y+h+.035,-d*.18,w*.34,.025,d*.18,'M-WALL-WHITE',{round:.010});
+          localBox(f,w*.20,y+h+.045,-d*.17,w*.18,.045,d*.20,'M-STEEL-DARK',{round:.018});
+          localBox(f,w*.37,y+h+.13,-d*.13,w*.08,.18,d*.10,'M-SAFETY-RED',{round:.025});
+          localCyl(f,w*.37,y+h+.25,-d*.13,.018,.16,'M-STEEL-DARK',{gloss:.30});
+          break;
         case 'PF-KEY-CABINET':
           localBox(f,0,y,0,w,h,d,'M-STEEL-DARK',{round:.025,bevel:.014});
           localBox(f,0,y,-d*.52,w*.88,h*.90,.025,'M-GLASS',{round:.018,alpha:.30});

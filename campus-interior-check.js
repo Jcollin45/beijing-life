@@ -37,6 +37,8 @@ check('interior consumer loads before game',manifestFiles.indexOf('campus-interi
   manifestFiles.indexOf('campus-interior-core')<manifestFiles.indexOf('game'));
 check('runtime contract requires CampusInteriors',/\['CampusInteriors',\s*'places placeKey buildFloor validate'\]/.test(entryHtml));
 check('game registers blueprint places',/Object\.assign\(PLACES,\s*CampusInteriors\.places\)/.test(gameJs));
+check('shared chair and bench geometry follows the authored +z facing convention',
+  /ground\+\.70,-d\*\.38/.test(coreJs)&&/y\+h\*\.74,-d\*\.35/.test(coreJs));
 const renderedPrefabCases=new Set([...coreJs.matchAll(/case\s+'(PF-[A-Z0-9-]+)'/g)].map(m=>m[1]));
 const primitiveFallbacks=plan.prefabCatalog.map(p=>p.id).filter(id=>id!=='PF-WALL-RUN'&&!renderedPrefabCases.has(id));
 check('every furniture prefab has a composed renderer',primitiveFallbacks.length===0,primitiveFallbacks.join(','));
@@ -44,6 +46,7 @@ const allFixtures=plan.buildings.flatMap(b=>b.floorsPlan.flatMap(f=>
   f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects||[])));
 const prefabSpecs=new Map(plan.prefabCatalog.map(p=>[p.id,p]));
 const minimumDetailedParts=new Map([
+  ['PF-WALL-RUN',3],
   ['PF-BIN',4],['PF-TOILET',6],['PF-BASIN',7],['PF-HANDWASH',7],
   ['PF-LAB-SINK',8],['PF-EYEWASH',11],['PF-STOOL',13],['PF-SHOWER',9],
 ]);
@@ -54,6 +57,37 @@ const slabMisuse=allFixtures.filter(o=>o.prefab==='PF-WALL-RUN'&&(
   !architecturalSlabLanguage.test(`${o.label} ${o.purpose}`)));
 check('wall-run slabs are architectural layers only',slabMisuse.length===0,
   slabMisuse.slice(0,12).map(o=>o.id).join(','));
+const namedSeatVectors={north:[0,1],south:[0,-1],east:[1,0],west:[-1,0]},seatFacingDefects=[];
+for(const o of allFixtures.filter(o=>['PF-CHAIR','PF-LECTURE-SEAT','PF-BENCH','PF-WAIT-CHAIRS'].includes(o.prefab)&&o.facing)){
+  const expected=namedSeatVectors[o.facing],actual=[Math.sin(o.yaw||0),Math.cos(o.yaw||0)];
+  if(!expected||actual[0]*expected[0]+actual[1]*expected[1]<.999)seatFacingDefects.push(o.id);
+}
+check('every named seat direction follows the shared +z yaw convention',seatFacingDefects.length===0,
+  seatFacingDefects.slice(0,16).join(','));
+const b02B06SeatDefects=[],b02B06Seats=allFixtures.filter(o=>
+  /^B0[26]\//.test(o.id)&&['PF-CHAIR','PF-BENCH','PF-WAIT-CHAIRS'].includes(o.prefab));
+for(const o of b02B06Seats){
+  const expected=namedSeatVectors[o.facing],target=o.facesPoint;
+  if(!expected||!Array.isArray(target)||target.length!==2||!target.every(Number.isFinite)){
+    b02B06SeatDefects.push(`${o.id}:missing-facing-target`);continue;
+  }
+  const actual=[Math.sin(o.yaw||0),Math.cos(o.yaw||0)],dx=target[0]-o.at[0],dz=target[1]-o.at[2],
+    length=Math.hypot(dx,dz),semanticDot=actual[0]*expected[0]+actual[1]*expected[1],
+    targetDot=length?(actual[0]*dx+actual[1]*dz)/length:-1;
+  if(semanticDot<.999||targetDot<.999)b02B06SeatDefects.push(
+    `${o.id}:semantic=${semanticDot.toFixed(3)}/target=${targetDot.toFixed(3)}`);
+}
+check('B02 and B06 benches, waiting banks and loose chairs face their authored room targets',
+  b02B06Seats.length>0&&b02B06SeatDefects.length===0,
+  b02B06SeatDefects.length?b02B06SeatDefects.slice(0,16).join(','):`${b02B06Seats.length} seat vectors`);
+const darkRooms=[];
+for(const b of plan.buildings)for(const f of b.floorsPlan){
+  const luminaires=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects||[]).filter(o=>
+    o.prefab==='PF-CEILING-LIGHT'||o.prefab==='PF-PENDANT'||o.prefab==='PF-EMERGENCY-LIGHT');
+  for(const r of f.rooms)if(!luminaires.some(o=>o.at[0]>=r.bounds[0]&&o.at[0]<=r.bounds[1]&&
+    o.at[2]>=r.bounds[2]&&o.at[2]<=r.bounds[3]))darkRooms.push(r.id);
+}
+check('every enclosed room or core has an authored luminaire',darkRooms.length===0,darkRooms.slice(0,16).join(','));
 check('eight buildings',counts.buildings===8,counts.buildings);
 check('28 floors',counts.floors===28,counts.floors);
 check('at least the 198 canonical programmed rooms',counts.rooms>=198,counts.rooms);
@@ -85,6 +119,77 @@ for(const b of plan.buildings.filter(b=>b.floors>1))for(const f of b.floorsPlan)
 }
 check('every protected stair has local exit marking and emergency light',stairSafetyDefects.length===0,
   stairSafetyDefects.slice(0,12).join(','));
+const b04=plan.buildings.find(b=>b.id==='B04'),b04WindowDefects=[];
+if(b04){
+  const westBays=(b04.facadeAlignment.westWindows||{}).localZ||[];
+  const eastBays=(b04.facadeAlignment.eastServiceWindows||{}).localZ||[];
+  if(!westBays.length||!eastBays.length)b04WindowDefects.push('missing-facade-bay-metadata');
+  for(const f of b04.floorsPlan)for(const r of f.rooms.filter(q=>/\/(?:A01|\d{3})$/.test(q.id))){
+    const windows=r.contents.filter(o=>o.id.endsWith('/WINDOW'));
+    if(f.level===1){if(windows.length)b04WindowDefects.push(`${r.id}:false-ground-window`);continue;}
+    const bays=r.bounds[1]<=-1.2?westBays:eastBays;
+    if(windows.length!==1||!bays.some(z=>Math.abs(z-windows[0].at[2])<.001))
+      b04WindowDefects.push(`${r.id}:${windows.map(o=>o.at[2]).join('/')}`);
+  }
+}
+check('B04 dorm glazing aligns with constructed facade bays',b04&&b04WindowDefects.length===0,
+  b04WindowDefects.slice(0,12).join(','));
+
+// B08's south facade is a real exterior window, not a backdrop for an opaque command wall.
+// Lock the inside leaf to the authored exterior bay and reject any tall opaque fixture placed
+// close enough to cover that clear span. The jamb/head/sill assembly is explicitly exempt.
+const b08=plan.buildings.find(b=>b.id==='B08'),b08South=b08&&b08.facadeAlignment.southWindow;
+const b08F1=b08&&b08.floorsPlan.find(f=>f.level===1);
+const b08Fixtures=b08F1?b08F1.rooms.flatMap(r=>r.contents).concat(b08F1.sharedObjects||[]):[];
+const b08Glass=b08Fixtures.find(o=>o.id==='B08/F1/WORK/SOUTH-WINDOW/GLASS');
+const close=(a,b,t=.001)=>Number.isFinite(a)&&Number.isFinite(b)&&Math.abs(a-b)<=t;
+const b08GlazingAligned=!!(b08&&b08South&&b08Glass&&
+  Array.isArray(b08South.exteriorGlazingCampus)&&Array.isArray(b08South.interiorGlazingLocal)&&
+  b08Glass.material==='M-GLASS'&&b08Glass.collision==='none'&&
+  close(b08Glass.at[0],b08South.interiorGlazingLocal[0])&&
+  close(b08Glass.at[2],b08South.interiorGlazingLocal[1])&&
+  close(b08Glass.size[0],b08South.width)&&close(b08Glass.size[1],b08South.height)&&
+  close(b08.centreCampus[0]+b08Glass.at[0],b08South.exteriorGlazingCampus[0])&&
+  close(b08.centreCampus[1]+b08South.localZ,b08South.exteriorGlazingCampus[1],.05)&&
+  b08Glass.at[2]>b08South.localZ&&b08Glass.at[2]-b08South.localZ<.45);
+check('B08 south exterior window has aligned transparent interior glazing',b08GlazingAligned,
+  b08Glass?`${b08Glass.at.join('/')} ${b08Glass.size.join('x')}`:'missing B08/F1/WORK/SOUTH-WINDOW/GLASS');
+function fixtureVerticalSpan(o){
+  const anchor=prefabSpecs.get(o.prefab)?.anchor;
+  return anchor==='floor'?[o.at[1],o.at[1]+o.size[1]]:[o.at[1]-o.size[1]/2,o.at[1]+o.size[1]/2];
+}
+const b08WindowBlockers=[];
+if(b08Glass){
+  const gx0=b08Glass.at[0]-b08Glass.size[0]/2,gx1=b08Glass.at[0]+b08Glass.size[0]/2;
+  const gy0=b08Glass.at[1]-b08Glass.size[1]/2,gy1=b08Glass.at[1]+b08Glass.size[1]/2;
+  for(const o of b08Fixtures){
+    if(o===b08Glass||o.id.startsWith('B08/F1/WORK/SOUTH-WINDOW/')||o.material==='M-GLASS')continue;
+    const yaw=o.yaw||0,c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw));
+    const hx=(c*o.size[0]+s*o.size[2])/2,hz=(c*o.size[2]+s*o.size[0])/2;
+    const [oy0,oy1]=fixtureVerticalSpan(o);
+    const xOverlap=Math.min(gx1,o.at[0]+hx)-Math.max(gx0,o.at[0]-hx);
+    const yOverlap=Math.min(gy1,oy1)-Math.max(gy0,oy0);
+    const surfaceGap=Math.abs(o.at[2]-b08Glass.at[2])-hz-b08Glass.size[2]/2;
+    if(xOverlap>.10&&yOverlap>.30&&surfaceGap<.20)b08WindowBlockers.push(o.id);
+  }
+}
+check('B08 south window clear span has no opaque full-height feature obstruction',
+  !!b08Glass&&b08WindowBlockers.length===0,b08WindowBlockers.join(','));
+
+// Chair yaw zero now means +z. Assert the authored seat-to-monitor vector, not just copy text.
+const b08Console=b08Fixtures.find(o=>o.id==='B08/F1/WORK/CONSOLE');
+const b08Chair=b08Fixtures.find(o=>o.id==='B08/F1/WORK/CHAIR');
+let b08ChairDot=-1,b08ChairGap=NaN;
+if(b08Console&&b08Chair){
+  const dx=b08Console.at[0]-b08Chair.at[0],dz=b08Console.at[2]-b08Chair.at[2];
+  const length=Math.hypot(dx,dz),facing=[Math.sin(b08Chair.yaw||0),Math.cos(b08Chair.yaw||0)];
+  b08ChairDot=length?(dx*facing[0]+dz*facing[1])/length:-1;
+  b08ChairGap=(b08Console.at[2]-b08Console.size[2]/2)-(b08Chair.at[2]+b08Chair.size[2]/2);
+}
+check('B08 guard chair faces its four-monitor console under the shared +z convention',
+  !!(b08Console&&b08Chair&&b08Chair.facesFixture===b08Console.id&&b08Chair.facing==='north'&&
+    close(b08Console.yaw||0,0)&&close(b08Chair.yaw||0,0)&&b08ChairDot>.999&&close(b08ChairGap,.35)),
+  `dot=${b08ChairDot.toFixed(3)} gap=${Number.isFinite(b08ChairGap)?b08ChairGap.toFixed(3):'n/a'}`);
 
 // A 0.20 m lattice is fine enough to sample a 0.90 m clear door with a 0.30 m player radius;
 // a 0.30 m lattice can alias a valid opening completely depending on the building origin.
@@ -132,6 +237,16 @@ for(const [name,build] of builders){
   scenes.push([name,scene]);
   check(`${name} public contract`,scene&&Array.isArray(scene.props)&&Array.isArray(scene.things)&&Array.isArray(scene.solids));
   check(`${name} finite render transforms`,scene&&scene.props.every(p=>p.m&&[...p.m].every(Number.isFinite)));
+  const verticalEscapes=scene&&scene.props.filter(p=>{
+    // Quads are mathematical planes whose unused unit axis is still present in the transform;
+    // check volumetric meshes here and leave plane validity to the finite-transform gate.
+    if(p.mesh==='quad')return false;
+    if(!p.m)return true;
+    const m=p.m,radius=.5*(Math.abs(m[1])+Math.abs(m[5])+Math.abs(m[9]));
+    return m[13]-radius<-.061||m[13]+radius>scene.H+.061;
+  });
+  check(`${name} rendered geometry stays between floor and ceiling`,verticalEscapes&&verticalEscapes.length===0,
+    verticalEscapes&&verticalEscapes.slice(0,8).map(p=>p.tag||p.mesh).join(','));
   check(`${name} finite furniture shadows`,scene&&scene.shadows.every(s=>s.m&&[...s.m].every(Number.isFinite)&&Number.isFinite(s.a)));
   check(`${name} valid collision bodies`,scene&&scene.solids.every(s=>
     [s.x0,s.x1,s.z0,s.z1].every(Number.isFinite)&&s.x1>s.x0&&s.z1>s.z0));
@@ -157,6 +272,11 @@ for(const [name,build] of builders){
 
   const b=plan.buildings.find(q=>q.id===scene.buildingId),f=scene.blueprintFloor;
   const fixtureRows=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects);
+  const materialDiversity=new Set(fixtureRows.map(o=>o.material)).size;
+  check(`${name} uses a coherent multi-material palette`,materialDiversity>=10,materialDiversity);
+  const authoredRoomLights=fixtureRows.filter(o=>o.prefab==='PF-CEILING-LIGHT'||o.prefab==='PF-PENDANT').length;
+  check(`${name} instantiates every authored room luminaire`,scene.lights.length===authoredRoomLights,
+    `${scene.lights.length}/${authoredRoomLights}`);
   const bodyIds=new Set(fixtureBodies.map(s=>s.fixtureId));
   const missingBodies=fixtureRows.filter(o=>{
     const p=prefabSpecs.get(o.prefab);
@@ -182,8 +302,8 @@ for(const [name,build] of builders){
     }
   }
   check(`${name} rendered parts stay in fixture footprints`,outside.length===0,[...new Set(outside)].slice(0,8).join(','));
-  const singlePrimitive=fixtureRows.filter(o=>o.prefab!=='PF-WALL-RUN'&&(partCounts.get(o.id)||0)<2);
-  check(`${name} has no single-primitive furniture or equipment`,singlePrimitive.length===0,
+  const singlePrimitive=fixtureRows.filter(o=>(partCounts.get(o.id)||0)<2);
+  check(`${name} has no single-primitive fixtures or architectural layers`,singlePrimitive.length===0,
     singlePrimitive.slice(0,8).map(o=>`${o.id}:${o.prefab}:${partCounts.get(o.id)||0}`).join(','));
   const underDetailed=fixtureRows.filter(o=>minimumDetailedParts.has(o.prefab)&&
     (partCounts.get(o.id)||0)<minimumDetailedParts.get(o.prefab));

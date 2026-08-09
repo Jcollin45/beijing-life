@@ -1,0 +1,125 @@
+name: University visual review
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - UNIVERSITY-INTERIORS-BLUEPRINT.json
+      - UNIVERSITY-INTERIORS-BLUEPRINT.md
+      - campus-interior-check.js
+      - campus-static-check.js
+      - index.html
+      - js/game.js
+      - js/campus-interior-core.js
+      - js/campus-academic.js
+      - js/campus-west.js
+      - js/campus-east.js
+      - js/campus-boundary.js
+      - tools/generate-university-interiors-blueprint.js
+      - tools/audit-university-interior-spacing.js
+      - university-visual-review.js
+      - package.json
+      - serve.py
+      - .github/workflows/university-visual-review.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: university-visual-review-main
+  cancel-in-progress: true
+
+jobs:
+  review:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Run university structural gates
+        run: |
+          npm run campus:interiors:blueprint
+          git diff --exit-code -- UNIVERSITY-INTERIORS-BLUEPRINT.json UNIVERSITY-INTERIORS-BLUEPRINT.md
+          npm run campus:interiors:spacing
+          npm run campus:interiors
+          npm run campus:static
+
+      - name: Start the no-cache game server
+        run: |
+          python3 serve.py 8000 > /tmp/university-review-server.log 2>&1 &
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8000/index.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/university-review-server.log
+          exit 1
+
+      - name: Capture every university floor on GitHub
+        env:
+          CHROME: /usr/bin/google-chrome
+          GAME_TEST_SOFTWARE_WEBGL: '1'
+          UNIVERSITY_REVIEW_DIR: test-results/university-visuals
+        run: node university-visual-review.js
+
+      - name: Upload complete university review
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: university-visual-review-${{ github.sha }}
+          path: test-results/university-visuals/
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Publish GitHub review branch
+        if: success()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          set -e
+          review_dir="$(mktemp -d)"
+          mkdir -p "$review_dir/captures"
+          cp test-results/university-visuals/*.png "$review_dir/captures/"
+          cp test-results/university-visuals/report.json "$review_dir/report.json"
+          {
+            echo '# University visual review'
+            echo
+            echo "GitHub-hosted Chrome captures for source commit \`$SOURCE_SHA\`."
+            echo
+            echo "[Workflow run]($SOURCE_RUN) · [Machine-readable scene report](report.json)"
+            echo
+            echo 'No browser on the developer computer is used. These images are replaced only after all structural and runtime gates pass.'
+            echo
+            for building in B01 B02 B03 B04 B05 B06 B07 B08; do
+              echo "## $building"
+              echo
+              for image in "$review_dir"/captures/${building}-*.png; do
+                [[ -e "$image" ]] || continue
+                name="$(basename "$image")"
+                echo "<img src=\"captures/$name\" alt=\"$name\" width=\"48%\">"
+              done
+              echo
+            done
+          } > "$review_dir/README.md"
+          git -C "$review_dir" init -b university-visual-review
+          git -C "$review_dir" config user.name 'github-actions[bot]'
+          git -C "$review_dir" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$review_dir" add README.md report.json captures
+          git -C "$review_dir" commit -m "University visual review for $SOURCE_SHA"
+          git -C "$review_dir" remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C "$review_dir" push --force origin HEAD:university-visual-review
+
+      - name: Print server failures
+        if: failure()
+        run: tail -200 /tmp/university-review-server.log || true

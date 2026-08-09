@@ -152,6 +152,27 @@ CampusFits.register('boundary', 10, kit => {
     {tag:'门卫',hard:true,mode:1,gloss:G.glass}));
   box(9.4,3.58,-12.35,2.2,.42,.14,col.redD,{tag:'门卫',hard:true,gloss:.24});
   glyphs(9.4,3.58,-12.44,Math.PI,'门卫',{tag:'门卫',size:.22,gap:.08,color:col.goldL,mode:1});
+  // The north portal remains interaction-driven, but reads as a real 0.95 m staff door. These
+  // layered leaf, frame and access-control props add no solid or blocker to the pavilion shell.
+  box(11.2,1.14,-6.975,1.13,2.28,.07,col.charcoal,
+    {tag:'门卫',hard:true,gloss:.18});
+  box(11.2,1.11,-6.925,.95,2.12,.055,col.steelD,
+    {tag:'门卫',hard:true,gloss:G.metal});
+  pane(box(11.2,1.49,-6.892,.43,.82,.025,col.glassDark,
+    {tag:'门卫',hard:true,mode:1,gloss:G.glass}));
+  for(const x of [10.675,11.725]) box(x,1.14,-6.88,.10,2.28,.11,col.chrome,
+    {tag:'门卫',hard:true,gloss:G.metal});
+  box(11.2,2.255,-6.88,1.15,.10,.11,col.chrome,
+    {tag:'门卫',hard:true,gloss:G.metal});
+  box(11.2,.035,-6.88,1.15,.07,.18,col.steelD,
+    {tag:'门卫',hard:true,gloss:G.metal});
+  box(11.49,1.04,-6.855,.035,.30,.035,col.chrome,
+    {tag:'门卫',hard:true,gloss:G.metal});
+  box(11.81,1.22,-6.89,.18,.25,.055,col.blueSign,
+    {tag:'门卫',hard:true,mode:1,gloss:.24});
+  box(11.2,2.53,-6.93,1.15,.25,.06,col.blueSign,
+    {tag:'门卫',hard:true,gloss:.24});
+  glyphs(11.2,2.53,-6.97,0,'员工入口',{tag:'门卫',size:.11,gap:.035,color:col.white,mode:1});
   // Desk silhouette, clock, control panel, and two roof cameras.
   box(8.8,.76,-9.4,2.1,.10,.75,col.trunkL,{hard:true,gloss:G.wood});
   cyl(9.5,2.35,-12.36,.25,.04,col.white,{rx:Math.PI/2,mode:1,gloss:.18});
@@ -161,9 +182,9 @@ CampusFits.register('boundary', 10, kit => {
     box(x,3.72,z,.42,.18,.18,col.charcoal,{hard:true,ry,gloss:.25});
   }
   solid(6.2,12.6,-12.6,-6.8); blocker(6.2,12.6,-12.6,-6.8,3.60);
-  const security=kit.thing('门卫',11.2,1.35,-7.02,'门卫室里可以登记访客。',
-    'Visitors can register inside the security room.',
-    '门卫 is a gate guard; 访客 is a visitor.',{focus:[11.2,-5.8],reach:2.2});
+  const security=kit.thing('门卫',11.2,1.35,-7.02,'访客请在西侧服务窗登记；北门是值班人员入口。',
+    'Visitors register at the west service window; the north door is the staff and security entrance.',
+    '登记 is to register; 值班人员 are on-duty staff.',{focus:[11.2,-5.8],reach:2.2});
   security.exit={place:'campus_security'};
   // O10 guard stool and thermos.
   box(5.55,.21,-8,.38,.42,.38,col.steelD,{hard:true,gloss:.28});

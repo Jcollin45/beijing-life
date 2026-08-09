@@ -7,6 +7,11 @@
 !.campuscheck.js
 !.zooprobe.js
 !.claude/
+!.github/
+.github/*
+!.github/workflows/
+.github/workflows/*
+!.github/workflows/university-visual-review.yml
 
 # Concept art: 783 MB of source PNGs. Not referenced by index.html or anything in js/.
 art/
