@@ -375,7 +375,15 @@ const World = Lazy('World', () => {
   // Which room the body is standing in. The hysteresis stops the camera cutaway from flickering
   // while they linger exactly on a threshold. Inside the car is its own room, on either deck,
   // because a lit box 1.8 m across should not be lit by a lamp out in the corridor.
-  function roomAt(x, z, prev) {
+  // `exact` turns off every hysteresis band below and answers with the room the point is
+  // literally inside. The bands exist so that walking through a doorway swaps the lamp and the
+  // orbit limit once instead of four times — they are right for lighting and wrong for the
+  // camera cutaway, which needs the box the body is actually in. At the flat/corridor seam the
+  // band leaves `room` naming the corridor while the body is up to 0.16 m inside the flat, and
+  // `hiddenAt` then measures its cut band off the corridor's far face: the wall standing between
+  // the eye and the player is not in that band, so it is drawn, full screen, with the player
+  // behind it. Same fault at every interior doorway, in both directions.
+  function roomAt(x, z, prev, exact) {
     if (ride && ride.rider) return carZone;
     // Being *in* the car, not standing in front of it. This used to reach 10 cm past the front
     // face, which upstairs is walkable corridor — anyone waiting at the doors was lit by a lamp
@@ -394,7 +402,7 @@ const World = Lazy('World', () => {
         if (x >= q.x0 && x <= q.x1 && z >= q.z0 && z <= q.z1) return q;
       return zs[0];
     }
-    const edge = prev === 'corr' ? -.16 : .16;
+    const edge = exact ? 0 : prev === 'corr' ? -.16 : .16;
     if (z > CORR.z0 + edge) return ZONE[2][1];
     // Inside the flat, which room. Before js/home-walls.js there was one answer — "the flat" — and
     // a 12 × 8 m flat lit by one bulb hanging in the middle of it is half of why nothing in here
@@ -406,7 +414,7 @@ const World = Lazy('World', () => {
     // times. `prev` is the id this returned last frame.
     const rooms = (typeof HomeWalls !== 'undefined' && HomeWalls.ROOMS) || null;
     if (rooms && rooms.length) {
-      if (prev) {
+      if (prev && !exact) {
         const was = rooms.find(r => r.id === prev);
         if (was && x > was.x0 - .18 && x < was.x1 + .18 && z > was.z0 - .18 && z < was.z1 + .18)
           return was;

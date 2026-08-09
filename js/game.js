@@ -2339,7 +2339,11 @@ function hiddenProp(p) {
 // mass. Kept separate from the body colliders: a chair blocks feet but should not punch the camera
 // into a close-up every time it passes under the lens, while a single-sided building absolutely
 // must stop the eye or its far wall disappears. `top` lets a raised camera clear low roofs.
-function cameraBlockLimit(origin, dir, maxDist, blockers) {
+// `padOv` overrides every blocker's own pad. The camera never passes it — a building mass wants
+// its 0.4 m of margin. The label occlusion test does: it is asking "is there a wall on this line",
+// not "may the eye go here", and an inflated blocker seals doorways a label can legitimately be
+// read through.
+function cameraBlockLimit(origin, dir, maxDist, blockers, padOv) {
   let limit = maxDist;
   for (const b of blockers || []) {
     let t0 = 0, t1 = maxDist, hit = true;
@@ -2350,7 +2354,7 @@ function cameraBlockLimit(origin, dir, maxDist, blockers) {
     // 0.10 m slot, so every doorway in the flat would read as sealed to the eye. A partition
     // asks for its own pad instead; everything already in the game omits the field and is
     // unchanged.
-    const pad = b.pad === undefined ? 0.4 : b.pad;
+    const pad = padOv !== undefined ? padOv : b.pad === undefined ? 0.4 : b.pad;
     for (const [i, lo, hi] of [[0, b.x0 - pad, b.x1 + pad], [2, b.z0 - pad, b.z1 + pad]]) {
       if (Math.abs(dir[i]) < 1e-5) {
         if (origin[i] < lo || origin[i] > hi) { hit = false; break; }
@@ -2370,6 +2374,40 @@ function cameraBlockLimit(origin, dir, maxDist, blockers) {
       limit = Math.min(limit, t0 - 0.05);
   }
   return limit;
+}
+
+// The flat's interior partitions, as occluders for the LABEL test only — never for the camera.
+// They were built as camera blockers once and discarded on purpose: `camNear` asks 1.90 m of
+// orbit and the 书房 is 1.20 m wide, so blocking the eye on them collapses the orbit to ~0.48 m
+// and parks the camera inside the desk. A label is not the eye. Hiding one costs nothing, and
+// being able to read the next room's contents through plaster is the reported bug.
+//
+// js/home-walls.js keeps each partition as a line — `ax` 0 is a wall at constant x spanning
+// z lo..hi, `ax` 2 the transpose — with its door openings as ranges along that line. Split the
+// line at the openings and each remaining stretch is a zero-thickness AABB, which is all the slab
+// test above needs. Cached on the source array: the flat is built once.
+let flatWallBlocks = null, flatWallSrc = null;
+function flatLabelBlockers() {
+  const W = (typeof HomeWalls !== 'undefined' && HomeWalls.WALLS) || null;
+  if (!W || !W.length) return null;
+  if (flatWallSrc === W) return flatWallBlocks;
+  const out = [];
+  for (const w of W) {
+    const cuts = (w.doors || []).slice().sort((a, b) => a[0] - b[0]);
+    let s = w.lo;
+    for (const d of cuts) {
+      if (d[0] > s) out.push([s, d[0], w.ax, w.at]);
+      s = Math.max(s, d[1]);
+    }
+    if (w.hi > s) out.push([s, w.hi, w.ax, w.at]);
+  }
+  // `top` Infinity is safe only because the caller gates this on deck 2. Twelve decks share one
+  // (x, z) footprint and these are flat 202's partitions, not deck 7's.
+  flatWallBlocks = out.map(q => q[2] === 0
+    ? { x0: q[3], x1: q[3], z0: q[0], z1: q[1], top: Infinity }
+    : { x0: q[0], x1: q[1], z0: q[3], z1: q[3], top: Infinity });
+  flatWallSrc = W;
+  return flatWallBlocks;
 }
 
 // Ray from the eye through a point on the canvas, in world space.
@@ -6493,7 +6531,7 @@ function mallCarryFor(n,value=minutes) {
   // carrier/not-carrier and object choice do not collapse into the same repeating sequence.
   const gate=((n.mallCrowdSlot||0)+period*.193+floor*.071)%1;
   if(gate>=.55)return null;
-  const pick=((n.seed*13+floor*7+period*6)%11+11)%11;
+  const pick=((n.seed*14+floor*7+period*5)%11+11)%11;
   return pick<6?`shopBag${pick}`:MALL_PURCHASE_KINDS[pick-6];
 }
 
@@ -15203,7 +15241,25 @@ function frame(now) {
   // marked dynamic are the exception: traffic and similar movers rewrite `p.cx/cy/cz` with their
   // matrices, so refresh only their recorded slots before the shadow and colour visibility tests.
   if (scene.syncDynamicCulls) scene.syncDynamicCulls();
+  // The cut box has to be a box the BODY is inside. `hiddenAt` hides a 0.42 m band inside
+  // whichever face the eye backed out through, which only lands on the wall between the eye and
+  // the player when the player is in that box. `room` comes from `roomAt` *with* hysteresis
+  // (js/world.js:378) — every boundary in the flat keeps you in the room you came from for
+  // another 0.16-0.18 m, deliberately, so a doorway swaps the lamp once instead of four times.
+  // At the flat/corridor seam that leaves `room` = 走廊 while the body stands 0.10 m inside the
+  // 玄关: the band is then measured off the corridor's far face at z 4.90 and the flat's north
+  // wall at z 3.20 — the one filling the screen — is not in it. Reported as "the cutaway does
+  // not fire in the 玄关"; the same fault sits at every interior doorway, and in the other
+  // direction it *over*-cuts, deleting the wall you are standing behind in the corridor.
+  //
+  // Cheap because it only re-asks when the box is provably wrong, so every scene whose `roomAt`
+  // has no hysteresis (all of them except this one) is bit-identical.
   cutRoom = room.cut || room;
+  if (P.x < cutRoom.x0 || P.x > cutRoom.x1 || P.z < cutRoom.z0 || P.z > cutRoom.z1) {
+    const ex = scene.roomAt && scene.roomAt(P.x, P.z, null, true);
+    const eb = ex && (ex.cut || ex);
+    if (eb && P.x >= eb.x0 && P.x <= eb.x1 && P.z >= eb.z0 && P.z <= eb.z1) cutRoom = eb;
+  }
   hideX = scene.cutaway && eye[0] > cutRoom.x1 ? 1 : scene.cutaway && eye[0] < cutRoom.x0 ? -1 : 0;
   hideZ = scene.cutaway && eye[2] > cutRoom.z1 ? 1 : scene.cutaway && eye[2] < cutRoom.z0 ? -1 : 0;
 
@@ -15752,6 +15808,33 @@ function frame(now) {
     const sy = (-q.y / q.w * 0.5 + 0.5) * Hh;
     if (sx < -70 || sx > W + 70 || sy < -30 || sy > Hh + 40) {
       labelHide(th); continue;
+    }
+    // ---- occlusion. A label is a world object drawn as UI, so nothing in the DOM knows there is
+    // a wall in front of it: standing in the 玄关 you could read 热水壶, 茶, 钥匙, 鞋柜 and 拖鞋
+    // straight through solid plaster. That is the reported bug, and `hiddenAt` above is not the
+    // test for it — it is the cutaway, which only removes the band the eye backed out through, so
+    // anything in the NEXT room was never a candidate for it.
+    //
+    // Same ray-versus-AABB test the camera already runs against the same blockers, with two
+    // changes. The pad drops to 0.02: 0.4 m is a building-mass margin and would seal every
+    // doorway a label can legitimately be read through. And the hit must beat the thing by 0.35 m
+    // before it counts, so a sign mounted flush on — or slightly recessed into — a blocker's own
+    // face keeps its label instead of occluding itself.
+    //
+    // Cheap because it is last: everything ahead of it has already rejected the far, the culled
+    // and the off-screen, so this runs on the handful of labels actually about to be drawn.
+    // ponytail: only the flat's partitions are modelled as label occluders. Every other location
+    // gets its shell blockers and nothing finer; a mall shop's own millwork will still show a
+    // label through it.
+    const ex = th.pos[0] - eye[0], ey = th.pos[1] - eye[1], ez = th.pos[2] - eye[2];
+    const ed = Math.hypot(ex, ey, ez);
+    if (ed > 0.45) {
+      const ldir = [ex / ed, ey / ed, ez / ed], slack = ed - 0.35;
+      const fw = drawDeck === 2 ? flatLabelBlockers() : null;
+      if (cameraBlockLimit(eye, ldir, ed, scene.blockers, 0.02) < slack ||
+          (fw && cameraBlockLimit(eye, ldir, ed, fw, 0.02) < slack)) {
+        labelHide(th); continue;
+      }
     }
     labelCandidates.push({ th, el, sx, sy, playerD, on, due });
   }
