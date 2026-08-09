@@ -1122,6 +1122,10 @@ const World = Lazy('World', () => {
     get deck() { return curDeck; },
     rail, props, things,
     box, cyl, ball, taper, wall, flat,
+    // The doll's-house split (js/build.js `partitionSplit`). Forwarded straight through — it is
+    // pure arithmetic over the piece heights and the caller's own `make`, so it needs nothing
+    // from this file, not even `y0`: a floor passes the base y it already has.
+    partition: B.partition,
     cap: capsule,
     glyph: (x, y, z, yaw, text, o = {}) => B.glyphs(x, y, z, yaw, text, o),
     flatText,

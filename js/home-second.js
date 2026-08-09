@@ -137,16 +137,16 @@ FlatFit['second'] = A => {
     // Two pieces per stretch, matching js/home-walls.js:190: the bottom STUB carries no flag and
     // stays with the walls down, so the flat still reads as a plan and the doorway between DZ0 and
     // DZ1 comes out as a gap in it. Nothing here is a collider — `stop` below is untouched.
-    const STUB = 0.40;
     const S = { hard: true, mode: 4, gloss: .10, ...PLASTER };
     const P = { ...S, partition: true };
-    // The upper box overlaps the stub by 2 mm rather than meeting it: coincident horizontal faces
-    // at one y z-fight, 2 mm of overlap cannot.
-    const UY = Y((STUB - .002 + H) / 2), UH = H - STUB + .002;
-    box(X1, Y(STUB / 2), (Z0 + DZ0) / 2, PT, STUB, DZ0 - Z0, K.wall, S);      // south of the door
-    box(X1, UY,          (Z0 + DZ0) / 2, PT, UH,   DZ0 - Z0, K.wall, P);
-    box(X1, Y(STUB / 2), (DZ1 + Z1) / 2, PT, STUB, Z1 - DZ1, K.wall, S);      // north of it
-    box(X1, UY,          (DZ1 + Z1) / 2, PT, UH,   Z1 - DZ1, K.wall, P);
+    // The stub height, the 2 mm overlap that keeps the two boxes off a coincident horizontal
+    // face, and the flag itself all live in `A.partition` (js/build.js `partitionSplit`). This
+    // file states none of them, so it cannot drift from js/home-walls.js the way two hand-written
+    // copies of the same three numbers eventually do.
+    const stretch = (z0, z1) => A.partition(Y(0), H, (yc, hh, o) =>
+      box(X1, yc, (z0 + z1) / 2, PT, hh, z1 - z0, K.wall, { ...S, ...o }));
+    stretch(Z0, DZ0);                                                        // south of the door
+    stretch(DZ1, Z1);                                                        // north of it
     box(X1, Y((DTOP + H) / 2), (DZ0 + DZ1) / 2, PT, H - DTOP, DZ1 - DZ0, K.wall, P); // header
     stop(PF, PB, Z0, DZ0); stop(PF, PB, DZ1, Z1);
   }

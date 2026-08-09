@@ -1759,7 +1759,13 @@ function toggleWalls() {
   SET.wallsOff = !SET.wallsOff;
   if (SET.wallsOff) {
     CAM.wallsWas = { pitch: CAM.tPitch, dist: CAM.tDist };
-    if (dollHouse()) { CAM.tPitch = 1.18; CAM.tDist = 7.2; }
+    // The crane-in, as a fraction of the scene's own released bounds rather than two constants.
+    // 1.18 / 1.45 and 7.2 / 10.5 are the ratios that were chosen by looking in flat 202: steep
+    // enough to read the plan, short of the fully overhead pose, and pulled back far enough to
+    // hold a 12 m plate without losing the figure. A new scene declares `far` and `pitch` and
+    // gets an opening shot in proportion to its own footprint.
+    const dhc = dollHouse();
+    if (dhc) { CAM.tPitch = dhc.pitch * 0.814; CAM.tDist = dhc.far * 0.686; }
   } else if (CAM.wallsWas) {
     CAM.tPitch = CAM.wallsWas.pitch; CAM.tDist = CAM.wallsWas.dist; CAM.wallsWas = null;
   }
@@ -2095,7 +2101,8 @@ function orbit(dx, dy) {
   // 1.45 rad is 83 degrees, and it is the walls-down bound only. A plan view of a flat needs to be
   // nearly overhead or the near rooms are read through the far ones; 60 degrees leaves the far half
   // of a 12 m plate behind the near half of it.
-  CAM.tPitch = clamp(CAM.tPitch + dy * s * 0.72, 0.05, dollHouse() ? 1.45 : 1.05);
+  const dh = dollHouse();
+  CAM.tPitch = clamp(CAM.tPitch + dy * s * 0.72, 0.05, dh ? dh.pitch : 1.05);
 }
 // Swing back behind the player, whichever way they are facing.
 function recenterCamera() {
@@ -2174,7 +2181,8 @@ cv.addEventListener('wheel', e => {
   // is a chase-camera number and the flat is 12.00 x 8.20 m, so a wheel that stopped at 6.8 would
   // stop with a third of the plan still off the bottom of the frame. 10.5 m at 68 degrees frames
   // the whole of it with margin, and no further, because past that the figure stops being findable.
-  const far = dollHouse() ? 10.5
+  const dhw = dollHouse();
+  const far = dhw ? dhw.far
             : Math.min((scene && scene.camera && scene.camera.maxDist) || 6.8,
                        (room && room.near) || 6.8);
   // 1.70 rather than 1.95, because the flat's tightest rooms cap the orbit at 1.90 and a floor
@@ -2375,8 +2383,17 @@ function syncMovingCulls(s) {
 // own envelope is `undefined` and never culled, so deck 0's roof is opaque from on top of it and
 // always will be. The partitions the setting hides are flat 202's anyway (js/home-walls.js), so
 // this is the deck the feature is about; every other deck keeps the walking camera it had.
+// Generalised 2026-08-09 so the owner's toggle can reach other buildings. The reasoning above still
+// holds and is now per-scene data rather than a hard-coded place: `Build.DOLLHOUSE` says which
+// levels of which scene may drop their walls, how far the wheel may pull back there, and how far
+// the pitch may release. A scene absent from that table keeps the walking camera it had, which is
+// the safe default — enabling one means somebody has reasoned about its ceilings and its shell.
+// Returns the entry rather than a boolean, and every call site treats a truthy entry as before.
 function dollHouse() {
-  return SET.wallsOff && place === 'home' && !!scene.level && scene.level() === 2;
+  if (!SET.wallsOff) return null;
+  const d = Build.DOLLHOUSE[place];
+  if (!d) return null;
+  return (!d.levels || (scene.level && d.levels.includes(scene.level()))) ? d : null;
 }
 function hiddenAt(px, pz) {
   return (hideX > 0 && px > cutRoom.x1 - 0.42) || (hideX < 0 && px < cutRoom.x0 + 0.42) ||
@@ -15007,7 +15024,8 @@ function frame(now) {
       // Orbiting from the keyboard leaves the mouse free while you walk.
       const rate = (keys.shift ? 2.8 : 1.6) * dt;
       CAM.tYaw += kx * rate;
-      CAM.tPitch = clamp(CAM.tPitch + ky * rate * 0.52, 0.05, dollHouse() ? 1.45 : 1.05);   // 512, same clamp as the mouse
+      const dhk = dollHouse();
+      CAM.tPitch = clamp(CAM.tPitch + ky * rate * 0.52, 0.05, dhk ? dhk.pitch : 1.05);   // 512, same clamp as the mouse
       CAM.spin = 0;
     }
   }

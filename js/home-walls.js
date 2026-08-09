@@ -186,12 +186,9 @@ FlatFit['walls'] = A => {
   // into — the stub is the only thing that says where. A doorway needs no marking of its own: it
   // is simply a stretch where `run` built no wall, so it comes out as a gap in the stub.
   //
-  // 0.40 m, chosen by looking rather than by theory. Lower — 0.11, the skirting's own height —
-  // reads as a line painted on the floor from a raised camera and is invisible at walking height.
-  // Higher, past about 0.55, and the stub starts hiding what the setting exists to show: the bed
-  // deck sits at 0.55, the sofa seat at 0.42, the low tables under that. At 0.40 every piece of
-  // furniture in the flat still stands proud of it, and the plan reads.
-  const STUB = 0.40;
+  // The height, the 2 mm overlap and the flag all live in `A.partition` (js/build.js
+  // `partitionSplit`) now, not here — this flat was where they were chosen by looking, and every
+  // other building gets them from the same place rather than by copying this file.
 
   // A tag per stretch of wall, not one tag for all of them — and this is not cosmetic.
   // `hiddenProp` in js/game.js hides a *tagged* prop by its tag's bounding box, so that a fixture
@@ -430,16 +427,17 @@ FlatFit['walls'] = A => {
       const tag = '墙' + (++tagN);
       const x = w.ax === 0 ? w.at : mid, z = w.ax === 0 ? mid : w.at;
       const sx = w.ax === 0 ? T : len, sz = w.ax === 0 ? len : T;
-      // Two boxes, not one, and the split is the whole doll's-house fix. The lower STUB is built
-      // with the UNSHADOWED `A.box`, so it carries no `partition` flag and survives walls-down;
-      // everything above it takes the flag and goes. Same plane, same thickness, same paint — the
-      // seam is invisible with the walls up. The upper box starts 2 mm below the top of the stub
-      // rather than exactly on it: two coincident horizontal faces at the same y is the coplanar
-      // z-fight this file's header records taking the game down three times, and 2 mm of overlap
-      // costs nothing and cannot fight.
-      A.box(x, Y + STUB / 2, z, sx, STUB, sz, K.wall, { hard: true, gloss: .10, tag, ...M_WALL });
-      box(x, Y + (STUB - .002 + H) / 2, z, sx, H - STUB + .002, sz, K.wall,
-        { hard: true, gloss: .10, tag, ...M_WALL });
+      // Two boxes, not one, and the split is the whole doll's-house fix: the lower stub carries
+      // no `partition` flag and survives walls-down, everything above it takes the flag and goes.
+      // Same plane, same thickness, same paint — the seam is invisible with the walls up.
+      //
+      // `A.partition` (js/build.js `partitionSplit`) owns the stub height, the 2 mm overlap and
+      // the flag, so this file no longer states any of the three and no other building has to
+      // restate them either. It is handed the UNSHADOWED `A.box` and the flag arrives in `o` on
+      // the upper piece only — the shadowed `box` above would have flagged both and deleted the
+      // stub, which is the thing the stub exists to be.
+      A.partition(Y, H, (yc, hh, o) =>
+        A.box(x, yc, z, sx, hh, sz, K.wall, { hard: true, gloss: .10, tag, ...M_WALL, ...o }));
       // The skirting, 8 mm proud of the plaster on both faces so it catches the light the wall
       // does not. Built as one box straddling the wall rather than two stuck on the sides: at this
       // size the 8 mm either side is all that is ever seen and one box cannot z-fight with itself.

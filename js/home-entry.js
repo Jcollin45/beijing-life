@@ -204,13 +204,15 @@ FlatFit['entry'] = A => {
   // and survives the walls-down cull, so the 玄关 still reads as a room with one way out of it
   // instead of as an unmarked corner of the living room. Quads, not boxes, so the two are edge to
   // edge on the same plane with no shared surface — nothing to z-fight, and no 2 mm fudge needed.
-  const STUB = 0.40;
+  // `A.partition` (js/build.js `partitionSplit`) owns the stub height and the flag. The trailing
+  // 0 is the overlap, and it is 0 here and 2 mm in js/home-walls.js for the reason above: solids
+  // meeting on a shared horizontal face z-fight and want the overlap, two coplanar upright quads
+  // would z-fight over the overlap band and want none.
   const PS = { ...A.MAT.plaster };
-  const PL = { ...PS, partition: true };
-  A.wall(3.90, F + STUB / 2, 1.612, 2.60, STUB, 0, A.col.wall, PS);
-  A.wall(3.90, F + (STUB + CH) / 2, 1.612, 2.60, CH - STUB, 0, A.col.wall, PL);   // south, faces +z
-  A.wall(5.188, F + STUB / 2, 2.40, 1.60, STUB, -Math.PI / 2, A.col.wall, PS);
-  A.wall(5.188, F + (STUB + CH) / 2, 2.40, 1.60, CH - STUB, -Math.PI / 2, A.col.wall, PL); // east, faces -x
+  const face = (x, z, w, yaw) => A.partition(F, CH, (yc, hh, o) =>
+    A.wall(x, yc, z, w, hh, yaw, A.col.wall, { ...PS, ...o }), 0);
+  face(3.90, 1.612, 2.60, 0);                     // south, faces +z
+  face(5.188, 2.40, 1.60, -Math.PI / 2);          // east, faces -x
   // Solid, both of them. The only way out of the 玄关 on the inside is west into the 走道 — that
   // is what makes this a room you pass through rather than a corner of the living room.
   A.stop(2.60, 5.20, 1.55, 1.66);

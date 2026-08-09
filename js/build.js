@@ -8,6 +8,46 @@ const Build = (() => {
   const texIds = new WeakMap();
   const pendingTexIds = new Map();
   let texSeq = 0;
+  // ---- the doll's-house partition, in one place for every building
+  //
+  // An interior wall is built as TWO pieces so the walls-down setting can take the upper one and
+  // leave a low kerb standing. `SET.wallsOff` reads the `partition` property in `hiddenProp`
+  // (js/game.js:2417) and that is a DRAW test only — no collider anywhere is touched, so a wall
+  // with its top half hidden is still a wall you walk into. The kerb is the only thing that then
+  // says where the doorways are, which is the whole complaint the feature answers: "I don't know
+  // where the doors are so I run into them". A doorway needs no marking of its own — it is simply
+  // a stretch where the caller built no partition, so it comes out as a gap in the kerb.
+  //
+  // 0.40 m, chosen by looking in flat 202 and shared from here so no two buildings can disagree
+  // about it. Lower — 0.11, the skirting's own height — reads as a line painted on the floor from
+  // a raised camera and is invisible at walking height. Higher, past about 0.55, and the kerb
+  // starts hiding what the setting exists to show: a bed deck sits at 0.55, a sofa seat at 0.42,
+  // and every counter and low table is under that.
+  const PARTITION_STUB = 0.40;
+  // `make(yCentre, height, opts)` builds one piece however the caller already builds walls —
+  // A.box, A.wall, a scene's own wrapper — and merges `opts` into its option object. This owns
+  // the split, the height and the flag, and nothing else, so a caller never hand-splits again.
+  //
+  // Only the UPPER piece is flagged. Flagging the stub deletes the thing the stub exists to be.
+  // The flag is a plain property and deliberately not a tag: `tagBox` is scene-wide across all
+  // twelve storeys of the tower, so one shared tag would average its group centre through the
+  // middle of the building and hide every floor's walls at once.
+  //
+  // `lap` overlaps the upper piece 2 mm down into the stub. Two coincident horizontal faces at
+  // one y is the coplanar z-fight this repo has taken outages from; 2 mm cannot fight and costs
+  // nothing. A caller building with QUADS passes lap 0 — an upright quad has no horizontal face
+  // to fight with, and two coplanar quads overlapping in y would z-fight over the overlap band
+  // instead. Edge to edge is right there and 2 mm is right for solids.
+  //
+  // A wall no taller than the stub comes back whole and unflagged: there is nothing above kerb
+  // height to hide, and half a piece is worse than one.
+  function partitionSplit(baseY, height, make, lap = 0.002) {
+    const stub = Math.min(PARTITION_STUB, height);
+    const lo = make(baseY + stub / 2, stub, {});
+    if (height - stub <= 0) return [lo, null];
+    const hi = make(baseY + (stub - lap + height) / 2, height - stub + lap, { partition: true });
+    return [lo, hi];
+  }
   const texId = t => {
     const objectKey=(typeof t==='object'&&t!==null)||typeof t==='function';
     const ids=objectKey?texIds:pendingTexIds;
@@ -514,8 +554,35 @@ const Build = (() => {
 
     return { props, things, solids, shadows, glows, blockers, lights,
              transform, material, shape, box, cyl, ball, capsule, taper, model, wall, flat, glyphs,
-             solid, blocker, shade, rug, glow, light, thing, finish };
+             solid, blocker, shade, rug, glow, light, thing, finish,
+             partition: partitionSplit };
   }
 
-  return { scene };
+  // ---- doll's house: which scenes may drop their walls, and how far the eye may then go
+  //
+  // The setting is `SET.wallsOff`; the predicate that reads this table is `dollHouse()` in
+  // js/game.js. A scene appears here only once somebody has reasoned about what is ABOVE the eye
+  // when the pitch clamp is released, because that is the failure that was seen in production:
+  // with the release gated on `place` alone, V in 一楼·大堂 craned the eye up into the underside
+  // of the street slab and filled the frame with its top face, player included.
+  //
+  // Deck 2 of the tower is safe because an upper floor's slab carries a deck stamp and is culled
+  // when drawDeck is 2. Deck 0 is not, because the shell's own envelope is `deck: undefined`, is
+  // never culled, and is opaque from above. **A single-storey scene has the deck-0 problem and no
+  // deck stamp to save it** — its roof or soffit is one uncullable slab over the whole plan. That
+  // is the question to answer before adding a key here, and it is not answered by the room
+  // looking right with the walls up.
+  //
+  // `levels` are the values of `scene.level()` that qualify; omit it for a scene with no levels.
+  // `far` is the released wheel cap and is a FOOTPRINT number, not a constant: 10.5 m at the
+  // indoor lens frames the flat's 12.00 x 8.20 m with margin and no more, past which the figure
+  // stops being findable. A 46 m mall hall needs its own number. `pitch` is the released pitch
+  // clamp in radians, against the walking camera's 1.05.
+  //
+  // Adding a key here is the whole of enabling a building: nothing else is gated on `place`.
+  const DOLLHOUSE = {
+    home: { levels: [2], far: 10.5, pitch: 1.45 },
+  };
+
+  return { scene, partition: partitionSplit, PARTITION_STUB, DOLLHOUSE };
 })();
