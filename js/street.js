@@ -740,6 +740,15 @@ const Street = Lazy('Street', () => {
   // FASCIA - FASCIAH/2 puts the bottom of every name board on this street. No collider — the
   // drum is at 2.9 m and `solid()` is a 2D footprint with no height, so one here would wall off
   // the pavement in front of the shop it belongs to.
+  //
+  // MEASURED ON THE LIVE SITE, and it is the one thing about this pair that is not obvious: an
+  // awning and a shutter housing want the SAME band of wall. The 超市's sheet spans 2.68 .. 3.16
+  // and the housing 2.86 .. 3.10, so a housing the same width as the awning in front of it is
+  // invisible from the alley — A1's own check ("visible in an elevation shot") fails on exactly
+  // the frontages A7 gives an awning to. Neither item can move: the board's bottom edge is at
+  // 3.12 and the window heads are at 2.66 .. 2.90. So the housing is made WIDER than the awning
+  // instead — 35 cm proud at each end on 超市, 30 on 面馆, 60 on 五金 — and what reads from the
+  // street is the drum running out past the canvas, which is what a real one does.
   function shutterBox(x, y, z, w, h) {
     box(x, y, z + .13, w, h, .26, col.steel, { hard: true, gloss: .34, ...SHUT });
     box(x, y - h / 2 + .02, z + .25, w + .04, .05, .05, col.steelD, { hard: true, gloss: .36 });
@@ -1628,7 +1637,7 @@ const Street = Lazy('Street', () => {
     // and 2 cm under the fascia board's own bottom edge at FASCIA - FASCIAH/2 = 3.12. Its
     // underside clears the awning by 8 cm: the sheet tilts UP away from the wall (rx -.30 puts
     // the front edge high), so its rear corner at z ez+.13 is the low point at 2.68.
-    shutterBox(SHOP, 2.98, ez + .00, 6.00, .24);
+    shutterBox(SHOP, 2.98, ez + .00, 6.20, .24);
 
     // A dedicated double glass door. The red surround, gold handles and bright transom are
     // deliberately stronger than the window mullions, while the dark reveal makes the glass
@@ -1791,7 +1800,7 @@ const Street = Lazy('Street', () => {
     // relations. Eight slats, 4.90 m, inside the 5.00 m frontage. The awning's low rear corner is
     // at 2.68 and this shopfront's mullions stop at 2.69, so the sheet passes 2.7 cm over the
     // window head rather than through it. The housing sits on the frontage's own top at 3.10.
-    awning(RST, 2.92, ez, 8, col.red, col.cream);
+    awning(RST, 2.92, ez, 7, col.red, col.cream);
     shutterBox(RST, 2.98, ez + .06, 4.90, .24);
     signBoard(RST, FASCIA, ez + .10, 4.60, FASCIAH, col.red, col.goldL, '老李面馆');
     // 面 painted big on the glass, a red lantern at the door, and the menu case beside it
@@ -3270,7 +3279,7 @@ const Street = Lazy('Street', () => {
     // A7 · the awning. Same 1.30 m projection as the other two, broken at 16.62 where
     // street-retail.js hangs unit B's 侧招 on the shared BLADE line: 2.27..2.83 against the
     // awning's own 2.68 rear edge is the same air, and the awning is what gives way.
-    awning(17.8, 2.92, czb, 12, col.blueSign, col.cream, 16.62);
+    awning(17.8, 2.92, czb, 10, col.blueSign, col.cream, 16.62);
     // A1 · the housing. 2.90 .. 3.11: bottom on this frontage's glass head at 2.90 — 28 cm higher
     // than 超市's, because this shopfront is taller — and top 1 cm under the 五金电器 board.
     shutterBox(17.8, 3.005, czb + .00, 7.30, .21);
