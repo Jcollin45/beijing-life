@@ -540,7 +540,12 @@
     // wall side so he faces out into the alley, which is the whole point of sitting there.
     open();
     (() => {
-      const x = -1.00, z = BLK + .40;
+      // x -3.20, not -1.00. At -1.00 the recliner stood dead centre of the 单元门 — its canopy
+      // runs -1.75 .. 1.75 — so the first thing the player saw on stepping out of their own front
+      // door, every single time, was the back of a bamboo chair. -3.20 keeps it against a wall
+      // (the noodle shop's east pier), keeps it facing out into the alley, and clears both the
+      // canopy by 1.15 m and street-retail.js's drinks cabinet at -4.45 .. -3.79 by 0.29 m.
+      const x = -3.20, z = BLK + .40;
       for (const s of [-1, 1]) {
         cap(x + s * .30, .30, z + .10, .022, .72, .022, BAMBOO, { rx: Math.PI / 2, gloss: G.wood });
         cap(x + s * .30, .50, z - .32, .022, .62, .022, BAMBOO, { rx: .90, gloss: G.wood });
@@ -571,9 +576,14 @@
     // they are standing in the middle of an alley — a speaker the size of a suitcase on a folding
     // luggage trolley, on an extension lead run out of somebody's window, and the pile of handbags
     // and water bottles that always sits behind it.
+    // MOVED to 杨柳西口, the square at the dead end (zone x -32.2..-25.0, z -3.10..6.40). Six
+    // women cannot dance in a hutong 5.70 m wide whose narrowest clear slice is 1.25 m — they
+    // were standing across the only line through it, which is also the line js/street-cycles.js
+    // rides bicycles down. The square is 7.2 × 9.5 m and had a chess table in one corner and
+    // nothing else in it. This is what a 广场 is for; the alley never was one.
     open();
     (() => {
-      const x = -6.00, z = 3.28;
+      const x = -28.60, z = 4.60;
       for (const s of [-1, 1])                                     // the trolley
         cyl(x + s * .22, .075, z + .10, .075, .05, col.charcoal, { rz: Math.PI / 2, gloss: .30 });
       box(x, .13, z + .08, .56, .04, .34, col.steelD, { hard: true, gloss: .40 });
@@ -591,10 +601,14 @@
         box(x + s * .16, .82, z + .04, .03, .05, .03, C('#b03a2e'),
           { hard: true, mode: 1, gloss: .40 });
       cap(x + .12, .84, z + .02, .012, .22, .012, col.charcoal, { rz: .50, gloss: .30 });
-      for (let i = 0; i < 9; i++)                                  // the extension lead
-        cap(x + .30 + i * .70, .022, z + .18 + Math.sin(i * 1.3) * .06, .009, .70, .009,
+      // The lead runs WEST now, to the two-storey building that closes the dead end at x -33.4.
+      // Run east it left the square at x -22.7 and lay in the courtyards behind the alley wall,
+      // where there is no window for it to have come out of. Six segments, not nine: the wall is
+      // 4.8 m away, not 6.7.
+      for (let i = 0; i < 6; i++)
+        cap(x - .30 - i * .70, .022, z + .18 + Math.sin(i * 1.3) * .06, .009, .70, .009,
           C('#e0dbcf'), { rz: Math.PI / 2 + (jit(i, x) - .5) * .10, gloss: .26 });
-      box(x + 6.70, .05, z + .20, .16, .07, .10, C('#e6e1d4'), { hard: true, gloss: .30 });
+      box(x - 4.70, .05, z + .20, .16, .07, .10, C('#e6e1d4'), { hard: true, gloss: .30 });
       [[-.90, C('#6a3c4a'), .22], [-.62, C('#3d4a5c'), .18], [-1.16, C('#7a6a3c'), .16]]
         .forEach(([ox, c, r]) => {                                 // nobody dances holding her bag
           ball(x + ox, r * .80, z - .06, r, r * .80, r * .70, c, { mode: 7, gloss: .10 });
@@ -604,14 +618,17 @@
       for (let i = 0; i < 4; i++)
         cyl(x - 1.50 + i * .17, .105, z - .10 + (jit(i, 5) - .5) * .12, .033, .21,
           i % 2 ? C('#bcd6dc') : C('#d8dcc6'), { gloss: .62, alpha: .80 });
-      timed(thing('音箱', x, .70, 3.02, '音箱一响，大妈们就来了。',
+      // Both of these carried the old pitch's z and one of them its x as a literal, so they stayed
+      // in the hutong when the speaker left it. Written off `x`/`z` now, which is the only way a
+      // label and the thing it labels can never be in two places again.
+      timed(thing('音箱', x, .70, z - .26, '音箱一响，大妈们就来了。',
         'The speaker starts up and the aunties arrive.',
         '音 sound + 箱 box. This is what 广场舞 runs on.',
-        { focus: [x, 2.70], reach: 2.2 }), H.speaker);
-      timed(thing('广场舞', x - 1.00, .90, 2.90, '她们每天晚上都在这儿跳广场舞。',
+        { focus: [x, z - .58], reach: 2.2 }), H.speaker);
+      timed(thing('广场舞', x - 1.00, .90, z - .38, '她们每天晚上都在这儿跳广场舞。',
         'They dance out here every evening.',
         '广场舞 guǎngchǎngwǔ — square dancing. Every open space in China has one at seven.',
-        { focus: [-5.30, 1.00], reach: 2.6 }), H.speaker);
+        { focus: [x + .70, z - 2.28], reach: 2.6 }), H.speaker);
     })();
     close(H.speaker);
 
@@ -810,28 +827,31 @@
     // carries — the park's dancers are the reason it exists — and a single `spots` window means
     // `npcAwake` has them off the street entirely outside it. Six bodies between six and eight in
     // the evening, and none at any other hour of the day.
-    const SPK = [-6.00, 3.28];
+    // The pitch is in 杨柳西口 now — see the speaker above. Every dancer is offset by the same
+    // (-22.60, +1.32) the speaker moved by, so the formation, the spacing and the way each of them
+    // faces the box are bit-identical to what was shipped; only the ground under it changed.
+    const SPK = [-28.60, 4.60];
     const face = (x, z) => Math.atan2(SPK[0] - x, SPK[1] - z);
     const DANCERS = [
       // out in front, in the one bright thing she owns, because they always are
-      [-5.30, 2.10, { skin:'#dcae86', hair:'#6b625a', hairStyle:'perm', top:'#c0485a',
+      [-27.90, 3.42, { skin:'#dcae86', hair:'#6b625a', hairStyle:'perm', top:'#c0485a',
                       pants:'#39414d', shoe:'#e8e2d6', sleeve:'short', collar:'polo',
                       tall:0.92, wide:1.10, headScale:0.99, stoop:0.04, age:0.62, faceSeed:307 }],
-      [-6.45, 1.05, { skin:'#d3a179', hair:'#b0aba2', hairStyle:'perm', top:'#4f7a68',
+      [-29.05, 2.37, { skin:'#d3a179', hair:'#b0aba2', hairStyle:'perm', top:'#4f7a68',
                       pants:'#3a4148', shoe:'#dfd8ca', sleeve:'short', collar:'polo',
                       hat:'sun', hatColor:'#ded4b8',
                       tall:0.88, wide:1.13, headScale:0.98, stoop:0.13, age:0.81, faceSeed:311 }],
-      [-5.30, 1.05, { skin:'#e0b48c', hair:'#443c38', hairStyle:'bob', top:'#a8874e',
+      [-27.90, 2.37, { skin:'#e0b48c', hair:'#443c38', hairStyle:'bob', top:'#a8874e',
                       pants:'#333a44', shoe:'#e4ded0', sleeve:'short', collar:'polo',
                       tall:0.96, wide:1.03, headScale:1.00, age:0.42, faceSeed:313 }],
-      [-4.15, 1.05, { skin:'#cba078', hair:'#6f665d', hairStyle:'perm', top:'#8a4a7a',
+      [-26.75, 2.37, { skin:'#cba078', hair:'#6f665d', hairStyle:'perm', top:'#8a4a7a',
                       pants:'#39414b', shoe:'#e8e2d6', sleeve:'short', collar:'polo',
                       vest:'#5c6248',
                       tall:0.91, wide:1.12, headScale:0.99, stoop:0.08, age:0.70, faceSeed:317 }],
-      [-6.10, -0.20, { skin:'#dcae86', hair:'#7a716a', hairStyle:'bun', top:'#3f6f8c',
+      [-28.70, 1.12, { skin:'#dcae86', hair:'#7a716a', hairStyle:'bun', top:'#3f6f8c',
                        pants:'#3a4148', shoe:'#d8d2c0', sleeve:'short',
                        tall:0.94, wide:1.06, headScale:1.00, age:0.55, faceSeed:331 }],
-      [-4.55, -0.20, { skin:'#c9915f', hair:'#524a42', hairStyle:'perm', top:'#d8b23f',
+      [-27.15, 1.12, { skin:'#c9915f', hair:'#524a42', hairStyle:'perm', top:'#d8b23f',
                        pants:'#2f3742', shoe:'#e4ded0', sleeve:'short', collar:'polo',
                        hat:'visor', hatColor:'#e4dcc4',
                        tall:0.90, wide:1.14, headScale:1.01, stoop:0.06, age:0.66, faceSeed:337 }],
@@ -903,7 +923,7 @@
               pants:'#4a5158', shoe:'#3a3f45', sleeve:'short', collar:'shirt',
               tall:0.99, wide:1.12, headScale:1.02, stoop:0.08, age:0.78, faceSeed:373 },
       seatY: 0.32,
-      spots: [{ h0: H.nap[0] + .1, h1: H.nap[1] - .1, at: [-1.00, -2.40], face: 0, act: 'sit' }],
+      spots: [{ h0: H.nap[0] + .1, h1: H.nap[1] - .1, at: [-3.20, -2.40], face: 0, act: 'sit' }],
     });
   })();
 })();

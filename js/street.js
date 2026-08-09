@@ -1805,7 +1805,12 @@ const Street = Lazy('Street', () => {
     // both the walk and every view along the alley.
     tree(-9.4, -2.10, 1.0, false);
     tree(-2.6, SZ - .55, 1.1, true);
-    tree(4.6, -2.10, .95, false);
+    // The tree that stood at x 4.6 is GONE, and it is the only prop in the district deleted rather
+    // than moved. At scale .95 its crown filled x 3.4 .. 5.8 and y 2.6 .. 5.0, and 幸福超市's board
+    // runs 5.10 .. 10.10 at y 3.12 .. 3.80 — so the biggest sign on the street was read through a
+    // tree from every position west of it, which is every position you approach it from. There is
+    // nowhere on this stretch to move it to: the 超市 blade is at x 3.05, the 单元门 canopy ends at
+    // 1.75, and its trunk has to stand in the 0.90 m unreachable strip. Four alley trees, not five.
     tree(16.4, SZ - .55, 1.05, false);
     tree(-20.0, -2.10, 1.0, false);
 
