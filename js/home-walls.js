@@ -175,6 +175,19 @@ FlatFit['walls'] = A => {
   const Y = A.y0;                       // the deck this flat stands on
   const H = F.h;                        // clear height, floor to ceiling
   const T = 0.10;                       // partition thickness
+  // The doll's-house stub. With the walls down a partition is not deleted, it is cut off at this
+  // height and the bottom of it stays — which is what The Sims does, and what the owner asked for:
+  // "I don't know where the doors are so I run into them". The cull is unchanged (a draw test on
+  // `partition`, js/game.js:2351) and so is every collider, so the wall is still there to walk
+  // into — the stub is the only thing that says where. A doorway needs no marking of its own: it
+  // is simply a stretch where `run` built no wall, so it comes out as a gap in the stub.
+  //
+  // 0.40 m, chosen by looking rather than by theory. Lower — 0.11, the skirting's own height —
+  // reads as a line painted on the floor from a raised camera and is invisible at walking height.
+  // Higher, past about 0.55, and the stub starts hiding what the setting exists to show: the bed
+  // deck sits at 0.55, the sofa seat at 0.42, the low tables under that. At 0.40 every piece of
+  // furniture in the flat still stands proud of it, and the plan reads.
+  const STUB = 0.40;
 
   // A tag per stretch of wall, not one tag for all of them — and this is not cosmetic.
   // `hiddenProp` in js/game.js hides a *tagged* prop by its tag's bounding box, so that a fixture
@@ -413,11 +426,22 @@ FlatFit['walls'] = A => {
       const tag = '墙' + (++tagN);
       const x = w.ax === 0 ? w.at : mid, z = w.ax === 0 ? mid : w.at;
       const sx = w.ax === 0 ? T : len, sz = w.ax === 0 ? len : T;
-      box(x, Y + H / 2, z, sx, H, sz, K.wall, { hard: true, gloss: .10, tag, ...M_WALL });
+      // Two boxes, not one, and the split is the whole doll's-house fix. The lower STUB is built
+      // with the UNSHADOWED `A.box`, so it carries no `partition` flag and survives walls-down;
+      // everything above it takes the flag and goes. Same plane, same thickness, same paint — the
+      // seam is invisible with the walls up. The upper box starts 2 mm below the top of the stub
+      // rather than exactly on it: two coincident horizontal faces at the same y is the coplanar
+      // z-fight this file's header records taking the game down three times, and 2 mm of overlap
+      // costs nothing and cannot fight.
+      A.box(x, Y + STUB / 2, z, sx, STUB, sz, K.wall, { hard: true, gloss: .10, tag, ...M_WALL });
+      box(x, Y + (STUB - .002 + H) / 2, z, sx, H - STUB + .002, sz, K.wall,
+        { hard: true, gloss: .10, tag, ...M_WALL });
       // The skirting, 8 mm proud of the plaster on both faces so it catches the light the wall
       // does not. Built as one box straddling the wall rather than two stuck on the sides: at this
       // size the 8 mm either side is all that is ever seen and one box cannot z-fight with itself.
-      box(x, Y + .055, z, sx + (w.ax === 0 ? .016 : 0), .11, sz + (w.ax === 0 ? 0 : .016),
+      // `A.box`, not the shadowed `box`: the skirting is the bottom of the wall, so it belongs to
+      // the stub. A stub standing with its trim stripped off would read as an unfinished kerb.
+      A.box(x, Y + .055, z, sx + (w.ax === 0 ? .016 : 0), .11, sz + (w.ax === 0 ? 0 : .016),
         K.skirt, { hard: true, gloss: .28, tag, ...M_TRIM });
       // A collider per stretch, so the doorways are genuinely walkable and the wall genuinely is
       // not. `A.stop` inflates by nothing; `clampMove` in js/build.js adds the body radius.

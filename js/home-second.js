@@ -134,9 +134,19 @@ FlatFit['second'] = A => {
     // `partition: true` — the walls-down setting in js/game.js (SET.wallsOff, via `hiddenProp`).
     // This file stood the x -2.60 wall before js/home-walls.js existed, so the flag has to be set
     // here too or the flat drops nine partitions and keeps one. Drawing only; `stop` is untouched.
-    const P = { hard: true, mode: 4, gloss: .10, ...PLASTER, partition: true };
-    box(X1, Y(H / 2), (Z0 + DZ0) / 2, PT, H, DZ0 - Z0, K.wall, P);            // south of the door
-    box(X1, Y(H / 2), (DZ1 + Z1) / 2, PT, H, Z1 - DZ1, K.wall, P);            // north of it
+    // Two pieces per stretch, matching js/home-walls.js:190: the bottom STUB carries no flag and
+    // stays with the walls down, so the flat still reads as a plan and the doorway between DZ0 and
+    // DZ1 comes out as a gap in it. Nothing here is a collider — `stop` below is untouched.
+    const STUB = 0.40;
+    const S = { hard: true, mode: 4, gloss: .10, ...PLASTER };
+    const P = { ...S, partition: true };
+    // The upper box overlaps the stub by 2 mm rather than meeting it: coincident horizontal faces
+    // at one y z-fight, 2 mm of overlap cannot.
+    const UY = Y((STUB - .002 + H) / 2), UH = H - STUB + .002;
+    box(X1, Y(STUB / 2), (Z0 + DZ0) / 2, PT, STUB, DZ0 - Z0, K.wall, S);      // south of the door
+    box(X1, UY,          (Z0 + DZ0) / 2, PT, UH,   DZ0 - Z0, K.wall, P);
+    box(X1, Y(STUB / 2), (DZ1 + Z1) / 2, PT, STUB, Z1 - DZ1, K.wall, S);      // north of it
+    box(X1, UY,          (DZ1 + Z1) / 2, PT, UH,   Z1 - DZ1, K.wall, P);
     box(X1, Y((DTOP + H) / 2), (DZ0 + DZ1) / 2, PT, H - DTOP, DZ1 - DZ0, K.wall, P); // header
     stop(PF, PB, Z0, DZ0); stop(PF, PB, DZ1, Z1);
   }

@@ -200,9 +200,17 @@ FlatFit['entry'] = A => {
   // js/game.js (SET.wallsOff, read through `hiddenProp`). The 玄关's south and east faces are
   // partitions, not shell — the building's own envelope is js/world.js's and keeps you enclosed
   // with the walls down. Drawing only: `A.stop` below is untouched.
-  const PL = { ...A.MAT.plaster, partition: true };
-  A.wall(3.90, F + CH / 2, 1.612, 2.60, CH, 0, A.col.wall, PL);            // south, faces +z
-  A.wall(5.188, F + CH / 2, 2.40, 1.60, CH, -Math.PI / 2, A.col.wall, PL); // east,  faces -x
+  // Each face goes up in two quads, matching js/home-walls.js:190. The bottom STUB carries no flag
+  // and survives the walls-down cull, so the 玄关 still reads as a room with one way out of it
+  // instead of as an unmarked corner of the living room. Quads, not boxes, so the two are edge to
+  // edge on the same plane with no shared surface — nothing to z-fight, and no 2 mm fudge needed.
+  const STUB = 0.40;
+  const PS = { ...A.MAT.plaster };
+  const PL = { ...PS, partition: true };
+  A.wall(3.90, F + STUB / 2, 1.612, 2.60, STUB, 0, A.col.wall, PS);
+  A.wall(3.90, F + (STUB + CH) / 2, 1.612, 2.60, CH - STUB, 0, A.col.wall, PL);   // south, faces +z
+  A.wall(5.188, F + STUB / 2, 2.40, 1.60, STUB, -Math.PI / 2, A.col.wall, PS);
+  A.wall(5.188, F + (STUB + CH) / 2, 2.40, 1.60, CH - STUB, -Math.PI / 2, A.col.wall, PL); // east, faces -x
   // Solid, both of them. The only way out of the 玄关 on the inside is west into the 走道 — that
   // is what makes this a room you pass through rather than a corner of the living room.
   A.stop(2.60, 5.20, 1.55, 1.66);
