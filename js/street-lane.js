@@ -58,7 +58,12 @@
   const LZ1 = -5.80;            // NORTH frontage plane, outward normal -1
   const LZC = (LZ0 + LZ1) / 2;  // -9.20, which is where the mall portal used to stand
   const WALL = 8.0;             // how deep the side blocks are
-  const BH = 13.5;              // and how tall
+  // 11.0, not the 13.5 this was first built at. Measured off the live site at 12:00: a 6.80 m lane
+  // between two 13.5 m blocks is a 2:1 canyon and at midday the whole upper half of both walls
+  // read black — the shopfronts were lit and everything above them was a back alley. 11.0 is a
+  // 1.6:1 ratio, which is what a 步行街's flanking buildings actually are: lower than the blocks
+  // on the main road they open off, because the point of the street is that daylight reaches it.
+  const BH = 11.0;
 
   const lit = [];
   let lastLight = -1;
@@ -112,7 +117,7 @@
 
       // upper windows, so the lane has storeys over it the way the road does
       const bays = Math.round((LX1 - LX0) / 3.4);
-      for (let f = 0; f < 3; f++) for (let i = 0; i < bays; i++) {
+      for (let f = 0; f < 2; f++) for (let i = 0; i < bays; i++) {   // two rows now, not three: 9.25 + 0.81 clears an 11.0 parapet
         const wx = LX0 + (i + .5) * ((LX1 - LX0) / bays), wy = 6.4 + f * 2.85;
         box(wx, wy, zf + n * .04, 2.16, 1.62, .08, GLASSD, { hard: true, gloss: .20 });
         emis(box(wx, wy, zf + n * .09, 2.00, 1.46, .04, GLASS,
@@ -248,6 +253,27 @@
           { size: .46, gap: .16, color: col.goldL, mode: 1, glow: .20, lift: .012 }))
         emis(g, .80);
     if (typeof light === 'function') light(LX0 + 1.8, 4.0, LZC, [1.0, .82, .58], .34, 9.0);
+
+    // ---------------------------------------------------------------- 灯串, strung across
+    // The other half of the canyon answer, and the thing every pedestrian street in this city
+    // actually has: bulbs on a catenary from one frontage to the other. Emissive balls, not
+    // lights — six runs of nine is fifty-four primitives and zero draw-call cost worth naming,
+    // where fifty-four point lights would be the end of this district's frame budget. Two real
+    // lights carry the actual illumination, one a third of the way along and one at two thirds.
+    for (let r = 0; r < 6; r++) {
+      const wx = LX0 + 2.6 + r * 2.55, sag = .55;
+      cap(wx, 5.30, LZC, .012, LZ1 - LZ0 - .2, .012, C('#3a3a36'),
+        { rx: Math.PI / 2, gloss: .24 });
+      for (let i = 0; i < 9; i++) {
+        const u = (i + .5) / 9, dz = LZ0 + .3 + u * (LZ1 - LZ0 - .6);
+        emis(ball(wx, 5.30 - sag * Math.sin(u * Math.PI) - .10, dz, .055, .062, .055,
+          C('#ffe6b4'), { mode: 1, glow: .04 }), .55);
+      }
+    }
+    if (typeof light === 'function') {
+      light(LX0 + 6.5, 4.6, LZC, [1.0, .88, .70], .30, 10.0);
+      light(LX0 + 13.0, 4.6, LZC, [1.0, .88, .70], .30, 10.0);
+    }
   };
 
   // ---------------------------------------------------------------- what the clock does to it
