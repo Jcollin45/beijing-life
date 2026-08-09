@@ -1077,7 +1077,7 @@
     // shop's lights go off. That is the whole reason the table was rounded to the half hour when
     // these went up — see the note on `HOURS`.
     hoursPlate(4.72, 1.80, EZ + .085, 'shop');        // the 40 cm white pier west of window 1
-    hoursPlate(-6.27, 1.80, EZ + .205, 'noodle');     // the 34 cm pier between window 2 and the jamb
+    hoursPlate(-9.345, 1.80, EZ + .205, 'noodle');    // the 31 cm west pier, under the number
     hoursPlate(19.72, 1.86, HWG + .012, 'hardw');     // the 22 cm slot between unit B's jamb and C
     hoursPlate(40.405, 1.70, -6.35, 'mall', -Math.PI / 2);   // the stone north of the mall glazing
     hoursPlate(41.30, 1.70, -14.95, 'parade', -Math.PI / 2); // the far parade, by the 烟酒 blade
@@ -1125,7 +1125,7 @@
     // ---- A8. 门牌号. The same blue enamel plate as the 单元门's, on the same alley's numbering:
     // even numbers on the block side, rising eastward, with the 单元门's own 十八号 between the
     // noodle shop and the 超市 where it already is.
-    numPlate(-9.38, 2.30, EZ + .205, '十四号');    // 老李面馆
+    numPlate(-9.345, 2.38, EZ + .205, '十四号');   // 老李面馆, over its hours plate
     numPlate(4.72, 2.32, EZ + .085, '二十号');     // 幸福超市
     numPlate(22.10, 1.30, HWW + .012, '二十四号'); // 五金电器, on the corner block's return
 
