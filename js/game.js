@@ -1730,12 +1730,34 @@ bindToggle('#setSpeech', 'speech');
 // as a street to one person is a noise to another — so it gets its own toggle rather than being
 // tuned until nobody minds it.
 bindToggle('#setAmbience', 'ambience', () => applyAmbience());
-// Walls down. Nothing to apply — the next frame reads SET.wallsOff through hiddenProp — but the
-// panel is over a frozen frame, so say what changed rather than leaving the player to unpause and
-// guess. `bindToggle` already saves it, so it survives the reload like every other setting.
-bindToggle('#setWalls', 'wallsOff', () => {
+// Walls down. Nothing to apply to the renderer — the next frame reads SET.wallsOff through
+// hiddenProp — but the camera is half the feature and it is set here rather than left to the
+// player. Walls down with the eye still at chest height shows you one room through one partition;
+// what makes it read as a doll's house is the view from above, so the toggle cranes up and back
+// with it and hands back exactly the framing the player had when the walls come up again. Eased
+// rather than cut: CAM.pitch and CAM.dist lerp toward these every frame, so it is a crane move.
+//
+// 1.18 rad is 68 degrees and 7.2 m is the whole 12.00 x 8.20 m plate at the flat's aspect. Not
+// straight down: at 90 degrees the furniture is a set of lids and you cannot tell a bed from a
+// table, which is the reason The Sims does not go there either.
+//
+// The saved framing is not clamped on the way back. It is whatever the player themselves had
+// chosen a moment earlier under the walls-up limits, so it is legal by construction, and a place
+// change overwrites both anyway (js/game.js:12275).
+function toggleWalls() {
+  SET.wallsOff = !SET.wallsOff;
+  if (SET.wallsOff) {
+    CAM.wallsWas = { pitch: CAM.tPitch, dist: CAM.tDist };
+    if (dollHouse()) { CAM.tPitch = 1.18; CAM.tDist = 7.2; }
+  } else if (CAM.wallsWas) {
+    CAM.tPitch = CAM.wallsWas.pitch; CAM.tDist = CAM.wallsWas.dist; CAM.wallsWas = null;
+  }
+  saveSettings(); syncSettings();
+  // The panel is over a frozen frame, so say what changed rather than leaving the player to
+  // unpause and guess.
   toast(SET.wallsOff ? '墙壁隐藏 · walls down' : '墙壁显示 · walls up');
-});
+}
+$('#setWalls').addEventListener('click', toggleWalls);
 bindToggle('#setFps', 'fps');
 
 // Throwing away every word you have met is the one thing in here you cannot undo, so it asks
@@ -1866,8 +1888,7 @@ addEventListener('keydown', e => {
   // it once they know. V is free: nothing else in the game claims it.
   if (e.key === 'v' || e.key === 'V') {
     e.preventDefault();
-    SET.wallsOff = !SET.wallsOff; saveSettings(); syncSettings();
-    toast(SET.wallsOff ? '墙壁隐藏 · walls down' : '墙壁显示 · walls up');
+    toggleWalls();
     return;
   }
   // Escape closes whatever is open, one thing at a time, and pauses the game once nothing is.
@@ -2059,7 +2080,10 @@ function orbit(dx, dy) {
   // 1.55 m top-down of the player's own head. It is legible as a plan view and it was never
   // chosen as one — the wheel simply ran out of travel there. 1.05 rad is 60 degrees, which is
   // still a steep look-down over a table and still short of the pose the limiter has to rescue.
-  CAM.tPitch = clamp(CAM.tPitch + dy * s * 0.72, 0.05, 1.05);
+  // 1.45 rad is 83 degrees, and it is the walls-down bound only. A plan view of a flat needs to be
+  // nearly overhead or the near rooms are read through the far ones; 60 degrees leaves the far half
+  // of a 12 m plate behind the near half of it.
+  CAM.tPitch = clamp(CAM.tPitch + dy * s * 0.72, 0.05, dollHouse() ? 1.45 : 1.05);
 }
 // Swing back behind the player, whichever way they are facing.
 function recenterCamera() {
@@ -2134,7 +2158,12 @@ cv.addEventListener('wheel', e => {
   // `tDist` frame by frame — see the note beside `CAM.near` below, which is right that a limit
   // laid over the player's choice has to be released when they walk out. This only narrows what a
   // deliberate scroll can ask for, in the room they are scrolling in.
-  const far = Math.min((scene && scene.camera && scene.camera.maxDist) || 6.8,
+  // Walls down releases both caps, and it has to release the LITERAL as well as `room.near`: 6.8
+  // is a chase-camera number and the flat is 12.00 x 8.20 m, so a wheel that stopped at 6.8 would
+  // stop with a third of the plan still off the bottom of the frame. 10.5 m at 68 degrees frames
+  // the whole of it with margin, and no further, because past that the figure stops being findable.
+  const far = dollHouse() ? 10.5
+            : Math.min((scene && scene.camera && scene.camera.maxDist) || 6.8,
                        (room && room.near) || 6.8);
   // 1.70 rather than 1.95, because the flat's tightest rooms cap the orbit at 1.90 and a floor
   // above the room's own ceiling leaves no travel at all: `clamp(v, 1.95, 1.90)` returns one bound
@@ -2313,6 +2342,20 @@ function syncMovingCulls(s) {
 // 10 cm of clutter attached to it. It is not free: 0.42 also takes 10 cm more of whatever the
 // player is meant to see past that wall, which is why it is 0.42 and not the 0.60 that would
 // clear a chair.
+// ---- doll's house
+//
+// The one predicate the walls-down camera is built on. Every limit it releases below — the orbit
+// cap, the room's own `near`, the ceiling stop, the shell's camera blockers and the cutaway itself
+// — exists to keep a WALKING camera inside a room it can see out of, and not one of them is the
+// right answer for a room that no longer has walls. They are released together or not at all: half
+// of them released is an eye that rises to a ceiling it cannot pass, or backs out to a blocker
+// 2.97 m away, which is the same stuck picture with more machinery behind it.
+//
+// Gated on `place` as well as the setting because only the tower's partitions carry the flag
+// (js/home-walls.js) — the setting does nothing to the geometry of any other scene, so it must not
+// move any other scene's camera either. Cheap: two reads, called a handful of times a frame, never
+// per prop.
+function dollHouse() { return SET.wallsOff && place === 'home'; }
 function hiddenAt(px, pz) {
   return (hideX > 0 && px > cutRoom.x1 - 0.42) || (hideX < 0 && px < cutRoom.x0 + 0.42) ||
          (hideZ > 0 && pz > cutRoom.z1 - 0.42) || (hideZ < 0 && pz < cutRoom.z0 + 0.42);
@@ -14652,7 +14695,7 @@ function frame(now) {
       // Orbiting from the keyboard leaves the mouse free while you walk.
       const rate = (keys.shift ? 2.8 : 1.6) * dt;
       CAM.tYaw += kx * rate;
-      CAM.tPitch = clamp(CAM.tPitch + ky * rate * 0.52, 0.05, 1.05);   // 512, same clamp as the mouse
+      CAM.tPitch = clamp(CAM.tPitch + ky * rate * 0.52, 0.05, dollHouse() ? 1.45 : 1.05);   // 512, same clamp as the mouse
       CAM.spin = 0;
     }
   }
@@ -14791,6 +14834,13 @@ function frame(now) {
   // The band just inside each wall is the exception — parking there buries the eye
   // in a door or cabinet, so the camera pulls in rather than stopping inside one.
   let dist = CAM.dist;
+  // Walls down, and the four limits below stand down together — see `dollHouse` above for why it
+  // is all four or none. `blockers` is the shell's own camera cage (js/world.js, camBlockFlat):
+  // with the partitions drawn it is what stops the eye ending up outside the building looking at
+  // the unlit backs of its walls; with them gone it is the one thing between the player and the
+  // view the setting exists to give. `cameraBlockLimit` already reads `blockers || []`.
+  const doll = dollHouse();
+  const blockers = doll ? null : scene.blockers;
   // A room may declare that the space behind you is tighter than its own orbit distance — walking
   // into a 4.8 m shop off a 46 m hall is the case this exists for.
   //
@@ -14857,7 +14907,7 @@ function frame(now) {
   const wantLook = room.lookY || 1.10;
   CAM.rlook = (CAM.rlook === undefined || !walked) ? wantLook
                                     : lerp(CAM.rlook, wantLook, 1 - Math.pow(0.08, dt));
-  dist = Math.min(dist, CAM.near);
+  if (!doll) dist = Math.min(dist, CAM.near);
   const clearWall = (i, lo, hi) => {
     if (Math.abs(dir[i]) < 1e-4) return;
     const s = dir[i] > 0 ? 1 : -1;
@@ -14921,7 +14971,7 @@ function frame(now) {
   const WALL_MIN = 3.00;
   const inLift = room.id === 'lift';
   if (inLift) dist = Math.min(dist, LIFT_CAM);
-  else if ((room.near || NOLIMIT) >= WALL_MIN) {
+  else if (!doll && (room.near || NOLIMIT) >= WALL_MIN) {
     clearWall(0, room.x0, room.x1);
     clearWall(2, room.z0, room.z1);
   }
@@ -14940,7 +14990,7 @@ function frame(now) {
   // is already several metres up; if a room ever reports a ceiling at or below the player's chest
   // — a bad deck number, a floor change landing a frame early — the division goes negative and the
   // camera swings round in front of the player's face. Clamped, the worst case is a close shot.
-  if (room.ceil !== undefined && dir[1] > 1e-4)
+  if (!doll && room.ceil !== undefined && dir[1] > 1e-4)
     dist = Math.min(dist, Math.max((room.ceil - tgt[1]) / dir[1], 0.85));
   // Outdoors there is nothing to back out through: buildings are solid masses, and sliding the
   // eye inside one would show its far faces from behind. A straight ray used to solve that only
@@ -14948,9 +14998,9 @@ function frame(now) {
   // answer: move sideways along the obstruction, or rise over a low roof, and keep the chosen
   // orbit distance. Candidate directions are tested against the same blocker list; if none clears
   // it, shortening remains the safe fallback.
-  const direct = cameraBlockLimit(tgt, dir, dist, scene.blockers);
+  const direct = cameraBlockLimit(tgt, dir, dist, blockers);
   let wantSlide = 0, wantRise = 0, bestClear = direct;
-  if (direct < dist - 0.08 && scene.blockers && scene.blockers.length) {
+  if (direct < dist - 0.08 && blockers && blockers.length) {
     const severity = clamp((dist - direct) / 1.8, 0, 1);
     const side = 0.42 + severity * 0.46, rise = 0.42 + severity * 0.62;
     const right = [-Math.cos(CAM.yaw), 0, Math.sin(CAM.yaw)];
@@ -14967,7 +15017,7 @@ function frame(now) {
       const vz = dir[2] * dist + right[2] * slide;
       const vl = Math.hypot(vx, vy, vz) || 1;
       const q = [vx / vl, vy / vl, vz / vl];
-      const clear = cameraBlockLimit(tgt, q, dist, scene.blockers);
+      const clear = cameraBlockLimit(tgt, q, dist, blockers);
       // A few centimetres of extra clearance is not worth visible camera motion. Sideways motion
       // is preferred to height when they solve the same amount because it preserves the horizon.
       const score = clear - Math.abs(slide) * 0.025 - up * 0.055;
@@ -14985,7 +15035,7 @@ function frame(now) {
   const vl = Math.hypot(vx, vy, vz) || 1;
   // Preserve orbit distance: slide and rise change where the eye is, not how far away it feels.
   const viewDir = [vx / vl, vy / vl, vz / vl];
-  dist = cameraBlockLimit(tgt, viewDir, dist, scene.blockers);
+  dist = cameraBlockLimit(tgt, viewDir, dist, blockers);
   eye[0] = tgt[0] + viewDir[0] * dist;
   eye[1] = tgt[1] + viewDir[1] * dist;
   eye[2] = tgt[2] + viewDir[2] * dist;
@@ -15290,8 +15340,18 @@ function frame(now) {
     const eb = ex && (ex.cut || ex);
     if (eb && P.x >= eb.x0 && P.x <= eb.x1 && P.z >= eb.z0 && P.z <= eb.z1) cutRoom = eb;
   }
-  hideX = scene.cutaway && eye[0] > cutRoom.x1 ? 1 : scene.cutaway && eye[0] < cutRoom.x0 ? -1 : 0;
-  hideZ = scene.cutaway && eye[2] > cutRoom.z1 ? 1 : scene.cutaway && eye[2] < cutRoom.z0 ? -1 : 0;
+  // Walls down switches the cutaway off outright, and that is the trap this feature had to avoid
+  // rather than survive. From above the flat the eye is outside every room's box on both axes, so
+  // `hiddenAt` would be asking of every prop in the building whether it lies past a 0.42 m band —
+  // and a prop is judged by one point, which is how a 12.00 x 8.20 m floor slab came to be deleted
+  // from nine of ten rooms before `nocut` existed. `nocut` covers the shell; nothing covers the
+  // furniture, and a doll's house that hides the furniture in the other nine rooms is not one.
+  // There is also nothing left for it to do: the only surfaces between an overhead eye and the
+  // rooms are the partitions, already gone, and the ceiling, which is single-sided and therefore
+  // invisible from on top of it.
+  const cut = scene.cutaway && !dollHouse();
+  hideX = cut && eye[0] > cutRoom.x1 ? 1 : cut && eye[0] < cutRoom.x0 ? -1 : 0;
+  hideZ = cut && eye[2] > cutRoom.z1 ? 1 : cut && eye[2] < cutRoom.z0 ? -1 : 0;
 
   // ---- what is selected: the cursor wins, otherwise whatever you are standing at
   reachThing = null; useThing = null;
