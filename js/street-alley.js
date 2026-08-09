@@ -395,9 +395,25 @@
     // The east end of the courtyard wall was where this wanted to be — a corner shop belongs on a
     // corner — but js/street-civic.js's metro mouth now occupies x 20.9..23.1 out to z 3.60, and a
     // hatch inside a subway entrance is worse than a hatch in the wrong place.
-    const kiosk = lockup(-6.20, '杨柳小卖部', '烟酒 · 冷饮 · 话费充值', col.red, true);
-    const shoe = lockup(-13.20, '修鞋配钥匙', '换拉链 · 打鞋掌', C('#2f5f6a'));
-    const print = lockup(-10.60, '打印复印', '照片 · 传真 · 塑封', C('#8a3c33'));
+    // A terrace of three, west of the noodle shop, on a 1.86 m pitch — 20 cm of render between
+    // housings, which is what a row of lock-ups actually is. The pitch is not a taste decision:
+    // the block's ground floor is FULL, and this is the only run of face that holds three.
+    //
+    //   -16.50            NB.x0, the block's west corner
+    //   -16.07 .. -15.00  street.js's wallJunk(-15.6): hose, tarpaulin, a bundle of cane
+    //   -14.90 .. -9.52   these three
+    //    -9.50 .. -4.50   老李面馆's frontage
+    //
+    // 小卖部 used to stand at -6.20 — 1.66 m of housing and a travelling shutter built straight
+    // through the noodle shop's west window and its 牛肉面 glass, in the middle of the one view
+    // every player walks out of their own door into. 打印复印 at -10.60 swallowed street.js's
+    // gas riser at -10.9 the same way. Both risers have moved to where they can be seen; see
+    // street.js's services block.
+    //
+    // Which shop goes where: the one with the light on is nearest the way home.
+    const shoe = lockup(-14.07, '修鞋配钥匙', '换拉链 · 打鞋掌', C('#2f5f6a'));
+    const print = lockup(-12.21, '打印复印', '照片 · 传真 · 塑封', C('#8a3c33'));
+    const kiosk = lockup(-10.35, '杨柳小卖部', '烟酒 · 冷饮 · 话费充值', col.red, true);
 
     // Each shutter is one box carrying the corrugated-steel sample, whose y-scale and y-centre the
     // tick drives. The roll it comes off and the guides either side do not move. One prop apiece,
@@ -764,8 +780,16 @@
     for (const w of WASH) {
       if (w.set && !w.set.on) continue;
       const a = Math.sin(t * 1.05 + w.phase) * .052 + Math.sin(t * 2.40 + w.phase * 2) * .015;
-      const sw = M.mul(M.trans(0, w.y, 0), M.mul(M.rotZ(a), M.trans(0, -w.y, 0)));
-      for (let i = 0; i < w.props.length; i++) w.props[i].m = M.mul(sw, w.m0[i]);
+      // Pivot on each garment's own pegs, not on the world origin — see the same fix and the
+      // same reason in street.js's `tick`. This line hangs at x 2.86..6.06, so the old pivot
+      // threw it up to 0.41 m up and down as a block.
+      const R = M.rotZ(a), ca = Math.cos(a), sa = Math.sin(a);
+      for (let i = 0; i < w.props.length; i++) {
+        const m0 = w.m0[i], m = M.mul(R, m0), dy = m0[13] - w.y;
+        m[12] = m0[12] - dy * sa;
+        m[13] = w.y + dy * ca;
+        w.props[i].m = m;
+      }
     }
   };
 

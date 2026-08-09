@@ -95,7 +95,7 @@
 
   StreetFit['retail'] = S => {
     const { box, cyl, ball, taper, glyphs, solid, shade, glow, thing,
-            cap, light, C, G, col } = S;
+            cap, light, C, G, col, BLADE, BLADEH } = S;
 
     // ---- the coordinate contract, read off S and never re-measured.
     const EZ = S.NB.z1;              // -2.95  the block's shopfront plane
@@ -256,13 +256,17 @@
 
     // The box sign, on the pier west of the awning where it can be read the length of the hutong.
     // Clear of the flat 幸福超市 board, which starts at x 5.10: a projecting sign belongs on the
-    // end of a frontage, not in the middle of one.
-    // Measured against neighbours rather than chosen, and it took three goes. The scholar tree
-    // outside this pier fills y 2.6 .. 5.0 across x 3.4 .. 5.8, the block's string course runs at
-    // y 2.65 .. 2.87 and one of its cast downpipes comes down the wall at x 4.00. What is left is
-    // the panel of wall west of all three, and under the course rather than through it — which is
-    // where these are usually mounted anyway, because a 侧招 is meant to be read from under it.
-    blade('z', 3.05, 2.20, EZ + .02, 1.18, .60, RED, GOLD, '超市', 'shop');
+    // end of a frontage, not in the middle of one. The scholar tree outside this pier fills
+    // y 2.6 .. 5.0 across x 3.4 .. 5.8 and one of the block's cast downpipes comes down at x 4.00,
+    // so the panel of wall west of both is what is left, and the sign goes under the string course
+    // rather than through it — which is where these are usually mounted anyway, because a 侧招 is
+    // meant to be read from under it.
+    //
+    // The HEIGHT is no longer this file's to pick. It is BLADE/BLADEH off the shell, shared with
+    // 面馆 and 五金 so all three box signs on the alley hang on one line. The numbers this file
+    // used to measure against were taken when the block's storey height was 2.86 and were 24 cm
+    // stale in every one of them: the string course is at 2.89 .. 3.11, not 2.65 .. 2.87.
+    blade('z', 3.05, BLADE, EZ + .02, 1.18, BLADEH, RED, GOLD, '超市', 'shop');
 
     // 走字屏 — the LED ribbon along the front edge of the awning valance, running an offer. This
     // is the one piece of *moving text* on the street, which is most of what a Chinese shopping
@@ -406,11 +410,13 @@
 
     // The blade sign, on the east pier past the menu case. Vertical 面馆 in gold on red: a noodle
     // shop's sign is red, and after 超市 it is the second most common thing written on this street.
-    // Squeezed on three sides, and the numbers are why it sits exactly here: street.js's extract
-    // vent tops out at y 2.52 and the block's string course at 2.87, the balcony slab over this bay
-    // starts at 3.58, and one of the block's downpipes comes down at x -4.20. So: 46 cm deep, in
-    // the 71 cm of clear height, on the strip of wall east of the pipe.
-    blade('z', -3.95, 3.22, EZ + .02, 1.02, .46, RED, GOLD, '面馆', 'noodle');
+    // x -3.95 stands, on the strip of wall east of the downpipe at -4.20.
+    //
+    // The height does not. This sat at 3.22 — ABOVE the string course, while 超市's sat below it
+    // forty metres of sightline away, which is most of why the row read as scattered. It is on the
+    // shared BLADE line now. street.js's extract vent, which is what forced it up here, has been
+    // dropped to 1.90 for the same reason.
+    blade('z', -3.95, BLADE, EZ + .02, 1.02, BLADEH, RED, GOLD, '面馆', 'noodle');
 
     // 饮料 — the glass-door drinks cabinet stood outside the door with the door propped open,
     // which is what every one of these is like from May onwards. Its own carcass, a cool-lit
@@ -549,7 +555,7 @@
       // 16.62 rather than the mullion line: unit A's shutter guide finishes at 16.43 and its
       // housing at 16.44, and a sign plate sharing a face with a shutter guide is two faces on one
       // plane, which is the one thing this project has taken down three times.
-      blade('z', 16.62, 2.60, HWG + .02, 1.04, .58, C('#1f4f8f'), CREAM, '五金', 'hardw');
+      blade('z', 16.62, BLADE, HWG + .02, 1.04, BLADEH, C('#1f4f8f'), CREAM, '五金', 'hardw');
 
       // The goods against the glass, east of street.js's brick heap and west of the door: a stack
       // of nested red stools and three basins inside each other, with a coil of rope hung above

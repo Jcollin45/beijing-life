@@ -134,6 +134,29 @@ const Street = Lazy('Street', () => {
   const FACADE_LOD = 3;                   // full detail at deck <= FACADE_LOD + 1
   const DOOR = 0;                         // x of your stairwell entrance
   const SHOP = 7.6;                       // x of the 超市 shopfront
+
+  // ---- the shopfront datum. One height for every name board on the alley's south frontage and
+  // one for every 侧招 hung under them, because a parade whose signs each sit where their own
+  // author measured is a parade that reads as clutter however good each sign is. Before this,
+  // three boards on one wall sat at 2.96 / 3.42 / 3.50 with three different depths (0.74 / 0.92 /
+  // 0.84) and three glyph sizes, and the three box signs under them at 2.20 / 2.60 / 3.22 — one
+  // of them above the string course and two below it.
+  //
+  // Both numbers are the clear band, measured off this file's own constants and not off a
+  // screenshot:
+  //
+  //   0.00 .. 1.40   brick plinth                    2.89 .. 3.11   string course (FL - .10, .22)
+  //   3.82 .. 3.92   first balcony slab (f=1, y - .78 at FL + 1.55)
+  //
+  // So the boards take 3.12 .. 3.80 — the whole of the gap between the course and the balconies —
+  // and the 侧招 take 2.27 .. 2.83, the last clear band under the course. The corner block east
+  // of the gap has no course, and its window grid was re-pitched to FL to let it share the line.
+  //
+  // `js/street-retail.js` reads both off `S` rather than re-measuring: its own numbers were taken
+  // when FL was 2.86 and were 24 cm stale in every one of them.
+  const FASCIA = 3.46, FASCIAH = .68;     // name-board centre and depth
+  const BLADE = 2.55, BLADEH = .56;       // 侧招 centre and depth, under the string course
+
   // The courtyard side sits well back: at five metres across, the camera could never get
   // far enough from either wall to look at anything square on.
   const CW = 2.55, CWZ = 3.95, SZ = 3.35;
@@ -1498,7 +1521,7 @@ const Street = Lazy('Street', () => {
         }
       }
     }
-    signBoard(SHOP, 3.42, ez + .10, 5.00, .92, col.red, col.goldL, '幸福超市');
+    signBoard(SHOP, FASCIA, ez + .10, 5.00, FASCIAH, col.red, col.goldL, '幸福超市');
     // a red-and-white striped awning over the door end
     for (let i = 0; i < 9; i++)
       box(SHOP - 2.4 + i * .60, 2.92, ez + .78, .60, .10, 1.30,
@@ -1645,7 +1668,7 @@ const Street = Lazy('Street', () => {
     capsule(RSTDOOR + .57, 1.35, ez + .82, .028, .42, .028, col.goldL,
       { ry: -.72, gloss: G.metal, tag: '餐馆' });
     entryMat(RSTDOOR, ez + 1.05, '餐馆');
-    signBoard(RST, 2.96, ez + .10, 4.60, .74, col.red, col.goldL, '老李面馆');
+    signBoard(RST, FASCIA, ez + .10, 4.60, FASCIAH, col.red, col.goldL, '老李面馆');
     // 面 painted big on the glass, a red lantern at the door, and the menu case beside it
     glyphs(RST - .85, 1.62, ez + .31, 0, '牛肉面',
       { size: .34, gap: .14, color: col.redD, mode: 1, alpha: .9 });
@@ -1665,9 +1688,12 @@ const Street = Lazy('Street', () => {
     for (const [ox, oz] of [[-.36, -.22], [.36, -.22], [-.36, .22], [.36, .22]])
       capsule(RST - 2.05 + ox, .31, ez + 1.30 + oz, .022, .62, .022, col.steelD,
         { gloss: G.metal });
-    // the extract vent, which is what you smell from the far end of the alley
-    box(RST + 2.90, 2.30, ez + .34, .44, .44, .40, col.steelD, { hard: true, gloss: G.metal });
-    cyl(RST + 2.90, 2.30, ez + .58, .17, .18, col.steel, { rx: Math.PI / 2, gloss: G.metal });
+    // The extract vent, which is what you smell from the far end of the alley. Dropped from 2.30
+    // to 1.90 to clear the 侧招 band (2.27..2.83): street-retail.js hangs 面馆's box sign on this
+    // same pier, and at 2.30 the two occupied the same 40 cm of wall. Still in the strip the body
+    // can never reach, so nothing about the walk changes.
+    box(RST + 2.90, 1.90, ez + .34, .44, .44, .40, col.steelD, { hard: true, gloss: G.metal });
+    cyl(RST + 2.90, 1.90, ez + .58, .17, .18, col.steel, { rx: Math.PI / 2, gloss: G.metal });
     solid(RST - 2.6, RST + 3.2, ez - .1, ez + .52);
     shade(RST, ez + .60, 5.6, 1.2, .28);
     thing('餐馆', RST + 1.55, 2.58, ez + .40, '这家面馆的牛肉面很好吃。',
@@ -3071,14 +3097,19 @@ const Street = Lazy('Street', () => {
     box(17.8, 15.7, czb - 8.0, 11.9, .56, 16.2, col.renderD, { hard: true, gloss: G.paint });
     blocker(12.0, 23.4, czb - 16.1, czb, 15.2);
     solid(12.0, 23.4, czb - 16.1, czb + .10);
+    // On FL, not on the 2.86 this was built to. Two reasons, and the second is the one that
+    // matters: a block four metres from the one you live in with a different storey height reads
+    // as a mistake, and at 2.86 the lowest window sat at 3.66 — through the fascia band the
+    // 五金电器 board now shares with the two shops west of the gap. At FL it starts at 3.90 and
+    // the whole street gets one sign line. Top row lands at 14.70, still under the 15.42 parapet.
     for (let f = 1; f < 5; f++) for (let i = 0; i < 3; i++) {
       const wx = 13.6 + i * 4.2;
-      fwin(wx, f * 2.86 + 1.55, czb, 2.05, 1.50);
-      if (rnd() > .4) acBox(wx + 1.35, f * 2.86 + .50, czb);
+      fwin(wx, f * FL + 1.55, czb, 2.05, 1.50);
+      if (rnd() > .4) acBox(wx + 1.35, f * FL + .50, czb);
     }
     pane(box(17.8, 1.70, czb + .16, 7.20, 2.40, .07, col.glassDay,
       { hard: true, mode: 1, gloss: G.glass }), .95);
-    signBoard(17.8, 3.50, czb + .04, 6.40, .84, col.blue, col.cream, '五金电器');
+    signBoard(17.8, FASCIA, czb + .04, 6.40, FASCIAH, col.blue, col.cream, '五金电器');
     // ---- 地铁站 the 杨柳胡同 entrance, at the east end of the alley against the courtyard wall.
     // Which is where they go: a hutong gets its station mouth at the mouth of the hutong. Not at
     // x 15 — number 16's gate is at 13.8 and the canopy stood on its threshold.
@@ -3413,7 +3444,12 @@ const Street = Lazy('Street', () => {
 
     // ---- services on the face of the block: meters, the gas riser, a hose reel, a hydrant
     // The cabinet that used to sit at -6.6 is gone: the noodle shop's frontage is there now.
-    for (const [mx, kind] of [[-10.9, 1], [11.4, 0], [15.6, 1], [-14.2, 1]]) {
+    // The two western risers moved out of the lock-up terrace js/street-alley.js stands on this
+    // face (-14.90 .. -9.52): -14.2 was behind 修鞋配钥匙 and -10.9 was inside 打印复印, pipe
+    // through shutter, and a 6.2 m capsule inside a housing is invisible from every angle there
+    // is. -16.28 is the block's west corner, 6 cm clear of the wallJunk in front of it; -2.30 is
+    // the pier between the noodle shop and the 单元门, which is where a riser goes anyway.
+    for (const [mx, kind] of [[-2.30, 1], [11.4, 0], [15.6, 1], [-16.28, 1]]) {
       if (kind === 0) {                                   // electricity meters, doors open
         box(mx, 1.42, ez + .20, 1.00, .78, .18, col.steelD, { hard: true, gloss: .34 });
         box(mx, 1.42, ez + .30, .90, .68, .03, col.charcoal, { hard: true, gloss: .30 });
@@ -3714,6 +3750,9 @@ const Street = Lazy('Street', () => {
     C, G, col,
     // the coordinate contract
     AX0, AX1, AZ, SZ, NB, DOOR, RD0, RD1, SW1, SHOPX: SHOP,
+    // The shopfront datum, so a district never picks a sign height by eye. See the block comment
+    // where these are declared for the clear bands they come out of.
+    FASCIA, FASCIAH, BLADE, BLADEH,
     // The road's own numbers, so traffic and cycles agree without measuring — and these are now
     // MEASURED off the paint rather than derived from the centre line, because the derived ones
     // were wrong and two districts built against them.
@@ -3823,8 +3862,21 @@ const Street = Lazy('Street', () => {
     for (const w of wash) {
       const a = Math.sin(t * (.9 + windK * .8) + w.phase) * gust
               + Math.sin(t * 2.3 + w.phase * 2) * gust * .3;
-      const sw = M.mul(M.trans(0, w.y, 0), M.mul(M.rotZ(a), M.trans(0, -w.y, 0)));
-      w.props.forEach((p, i) => { p.m = M.mul(sw, w.m0[i]); });
+      // Each garment pivots on ITS OWN pegs. The line used to be rotated as one rigid body about
+      // `M.trans(0, w.y, 0)` — the world origin — so every shirt was swung about a point up to
+      // nineteen metres away and thrown |x|·sin(a) up and down with it. On the east line at
+      // x 16.3..18.7 that is 0.6 m of heave on a still day and 3.2 m in a gale, in antiphase with
+      // the west line at x -14.6, which is what read as the whole street bouncing. The rotation
+      // itself was right; only the pivot was wrong, so the fix is the translation column and
+      // nothing else. `M.mul` leaves z alone, a garment's own x IS its pivot x, and dy is how far
+      // it hangs below the line.
+      const R = M.rotZ(a), ca = Math.cos(a), sa = Math.sin(a);
+      w.props.forEach((p, i) => {
+        const m0 = w.m0[i], m = M.mul(R, m0), dy = m0[13] - w.y;
+        m[12] = m0[12] - dy * sa;
+        m[13] = w.y + dy * ca;
+        p.m = m;
+      });
     }
   }
 
