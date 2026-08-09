@@ -1016,6 +1016,100 @@
       taper(41.00, dy, dz, .74, .28, .74, col.white, { rx: -.30, ry: -1.5, gloss: .26 });
       cap(41.13, dy + .14, dz, .014, .32, .014, col.steelD, { rz: 1.2, gloss: .34 });
     }
+
+    // =========================================================================================
+    // 门脸 — the shopfront kit, placed
+    // =========================================================================================
+    // STOREFRONT-UPGRADES A2, A3, A4, A5, A6, A8, D3, D5, D6. Everything below uses the helpers
+    // at the head of this build and nothing below is emissive.
+    //
+    // Two coordinates come out of street.js and are copied here rather than re-measured, with
+    // the line they came off, because a door that moves and a couplet that does not is worse
+    // than no couplet:
+    const SHOPDOOR = SHOP + 1.55;      // street.js:1483   幸福超市's double glass door,  x 9.15
+    const RST = -7.0, RSTDOOR = RST + 1.55;  // street.js:1659,1686  老李面馆's,          x -5.45
+    const HWB = 18.85;                 // this file, unit B above — 五金电器's own door
+    const HWJ = .62;                   // and the half-spacing its couplet hangs on. Not .66, the
+                                       // jambs' own: at .66 the east strip ran into the hours
+                                       // plate in the 22 cm slot beyond it.
+
+    // ---- A2. 门帘 on 超市. 面馆 has had one from the shell and 五金 unit B got one from this
+    // file (see above), so this is the third and last doorway on the alley without one. Hung
+    // 24 cm proud of the door glass at z -2.35 — the same `stripCurtain` as the other two, so
+    // the same nine strips at the same alpha .30, and the same absence of a collider: at -2.35
+    // it is 30 cm north of where the body can stand and the shop's own collider stops the walk
+    // at -1.30 in front of it anyway.
+    stripCurtain(SHOPDOOR, 1.25, EZ + .60, 1.16, 2.10);
+
+    // ---- A3. 营业时间. Six plates, and not one of them has its times written out: `hoursPlate`
+    // reads `HOURS` and formats it, so a plate is incapable of disagreeing with the hour its own
+    // shop's lights go off. That is the whole reason the table was rounded to the half hour when
+    // these went up — see the note on `HOURS`.
+    hoursPlate(10.20, 1.60, EZ + .085, 'shop');       // white frontage face -2.88, east of the door
+    hoursPlate(-6.27, 1.60, EZ + .205, 'noodle');     // the 34 cm pier between window 2 and the jamb
+    hoursPlate(19.72, 1.86, HWG + .012, 'hardw');     // the 22 cm slot between unit B's jamb and C
+    hoursPlate(40.405, 1.70, -6.35, 'mall', -Math.PI / 2);   // the stone north of the mall glazing
+    hoursPlate(41.30, 1.70, -14.95, 'parade', -Math.PI / 2); // the far parade, by the 烟酒 blade
+    hoursPlate(41.30, 1.70, 13.20, 'parade', -Math.PI / 2);  // and again by the 干洗 one
+
+    // ---- A4. 支付. Two per door on all three of the alley's doors. On the glass where they
+    // belong, 1 cm proud of the pane so nothing shares a plane with it.
+    payDecals(8.72, 1.52, EZ + .4625);   // 超市's west door leaf
+    payDecals(-6.80, 1.44, EZ + .285);   // 面馆's window beside the door, which is where its go
+    payDecals(17.95, 1.90, HWG + .012);  // 五金, west of the door and clear of the brush rail
+
+    // ---- A5. 营业执照 / 健康证. Behind the pane on both frontages that have a cavity to hang
+    // them in, and nowhere else: the 五金 shell is a single sheet of glass with the shop's own
+    // millwork right up against it and there is no depth there to hang anything in.
+    //   超市: the third display window's cavity, above the top shelf's stock (which tops out at
+    //         y 2.19) and below the white head box (y 2.56). 17 cm of clear glass, and this is
+    //         all of it.
+    //   面馆: its windows have no backing at all, so the 3.5 cm between the render face at -2.76
+    //         and the back of the pane at -2.725 is empty and the pair goes straight in it.
+    certPair(SHOP + .65, 2.38, EZ + .09);
+    certPair(RST - 1.55, 1.95, EZ + .205);
+
+    // ---- A6. 立牌. Three, and three is the number: the header of this file records that the
+    // alley already carries exactly three deliberate chicanes and that eight would be an assault
+    // course. These add a fourth, fifth and sixth *object* and a zeroth chicane, because every
+    // one of them stands entirely inside the strip the body cannot reach:
+    //
+    //   x 10.30  front face -2.512   45.9 cm north of the body's limit at -2.05
+    //   x -8.20  front face -2.402   35.2 cm      (2.4 cm clear of 面馆's tiled stallriser)
+    //   x 12.55  front face -2.422   37.2 cm      (3.4 cm clear of the block's plinth at -2.74)
+    //
+    // No `solid`, no `blocker`, and the narrowest run in the district is still the 1.21 m beside
+    // the fruit trike, untouched by any of the three.
+    aBoard(10.30, -2.55, '今日特价', ['鸡蛋 一斤 四块五', '青菜 两斤 五块'], REDD);
+    aBoard(-8.20, -2.44, '本店招牌', ['牛肉面 一碗 十八', '加面 免费'], C('#8a2f2f'));
+    aBoard(12.55, -2.46, '五金电器', ['水电五金 电料齐全', '开锁 换锁 修水管'], C('#1f4f8f'));
+
+    // ---- A8. 门牌号. The same blue enamel plate as the 单元门's, on the same alley's numbering:
+    // even numbers on the block side, rising eastward, with the 单元门's own 十八号 between the
+    // noodle shop and the 超市 where it already is.
+    numPlate(-9.38, 2.30, EZ + .205, '十四号');    // 老李面馆
+    numPlate(10.45, 2.30, EZ + .085, '二十号');    // 幸福超市
+    numPlate(22.10, 1.30, HWW + .012, '二十四号'); // 五金电器, on the corner block's return
+
+    // ---- D3. Two more 竖幅, which street.js's own comment calls "the vertical kind on every
+    // Chinese shopfront" and then hangs only two of. Same cloth, same 34 cm width, same 1.44 m
+    // drop as the pair at x 4.10 and 11.10 — and no glow on either, unlike those two.
+    hangBanner(-8.95, EZ + .80, EZ + .19, RED, '手工拉面');
+    hangBanner(16.20, -2.15, HWG, C('#1f4f8f'), '水电维修');
+
+    // ---- D5. The bilingual under-plate, on the three names off this alley a learner most needs.
+    // Under the box sign rather than under the fascia board: the fascia is the shell's and the
+    // 超市's own awning at 3.16 would have swallowed a strip hung below it.
+    subPlate(3.05, 2.09, EZ + .022, 'chāoshì', 'supermarket');
+    subPlate(-3.40, 2.09, EZ + .022, 'miànguǎn', 'noodle shop');
+    subPlate(17.00, 2.09, HWG + .03, 'wǔjīn diànqì', 'hardware & electrical');
+
+    // ---- D6. 春联 on three shop doors. The alley's residential gates have had a pair since
+    // street-entry.js and its shops have had none, which is backwards: a shop puts them up
+    // because it wants the money, and takes them down later than anybody.
+    couplet(SHOPDOOR, 1.52, EZ + .51, .59, '生意兴隆', '财源广进', '开门大吉');
+    couplet(RSTDOOR, 1.52, EZ + .50, .59, '日进斗金', '四季平安', '万事如意');
+    couplet(HWB, 1.52, HWG + .215, HWJ, '货真价实', '童叟无欺', '恭喜发财');
   };
 
   // ===========================================================================================
