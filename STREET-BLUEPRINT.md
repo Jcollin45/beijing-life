@@ -483,6 +483,20 @@ Facing them east is a sign flip on every offset plus the glyph yaws, plus moving
 two files with two doors at the end of it — not the "medium, numbers mostly" this document called
 it before the drawing existed.
 
+### Part 4 — CLOSED. Every row resolved, and the last four struck with the reason
+
+| row | outcome |
+|---|---|
+| D6 地铁站 商务区 → z −11.60 | **STRUCK.** Its reason was to stop three transport modes stacking and to pair with the south crossing. Both dissolved: that crossing is now at z −11.00 .. −8.40, so −11.60 puts the stair pit under the zebra — and the lane's mouth at −12.60 .. −5.80 is immediately south of the mouth as it stands, so you come up from the metro and the shopping street is right there. That is the arrangement the move was reaching for. **Stays at −5.20.** |
+| R10 共享单车 → the lane mouth | **STRUCK.** `street-cycles.js:937` already moved this rack off the west footway to a marked bay at the east kerb, "leaving the pedestrian pavement clear". Inside the lane it would be seven bikes across a 6.80 m street with nothing to walk round them. Shared bikes bank up *outside* a 步行街; this one already does. |
+| H27 阿姨's stool → the square | **STRUCK.** 王阿姨 already has a routine — `data.js:355`: sits at the gate 06–11, walks to (6.2, 1.30) at 11, back at 14, sits until 21. She is not a static figure and the gate is her characterisation. Moving her would cost the player the one neighbour they can always find. |
+| 4.5, the 4 school-run patrols → all-day | **STRUCK, and answered another way.** Widening a schoolchild's window to 19:40 is not a fix, it is a child who never gets to school. The finding underneath it — nothing moves through the hutong between 08:12 and midnight — is now answered by the 环卫 sweeper, who has a route down the z −0.6 line from 06:00 to 18:00 instead of twelve hours on one square metre. |
+| 4.5, the 4 `wait` NPCs → patrols | **STRUCK on measurement.** The premise was "a person waiting for eleven hours is not waiting". Counted: their windows are 16–18, 07–09, 17–19, 15–16, 20–21 — one to three hours each, which is what waiting is. **One was genuinely wrong** and is fixed: the 大妈 at the breakfast cart waited 05:00–14:00 against a cart that trades 05:00–10:30, so for three and a half hours she queued at a pitch that had been wheeled away. Now 05:00–10:30. |
+| S10, twenty units down the lane | **STRUCK on arithmetic.** I fitted six, then measured them. North is 8.80 m clear of 北京新天地, south 6.40 m clear of 大超市; that is two units and two units. A fifth anywhere is under 1.5 m of frontage, which is a doorway. **Four, and the lane is full.** |
+| H24, tree 16.4 → 13.2 | **STRUCK.** The courtyard wall has a gate gap at 12.4 .. 15.2 and a tree at 13.2 stands in front of somebody's door. A new tree went in at 22.0 instead, crown 20.8 .. 23.2, clear of the metro canopy at 20.5. |
+
+Everything else in Part 4 is built. **31 action items: 20 built, 11 struck, 0 open.**
+
 ## Part 6 — the order to build it in
 
 1. **4.4 and 4.5** — the hutong's life and the people. Numbers only, no new geometry, and it is the
