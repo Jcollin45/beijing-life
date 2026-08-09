@@ -397,7 +397,44 @@ the corner block's own east elevation, which already stands there as blank wall.
 24.0 → 23.35. **五金电器 therefore does not move at all**: it becomes the corner's other face,
 hardware onto the hutong and civic onto the road, and the district's first corner costs nothing.
 
-**Wave 2's real cost, now known.** `street-bank.js` and the 药店 section of `street-civic.js` are
+### Wave 2 — BUILT and verified on jcollin45.github.io (12:00, camera at (25.9, 1.6) and (26.9, −1.6))
+
+| built | detail |
+|---|---|
+| 北京银行 → x 23.42, z −11.40..−7.10 | reflected about its own face plane: every `FACE + d` → `FACE − d`, glyph yaw −π/2 → +π/2. `bayZ`/`upperZ` rewritten off `MID`. `BANK_OUT` → (24.62, −9.25) facing east |
+| 药店 → x 23.38, z −6.90..−3.60 | 42 x values reflected about x = 31.99 — the plane that lands its glass at 23.52 where the bank's is at 23.515, so the two are one elevation. Three glyph yaws turned, two `rz` negated. `PHARMACY_OUT` → (24.68, −3.65) |
+| 公交车站 → the kerb, x 26.15 | its 7.30 m of glass stood squarely across the bank |
+| road tree (25.4, −5.2) → (25.4, 6.5) | same fault as the x 4.6 tree: its crown filled the view of 药店's door |
+
+**The road zone was NOT widened** — one fewer change than this document called for. It starts at
+x 24.0, `clampMove` holds the body at 24.30, and the 0.88 m in front of the glass is unreachable:
+the same strip the alley's shopfronts stand in, and the reason none of the new frontage carries a
+collider.
+
+**Score against Part 2.** Doors on the x 41.60 line: **7 → 5**. Frontage orientations in the
+district: **2 → 3** (+z alley, −x parade, **+x west footway**). Corners: **0 → 1** — the corner
+block turns from 五金电器 on the hutong to 药店 and 银行 on the road, and it cost no new mass.
+
+### Wave 3 — the 步行街 is NOT built, and here is the case against it
+
+It was designed to solve finding 1, and finding 1 is now 5 doors on that line, not 7. What it
+would still cost:
+
+- a new zone and a `roomAt` branch, plus cutting `blocker(FX, FX + 40, −70, 70, 15.5)` in two;
+- **two 90° facade rotations** — 北京新天地 (16 primitives) and 大超市 (7) both face −x and would
+  have to face ±z. A rotation is not the mirror the bank and the chemist were: it swaps the x and
+  z *size* arguments of every box as well as its position, and there is no reflection identity to
+  check the result against;
+- and it moves two more doors that other scenes read.
+
+That is the largest and least reversible change in the plan, for the smallest remaining gain.
+**The decision is the owner's.** The cheaper alternative that still buys a third corner and a
+fourth orientation is Part 5's own fallback: turn the far parade's south end into a return wing
+facing north at z = −13.5. One extra block in the procedural loop, no new zone, no rotation of
+anything already built.
+
+**Wave 2's original cost estimate, for the record.** `street-bank.js` and the 药店 section of
+`street-civic.js` were
 built facing **−x**, parameterised off `FACE`/`FX` with `FACE − d` at 24 sites in the bank alone.
 Facing them east is a sign flip on every offset plus the glyph yaws, plus moving `BANK_OUT` and
 `PHARMACY_OUT`, which `bank.js` and `pharmacy.js` read. Mechanical, but it is a careful pass over
