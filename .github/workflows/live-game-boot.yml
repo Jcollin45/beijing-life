@@ -16,7 +16,7 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
   group: live-game-boot-main
@@ -83,6 +83,41 @@ jobs:
           path: test-results/zoo-visuals/
           if-no-files-found: warn
           retention-days: 7
+
+      - name: Publish GitHub visual-review branch
+        if: always()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          shopt -s nullglob
+          captures=(test-results/zoo-visuals/*.png)
+          if (( ${#captures[@]} == 0 )); then
+            echo 'No captures were produced; visual-review branch was not changed.'
+            exit 0
+          fi
+          review_dir="$(mktemp -d)"
+          mkdir -p "$review_dir/captures"
+          cp "${captures[@]}" "$review_dir/captures/"
+          printf '%s\n' \
+            '# Zoo visual review' \
+            '' \
+            "GitHub-hosted Chrome captures for source commit \`$SOURCE_SHA\`." \
+            '' \
+            "[Workflow run]($SOURCE_RUN)" \
+            '' \
+            'These files are replaced on every qualifying main-branch run.' \
+            > "$review_dir/README.md"
+          git -C "$review_dir" init -b zoo-visual-review
+          git -C "$review_dir" config user.name github-actions[bot]
+          git -C "$review_dir" config user.email 41898282+github-actions[bot]@users.noreply.github.com
+          git -C "$review_dir" add README.md captures
+          git -C "$review_dir" commit -m "Visual review for $SOURCE_SHA"
+          git -C "$review_dir" remote add origin \
+            "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C "$review_dir" push --force origin HEAD:zoo-visual-review
 
       - name: Print server failures
         if: failure()

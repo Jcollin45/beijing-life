@@ -165,6 +165,11 @@ function validate(probe = buildProbe()) {
   const check = (name, ok, detail = '') => (ok ? pass : failures).push(detail ? `${name}: ${detail}` : name);
   check('outdoor scene built', o.props.length > 0);
   check('Tropical House built', t.props.length > 0);
+  check('every Tropical House room provides a finite renderer light',
+    contents.tropicalScene.rooms.every(r=>{
+      const q=t.roomAt((r.rect[0]+r.rect[1])/2,(r.rect[2]+r.rect[3])/2);
+      return q&&Array.isArray(q.light)&&q.light.length===3&&q.light.every(Number.isFinite);
+    }));
   check('all outdoor prop transforms and colours are finite', finiteScene(o));
   check('all tropical prop transforms and colours are finite', finiteScene(t));
   check('outdoor marked prop IDs are unique',uniquePropIds(o));

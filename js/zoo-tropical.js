@@ -463,7 +463,8 @@ const ZooTropical = Lazy('ZooTropical', () => {
     zones:walk,
     roomAt(x,z) {
       for(const r of rooms) if(x>=r.rect[0]&&x<=r.rect[1]&&z>=r.rect[2]&&z<=r.rect[3])
-        return {id:r.id,label:r.label,x0:r.rect[0],x1:r.rect[1],z0:r.rect[2],z1:r.rect[3],wet:1.4};
+        return {id:r.id,label:r.label,x0:r.rect[0],x1:r.rect[1],z0:r.rect[2],z1:r.rect[3],
+          light:[(r.rect[0]+r.rect[1])/2,H-.5,(r.rect[2]+r.rect[3])/2],wet:1.4};
       return walk.find(r=>x>=r.x0&&x<=r.x1&&z>=r.z0&&z<=r.z1)||walk[0];
     },
   });
