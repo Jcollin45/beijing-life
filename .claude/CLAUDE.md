@@ -1,8 +1,10 @@
 ## The game is read off the live site, not off this machine
 
-**Canonical URL: https://jcollin45.github.io/beijing-life/** — that is where the owner and anyone
-else looks at the game. A local `serve.py` on :8000 is a scratch pad for a change in progress; it
-is not the thing being reviewed. Nothing is "done" until it is live there.
+**Canonical URL: https://jcollin45.github.io/beijing-life/** — the only place the game is read from.
+Owner's instruction, 2026-08-09, chosen with the cost below stated: **verify against the live site,
+not against localhost.** A screenshot, a frame-rate number, a console check or a "works now" claim
+taken off `serve.py` on :8000 does not count and must not be reported as verification. Push, wait
+for the build, then look.
 
 - **Publishing is `git push`.** Repo `git@github.com:Jcollin45/beijing-life.git`, branch `main`,
   Pages serves `main` at `/ (root)`. Measured 2026-08-09: the site went live 60 s after the branch
@@ -17,8 +19,15 @@ is not the thing being reviewed. Nothing is "done" until it is live there.
   of concept art) and every root dot-directory (3.9 GB of caches and QA output) are excluded. A new
   runtime asset placed outside those four paths will be missing in production and present locally —
   check `git status` before assuming a push carried it.
-- **Cost of the loop:** verifying against the live site costs a push plus roughly a minute of build.
-  Iterate on :8000, but confirm on the URL above before reporting anything as working.
+- **The loop costs a push plus roughly a minute of build, every time.** That is the accepted price,
+  not a reason to fall back to :8000. It changes how you batch: land a whole coherent change, push
+  once, verify once. Do not push a line at a time — that is where the minute starts to hurt.
+- **`.render-gate.js` and the harnesses still run locally.** The strict rule is about *reading the
+  game* — screenshots, visual checks, frame rate, anything the owner would look at. Headless
+  harnesses, unit checks and `git status` are not affected; they never described the live site.
+- **A verification claim must name the origin it was taken from.** `jcollin45.github.io` or it did
+  not happen. If the build had not finished when you looked, say so rather than reporting the
+  previous deploy's behaviour as the new one.
 
 Measured payload 2026-08-09: 723 MB in the repo, 5.6 MB to reach the title screen, 28.9 MB to boot
 into gameplay with 9 rigs streamed. Rigs load on demand (`js/assets.js:1092`), so repo size is not
