@@ -221,7 +221,12 @@ const Mall = Lazy('Mall', () => {
   // The daylight model shapes an interior's sun through exactly one window. This one is the real
   // north frontage: twenty-three metres of glass, which is what the hall is actually lit through.
   const WIN={x:0,y:3.6,z:-RZ+.05,hw:11.5,hh:4.4};
-  const OUT={x:39.05,z:-9.20,yaw:Math.PI/2};
+  // Back onto 新天地步行街. 北京新天地 moved off the far building line and onto the lane's NORTH
+  // frontage at z -5.80 (js/street-lane.js); this used to step you out at (39.05, -9.20), which is
+  // now a stretch of ordinary parade with the lane's mouth beside it. 2.55 m out into the lane,
+  // facing -z — away from the shop. The 出口 sign inside still says 商务区 and still should: the
+  // lane opens off it.
+  const OUT={x:46.60,z:-8.35,yaw:Math.PI};
   // Every list the frame loop walks. Each one is here because something in it moves, lights up or
   // is rewritten by `tick`; a list that stops being any of those has to go, not be left empty for
   // the loop to walk over four hundred times a minute.

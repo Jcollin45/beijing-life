@@ -199,9 +199,12 @@
     // lane. Its interior light is COOL where the mall's is warm, which is the only thing that
     // tells a supermarket from a shopping centre at forty metres.
     //
-    // The exit matters more than the geometry: this is a door into `market`, and the return point
-    // has to be a spot the body can actually stand on. (SX, SZ + 2.55) is 2.55 m out into the lane
-    // and the zone reaches to LZ0 + 0.70, so it is 1.85 m inside the walkable edge.
+    // The exit matters more than the geometry. `at` is a coordinate in the DESTINATION scene, not
+    // in the street — the version this replaced passed a street coordinate, which inside `market`
+    // is thirty metres from its door and outside its zones, so it silently fell back to the
+    // scene's own spawn every time. Omitted here, which is what js/street-entry.js's porch does
+    // and what the fallback was doing anyway. The leg that actually needed fixing is the return
+    // one, and that lives in js/market.js's own `OUT`.
     const SX = 52.80, SZ = LZ0, SN = 1;
     box(SX, 2.90, SZ + SN * .50, 9.60, 5.80, 1.00, C('#dcd6c8'),
       { hard: true, gloss: .24, tag: '大超市' });
@@ -227,8 +230,7 @@
     thing('大超市', SX, 5.05, SZ + SN * 1.30, '大超市什么都有，比小卖部便宜。',
       'The hypermarket has everything, and it is cheaper than the corner shop.',
       '大 big + 超市 supermarket. The 超市 by your door is a 便利店 by comparison.',
-      { focus: [SX, SZ + SN * 2.55], reach: 2.6 }).exit =
-        { place: 'market', at: { x: SX, z: SZ + SN * 2.55, yaw: 0 } };
+      { focus: [SX, SZ + SN * 2.55], reach: 2.6 }).exit = { place: 'market' };
 
     // ---------------------------------------------------------------- the gateway at the mouth
     // A 步行街 in this city is announced. Two piers and a beam across the entrance with the

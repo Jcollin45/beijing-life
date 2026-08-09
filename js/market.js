@@ -94,7 +94,12 @@ const Market = Lazy('Market', () => {
   // margin the largest single room in this game.
   const RX = 13.0, RZ = 9.5, H = 5.2;
   const DX = 9.4;                        // the doors, at the +x end of the front wall
-  const OUT = { x: 39.05, z: 6.50, yaw: -Math.PI / 2 };   // back onto the far pavement
+  // Back onto 新天地步行街, not the far pavement. 大超市 moved off the x 41.60 building line and
+  // onto the lane's SOUTH frontage at z -12.60 (js/street-lane.js), so this stepped you out at
+  // (39.05, 6.50) — a spot on the far pavement with a row of anonymous shopfronts behind it and
+  // no hypermarket anywhere in sight. 2.55 m out into the lane, facing +z, which is away from the
+  // shop, the way you leave a building. Inside the lane zone (z -11.90 .. -6.50) by 1.85 m.
+  const OUT = { x: 52.80, z: -10.05, yaw: 0 };
 
   const litProps = [], tubes = [], entranceLeaves = [], beltMarkers = [];
   const litten = (p, k) => { litProps.push({ p, k }); return p; };
