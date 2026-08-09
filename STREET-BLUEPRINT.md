@@ -366,6 +366,44 @@ No new people. The count is right; the distribution is not.
 | the **新天地步行街** | **large — the one real build** | a new zone, a paved lane, two frontages, and the mall/hypermarket re-fronted onto it |
 | **cheaper fallback for the 步行街** | | if the lane is too much: turn the far parade's south end into a **west-facing return at z −13.5**, giving a corner and a south-facing frontage without a new zone. Buys findings 4 and 1 partly, not 5 |
 
+## Part 5b — BUILD LOG. What has landed, and what the ground said no to
+
+Wave 1 is **built, pushed and verified on jcollin45.github.io** (19:00 and 12:00, camera at
+(−25.6, −1.4) and (3.4, 3.05)):
+
+| built | detail |
+|---|---|
+| 广场舞 → 杨柳西口 | speaker to (−28.60, 4.60), all six dancers offset by the same (−22.60, +1.32) so the formation and each woman's facing are bit-identical. Lead re-run west to the dead-end building; both labels were carrying the old pitch's z as a literal and now read off `x`/`z` |
+| tree x 4.6 **deleted** | crown x 3.4–5.8 at y 2.6–5.0 against a board at x 5.10–10.10, y 3.12–3.80. Nowhere on that stretch to move it to. Four alley trees now, not five |
+| 躺椅 −1.00 → −3.20 | it stood dead centre of the 单元门 |
+
+**Four moves in Part 4 did not survive being measured. They are struck, with the number that
+killed them — do not re-propose them:**
+
+- **夜市 4.60 → 17.60.** The gate needs a *gap* in the courtyard wall and 3.2–6.0 is one; 17.60
+  lands mid-run in `brickRun(15.2, 24.0)` and the wall has to be cut. Its own comment already
+  measured this. **Stays at 4.60.**
+- **象棋 → the square.** The board sits in the 0.80 m strip the body can never reach and narrows
+  the alley by nothing. Moving it also puts a second board 1.5 m from `street-west.js`'s. **Stays.**
+- **报刊亭 → the west footway.** The kiosk is 2.10 m in x; the footway is 3.28 m clear. It would
+  leave 0.83 m. **Stays at 20.80.**
+- **the lock-up terrace 1.5 m west.** Runs into `wallJunk` at −16.07..−15.00 and the gas riser at
+  −16.28. The 2 cm it currently leaves to 老李面馆 is two shopfronts abutting, which is what they
+  do. **Stays at −14.07 / −12.21 / −10.35.**
+
+**And one correction that changes wave 2** (drawn on `STREET-PLAN.html`, sheet A02): the west-side
+frontage cannot be at x ≈ 26.9 — that is hard against the kerb face at 27.58. It is **x 23.30**,
+the corner block's own east elevation, which already stands there as blank wall. `road.x0` moves
+24.0 → 23.35. **五金电器 therefore does not move at all**: it becomes the corner's other face,
+hardware onto the hutong and civic onto the road, and the district's first corner costs nothing.
+
+**Wave 2's real cost, now known.** `street-bank.js` and the 药店 section of `street-civic.js` are
+built facing **−x**, parameterised off `FACE`/`FX` with `FACE − d` at 24 sites in the bank alone.
+Facing them east is a sign flip on every offset plus the glyph yaws, plus moving `BANK_OUT` and
+`PHARMACY_OUT`, which `bank.js` and `pharmacy.js` read. Mechanical, but it is a careful pass over
+two files with two doors at the end of it — not the "medium, numbers mostly" this document called
+it before the drawing existed.
+
 ## Part 6 — the order to build it in
 
 1. **4.4 and 4.5** — the hutong's life and the people. Numbers only, no new geometry, and it is the
