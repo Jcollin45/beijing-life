@@ -93,7 +93,7 @@ unverified in a lane's report, and an item nobody looked at is not done.
 | **B5** | (26.0, −9.0), the west footway | the gateway carries — 新天地步行街 in gold on the beam, 全场五折 on the pier, the lane and its festoon behind. **Closed.** |
 | **blade fix** | (0.50, 2.20) | 超市 reads gold-on-red. It was a blank box before `CASE = .065`. **Closed.** |
 | **五金 blade** | (18.80, 1.10) | reads, but its **top half is behind L1's awning valance** — confirmed, and the reason the awning moves rather than the datum. **OPEN, with L1.** |
-| **A5** | — | **never framed by anyone.** The certificate pairs may not exist. **OPEN, with L2.** |
+| **A5** | (−7.30, −0.60) looking at 老李面馆's west pane, fov 1.15 | **built, but it does not read.** Two faint rectangles are discernible where the frames should be and they are all but indistinguishable from the interior wash — the pane carries alpha and the lit interior behind it blows them out. This is the **same class of defect as A13 and as the buried blade**: the prop exists, the render hides it. The fix is therefore not "add certificates", it is A13's — put something dark behind them, or bring them in front of the pane. **OPEN, with L2.** |
 
 ## E · Measurement — the item that gates the rest
 
