@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>北京生活 · Beijing Life</title>
+<style>
+  :root{
+    --ink:#0d0f12; --paper:#f4efe4; --jade:#4f8271; --jade-l:#9fe0c4;
+    --red:#b2412f; --gold:#d8a13a; --text:#f1ece1;
+    --panel:rgba(15,17,21,.80); --panel-solid:#14171c;
+    --line:rgba(255,255,255,.11); --line-2:rgba(255,255,255,.2);
+    --shadow:0 24px 60px rgba(0,0,0,.55);
+    --font:"PingFang SC","Hiragino Sans GB","Heiti SC","Noto Sans SC","Microsoft YaHei",
+           -apple-system,BlinkMacSystemFont,system-ui,sans-serif;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  html,body{height:100%;overflow:hidden;background:#07080a;font-family:var(--font);
+    color:var(--text);-webkit-font-smoothing:antialiased;user-select:none;
+    -webkit-tap-highlight-color:transparent}
+  canvas{display:block;width:100%;height:100%}
+  button{font-family:inherit}
+
+  /* ---------- colour grade over the render ---------- */
+  #grade{position:fixed;inset:0;pointer-events:none;z-index:1;
+    background:
+      radial-gradient(120% 100% at 50% 42%, rgba(0,0,0,0) 42%, rgba(4,5,7,.42) 100%),
+      linear-gradient(180deg, rgba(20,26,34,.16), rgba(28,18,10,.14));
+    mix-blend-mode:multiply}
+  #grade::after{content:'';position:absolute;inset:0;opacity:.16;
+    background-image:radial-gradient(rgba(255,255,255,.7) .5px, transparent .5px);
+    background-size:3px 3px;mix-blend-mode:overlay}
+
+  #ui{position:fixed;inset:0;pointer-events:none;z-index:2}
+
+  /* ---------- HUD ---------- */
+  #hud{position:absolute;top:16px;left:18px;display:flex;gap:8px;align-items:stretch}
+  .chip{position:relative;background:var(--panel);border:1px solid var(--line);
+    border-radius:12px;padding:8px 14px 9px;backdrop-filter:blur(10px);
+    box-shadow:0 8px 24px rgba(0,0,0,.35)}
+  .chip .k{display:block;font-size:10px;letter-spacing:.13em;opacity:.42;
+    text-transform:uppercase;line-height:1.5}
+  .chip b{display:block;font-weight:600;font-size:16px;letter-spacing:.02em;
+    font-variant-numeric:tabular-nums;line-height:1.25}
+  #clock b{letter-spacing:.06em}
+  #money b{color:var(--gold)}
+  #revw b{color:var(--jade-l)}
+  #revw::before{content:'';position:absolute;left:0;right:0;top:-1px;height:2px;
+    border-radius:2px 2px 0 0;background:var(--gold);opacity:.9;transition:opacity .3s}
+  #revw.zero b{color:var(--text);opacity:.32}
+  #revw.zero::before{opacity:0}
+
+  /* ---------- world labels ---------- */
+  #labels{position:absolute;inset:0;overflow:hidden}
+  .lbl{position:absolute;transform:translate(-50%,-100%);text-align:center;
+    transition:opacity .18s;white-space:nowrap;line-height:1.2;padding:2px 6px 4px;
+    pointer-events:auto;cursor:pointer;
+    text-shadow:0 2px 8px rgba(0,0,0,.9), 0 0 18px rgba(0,0,0,.7)}
+  .lbl .hz{font-size:17px;font-weight:600;letter-spacing:.07em}
+  .lbl .py{font-size:11px;opacity:.78;font-style:italic;color:#cfe6dd;letter-spacing:.01em}
+  .lbl .en{font-size:10.5px;opacity:.55;letter-spacing:.04em}
+  .lbl.near{opacity:1 !important}
+  .lbl.near .hz{color:#ffdc92}
+  .lbl.mastered .hz{color:var(--jade-l)}
+  /* a word that has come round for review again */
+  .lbl.due .hz::after{content:'';display:inline-block;width:5px;height:5px;border-radius:50%;
+    background:var(--gold);margin-left:7px;vertical-align:middle;
+    box-shadow:0 0 9px rgba(216,161,58,.95);animation:pip 1.7s ease-in-out infinite}
+  @keyframes pip{0%,100%{opacity:1}50%{opacity:.35}}
+
+  /* ---------- prompt ---------- */
+  #prompt{position:absolute;left:50%;bottom:104px;transform:translateX(-50%);
+    display:flex;align-items:center;gap:9px;
+    background:var(--panel);border:1px solid var(--line-2);border-radius:999px;
+    padding:8px 18px 8px 12px;font-size:13.5px;opacity:0;transition:opacity .15s;
+    backdrop-filter:blur(10px);box-shadow:0 10px 30px rgba(0,0,0,.4)}
+  #prompt kbd{background:var(--paper);color:var(--ink);border-radius:6px;padding:2px 8px;
+    font:600 11.5px/1.5 inherit;box-shadow:0 2px 0 rgba(0,0,0,.35)}
+  #prompt b{font-weight:600;letter-spacing:.06em}
+  .dim{opacity:.5}
+
+  /* ---------- interaction card ---------- */
+  #card{position:absolute;left:50%;top:50%;transform:translate(-50%,-48%) scale(.97);
+    width:min(470px,88vw);max-height:86vh;overflow:hidden auto;
+    background:linear-gradient(170deg,#1c2027 0%,#13161a 58%,#111418 100%);
+    border:1px solid var(--line-2);border-radius:18px;padding:26px 28px 22px;
+    box-shadow:var(--shadow), inset 0 1px 0 rgba(255,255,255,.06);
+    opacity:0;pointer-events:none;transition:opacity .16s, transform .16s}
+  #card.on{opacity:1;transform:translate(-50%,-50%) scale(1);pointer-events:auto}
+  #card::before{content:'';position:absolute;left:0;top:0;width:3px;height:100%;
+    background:linear-gradient(180deg,var(--gold),transparent 70%);opacity:.55}
+  #card .top{display:flex;align-items:baseline;gap:14px;
+    border-bottom:1px solid var(--line);padding-bottom:15px}
+  #card .hz{font-size:46px;font-weight:600;letter-spacing:.09em;color:#fff;line-height:1}
+  #card .py{font-size:16.5px;font-style:italic;color:#8fd3ba}
+  #card .en{font-size:14.5px;opacity:.55;margin-left:auto;text-align:right;max-width:44%}
+  #card .sent{margin-top:20px;font-size:22px;line-height:2.35;letter-spacing:.04em}
+  #card .tr{margin-top:8px;font-size:13px;opacity:.5;font-style:italic;line-height:1.6}
+  #card .note{margin-top:15px;padding-left:11px;border-left:2px solid rgba(216,161,58,.35);
+    font-size:12.5px;opacity:.58;line-height:1.7}
+  #card .bar{margin-top:20px;height:5px;border-radius:3px;background:rgba(255,255,255,.09);overflow:hidden}
+  #card .bar i{display:block;height:100%;border-radius:3px;
+    background:linear-gradient(90deg,var(--jade),var(--jade-l));transition:width .35s}
+  #card .barlab{display:flex;justify-content:space-between;font-size:10.5px;
+    letter-spacing:.1em;text-transform:uppercase;opacity:.42;margin-top:8px}
+
+  /* ---------- recall check ---------- */
+  #card .quiz{margin-top:18px}
+  #card .qh{font-size:12px;opacity:.5;letter-spacing:.03em}
+  #card .qp{margin:18px 0 20px;text-align:center;font-size:44px;font-weight:600;
+    letter-spacing:.12em;color:#fff;line-height:1.15}
+  #card .qp.small{font-size:21px;font-weight:400;letter-spacing:.01em;
+    font-style:italic;color:#e8e2d6;opacity:.92}
+  #card .opts{display:flex;flex-direction:column;gap:8px}
+  .opt{display:flex;align-items:center;gap:12px;width:100%;text-align:left;cursor:pointer;
+    background:rgba(255,255,255,.045);border:1px solid var(--line);border-radius:11px;
+    padding:11px 14px;color:var(--text);font:400 14px/1.35 inherit;
+    transition:background .12s, border-color .12s, transform .12s}
+  .opt:hover{background:rgba(255,255,255,.09);border-color:var(--line-2);transform:translateX(2px)}
+  .opt:focus-visible{outline:2px solid var(--gold);outline-offset:2px}
+  .opt .num{flex:none;width:20px;height:20px;border-radius:6px;background:rgba(255,255,255,.13);
+    font-size:11px;display:grid;place-items:center;opacity:.65;font-variant-numeric:tabular-nums}
+  .opt.hanzi .txt{font-size:24px;letter-spacing:.08em}
+  .opt.good{background:rgba(79,130,113,.42);border-color:#5f9584}
+  .opt.good .num{background:rgba(255,255,255,.22);opacity:.9}
+  .opt.bad{background:rgba(178,65,47,.32);border-color:#c0604e}
+  #card.asking .sent,#card.asking .tr,#card.asking .note,
+  #card.asking .bar,#card.asking .barlab{display:none}
+  #card:not(.asking) .quiz{display:none}
+  #card .fb{margin-top:16px;font-size:12.5px;line-height:1.7;opacity:0;transition:opacity .2s}
+  #card .fb.on{opacity:.62}
+  #card .fb.win{color:var(--jade-l);opacity:.92}
+  #card .fb.lose{color:#ffb4a6;opacity:.92}
+  #card .fb b{font-weight:600;letter-spacing:.05em}
+
+  ruby{ruby-position:over}
+  rt{font-size:.4em;font-style:italic;color:#8fd3ba;opacity:.8;font-weight:400;letter-spacing:0}
+  .kn{color:#fff}
+  .unk{color:#ffdc92}
+
+  /* ---------- vocab notebook ---------- */
+  #book{position:absolute;right:0;top:0;bottom:0;width:min(372px,90vw);
+    background:linear-gradient(180deg,rgba(13,15,19,.96),rgba(10,12,15,.97));
+    border-left:1px solid var(--line-2);padding:24px 22px 28px;overflow-y:auto;
+    transform:translateX(100%);transition:transform .24s cubic-bezier(.3,.8,.3,1);
+    backdrop-filter:blur(12px);box-shadow:-24px 0 60px rgba(0,0,0,.45)}
+  #book.on{transform:none;pointer-events:auto}
+  #book h2{font-size:19px;font-weight:600;letter-spacing:.22em}
+  #book .sub{font-size:10.5px;letter-spacing:.13em;text-transform:uppercase;
+    opacity:.38;margin:8px 0 20px;line-height:1.7}
+  .row{display:flex;align-items:center;gap:12px;padding:10px 6px 10px 4px;
+    border-bottom:1px solid rgba(255,255,255,.055);border-radius:8px}
+  .row .h{font-size:20px;min-width:76px;letter-spacing:.06em}
+  .row .m{flex:1;font-size:11.5px;opacity:.6;line-height:1.4}
+  .row .m i{display:block;font-style:italic;color:#8fd3ba;opacity:.85}
+  .row .lv{width:44px;height:4px;border-radius:2px;background:rgba(255,255,255,.1);
+    overflow:hidden;flex:none}
+  .row .lv i{display:block;height:100%;border-radius:2px;
+    background:linear-gradient(90deg,var(--jade),var(--jade-l))}
+  .row .tag{flex:none;font-size:9.5px;letter-spacing:.12em;color:var(--gold);
+    border:1px solid rgba(216,161,58,.4);border-radius:5px;padding:2px 5px}
+  .row.due{cursor:pointer}
+  .row.due .h{color:var(--gold)}
+  .row.due:hover{background:rgba(255,255,255,.05)}
+  .row.done .h{color:var(--jade-l)}
+  .row.done .lv i{background:var(--jade-l)}
+
+  /* ---------- toast ---------- */
+  #toast{position:absolute;left:50%;top:82px;transform:translateX(-50%);
+    background:var(--panel);border:1px solid rgba(216,161,58,.42);border-radius:12px;
+    padding:10px 18px;font-size:13px;opacity:0;transition:opacity .25s;
+    backdrop-filter:blur(10px);box-shadow:0 12px 34px rgba(0,0,0,.4);white-space:nowrap}
+  #toast .hz{color:var(--gold);font-weight:600;letter-spacing:.06em;font-size:15px}
+
+  /* ---------- controls hint ---------- */
+  #keys{position:absolute;left:18px;bottom:16px;font-size:11px;letter-spacing:.03em;
+    opacity:.34;line-height:1.9;max-width:52vw}
+  #keys b{opacity:.95;font-weight:600;letter-spacing:.06em}
+
+  /* ---------- title ---------- */
+  #intro{position:absolute;inset:0;z-index:5;
+    background:radial-gradient(115% 90% at 50% 38%,#1e232b 0%,#0b0d11 62%,#07080a 100%);
+    display:flex;flex-direction:column;align-items:center;justify-content:center;
+    padding:32px;pointer-events:auto;transition:opacity .55s}
+  #intro.gone{opacity:0;pointer-events:none}
+  #intro .en{font-size:11px;letter-spacing:.52em;opacity:.42;text-transform:uppercase}
+  #intro h1{font-size:clamp(38px,7vw,62px);letter-spacing:.24em;font-weight:600;
+    margin:16px 0 4px;text-indent:.24em}
+  #intro .rule{width:52px;height:1px;background:var(--gold);opacity:.7;margin:22px 0}
+  #intro p{max-width:490px;text-align:center;font-size:13.5px;line-height:2.0;opacity:.6}
+  #intro p+p{margin-top:14px;opacity:.45}
+  #intro button{margin-top:30px;background:var(--red);color:#fff;border:0;
+    padding:13px 34px;border-radius:999px;font:600 13.5px/1 inherit;letter-spacing:.18em;
+    cursor:pointer;box-shadow:0 10px 30px rgba(178,65,47,.35);transition:filter .15s, transform .15s}
+  #intro button:hover{filter:brightness(1.12);transform:translateY(-1px)}
+  #intro button:focus-visible{outline:2px solid var(--gold);outline-offset:3px}
+
+  @media (max-width:640px){
+    .chip b{font-size:14px}
+    #card{padding:22px 20px 18px}
+    #card .hz{font-size:38px}
+    #keys{display:none}
+  }
+</style>
+</head>
+<body>
+<canvas id="cv"></canvas>
+<div id="grade"></div>
+<div id="ui">
+  <div id="hud">
+    <div class="chip" id="clock"><span class="k">第 1 天 · day</span><b>14:00</b></div>
+    <div class="chip" id="money"><span class="k">钱 · money</span><b>¥5,000</b></div>
+    <div class="chip" id="words"><span class="k">词语 · words</span><b>0</b></div>
+    <div class="chip zero" id="revw"><span class="k">复习 · review</span><b>0</b></div>
+  </div>
+  <div id="labels"></div>
+  <div id="prompt"><kbd>E</kbd><span id="promptText"></span></div>
+  <div id="toast"></div>
+  <div id="card">
+    <div class="top"><div class="hz"></div><div class="py"></div><div class="en"></div></div>
+    <div class="quiz">
+      <div class="qh"></div>
+      <div class="qp"></div>
+      <div class="opts" role="group" aria-label="Answer choices"></div>
+    </div>
+    <div class="sent"></div>
+    <div class="tr"></div>
+    <div class="note"></div>
+    <div class="bar"><i></i></div>
+    <div class="barlab"><span>熟练度 · familiarity</span><span class="stage"></span></div>
+    <div class="fb" role="status" aria-live="polite"></div>
+  </div>
+  <div id="book">
+    <h2>生词本</h2>
+    <div class="sub">Notebook — every word you have met in this apartment</div>
+    <div id="bookList"></div>
+  </div>
+  <div id="keys">
+    <b>WASD</b> move &nbsp; <b>Shift</b> run &nbsp; <b>drag</b> look &nbsp; <b>scroll</b> zoom<br>
+    <b>click</b> anything &nbsp; <b>E</b> interact &nbsp; <b>R</b> review &nbsp; <b>1–4</b> answer
+    &nbsp; <b>Tab</b> notebook &nbsp; <b>Esc</b> close
+  </div>
+  <div id="intro">
+    <div class="en">Beijing · 北京</div>
+    <h1>你的公寓</h1>
+    <div class="rule"></div>
+    <p>You just arrived. ¥5,000, a backpack, a phone, and a small apartment in 朝阳区.
+       Walk around. Click things. The apartment is your first classroom — every object here
+       has a name, and the more you meet a word, the less the game translates it for you.</p>
+    <p>Words come back. A gold dot means one is asking to be recalled: answer it and it fades
+       further out of English. Get it wrong and it returns sooner.</p>
+    <button id="start">进入 · ENTER</button>
+  </div>
+</div>
+
+<script>
+window.__probe = { errors: [] };
+addEventListener('error', e => __probe.errors.push('ERROR ' + (e.message || e.error)));
+addEventListener('unhandledrejection', e => __probe.errors.push('REJECT ' + e.reason));
+try { localStorage.clear(); } catch (e) {}
+</script>
+<script src="js/math.js"></script>
+<script src="js/gl.js"></script>
+<script src="js/vocab.js"></script>
+<script src="js/world.js"></script>
+<script src="js/game.js"></script>
+<script>
+(function(){
+  const q = new URLSearchParams(location.search);
+  const mode = q.get('shot') || 'world';
+  const out = [];
+  const chk = (n, fn) => { try { const v = fn(); out.push((v ? 'PASS ' : 'FAIL ') + n + (v && v !== true ? '  ' + v : '')); } catch (e) { out.push('ERR  ' + n + '  ' + e.message); } };
+  const log = document.createElement('pre');
+  log.id = 'probelog';
+  log.style.cssText = 'position:fixed;left:0;bottom:0;z-index:99;margin:0;font:11px ui-monospace,monospace;color:#7fffa0;background:rgba(0,0,0,.75);padding:6px;white-space:pre-wrap;max-width:100%';
+  document.body.appendChild(log);
+
+  document.getElementById('start').click();
+  const g = window.__game;
+  chk('webgl2 context alive', () => !!R.gl);
+  chk('props built', () => World.props.length + ' props');
+  chk('interactive objects', () => World.things.length === 25 ? World.things.length + ' things' : false);
+  chk('contact shadows', () => World.shadows.length + ' shadows');
+  chk('light pools', () => World.glows.length + ' glows');
+
+  if (mode === 'closeup') { g.CAM.yaw = Math.PI * 0.70; g.CAM.pitch = 0.16; g.CAM.dist = 2.6; g.P.x = 1.05; g.P.z = -1.05; g.P.yaw = Math.PI; }
+  else if (mode === 'kitchen') { g.CAM.yaw = Math.PI * 1.45; g.CAM.pitch = 0.30; g.CAM.dist = 3.4; g.P.x = 2.10; g.P.z = 0.20; }
+  else { g.CAM.yaw = Math.PI * 0.86; g.CAM.pitch = 0.46; g.CAM.dist = 6.4; g.P.x = 0.4; g.P.z = 1.1; }
+
+  setTimeout(function(){
+    chk('view-projection produced', () => R.vp && R.vp[0] !== 0);
+    chk('cursor ray hits the fridge where it is drawn', () => {
+      const th = World.things.find(t => t.hz === '冰箱');
+      const p = M.project(R.vp, th.pos[0], th.pos[1] - 0.5, th.pos[2]);
+      if (p.w <= 0) return false;
+      const sx = (p.x / p.w * 0.5 + 0.5) * innerWidth, sy = (-p.y / p.w * 0.5 + 0.5) * innerHeight;
+      const hit = g.pickAt(sx, sy);
+      return hit && hit.hz === '冰箱' ? 'hit ' + hit.hz : (hit ? 'wrong: ' + hit.hz : false);
+    });
+    chk('cursor ray on empty ceiling hits nothing', () => g.pickAt(innerWidth * 0.5, 6) === null || 'hit something');
+    if (mode === 'card') g.openWord('沙发');
+    if (mode === 'quiz') {
+      Vocab.introduce('冰箱');
+      const real = Date.now.bind(Date);
+      Date.now = () => real() + 300000;      // jump past the review interval
+      g.openWord('冰箱');
+      chk('recall check is showing', () => document.getElementById('card').classList.contains('asking'));
+      chk('four options rendered', () => document.querySelectorAll('#card .opt').length === 4);
+    }
+    setTimeout(function(){
+      out.push('js errors: ' + (__probe.errors.length ? __probe.errors.join(' | ') : 'none'));
+      log.textContent = out.join('\n');
+      document.title = __probe.errors.length ? 'PROBE-ERRORS' : 'PROBE-OK';
+    }, 250);
+  }, 700);
+})();
+</script>
+</body>
+</html>

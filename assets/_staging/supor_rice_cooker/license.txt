@@ -1,0 +1,11 @@
+Model Information:
+* title:	supor Rice cooker 苏泊尔电饭锅
+* source:	https://sketchfab.com/3d-models/supor-rice-cooker-a9bf09f4f333493580d75b4bde98f9cb
+* author:	jiuyue (https://sketchfab.com/jiuyue)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "supor Rice cooker 苏泊尔电饭锅" (https://sketchfab.com/3d-models/supor-rice-cooker-a9bf09f4f333493580d75b4bde98f9cb) by jiuyue (https://sketchfab.com/jiuyue) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)

@@ -1,0 +1,13 @@
+# The repo root holds ~1,136 dotfiles and dot-directories of caches, QA output and
+# scratch (.cache alone is 3.9 GB). None of it is runtime. Blanket-ignore hidden
+# entries and name the few exceptions.
+.*
+!.gitignore
+!.nojekyll
+!.claude/
+
+# Concept art: 783 MB of source PNGs. Not referenced by index.html or anything in js/.
+art/
+
+__pycache__/
+*.pyc

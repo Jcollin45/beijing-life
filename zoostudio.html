@@ -1,0 +1,193 @@
+<!doctype html>
+<meta charset="utf-8">
+<title>动物 · animal studio</title>
+<!--
+  The animal rig, on its own, with no zoo around it.
+
+  `studio.html` exists because the only practical way to judge a face is to look at one with no
+  world, no game loop and no HUD in the way. The same is true of a panda, and more so: in the zoo an
+  animal is 90 pixels tall behind a rail, half of it behind a rock, and every fault in it is
+  invisible until you happen to walk up to the one that is standing in the open. Getting a species
+  right by taking screenshots of the enclosure and squinting is hours of work per fix.
+
+  So this draws whatever you ask for on a plain floor with a known light: one species in every act
+  it knows, or every species side by side in one act. It loads exactly four files, which is the
+  whole point — a fault that shows here is in the rig and nowhere else.
+-->
+<style>
+  html, body { margin: 0; height: 100%; background: #14171b; overflow: hidden;
+               font: 13px/1.5 ui-monospace, Menlo, monospace; color: #cfd4da; }
+  #cv { display: block; width: 100vw; height: 100vh; }
+  #ui { position: fixed; left: 12px; top: 12px; background: rgba(16,19,23,.86);
+        border: 1px solid #2b3138; border-radius: 8px; padding: 10px 12px; max-width: 300px; }
+  #ui h1 { font-size: 13px; margin: 0 0 8px; letter-spacing: .06em; color: #8fd0a8; }
+  #ui div { margin: 3px 0; }
+  #ui b { color: #e6b45a; font-weight: 600; }
+  #read { position: fixed; right: 12px; bottom: 12px; background: rgba(16,19,23,.86);
+          border: 1px solid #2b3138; border-radius: 8px; padding: 8px 10px; }
+</style>
+<canvas id="cv"></canvas>
+<div id="ui">
+  <h1>动物 · ANIMAL STUDIO</h1>
+  <div><b>1–7</b> species · <b>0</b> all species</div>
+  <div><b>Q/E</b> cycle act · <b>A</b> all acts</div>
+  <div><b>drag</b> orbit · <b>wheel</b> zoom</div>
+  <div><b>W</b> walk · <b>L</b> cycle LOD</div>
+  <div><b>G</b> ground grid</div>
+</div>
+<div id="read"></div>
+<script src="js/math.js"></script>
+<script src="js/gl.js"></script>
+<script src="js/glyphs.js"></script>
+<script src="js/figure.js"></script>
+<script>
+(() => {
+const cv = document.getElementById('cv');
+R.init(cv);
+
+const KINDS = Object.keys(ANIMALS);
+// Every act `animalAct` knows, plus the empty one, which is what a spot with no act gets.
+const ACTS = ['', 'graze', 'browse', 'drink', 'sit', 'lie', 'eat', 'groom',
+              'climb', 'swim', 'display', 'preen', 'dust'];
+
+const S = {
+  kind: 0, act: 0, all: false, allActs: false, lod: 0,
+  walk: 0,                              // ground speed in m/s; 0 is standing
+  yaw: Math.PI * 0.18, pitch: 0.22, dist: 4.2, tgt: 0.9, grid: true,
+  subjectYaw: Math.PI * 0.22,
+};
+
+// One live pose per drawn animal, eased exactly the way game.js eases them, so what is on screen
+// is the same motion the zoo shows and not a snapshot of the target.
+const live = new Map();
+function poseFor(key, kind, act, dt, now, i) {
+  const A = look(kind);
+  let p = live.get(key);
+  if (!p) { p = { ...APOSE, phase: 0 }; live.set(key, p); }
+  p.phase += S.walk * dt * Math.PI / A.step;
+  const g = animalPose({ ...APOSE }, S.walk, p.phase, 0, now, A, 0);
+  if (act) animalAct(g, act, now, i * 7 + 3, A, 1 - Math.min(1, S.walk / 0.28));
+  for (const k in APOSE)
+    p[k] += (g[k] - p[k]) * (1 - Math.exp(-dt / (ATAU[k] || 0.15)));
+  p.blink = blinkOf(now, i * 31 + 5, 1);
+  return p;
+}
+
+// Resolved looks, cached: `makeAnimal` is cheap but it is not free and this runs every frame.
+const LOOKS = {};
+function look(kind) { return LOOKS[kind] || (LOOKS[kind] = makeAnimal(kind, { seed: 11 })); }
+
+const FLOOR = C('#2a2f34'), GRID = C('#3a4149');
+function backdrop() {
+  R.draw('quad', M.trs(0, 0, 0, 0, 60, 1, 60), FLOOR, { mode: 0, gloss: 0.05 });
+  if (!S.grid) return;
+  // A metre grid, which is the only way to read an animal's actual size off a picture of it.
+  for (let i = -14; i <= 14; i++) {
+    const big = i % 5 === 0, w = big ? 0.016 : 0.006;
+    R.draw('box', M.trs(i, 0.002, 0, 0, w, 0.004, 28), GRID, { mode: 0, bevel: 0 });
+    R.draw('box', M.trs(0, 0.002, i, 0, 28, 0.004, w), GRID, { mode: 0, bevel: 0 });
+  }
+  // A two-metre rule, so "is this elephant the right height" is a question with an answer.
+  R.draw('box', M.trs(-2.2, 1.5, -1.6, 0, 0.03, 3.0, 0.03), C('#5a6470'), { mode: 0, bevel: 0 });
+  for (let h = 1; h <= 6; h++)
+    R.draw('box', M.trs(-2.2 + 0.09, h * 0.5, -1.6, 0, 0.18, 0.02, 0.02),
+      h % 2 === 0 ? C('#d8dee6') : C('#7d8590'), { mode: 0, bevel: 0 });
+}
+
+R.setDaylight([0.42, 0.72, -1.0], [1.0, 0.97, 0.92], 1.45, [0.36, 0.40, 0.48],
+  [0.20, 0.18, 0.16]);
+R.setBulb(0, 2.5, 0.4, 0);
+R.setRoom(40, 12, 40);
+
+let last = performance.now();
+function frame(now) {
+  const dt = Math.min(0.05, (now - last) / 1000); last = now;
+  // `R.resize` takes the canvas and hands back the aspect ratio — it is not a (w, h) setter, and
+  // called as one it silently leaves the viewport at nothing and the whole page draws black.
+  const aspect = R.resize(cv);
+  R.setTime(now);
+  // No fog and no room: this is geometry on a floor, not a place.
+  R.setEnv({ indoor: false, winOn: 0, fogNear: 0, fogD: 0,
+             fogCol: [0.078, 0.086, 0.098], expose: 0.62 });
+
+  const cp = Math.cos(S.pitch), sp = Math.sin(S.pitch);
+  const tgt = [0, S.tgt, 0];
+  const eye = [tgt[0] - Math.sin(S.yaw) * cp * S.dist,
+               tgt[1] + sp * S.dist,
+               tgt[2] - Math.cos(S.yaw) * cp * S.dist];
+  R.begin(M.persp(0.95, aspect, 0.02, 300), M.lookAt(eye, tgt), eye,
+    [0.078, 0.086, 0.098]);
+  backdrop();
+
+  let label = '';
+  if (S.all) {
+    // Every species in one act, spaced by how wide each one actually is, so an elephant does not
+    // stand inside a macaque.
+    let x = 0;
+    const widths = KINDS.map(k => look(k).foot * 0.85 + 0.6);
+    const total = widths.reduce((a, b) => a + b, 0);
+    x = -total / 2;
+    KINDS.forEach((k, i) => {
+      x += widths[i] / 2;
+      const A = look(k);
+      drawAnimal(poseFor(k + '|' + S.act, k, ACTS[S.act], dt, now, i),
+        x, 0, S.subjectYaw, A, S.lod);
+      x += widths[i] / 2;
+    });
+    label = `all species · act ${ACTS[S.act] || '(none)'}`;
+  } else if (S.allActs) {
+    // One species doing everything it knows, in a row.
+    const k = KINDS[S.kind], A = look(k);
+    const step = A.foot * 0.9 + 0.8;
+    ACTS.forEach((a, i) => {
+      drawAnimal(poseFor(k + '|' + a, k, a, dt, now, i),
+        (i - (ACTS.length - 1) / 2) * step, 0, S.subjectYaw, A, S.lod);
+    });
+    label = `${k} · every act`;
+  } else {
+    const k = KINDS[S.kind], A = look(k);
+    drawAnimal(poseFor(k + '|' + S.act, k, ACTS[S.act], dt, now, 1), 0, 0, S.subjectYaw, A, S.lod);
+    label = `${k} · ${ACTS[S.act] || '(standing)'}`;
+  }
+
+  R.present();
+  const A = look(KINDS[S.kind]);
+  document.getElementById('read').innerHTML =
+    `${label}<br>lod ${S.lod} · ${S.walk ? S.walk.toFixed(2) + ' m/s' : 'still'}` +
+    `<br>tall ${A.tall.toFixed(2)} m · shadow ${A.foot.toFixed(2)} m`;
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+
+addEventListener('keydown', e => {
+  const k = e.key.toLowerCase();
+  if (k >= '1' && k <= '7') { S.kind = Math.min(KINDS.length - 1, +k - 1); S.all = false; }
+  if (k === '0') S.all = !S.all;
+  if (k === 'a') S.allActs = !S.allActs;
+  if (k === 'q') S.act = (S.act + ACTS.length - 1) % ACTS.length;
+  if (k === 'e') S.act = (S.act + 1) % ACTS.length;
+  if (k === 'w') S.walk = S.walk ? 0 : 0.8;
+  if (k === 'l') S.lod = (S.lod + 1) % 3;
+  if (k === 'g') S.grid = !S.grid;
+});
+let drag = null;
+cv.addEventListener('pointerdown', e => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); });
+cv.addEventListener('pointerup', () => { drag = null; });
+cv.addEventListener('pointermove', e => {
+  if (!drag) return;
+  S.yaw -= (e.clientX - drag[0]) * 0.006;
+  S.pitch = Math.max(-0.3, Math.min(1.3, S.pitch + (e.clientY - drag[1]) * 0.004));
+  drag = [e.clientX, e.clientY];
+});
+cv.addEventListener('wheel', e => {
+  S.dist = Math.max(0.6, Math.min(40, S.dist * (1 + Math.sign(e.deltaY) * 0.1)));
+  e.preventDefault();
+}, { passive: false });
+
+// The harness drives all of this from outside, the same way `.shot.js` drives studio.html.
+// `.shot.js` binds the snippet's `S` to `window.__studio`, so this answers to both names and the
+// existing screenshot harness drives it with no changes.
+window.__zoo = S;
+window.__studio = S;
+})();
+</script>

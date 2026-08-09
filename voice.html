@@ -1,0 +1,383 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Voice studio</title>
+<!--
+  A workbench for the voice, and nothing else. Sibling of studio.html: it loads voice.js and
+  vocab.js only, so it opens instantly and reloads instantly.
+
+  A voice in here is fifteen numbers. There is no recording anywhere in the pipeline — the buzz is
+  an oscillator, the vowels are four resonators, the consonants are a band of noise, and the tones
+  are a pitch contour. So you design a voice rather than copy one, which is the only version of
+  this that is anyone's to give away.
+
+  Type Chinese (looked up in the game's own vocabulary) or pinyin (nǐ hǎo, or ni3 hao3). The plot
+  is exactly what you are about to hear: pitch on top, the four formant tracks under it, and the
+  noise band in red.
+
+  Keys: SPACE speak · L loop · R random · S save the WAV · 1-8 presets
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #14161a; color: #d8d6d0; overflow: hidden;
+               font: 12px/1.45 -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; }
+  #wrap { display: flex; height: 100%; }
+  #stage { position: relative; flex: 1 1 auto; min-width: 0; display: flex;
+           flex-direction: column; padding: 14px 16px; gap: 10px; }
+  #say { flex: none; display: flex; gap: 8px; }
+  #say input { flex: 1; background: #101317; color: #e8e4da; border: 1px solid #2b2f36;
+               border-radius: 5px; padding: 9px 11px; font: 17px/1.3 inherit; letter-spacing: .04em; }
+  #say input:focus { outline: none; border-color: #4d6f8f; }
+  #cv { flex: 1 1 auto; min-height: 0; width: 100%; display: block;
+        background: #0e1014; border: 1px solid #23272e; border-radius: 6px; }
+  #read { flex: none; opacity: .55; font-size: 11px; font-variant-numeric: tabular-nums;
+          white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #read b { color: #9fc4a8; font-weight: 600; }
+  #read i { color: #c9a86a; font-style: normal; }
+  #panel { flex: 0 0 300px; overflow-y: auto; padding: 12px 14px 40px;
+           background: #1b1e23; border-left: 1px solid #2b2f36; }
+  h1 { font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
+       margin: 0 0 10px; color: #8d949e; font-weight: 600; }
+  h2 { font-size: 10px; letter-spacing: .10em; text-transform: uppercase;
+       margin: 15px 0 6px; color: #6f7681; font-weight: 600;
+       border-top: 1px solid #2b2f36; padding-top: 9px; }
+  .row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  button { font: inherit; color: #d8d6d0; background: #262b32; border: 1px solid #333941;
+           border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+  button:hover { background: #2f353d; }
+  button.on { background: #3d5a76; border-color: #4d6f8f; color: #fff; }
+  button.go { background: #35603f; border-color: #4a7d55; color: #eaf5ec; }
+  button.go:hover { background: #3d6f49; }
+  label.s { display: grid; grid-template-columns: 78px 1fr 52px; align-items: center;
+            gap: 6px; margin: 3px 0; }
+  label.s span { color: #9aa1ab; overflow: hidden; text-overflow: ellipsis; }
+  label.s span i { font-style: normal; color: #6f7681; }
+  label.s output { text-align: right; color: #c8cdd4; font-variant-numeric: tabular-nums; }
+  input[type=range] { width: 100%; accent-color: #6f9ec4; }
+  textarea { width: 100%; height: 116px; margin-top: 6px; background: #101317; color: #b9c6d2;
+             border: 1px solid #2b2f36; border-radius: 4px; padding: 6px;
+             font: 10.5px/1.45 ui-monospace, Menlo, monospace; }
+  .hint { font-size: 10.5px; opacity: .40; line-height: 1.6; margin: 6px 0 0; }
+  .warn { color: #d0864f; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <div id="say">
+      <input id="text" value="你好，我是这儿的服务员" spellcheck="false"
+             aria-label="what to say">
+      <button class="go" id="speak">说 · SPEAK</button>
+      <button id="loop">循环 · LOOP</button>
+    </div>
+    <canvas id="cv"></canvas>
+    <div id="read"></div>
+  </div>
+  <div id="panel">
+    <h1>Voice studio</h1>
+    <div class="row" id="presets"></div>
+    <h2>身份 · who</h2>
+    <div id="dials1"></div>
+    <h2>音色 · timbre</h2>
+    <div id="dials2"></div>
+    <h2>说话 · delivery</h2>
+    <div id="dials3"></div>
+    <h2>共振峰 · formant trim <i>%</i></h2>
+    <div id="dials4"></div>
+    <h2>导出 · export</h2>
+    <div class="row">
+      <button id="wav">存 WAV</button>
+      <button id="copy">复制 JSON</button>
+      <button id="rand">随机 · R</button>
+      <button id="reset">还原</button>
+    </div>
+    <textarea id="json" spellcheck="false" aria-label="voice as JSON"></textarea>
+    <p class="hint">Paste this into <code>Voice.PRESETS</code> to give an NPC the voice.
+      Every number in it is audible on its own — drag one and say the line again.</p>
+    <p class="hint" id="err"></p>
+  </div>
+</div>
+<script src="js/vocab.js"></script>
+<script src="js/voice.js"></script>
+<script>
+// The dials, in the order they matter. `k` is the key in the voice object, and the label carries
+// the Chinese word for the thing so the studio teaches too.
+const DIALS = [
+  ['dials1', [
+    ['f0',    '音高', 'pitch',      60,  380, 1,    v => v.toFixed(0) + ' Hz'],
+    ['tract', '声道', 'tract',      .70, 1.30, .01, v => v.toFixed(2) + '×'],
+    ['range', '调幅', 'tone range', .30, 1.80, .01, v => v.toFixed(2) + '×'],
+  ]],
+  ['dials2', [
+    ['tilt',   '明亮', 'bright',    0, 1, .01, v => (v * 100).toFixed(0) + '%'],
+    ['breath', '气声', 'breath',    0, .7, .01, v => (v * 100).toFixed(0) + '%'],
+    ['press',  '用力', 'press',     0, 1, .01, v => (v * 100).toFixed(0) + '%'],
+    ['nasal',  '鼻音', 'nasal',     0, 1, .01, v => (v * 100).toFixed(0) + '%'],
+    ['gain',   '音量', 'level',     .2, 1.4, .01, v => v.toFixed(2)],
+  ]],
+  ['dials3', [
+    ['rate',    '语速', 'rate',     .5, 2.0, .01, v => v.toFixed(2) + '×'],
+    ['rough',   '沙哑', 'rough',    0, 1, .01, v => (v * 100).toFixed(0) + '%'],
+    ['creak',   '三声', 'creak',    0, 1, .01, v => (v * 100).toFixed(0) + '%'],
+    ['vibRate', '颤速', 'vib rate', 2, 9, .1,  v => v.toFixed(1) + ' Hz'],
+    ['vibDepth','颤幅', 'vib',      0, .5, .01, v => v.toFixed(2)],
+  ]],
+];
+const $ = s => document.querySelector(s);
+const AudioCtor = window.AudioContext || window.webkitAudioContext;
+let ctx = null, out = null, looping = false, timer = 0;
+let V = { ...Voice.DEFAULT };
+let lastPlan = null;
+
+// The dictionary is the game's own word list, so anything the player can learn can be spoken here.
+// `typeof`, not `window.Vocab`: vocab.js declares Vocab with const in a classic script, so it is
+// script-scoped and never becomes a property of window. Reaching for it through window quietly
+// yields null and every Chinese character falls through to the placeholder vowel.
+const DICT = typeof Vocab !== 'undefined' && Vocab.DICT ? Vocab.DICT : null;
+
+function audio() {
+  if (!ctx) {
+    ctx = new AudioCtor();
+    out = ctx.createGain();
+    out.gain.value = .9;
+    const comp = ctx.createDynamicsCompressor();
+    comp.threshold.value = -14; comp.ratio.value = 2.4; comp.release.value = .18;
+    out.connect(comp); comp.connect(ctx.destination);
+  }
+  if (ctx.state === 'suspended') ctx.resume();
+  return ctx;
+}
+
+function build() {
+  for (const [host, dials] of DIALS) {
+    $('#' + host).innerHTML = dials.map(([k, zh, en, lo, hi, st]) =>
+      `<label class="s"><span>${zh} <i>${en}</i></span>`
+      + `<input type="range" data-k="${k}" min="${lo}" max="${hi}" step="${st}">`
+      + `<output data-o="${k}"></output></label>`).join('');
+  }
+  $('#dials4').innerHTML = [1, 2, 3, 4].map(i =>
+    `<label class="s"><span>F${i}</span>`
+    + `<input type="range" data-df="${i - 1}" min="-20" max="20" step="1">`
+    + `<output data-od="${i - 1}"></output></label>`).join('');
+  document.querySelectorAll('input[data-k]').forEach(el => {
+    el.oninput = () => { V[el.dataset.k] = +el.value; sync(); if (looping) queue(); };
+  });
+  document.querySelectorAll('input[data-df]').forEach(el => {
+    el.oninput = () => { V.dF[+el.dataset.df] = +el.value; sync(); if (looping) queue(); };
+  });
+  $('#presets').innerHTML = Object.keys(Voice.PRESETS).map((n, i) =>
+    `<button data-p="${n}">${i + 1} ${n}</button>`).join('');
+  document.querySelectorAll('button[data-p]').forEach(el => {
+    el.onclick = () => usePreset(el.dataset.p);
+  });
+}
+
+function usePreset(name) {
+  V = { ...Voice.DEFAULT, ...Voice.PRESETS[name], dF: [...(Voice.PRESETS[name].dF || [0,0,0,0])] };
+  document.querySelectorAll('button[data-p]').forEach(b =>
+    b.classList.toggle('on', b.dataset.p === name));
+  sync(); say();
+}
+
+// Everything that has to agree with the numbers: the sliders, the JSON, the plot and the readout.
+function sync() {
+  for (const [, dials] of DIALS)
+    for (const [k, , , , , , fmt] of dials) {
+      const el = document.querySelector(`input[data-k="${k}"]`);
+      if (el) el.value = V[k];
+      const o = document.querySelector(`output[data-o="${k}"]`);
+      if (o) o.textContent = fmt(V[k]);
+    }
+  for (let i = 0; i < 4; i++) {
+    document.querySelector(`input[data-df="${i}"]`).value = V.dF[i] || 0;
+    document.querySelector(`output[data-od="${i}"]`).textContent =
+      (V.dF[i] > 0 ? '+' : '') + (V.dF[i] || 0);
+  }
+  const shown = {};
+  for (const k in V) if (JSON.stringify(V[k]) !== JSON.stringify(Voice.DEFAULT[k])) shown[k] = V[k];
+  $('#json').value = JSON.stringify(shown, null, 1).replace(/\n\s+/g, ' ').replace(/ }$/, ' }');
+  replan();
+}
+
+function replan() {
+  try {
+    const sylls = Voice.parse($('#text').value, DICT);
+    lastPlan = sylls.length ? Voice.plan(sylls, V) : null;
+    $('#err').textContent = '';
+  } catch (e) {
+    lastPlan = null;
+    $('#err').textContent = String(e.message || e);
+    $('#err').className = 'hint warn';
+  }
+  draw();
+  readout();
+}
+
+function readout() {
+  if (!lastPlan) { $('#read').textContent = 'nothing to say'; return; }
+  const p = lastPlan;
+  const py = p.sylls.map(s => (s.py || '?') + s.tone).join(' ');
+  const lost = p.sylls.filter(s => s.unknown).map(s => s.unknown);
+  $('#read').innerHTML = `<b>${p.sylls.length}</b> syllables · <b>${p.dur.toFixed(2)}s</b> · `
+    + `<b>${(p.sylls.length / p.dur).toFixed(1)}</b>/s · <i>${py}</i>`
+    + (lost.length ? ` · <span class="warn">no reading for ${lost.join('')}</span>` : '');
+}
+
+// The plot is the plan, not an analysis of the output: pitch across the top with the tone numbers
+// on it, the four formant tracks below on a log scale, the noise band in red.
+function draw() {
+  const cv = $('#cv'), r = cv.getBoundingClientRect(), dpr = devicePixelRatio || 1;
+  cv.width = Math.max(300, r.width * dpr); cv.height = Math.max(160, r.height * dpr);
+  const g = cv.getContext('2d');
+  g.setTransform(dpr, 0, 0, dpr, 0, 0);
+  const W = r.width, H = r.height;
+  g.clearRect(0, 0, W, H);
+  const pad = 8, splitY = H * .30;
+  if (!lastPlan) return;
+  const p = lastPlan, n = p.n;
+  const X = i => pad + (W - pad * 2) * (i / Math.max(1, n - 1));
+  // ---- formants, log 200 Hz .. 4.5 kHz
+  const F0LO = 180, FHI = 4600;
+  const Y = f => splitY + (H - splitY - pad)
+    * (1 - (Math.log(Math.max(F0LO, f)) - Math.log(F0LO)) / (Math.log(FHI) - Math.log(F0LO)));
+  g.strokeStyle = '#1e232a'; g.lineWidth = 1;
+  for (const f of [250, 500, 1000, 2000, 4000]) {
+    g.beginPath(); g.moveTo(pad, Y(f)); g.lineTo(W - pad, Y(f)); g.stroke();
+    g.fillStyle = '#3b424b'; g.font = '9px ui-monospace, monospace';
+    g.fillText(f >= 1000 ? (f / 1000) + 'k' : f, pad + 2, Y(f) - 2);
+  }
+  // the noise band first, so the voiced tracks sit over it
+  g.strokeStyle = 'rgba(196,86,64,.85)';
+  g.lineWidth = 1.5;
+  let open = false;
+  g.beginPath();
+  for (let i = 0; i < n; i++) {
+    if (p.fA[i] > .01) {
+      if (!open) { g.moveTo(X(i), Y(p.fF[i])); open = true; } else g.lineTo(X(i), Y(p.fF[i]));
+    } else open = false;
+  }
+  g.stroke();
+  const COLS = ['#7fc9a6', '#7fb0d8', '#c9a86a', '#a98fc9'];
+  for (let j = 0; j < 4; j++) {
+    g.strokeStyle = COLS[j];
+    for (let i = 1; i < n; i++) {
+      const a = Math.min(1, p.A[j][i] * 2.2);
+      if (a < .04) continue;
+      g.globalAlpha = a;
+      g.lineWidth = 1 + 2.4 * a;
+      g.beginPath(); g.moveTo(X(i - 1), Y(p.F[j][i - 1])); g.lineTo(X(i), Y(p.F[j][i])); g.stroke();
+    }
+  }
+  g.globalAlpha = 1;
+  // ---- pitch, over its own band, with the tone contour of each syllable in view
+  let lo = 1e9, hi = 0;
+  for (let i = 0; i < n; i++) if (p.amp[i] > .02) { lo = Math.min(lo, p.f0[i]); hi = Math.max(hi, p.f0[i]); }
+  if (hi <= lo) { lo = p.v.f0 * .8; hi = p.v.f0 * 1.25; }
+  const PY = f => pad + (splitY - pad * 2) * (1 - (f - lo) / Math.max(1, hi - lo));
+  g.strokeStyle = '#2a3038';
+  g.beginPath(); g.moveTo(pad, splitY - 3); g.lineTo(W - pad, splitY - 3); g.stroke();
+  g.strokeStyle = '#e8d7a0'; g.lineWidth = 2; g.beginPath();
+  open = false;
+  for (let i = 0; i < n; i++) {
+    if (p.amp[i] > .02) {
+      if (!open) { g.moveTo(X(i), PY(p.f0[i])); open = true; } else g.lineTo(X(i), PY(p.f0[i]));
+    } else { open = false; }
+  }
+  g.stroke();
+  g.fillStyle = '#5c646f'; g.font = '9px ui-monospace, monospace';
+  g.fillText(hi.toFixed(0) + ' Hz', pad + 2, pad + 8);
+  g.fillText(lo.toFixed(0) + ' Hz', pad + 2, splitY - 8);
+  // the syllable and its tone over the pitch line it belongs to, at the moment it actually starts
+  g.font = '10px -apple-system, sans-serif';
+  p.sylls.forEach((s, i) => {
+    const at = X(Math.round((p.marks[i] || 0) / p.step));
+    g.strokeStyle = '#242a32';
+    g.lineWidth = 1;
+    g.beginPath(); g.moveTo(at, pad); g.lineTo(at, H - pad); g.stroke();
+    // Written tone, then the tone actually said where sandhi has changed it. Two third tones in a
+    // row are not two third tones, and the pitch line above will not match the label without this.
+    const said = s.say && s.say !== s.tone ? '\u2192' + s.say : '';
+    g.fillStyle = s.unknown ? '#d0864f' : '#8d949e';
+    g.fillText((s.py || '?') + s.tone, at + 3, splitY + 11);
+    if (said) {
+      g.fillStyle = '#6f9fd8';
+      g.fillText(said, at + 3 + g.measureText((s.py || '?') + s.tone).width, splitY + 11);
+    }
+  });
+}
+
+function say() {
+  if (!lastPlan) replan();
+  if (!lastPlan) return;
+  const c = audio();
+  Voice.speak(c, out, lastPlan, c.currentTime + .03);
+}
+function queue() {
+  clearTimeout(timer);
+  if (!looping) return;
+  say();
+  timer = setTimeout(queue, Math.round(((lastPlan && lastPlan.dur) || .6) * 1000) + 380);
+}
+
+$('#speak').onclick = say;
+$('#loop').onclick = () => {
+  looping = !looping;
+  $('#loop').classList.toggle('on', looping);
+  clearTimeout(timer);
+  if (looping) queue();
+};
+$('#text').oninput = replan;
+$('#rand').onclick = () => {
+  const r = (a, b) => a + Math.random() * (b - a);
+  V = { ...Voice.DEFAULT,
+    f0: r(95, 320), tract: r(.78, 1.20), range: r(.6, 1.5), tilt: r(.25, .8),
+    breath: r(0, .45), press: r(.1, .8), nasal: r(.1, .6), rough: r(.05, .55),
+    creak: r(.1, .6), rate: r(.8, 1.3), vibRate: r(3.5, 7), vibDepth: r(.03, .25),
+    dF: [0, 0, 0, 0].map(() => Math.round(r(-8, 8))) };
+  document.querySelectorAll('button[data-p]').forEach(b => b.classList.remove('on'));
+  sync(); say();
+};
+$('#reset').onclick = () => { V = { ...Voice.DEFAULT, dF: [0,0,0,0] }; sync(); };
+$('#copy').onclick = async () => {
+  try { await navigator.clipboard.writeText($('#json').value); $('#copy').textContent = '复制了'; }
+  catch (e) { $('#json').select(); }
+  setTimeout(() => { $('#copy').textContent = '复制 JSON'; }, 900);
+};
+$('#wav').onclick = async () => {
+  if (!lastPlan) return;
+  $('#wav').textContent = '…';
+  try {
+    const buf = await Voice.render(lastPlan);
+    const url = URL.createObjectURL(Voice.wav(buf));
+    const a = document.createElement('a');
+    const slug = $('#text').value.replace(/[^\w\u3400-\u9fff]+/g, '').slice(0, 12) || 'voice';
+    a.href = url; a.download = slug + '.wav'; a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 4000);
+  } catch (e) { $('#err').textContent = String(e.message || e); }
+  $('#wav').textContent = '存 WAV';
+};
+addEventListener('keydown', e => {
+  if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') {
+    if (e.key === 'Enter') { e.preventDefault(); say(); }
+    return;
+  }
+  const names = Object.keys(Voice.PRESETS);
+  if (e.key >= '1' && e.key <= '8' && names[+e.key - 1]) { usePreset(names[+e.key - 1]); return; }
+  if (e.code === 'Space') { e.preventDefault(); say(); }
+  if (e.key === 'l' || e.key === 'L') $('#loop').click();
+  if (e.key === 'r' || e.key === 'R') $('#rand').click();
+  if (e.key === 's' || e.key === 'S') $('#wav').click();
+});
+addEventListener('resize', draw);
+
+build();
+usePreset('服务员');
+// The studio publishes its state for the same reason the character studio does: a screenshot
+// harness has to be able to set the voice and the line before it takes the picture.
+window.__voice = { get V() { return V; }, set V(x) { V = x; sync(); },
+                   plan: () => lastPlan, say, usePreset, sync,
+                   text: t => { $('#text').value = t; replan(); } };
+</script>
+</body>
+</html>

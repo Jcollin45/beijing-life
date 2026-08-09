@@ -1,0 +1,152 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width,initial-scale=1">
+  <title>Beijing Life · Realistic Character Studio</title>
+  <style>
+    html,body{width:100%;height:100%;margin:0;overflow:hidden;background:#17191d;color:#f1eee7}
+    body{font:14px/1.45 ui-sans-serif,-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif}
+    canvas{display:block;width:100%;height:100%;touch-action:none;cursor:grab}
+    canvas:active{cursor:grabbing}
+    .panel{position:fixed;left:22px;top:20px;padding:13px 15px;border:1px solid #ffffff24;
+      border-radius:10px;background:#111318d9;box-shadow:0 12px 38px #0008;backdrop-filter:blur(10px)}
+    h1{font-size:14px;letter-spacing:.08em;text-transform:uppercase;margin:0 0 3px}
+    p{margin:0;color:#aaa8a2}.ok{color:#b9d8bd}.bad{color:#ef9f92}
+    .hint{position:fixed;right:20px;bottom:18px;color:#d0cdc5aa;font-size:12px}
+  </style>
+</head>
+<body>
+  <canvas id="cv"></canvas>
+  <div class="panel"><h1 id="characterName">Realistic character</h1><p id="status">Loading realistic character…</p></div>
+  <div class="hint">Drag to turn · wheel to zoom</div>
+  <script src="js/math.js"></script>
+  <script src="js/gl.js"></script>
+  <script src="js/assets.js"></script>
+  <script src="js/rig.js"></script>
+  <script>
+  (() => {
+    const cv = document.getElementById('cv'), status = document.getElementById('status');
+    const CAST = {
+      xiaochen: { label:'小陈 · Xiao Chen', dist:3.75, target:0.86 },
+      wang_ayi: { label:'王阿姨 · Wang Ayi', dist:3.35, target:0.74 },
+      doudou: { label:'豆豆 · Doudou', dist:2.70, target:0.58 },
+      li_shifu: { label:'李师傅 · Li Shifu', dist:3.70, target:0.84 },
+      xiaoyu: { label:'小雨 · Xiaoyu', dist:3.50, target:0.80 },
+      xiao_xu: { label:'小许 · Xiao Xu', dist:3.45, target:0.78 },
+      wang_manager: { label:'王经理 · Wang Manager', dist:3.60, target:0.82 },
+      lu_apo: { label:'陆阿婆 · Lu Apo', dist:3.40, target:0.74 },
+      xiaolin_cashier: { label:'小林 · Xiaolin Cashier', dist:3.45, target:0.78 },
+      xiaozhao_coworker: { label:'小赵 · Xiaozhao Coworker', dist:3.45, target:0.79 },
+      xiaozhou_student: { label:'小周 · Xiaozhou Student', dist:3.45, target:0.79, source:'CC0 + CC BY assets' },
+      li_dama: { label:'李大妈 · Li Dama', dist:3.45, target:0.76, source:'CC0 + CC BY assets' },
+      chen_zookeeper: { label:'陈师傅 · Chen Zookeeper', dist:3.50, target:0.79 },
+      xiaozhou_courier: { label:'小周 · Xiaozhou Courier', dist:3.65, target:0.83, source:'CC0 + CC BY assets' },
+      supermarket_owner: { label:'超市老板 · Supermarket Owner', dist:3.55, target:0.80, source:'CC0 + CC BY assets' },
+      xiaomei_flight_attendant: { label:'小美 · Flight Attendant', dist:3.45, target:0.79 },
+      wang_rail_clerk: { label:'王师傅 · Rail Clerk', dist:3.40, target:0.76 },
+      lao_ma_grill: { label:'老马 · Grill Vendor', dist:3.55, target:0.80, source:'CC0 + CC BY assets' },
+      liu_security_officer: { label:'刘警官 · Security Officer', dist:3.45, target:0.78, source:'CC0 + CC BY assets' },
+      lao_qiu_tea_server: { label:'老邱 · Tea Server', dist:3.50, target:0.79, source:'CC0 + CC BY assets' },
+    };
+    const rigName = new URLSearchParams(location.search).get('rig') || 'xiaochen';
+    const requestedLod = Math.max(0, Math.min(2,
+      +(new URLSearchParams(location.search).get('lod') || 0)));
+    // Newly generated roster members do not need a hand-maintained studio entry just to be
+    // inspected. Keep the authored framing defaults, but show the real stable identity key.
+    const cast = CAST[rigName] || {
+      label: rigName.replace(/[-_]+/g, ' '), dist:3.50, target:0.80,
+      source:'validated CC0 + CC BY assets',
+    };
+    document.getElementById('characterName').textContent = cast.label;
+    document.title = `${cast.label} · Realistic Character Studio`;
+    const S = window.__studio = {
+      rig: rigName, lod: requestedLod, yaw: 0, orbit: 0, dist: cast.dist,
+      target: cast.target, spin: false,
+    };
+    window.__shotReady = false;
+    let ready = false, dragging = false, lastX = 0;
+
+    try {
+      R.init(cv);
+      R.setRenderScale(1);
+      R.setPost(true, 0.10, 0.16);
+      R.setAO(true, 0.34, 0.18);
+      R.setRoom(6, 3.2, 6); R.setDeck(0); R.setWindow(0, 1.6, 3, 2.2, 1.4);
+      R.setWeather(0, 0, 0); R.setLeaf([1, 1, 1]);
+      R.setDaylight([-0.46, 0.82, -1], [1.0, 0.91, 0.80], 1.10,
+        [0.34, 0.39, 0.49], [0.16, 0.14, 0.13]);
+      R.setEnv({ indoor:false, winOn:false, fogNear:0, fogD:0, fogCol:[0.15,0.17,0.21],
+        expose:0.78, bloom:0.25, aoRadius:0.18, aoAmt:0.34, white:[1.02,1.0,0.97] });
+      R.setBulb(-1.1, 2.35, 1.8, 1);
+      R.setLights([
+        { x:-1.3,y:2.2,z:1.9,col:[1.0,0.86,0.72],power:1.8,radius:4.7 },
+        { x:1.4,y:1.55,z:-1.0,col:[0.58,0.70,1.0],power:0.72,radius:3.7 },
+      ]);
+    } catch (e) {
+      status.className = 'bad'; status.textContent = 'Renderer failed: ' + e.message; return;
+    }
+
+    // A held frame from the production idle: weight on the right leg, the free knee softened,
+    // pelvis over the planted foot, chest counter-balanced, and hands hanging independently.
+    // Showing the actual idle contract here avoids judging a realistic mesh in a parade stance.
+    const restPose = {
+      rootDrop:0,bob:0.003,sway:0.030,surge:0,recline:0,
+      torsoPitch:-0.002,torsoYaw:-0.014,torsoRoll:0.028,hipYaw:0.020,
+      thighL:-0.052,thighR:0.014,kneeL:-0.185,kneeR:-0.013,ankleL:0.016,ankleR:0,
+      shL:0.004,shLz:0,elbL:-0.028,shR:0.009,shRz:0,elbR:-0.020,
+      twL:0.12,twR:-0.12,headYaw:-0.020,headPitch:-0.010,grip:0.42,
+    };
+    // Expose the exact pose used by the harness so relaxed-hand and stance changes can be compared
+    // on the same production mesh instead of judged through a different preview skeleton.
+    S.pose = restPose;
+
+    Assets.loadRig(rigName).then(rig => {
+      if (!rig) throw new Error((Assets.failures && Assets.failures().join(' · ')) || 'GLB did not load');
+      if (!R.skinning.ok) throw new Error(R.skinning.error || 'skinned shader did not build');
+      Assets.uploadRig(rigName, S.lod);
+      ready = true; window.__shotReady = true;
+      const tier = rig.lods && rig.lods.includes(S.lod) ? S.lod : 0;
+      const tris = rig.parts.filter(p => (p.lod || 0) === tier)
+        .reduce((n, p) => n + p.idx.length / 3, 0);
+      status.className = 'ok';
+      status.textContent = `${rig.bones} bones · LOD${tier} · ${Math.round(tris).toLocaleString()} triangles · ${cast.source || 'CC0 source assets'}`;
+    }).catch(e => {
+      status.className = 'bad'; status.textContent = 'Character failed: ' + e.message;
+      window.__shotReady = 'error';
+    });
+
+    function frame(now) {
+      const aspect = R.resize(cv);
+      R.setTime(now);
+      if (S.spin && !dragging) S.orbit += 0.0025;
+      const eye = [Math.sin(S.orbit) * S.dist, S.target + 0.34,
+                   Math.cos(S.orbit) * S.dist];
+      const target = [0, S.target, 0];
+      R.begin(M.persp(0.48, aspect, 0.1, 20), M.lookAt(eye, target), eye, [0.15, 0.17, 0.21]);
+      R.draw('cyl', M.mul(M.trans(0, -0.055, 0), M.scale(0.78, 0.10, 0.78)),
+        [0.14, 0.15, 0.17], { gloss:0.22 });
+      R.draw('softBox', M.mul(M.trans(0, -0.12, 0), M.scale(7, 0.10, 7)),
+        [0.09, 0.10, 0.12], { gloss:0.08, round:0.02 });
+      if (ready) Rig.draw(rigName, 0, 0.004, 0, S.yaw, S.pose, [1, 1, 1],
+                          { lod: S.lod });
+      R.present();
+      requestAnimationFrame(frame);
+    }
+    requestAnimationFrame(frame);
+
+    cv.addEventListener('pointerdown', e => {
+      dragging = true; lastX = e.clientX; cv.setPointerCapture(e.pointerId);
+    });
+    cv.addEventListener('pointermove', e => {
+      if (!dragging) return; S.orbit += (e.clientX - lastX) * 0.008; lastX = e.clientX;
+    });
+    cv.addEventListener('pointerup', () => { dragging = false; });
+    cv.addEventListener('wheel', e => {
+      S.dist = Math.max(1.55, Math.min(5, S.dist * Math.exp(e.deltaY * 0.0008)));
+      e.preventDefault();
+    }, { passive:false });
+  })();
+  </script>
+</body>
+</html>

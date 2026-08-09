@@ -1,0 +1,333 @@
+{
+  "schema_version": 1,
+  "design_set": "beijing-life-cast-82-v1",
+  "seed": "beijing-life-realistic-chinese-cast-2026-08",
+  "roster": "../../art/character-concepts/NPC-ROSTER-82.json",
+  "ethnicity_contract": {
+    "identity": "Chinese / East Asian",
+    "macros": {"asian": 1.0, "caucasian": 0.0, "african": 0.0},
+    "allowed_skins": [
+      "young_asian_female.mhmat",
+      "young_asian_male.mhmat",
+      "middleage_asian_female.mhmat",
+      "middleage_asian_male.mhmat",
+      "old_asian_female.mhmat",
+      "old_asian_male.mhmat"
+    ]
+  },
+  "texture_budget": {
+    "skin": 1024,
+    "eyes": 512,
+    "eyebrows": 256,
+    "hair": 512,
+    "garment": 512,
+    "accessory": 256,
+    "shoes": 256
+  },
+  "license_policy": {
+    "allowed_spdx": ["CC0-1.0", "CC-BY-3.0", "CC-BY-4.0"],
+    "require_installed_source_header": true
+  },
+  "asset_sources": [
+    {
+      "id": "makehuman-system-assets-cc0-2020",
+      "name": "MakeHuman System Assets",
+      "license": "CC0-1.0",
+      "source": "https://github.com/makehumancommunity/makehuman-system-assets",
+      "assets": {
+        "skins": [
+          "young_asian_female.mhmat", "young_asian_male.mhmat",
+          "middleage_asian_female.mhmat", "middleage_asian_male.mhmat",
+          "old_asian_female.mhmat", "old_asian_male.mhmat"
+        ],
+        "eyes": ["high-poly.mhclo"],
+        "eyebrows": [
+          "eyebrow001.mhclo", "eyebrow002.mhclo", "eyebrow003.mhclo",
+          "eyebrow004.mhclo", "eyebrow005.mhclo", "eyebrow006.mhclo",
+          "eyebrow007.mhclo", "eyebrow008.mhclo", "eyebrow009.mhclo",
+          "eyebrow010.mhclo", "eyebrow011.mhclo", "eyebrow012.mhclo"
+        ],
+        "hair": [
+          "short01.mhclo", "short02.mhclo", "short03.mhclo", "short04.mhclo",
+          "bob01.mhclo", "bob02.mhclo", "braid01.mhclo", "long01.mhclo",
+          "ponytail01.mhclo"
+        ],
+        "clothes": [
+          "female_casualsuit01.mhclo", "female_casualsuit02.mhclo",
+          "female_elegantsuit01.mhclo", "female_sportsuit01.mhclo",
+          "male_casualsuit01.mhclo", "male_casualsuit02.mhclo",
+          "male_casualsuit03.mhclo", "male_casualsuit04.mhclo",
+          "male_casualsuit05.mhclo", "male_casualsuit06.mhclo",
+          "male_elegantsuit01.mhclo", "male_worksuit01.mhclo",
+          "shoes01.mhclo", "shoes02.mhclo", "shoes03.mhclo",
+          "shoes04.mhclo", "shoes05.mhclo", "shoes06.mhclo"
+        ]
+      }
+    },
+    {
+      "id": "makehuman-community-installed-cc0",
+      "name": "Installed MakeHuman Community CC0 wardrobe",
+      "license": "CC0-1.0",
+      "source": "https://static.makehumancommunity.org/assets/assetpacks.html",
+      "assets": {
+        "clothes": [
+          "cortu_jeans_shorts.mhclo", "elvs_crude_t-shirt_male.mhclo",
+          "joepal_crude_t-shirt_female.mhclo", "namuhekam_male_polo_shirt.mhclo",
+          "spamrakuen_tbm_glasses_frames_01.mhclo", "toigo_basic_tucked_t-shirt.mhclo",
+          "toigo_female_double-breasted_suit.mhclo", "toigo_female_suit_2.mhclo",
+          "toigo_maga_hat.mhclo", "toigo_male_double-breasted_suit.mhclo",
+          "toigo_male_suit_3.mhclo", "toigo_male_suit_tie_and_jacket.mhclo",
+          "toigo_wool_pants.mhclo"
+        ]
+      }
+    }
+  ],
+  "demographics": {
+    "female": [
+      "campus-student-xiao-li", "airport-gate-agent-xiao-zhao",
+      "airport-ticket-clerk-chen-jie", "mall-floor-guide-lin-xiaoyu",
+      "mall-food-cashier-zhou-kexin", "mall-jewelry-sales-chen-meiqi",
+      "mall-jewelry-cashier-wang-lijuan", "mall-wang-xue",
+      "mall-fashion-guide-chen-jia", "mall-optometrist-shen-jing",
+      "mall-optical-guide-he-yutong", "mall-optical-cashier-ma-lijuan",
+      "mall-flower-guide-he-mei", "mall-flower-cashier-su-qing",
+      "mall-cafe-cashier-su-xiaoman", "mall-dessert-clerk-wang-xiaoman",
+      "mall-dessert-clerk-he-jianing", "mall-cinema-ticket-he-yaqin",
+      "mall-cinema-cashier-lu-jiaying", "hospital2-doctor-liu-yue",
+      "hospital2-doctor-chen-jie", "hospital2-nurse-sun-xiaomei",
+      "hospital2-patient-gao-ayi", "hotel-front-desk-lin-ruo",
+      "hotel-tea-master-su-wan", "hotel2-host-ye-qing",
+      "hotel3-wedding-advisor-zhao-ning", "hotel5-room-attendant-luo-xiaoyan",
+      "hotel10-lounge-server-lin-ning", "hotel11-suite-butler-han-lina",
+      "hotel12-sky-server-gao-shu", "hotelb1-laundry-zhou-xiulan",
+      "hotelb1-housekeeping-wang-min", "hotel4-spa-reception-shen-ya",
+      "hotel4-therapist-tang-li"
+    ],
+    "male": [
+      "diner-shifu-wang-shifu", "campus-teacher-chen-laoshi",
+      "bund-photographer-lao-zhou", "chengdu-ear-cleaner-liu-shifu",
+      "mall-security-zhao-shifu", "mall-jewelry-guide-gao-zhiyuan",
+      "mall-digital-repair-chen-shifu", "mall-digital-guide-li-siyuan",
+      "mall-cafe-owner-fang-qiming", "mall-dessert-cashier-chen-zimo",
+      "mall-cinema-security-zheng-shifu", "hospital2-doctor-wang-ning",
+      "hospital2-doctor-zhao-mingyuan", "hospital2-doctor-zhang-lei",
+      "hospital2-professor-zhou", "hotel-doorman-gao-ying",
+      "hotel2-chef-deng-shifu", "hotel2-runner-fang-yu",
+      "hotel3-banquet-manager-tang", "hotel3-banquet-server-xu-cheng",
+      "hotel8-butler-xu", "hotelb1-engineer-ma-jianguo",
+      "hotelb1-security-sun-wei", "hotel4-lifeguard-du-hai",
+      "hotel4-trainer-chen-xiao", "hotel-concierge-zhou-libin",
+      "hotel-front-manager-shen"
+    ]
+  },
+  "age_bands": {
+    "young": {
+      "range": [0.47, 0.57],
+      "ids": [
+        "campus-student-xiao-li", "airport-gate-agent-xiao-zhao",
+        "mall-floor-guide-lin-xiaoyu", "mall-food-cashier-zhou-kexin",
+        "mall-jewelry-sales-chen-meiqi", "mall-jewelry-guide-gao-zhiyuan",
+        "mall-fashion-guide-chen-jia", "mall-digital-guide-li-siyuan",
+        "mall-optical-guide-he-yutong", "mall-flower-cashier-su-qing",
+        "mall-cafe-cashier-su-xiaoman", "mall-dessert-clerk-wang-xiaoman",
+        "mall-dessert-clerk-he-jianing", "mall-dessert-cashier-chen-zimo",
+        "mall-cinema-cashier-lu-jiaying", "hotel-doorman-gao-ying",
+        "hotel-front-desk-lin-ruo", "hotel2-host-ye-qing",
+        "hotel2-runner-fang-yu", "hotel3-wedding-advisor-zhao-ning",
+        "hotel3-banquet-server-xu-cheng", "hotel10-lounge-server-lin-ning",
+        "hotel12-sky-server-gao-shu", "hotel4-spa-reception-shen-ya",
+        "hotel4-lifeguard-du-hai", "hotel4-trainer-chen-xiao"
+      ]
+    },
+    "adult": {"range": [0.56, 0.68], "ids": []},
+    "mature": {
+      "range": [0.69, 0.79],
+      "ids": [
+        "diner-shifu-wang-shifu", "campus-teacher-chen-laoshi",
+        "chengdu-ear-cleaner-liu-shifu", "mall-security-zhao-shifu",
+        "mall-digital-repair-chen-shifu", "mall-cafe-owner-fang-qiming",
+        "mall-cinema-security-zheng-shifu", "hospital2-doctor-zhao-mingyuan",
+        "hotel2-chef-deng-shifu", "hotel3-banquet-manager-tang",
+        "hotel8-butler-xu", "hotelb1-laundry-zhou-xiulan",
+        "hotelb1-engineer-ma-jianguo", "hotelb1-security-sun-wei",
+        "hotel-front-manager-shen"
+      ]
+    },
+    "senior": {
+      "range": [0.81, 0.9],
+      "ids": [
+        "bund-photographer-lao-zhou", "hospital2-professor-zhou",
+        "hospital2-patient-gao-ayi"
+      ]
+    }
+  },
+  "body_styles": {
+    "lean": {"weight": 0.43, "muscle": 0.4, "height": 0.58, "proportions": 0.54},
+    "compact": {"weight": 0.53, "muscle": 0.42, "height": 0.44, "proportions": 0.47},
+    "average": {"weight": 0.51, "muscle": 0.47, "height": 0.52, "proportions": 0.51},
+    "sturdy": {"weight": 0.61, "muscle": 0.57, "height": 0.54, "proportions": 0.5},
+    "broad": {"weight": 0.65, "muscle": 0.54, "height": 0.57, "proportions": 0.49},
+    "athletic": {"weight": 0.5, "muscle": 0.66, "height": 0.61, "proportions": 0.56}
+  },
+  "face_shapes": [
+    {"id": "oval", "target": "head/head-oval.target.gz", "range": [0.035, 0.09]},
+    {"id": "round", "target": "head/head-round.target.gz", "range": [0.035, 0.1]},
+    {"id": "square", "target": "head/head-square.target.gz", "range": [0.03, 0.085]},
+    {"id": "diamond", "target": "head/head-diamond.target.gz", "range": [0.025, 0.075]},
+    {"id": "rectangular", "target": "head/head-rectangular.target.gz", "range": [0.025, 0.07]},
+    {"id": "triangular", "target": "head/head-triangular.target.gz", "range": [0.02, 0.06]},
+    {"id": "inverted-triangular", "target": "head/head-invertedtriangular.target.gz", "range": [0.02, 0.06]}
+  ],
+  "east_asian_face": {
+    "symmetric_targets": [
+      {"paths": ["eyes/l-eye-epicanthus-in.target.gz", "eyes/r-eye-epicanthus-in.target.gz"], "range": [0.14, 0.25]},
+      {"paths": ["eyes/l-eye-eyefold-down.target.gz", "eyes/r-eye-eyefold-down.target.gz"], "range": [0.06, 0.18]},
+      {"paths": ["eyes/l-eye-eyefold-convex.target.gz", "eyes/r-eye-eyefold-convex.target.gz"], "range": [0.03, 0.12]},
+      {"paths": ["eyes/l-eye-height2-decr.target.gz", "eyes/r-eye-height2-decr.target.gz"], "range": [0.03, 0.11]},
+      {"paths": ["nose/nose-width1-incr.target.gz"], "range": [0.05, 0.13]},
+      {"paths": ["nose/nose-width2-incr.target.gz"], "range": [0.03, 0.09]},
+      {"paths": ["nose/nose-scale-depth-decr.target.gz"], "range": [0.04, 0.12]},
+      {"paths": ["cheek/l-cheek-bones-incr.target.gz", "cheek/r-cheek-bones-incr.target.gz"], "range": [0.05, 0.16]},
+      {"paths": ["chin/chin-width-incr.target.gz"], "range": [0.02, 0.1]}
+    ],
+    "asymmetry_targets": [
+      "asym/asym-cheek-1-l.target.gz", "asym/asym-cheek-2-r.target.gz",
+      "asym/asym-eye-3-l.target.gz", "asym/asym-eye-4-r.target.gz",
+      "asym/asym-mouth-2-l.target.gz", "asym/asym-mouth-1-r.target.gz"
+    ],
+    "asymmetry_range": [0.012, 0.042]
+  },
+  "hair": {
+    "female": [
+      "bob01.mhclo", "bob02.mhclo", "braid01.mhclo", "long01.mhclo",
+      "ponytail01.mhclo", "short01.mhclo", "short02.mhclo", "short03.mhclo",
+      "short04.mhclo"
+    ],
+    "male": ["short01.mhclo", "short02.mhclo", "short03.mhclo", "short04.mhclo"],
+    "grades": [
+      [0.44, 0.4, 0.37], [0.48, 0.42, 0.38], [0.51, 0.46, 0.42],
+      [0.46, 0.43, 0.41], [0.54, 0.48, 0.43]
+    ]
+  },
+  "outfits": [
+    {"id": "f-casual-01", "gender": "female", "asset": "female_casualsuit01.mhclo", "signals": ["retail", "hospitality", "community"]},
+    {"id": "f-casual-02", "gender": "female", "asset": "female_casualsuit02.mhclo", "signals": ["retail", "hospitality", "transit"]},
+    {"id": "f-elegant-01", "gender": "female", "asset": "female_elegantsuit01.mhclo", "signals": ["formal", "hospitality", "transit", "retail"]},
+    {"id": "f-sport-01", "gender": "female", "asset": "female_sportsuit01.mhclo", "signals": ["active"]},
+    {"id": "m-casual-01", "gender": "male", "asset": "male_casualsuit01.mhclo", "signals": ["retail", "hospitality", "community"]},
+    {"id": "m-casual-02", "gender": "male", "asset": "male_casualsuit02.mhclo", "signals": ["retail", "hospitality", "transit"]},
+    {"id": "m-casual-03", "gender": "male", "asset": "male_casualsuit03.mhclo", "signals": ["retail", "hospitality", "academic"]},
+    {"id": "m-casual-04", "gender": "male", "asset": "male_casualsuit04.mhclo", "signals": ["retail", "hospitality", "transit"]},
+    {"id": "m-casual-05", "gender": "male", "asset": "male_casualsuit05.mhclo", "signals": ["retail", "hospitality", "transit"]},
+    {"id": "m-casual-06", "gender": "male", "asset": "male_casualsuit06.mhclo", "signals": ["retail", "workwear"]},
+    {"id": "m-elegant-01", "gender": "male", "asset": "male_elegantsuit01.mhclo", "signals": ["formal", "hospitality", "transit", "retail"]},
+    {"id": "m-work-01", "gender": "male", "asset": "male_worksuit01.mhclo", "signals": ["workwear", "craft"]},
+
+    {"id": "f-clinical-glasses", "gender": "female", "signals": ["clinical", "optical", "academic"], "pieces": [
+      {"asset": "toigo_female_suit_2.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["fsuittexture"]},
+      {"asset": "spamrakuen_tbm_glasses_frames_01.mhclo", "suffix": "glasses", "color": "accent", "budget": "accessory", "format": "PNG", "transparent": true, "matches": ["spamrakuen"]}
+    ]},
+    {"id": "f-clinical-double-breasted", "gender": "female", "signals": ["clinical"], "pieces": [
+      {"asset": "toigo_female_double-breasted_suit.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["toigo_female_double"]}
+    ]},
+    {"id": "f-service-polo", "gender": "female", "signals": ["craft", "culinary", "foodservice", "hospitality"], "pieces": [
+      {"asset": "namuhekam_male_polo_shirt.mhclo", "suffix": "top", "color": "primary", "budget": "garment", "format": "JPEG"},
+      {"asset": "toigo_wool_pants.mhclo", "suffix": "trousers", "color": "secondary", "budget": "garment", "format": "JPEG"}
+    ]},
+    {"id": "f-service-polo-cap", "gender": "female", "signals": ["culinary", "workwear"], "pieces": [
+      {"asset": "namuhekam_male_polo_shirt.mhclo", "suffix": "top", "color": "primary", "budget": "garment", "format": "JPEG"},
+      {"asset": "toigo_wool_pants.mhclo", "suffix": "trousers", "color": "secondary", "budget": "garment", "format": "JPEG"},
+      {"asset": "toigo_maga_hat.mhclo", "suffix": "cap", "color": "secondary", "budget": "accessory", "format": "JPEG", "offset": 0.008}
+    ]},
+    {"id": "f-optical", "gender": "female", "signals": ["optical"], "pieces": [
+      {"asset": "toigo_female_suit_2.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["fsuittexture"]},
+      {"asset": "spamrakuen_tbm_glasses_frames_01.mhclo", "suffix": "glasses", "color": "accent", "budget": "accessory", "format": "PNG", "transparent": true, "matches": ["spamrakuen"]}
+    ]},
+    {"id": "m-clinical-glasses", "gender": "male", "signals": ["clinical", "optical"], "pieces": [
+      {"asset": "toigo_male_suit_3.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["suittexture"]},
+      {"asset": "spamrakuen_tbm_glasses_frames_01.mhclo", "suffix": "glasses", "color": "accent", "budget": "accessory", "format": "PNG", "transparent": true, "matches": ["spamrakuen"]}
+    ]},
+    {"id": "m-academic-glasses", "gender": "male", "signals": ["academic"], "pieces": [
+      {"asset": "toigo_male_suit_tie_and_jacket.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["toigo_male_suit_tie"]},
+      {"asset": "spamrakuen_tbm_glasses_frames_01.mhclo", "suffix": "glasses", "color": "accent", "budget": "accessory", "format": "PNG", "transparent": true, "matches": ["spamrakuen"]}
+    ]},
+    {"id": "m-formal-glasses", "gender": "male", "signals": ["formal", "optical"], "pieces": [
+      {"asset": "toigo_male_suit_3.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["suittexture"]},
+      {"asset": "spamrakuen_tbm_glasses_frames_01.mhclo", "suffix": "glasses", "color": "accent", "budget": "accessory", "format": "PNG", "transparent": true, "matches": ["spamrakuen"]}
+    ]},
+    {"id": "f-formal-suit2", "gender": "female", "signals": ["formal", "hospitality", "transit", "retail"], "pieces": [
+      {"asset": "toigo_female_suit_2.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["fsuittexture"]}
+    ]},
+    {"id": "f-formal-double-breasted", "gender": "female", "signals": ["formal", "hospitality", "transit"], "pieces": [
+      {"asset": "toigo_female_double-breasted_suit.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["toigo_female_double"]}
+    ]},
+    {"id": "m-formal-suit3", "gender": "male", "signals": ["formal", "hospitality", "transit", "retail"], "pieces": [
+      {"asset": "toigo_male_suit_3.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["suittexture"]}
+    ]},
+    {"id": "m-formal-double-breasted", "gender": "male", "signals": ["formal", "hospitality", "transit"], "pieces": [
+      {"asset": "toigo_male_double-breasted_suit.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["toigo_male_double"]}
+    ]},
+    {"id": "m-formal-tie-jacket", "gender": "male", "signals": ["formal", "hospitality", "transit", "academic"], "pieces": [
+      {"asset": "toigo_male_suit_tie_and_jacket.mhclo", "suffix": "uniform", "tint": "primary", "budget": "garment", "format": "JPEG", "matches": ["toigo_male_suit_tie"]}
+    ]},
+    {"id": "m-polo-trousers", "gender": "male", "signals": ["craft", "culinary", "foodservice", "hospitality"], "pieces": [
+      {"asset": "namuhekam_male_polo_shirt.mhclo", "suffix": "top", "color": "primary", "budget": "garment", "format": "JPEG"},
+      {"asset": "toigo_wool_pants.mhclo", "suffix": "trousers", "color": "secondary", "budget": "garment", "format": "JPEG"}
+    ]},
+    {"id": "m-polo-cap", "gender": "male", "signals": ["culinary", "craft", "foodservice"], "pieces": [
+      {"asset": "namuhekam_male_polo_shirt.mhclo", "suffix": "top", "color": "primary", "budget": "garment", "format": "JPEG"},
+      {"asset": "toigo_wool_pants.mhclo", "suffix": "trousers", "color": "secondary", "budget": "garment", "format": "JPEG"},
+      {"asset": "toigo_maga_hat.mhclo", "suffix": "cap", "color": "secondary", "budget": "accessory", "format": "JPEG", "offset": 0.008}
+    ]},
+    {"id": "m-work-cap", "gender": "male", "signals": ["workwear"], "pieces": [
+      {"asset": "male_worksuit01.mhclo", "suffix": "uniform", "color": "primary", "budget": "garment", "format": "JPEG"},
+      {"asset": "toigo_maga_hat.mhclo", "suffix": "cap", "color": "secondary", "budget": "accessory", "format": "JPEG", "offset": 0.008}
+    ]},
+    {"id": "m-active", "gender": "male", "signals": ["active"], "pieces": [
+      {"asset": "elvs_crude_t-shirt_male.mhclo", "suffix": "top", "color": "primary", "budget": "garment", "format": "PNG", "transparent": true},
+      {"asset": "cortu_jeans_shorts.mhclo", "suffix": "shorts", "color": "secondary", "budget": "garment", "format": "PNG", "transparent": true}
+    ]}
+  ],
+  "palettes": [
+    {"id": "ink-navy", "tags": ["retail", "hospitality", "transit"], "primary": [0.105, 0.145, 0.22], "secondary": [0.09, 0.095, 0.11], "accent": [0.75, 0.78, 0.82]},
+    {"id": "slate-blue", "tags": ["retail", "clinical", "academic"], "primary": [0.25, 0.34, 0.45], "secondary": [0.12, 0.14, 0.17], "accent": [0.7, 0.79, 0.86]},
+    {"id": "jade-grey", "tags": ["retail", "clinical", "hospitality"], "primary": [0.25, 0.39, 0.35], "secondary": [0.12, 0.15, 0.14], "accent": [0.75, 0.83, 0.77]},
+    {"id": "tea-green", "tags": ["retail", "craft", "academic"], "primary": [0.37, 0.46, 0.31], "secondary": [0.15, 0.17, 0.13], "accent": [0.82, 0.78, 0.6]},
+    {"id": "warm-taupe", "tags": ["retail", "craft", "hospitality"], "primary": [0.46, 0.38, 0.31], "secondary": [0.16, 0.14, 0.13], "accent": [0.82, 0.72, 0.59]},
+    {"id": "muted-plum", "tags": ["retail", "hospitality"], "primary": [0.43, 0.25, 0.34], "secondary": [0.14, 0.11, 0.13], "accent": [0.82, 0.7, 0.76]},
+    {"id": "burgundy", "tags": ["retail", "hospitality", "transit"], "primary": [0.4, 0.13, 0.16], "secondary": [0.11, 0.085, 0.08], "accent": [0.86, 0.72, 0.6]},
+    {"id": "camel", "tags": ["retail", "craft", "academic"], "primary": [0.55, 0.39, 0.23], "secondary": [0.17, 0.12, 0.09], "accent": [0.87, 0.77, 0.59]},
+    {"id": "charcoal", "tags": ["safety", "craft", "hospitality"], "primary": [0.17, 0.18, 0.2], "secondary": [0.075, 0.08, 0.09], "accent": [0.7, 0.72, 0.74]},
+    {"id": "clinical-blue", "tags": ["clinical", "transit"], "primary": [0.52, 0.67, 0.76], "secondary": [0.17, 0.25, 0.31], "accent": [0.9, 0.94, 0.95]},
+    {"id": "clinical-teal", "tags": ["clinical", "safety"], "primary": [0.32, 0.57, 0.57], "secondary": [0.11, 0.2, 0.2], "accent": [0.86, 0.92, 0.9]},
+    {"id": "soft-white-blue", "tags": ["clinical", "hospitality"], "primary": [0.78, 0.82, 0.83], "secondary": [0.21, 0.28, 0.33], "accent": [0.38, 0.58, 0.7]},
+    {"id": "hotel-black", "tags": ["hospitality", "retail"], "primary": [0.105, 0.105, 0.12], "secondary": [0.055, 0.055, 0.06], "accent": [0.71, 0.58, 0.34]},
+    {"id": "hotel-wine", "tags": ["hospitality", "retail"], "primary": [0.31, 0.105, 0.14], "secondary": [0.09, 0.065, 0.07], "accent": [0.76, 0.6, 0.32]},
+    {"id": "coffee-brown", "tags": ["craft", "retail", "hospitality"], "primary": [0.3, 0.21, 0.16], "secondary": [0.095, 0.075, 0.065], "accent": [0.74, 0.52, 0.29]},
+    {"id": "flower-sage", "tags": ["retail", "hospitality"], "primary": [0.48, 0.56, 0.45], "secondary": [0.17, 0.2, 0.16], "accent": [0.85, 0.72, 0.68]},
+    {"id": "cinema-red", "tags": ["retail", "hospitality"], "primary": [0.5, 0.11, 0.105], "secondary": [0.09, 0.07, 0.07], "accent": [0.88, 0.72, 0.32]},
+    {"id": "dusty-lavender", "tags": ["retail", "clinical", "hospitality"], "primary": [0.48, 0.42, 0.55], "secondary": [0.16, 0.14, 0.18], "accent": [0.82, 0.78, 0.86]},
+    {"id": "ivory-rose", "tags": ["retail", "hospitality"], "primary": [0.75, 0.67, 0.63], "secondary": [0.22, 0.17, 0.16], "accent": [0.48, 0.25, 0.25]},
+    {"id": "work-cobalt", "tags": ["safety", "craft", "transit"], "primary": [0.12, 0.27, 0.49], "secondary": [0.07, 0.09, 0.13], "accent": [0.86, 0.63, 0.19]}
+  ],
+  "profile_rules": [
+    {"id": "clinical-nurse", "places": ["hospital2"], "role_contains": ["护士"], "palette_ids": ["soft-white-blue", "clinical-blue"], "required_signal": "clinical", "bodies": ["lean", "average", "compact"], "female_outfits": ["f-clinical-double-breasted"], "male_outfits": ["m-clinical-glasses"]},
+    {"id": "clinical-patient", "places": ["hospital2"], "role_contains": ["患者"], "palette_ids": ["dusty-lavender", "warm-taupe", "jade-grey"], "bodies": ["lean", "compact", "average"], "female_outfits": ["f-casual-01", "f-casual-02"], "male_outfits": ["m-casual-01", "m-casual-02"]},
+    {"id": "clinical-doctor", "places": ["hospital2"], "palette_ids": ["soft-white-blue", "clinical-blue", "clinical-teal"], "required_signal": "clinical", "bodies": ["lean", "average", "compact", "sturdy"], "female_outfits": ["f-clinical-glasses", "f-clinical-double-breasted"], "male_outfits": ["m-clinical-glasses"]},
+    {"id": "optical", "role_contains": ["验光师"], "palette_ids": ["slate-blue", "ink-navy", "soft-white-blue"], "required_signal": "optical", "bodies": ["lean", "compact", "average"], "female_outfits": ["f-optical"], "male_outfits": ["m-formal-glasses"]},
+    {"id": "culinary", "role_contains": ["厨师"], "palette_ids": ["soft-white-blue"], "required_signal": "culinary", "bodies": ["average", "sturdy", "broad"], "female_outfits": ["f-service-polo-cap"], "male_outfits": ["m-polo-cap"]},
+    {"id": "security-technical", "role_contains": ["保安", "安检", "维修", "工程师"], "palette_ids": ["work-cobalt", "charcoal"], "required_signal": "workwear", "bodies": ["sturdy", "broad", "athletic"], "female_outfits": ["f-service-polo-cap"], "male_outfits": ["m-work-cap"]},
+    {"id": "fitness-safety", "role_contains": ["救生员", "健身教练"], "palette_ids": ["work-cobalt", "clinical-teal", "charcoal"], "required_signal": "active", "bodies": ["sturdy", "athletic"], "female_outfits": ["f-sport-01"], "male_outfits": ["m-active"]},
+    {"id": "doorman", "role_contains": ["门童"], "palette_ids": ["hotel-wine", "hotel-black"], "required_signal": "formal", "bodies": ["lean", "average", "athletic"], "female_outfits": ["f-formal-double-breasted"], "male_outfits": ["m-formal-double-breasted"]},
+    {"id": "academic-teacher", "role_contains": ["老师"], "palette_ids": ["slate-blue", "charcoal", "ink-navy"], "required_signal": "academic", "bodies": ["lean", "average", "compact"], "female_outfits": ["f-clinical-glasses"], "male_outfits": ["m-academic-glasses"]},
+    {"id": "academic", "places": ["campus"], "palette_tag": "academic", "bodies": ["lean", "compact", "average"], "female_outfits": ["f-casual-01", "f-casual-02"], "male_outfits": ["m-casual-01", "m-casual-03", "m-casual-05"]},
+    {"id": "mall-floor-guide", "id_contains": ["mall-floor-guide"], "palette_ids": ["ink-navy", "burgundy", "jade-grey"], "required_signal": "retail", "bodies": ["lean", "compact", "average"], "female_outfits": ["f-formal-suit2"], "male_outfits": ["m-formal-suit3"]},
+    {"id": "mall-food-service", "id_contains": ["mall-food", "mall-cafe", "mall-dessert"], "palette_ids": ["coffee-brown", "burgundy", "tea-green", "soft-white-blue"], "required_signal": "foodservice", "bodies": ["lean", "compact", "average", "sturdy"], "female_outfits": ["f-service-polo"], "male_outfits": ["m-polo-trousers", "m-polo-cap"]},
+    {"id": "mall-cinema", "id_contains": ["mall-cinema"], "palette_ids": ["cinema-red", "burgundy", "ink-navy"], "bodies": ["lean", "compact", "average", "sturdy"], "female_outfits": ["f-casual-01", "f-elegant-01"], "male_outfits": ["m-casual-02", "m-elegant-01"]},
+    {"id": "craft", "role_contains": ["师傅", "茶艺", "照相", "老板"], "palette_tag": "craft", "required_signal": "craft", "bodies": ["average", "compact", "sturdy", "broad"], "female_outfits": ["f-service-polo"], "male_outfits": ["m-polo-trousers", "m-polo-cap", "m-work-01"]},
+    {"id": "hospitality", "place_prefix": ["hotel"], "palette_tag": "hospitality", "required_signal": "hospitality", "bodies": ["lean", "compact", "average", "sturdy"], "female_outfits": ["f-formal-suit2", "f-formal-double-breasted", "f-casual-01", "f-service-polo"], "male_outfits": ["m-formal-suit3", "m-formal-double-breasted", "m-formal-tie-jacket", "m-polo-trousers"]},
+    {"id": "transit", "places": ["airport"], "palette_tag": "transit", "required_signal": "transit", "bodies": ["lean", "compact", "average"], "female_outfits": ["f-formal-suit2", "f-formal-double-breasted"], "male_outfits": ["m-formal-suit3", "m-formal-double-breasted", "m-formal-tie-jacket"]},
+    {"id": "retail", "places": ["mall"], "palette_tag": "retail", "required_signal": "retail", "bodies": ["lean", "compact", "average", "sturdy"], "female_outfits": ["f-casual-01", "f-casual-02", "f-elegant-01", "f-formal-suit2"], "male_outfits": ["m-casual-01", "m-casual-02", "m-casual-03", "m-casual-04", "m-casual-05", "m-elegant-01", "m-formal-suit3"]},
+    {"id": "community", "palette_tag": "retail", "bodies": ["lean", "compact", "average", "sturdy"], "female_outfits": ["f-casual-01", "f-casual-02", "f-elegant-01"], "male_outfits": ["m-casual-01", "m-casual-03", "m-casual-05", "m-work-01"]}
+  ]
+}

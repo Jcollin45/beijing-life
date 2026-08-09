@@ -1,0 +1,2018 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>Character studio</title>
+<!--
+  A workbench for making people, and nothing else.
+
+  It loads math.js, gl.js and figure.js only — no world, no game loop, no HUD — so it opens
+  instantly and reloads instantly, which is the whole reason it exists: judging a face by walking
+  up to it inside the game means a loading screen between every adjustment.
+
+  What it does:
+    · every garment, colour, hairstyle, hat and bag the rig can draw, on one panel
+    · a face per person — the head table can be varied off a seed or dialled dimension by
+      dimension, and the same panel will still tune the shared default for the whole game
+    · the game's own daylight, off the same keyframes, at any hour, indoors or out, so a person
+      tuned here looks the way they will look out there
+    · one figure, the whole roster, the three LODs side by side, or before-and-after
+    · export straight into js/game.js, and paste an existing roster entry back in to edit it
+    · a plausible stranger on demand, because a crowd is authored in dozens, not ones
+
+  And four things for looking rather than for making, because the slow part of character work is
+  not changing the rig, it is seeing what changed:
+
+    · REAL PANELS. `lod`, `A/B`, `lights` and `turntable` are not one picture with the figures
+      moved apart — each is its own scissored viewport with its own camera and its own light,
+      so the two figures being compared sit at the same place on screen at the same size. Two
+      figures offset in one perspective view are two different focal positions and two different
+      foreshortenings, which is exactly the comparison that hides a bulge.
+    · MEASUREMENT. `S.measure = true` renders the figure a second time as a flat white matte
+      through a long lens, reads the pixels back, and prints the silhouette: height, shoulder
+      and hip width, and every place the outline pinches in and then swells back out. That is
+      the "lego" fault, found by arithmetic instead of by eye.
+    · A DRAW BUDGET. Every draw the rig makes is counted per figure and per LOD, with the mesh
+      it used, and the batched call count beside it.
+    · SNAPSHOT AND DIFF. A snapshot is *pixels*, kept in localStorage with the camera, the pose
+      and the frozen clock that produced them. Edit js/figure.js, reload, and the diff is the
+      change — the one comparison that cannot be done inside a single page load.
+
+  Keys: 1-5 views · Q/W/E/R/T poses · G grid · Y spin · A/B/L/O/K/P/C layouts
+        D a new stranger · [ ] previous/next person · M measure · N snapshot · V compare
+        X swap A/B · S save a PNG
+-->
+<style>
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; background: #14161a; color: #d8d6d0;
+               font: 12px/1.45 -apple-system, BlinkMacSystemFont, 'Helvetica Neue', sans-serif; }
+  #wrap { display: flex; height: 100%; }
+  #stage { position: relative; flex: 1 1 auto; min-width: 0; }
+  #cv { display: block; width: 100%; height: 100%; }
+  /* Bottom right, out of the way of the per-viewport captions, which own the bottom left of
+     every cell — including the one that is the whole canvas. */
+  #hint { position: absolute; right: 12px; bottom: 10px; opacity: .45; font-size: 11px;
+          pointer-events: none; }
+  #read { position: absolute; left: 12px; top: 10px; opacity: .72; font-size: 11px;
+          pointer-events: none; font-variant-numeric: tabular-nums; line-height: 1.7; }
+  #read b { color: #9ec4e0; font-weight: 600; }
+  #panel { flex: 0 0 320px; overflow-y: auto; padding: 12px 14px 60px;
+           background: #1b1e23; border-left: 1px solid #2b2f36; }
+  h1 { font-size: 12px; letter-spacing: .09em; text-transform: uppercase;
+       margin: 0 0 10px; color: #8d949e; font-weight: 600; }
+  h2 { font-size: 10px; letter-spacing: .10em; text-transform: uppercase;
+       margin: 15px 0 6px; color: #6f7681; font-weight: 600;
+       border-top: 1px solid #2b2f36; padding-top: 9px; }
+  .row { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 6px; }
+  button { font: inherit; color: #d8d6d0; background: #262b32; border: 1px solid #333941;
+           border-radius: 4px; padding: 4px 8px; cursor: pointer; }
+  button:hover { background: #2f353d; }
+  button.on { background: #3d5a76; border-color: #4d6f8f; color: #fff; }
+  button.mini { padding: 2px 6px; font-size: 11px; }
+  /* An option the rig draws no differently from another one. Still pressable — see markDead. */
+  button.dead { text-decoration: line-through; color: #7e848c; border-style: dashed; }
+  label.s { display: grid; grid-template-columns: 84px 1fr 48px; align-items: center;
+            gap: 6px; margin: 2px 0; }
+  label.s span { color: #9aa1ab; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  label.s output { text-align: right; color: #c8cdd4; font-variant-numeric: tabular-nums; }
+  label.s.over span { color: #e0b070; }
+  input[type=range] { width: 100%; accent-color: #6f9ec4; }
+  input[type=text] { width: 100%; background: #101317; color: #b9c6d2; border: 1px solid #2b2f36;
+                     border-radius: 4px; padding: 3px 5px; font: 11px ui-monospace, Menlo, monospace; }
+  textarea { width: 100%; height: 120px; margin-top: 6px; background: #101317; color: #b9c6d2;
+             border: 1px solid #2b2f36; border-radius: 4px; padding: 6px;
+             font: 11px/1.45 ui-monospace, Menlo, monospace; }
+  /* a garment: its name, whether it is worn, the swatches, and a hex box */
+  .g { margin: 7px 0 9px; }
+  .gh { display: flex; align-items: center; gap: 6px; margin-bottom: 3px; }
+  .gh em { font-style: normal; color: #9aa1ab; flex: 1 1 auto; }
+  .gh .chip { width: 15px; height: 15px; border-radius: 3px; border: 1px solid #00000066; }
+  .sw { display: flex; flex-wrap: wrap; gap: 3px; }
+  .sw i { width: 16px; height: 16px; border-radius: 3px; cursor: pointer;
+          border: 1px solid #0006; }
+  .sw i:hover { outline: 1px solid #9ec4e0; }
+  .sw i.on { outline: 2px solid #e8e6dd; }
+  .hexrow { display: flex; gap: 4px; margin-top: 4px; }
+  .note { color: #6f7681; font-size: 11px; margin: 4px 0 0; }
+  /* One caption per viewport, placed over the canvas in CSS pixels. Drawn in the DOM rather
+     than in GL because a label that has to be legible at 11px is a job for a font engine, and
+     because .shot.js photographs the page and not the canvas, so it lands in the picture. */
+  #cells { position: absolute; inset: 0; pointer-events: none; }
+  #cells div { position: absolute; padding: 2px 6px; border-radius: 3px; white-space: pre;
+               background: #0b0d10c4; color: #cdd5de; font-size: 11px; line-height: 1.45;
+               font-variant-numeric: tabular-nums; }
+  #cells div b { color: #9ec4e0; font-weight: 600; }
+  #cells div i { font-style: normal; color: #e8b06a; }
+  #cells .edge { position: absolute; background: #2b2f3699; }
+  /* The snapshot, laid exactly over the canvas. Its own element rather than a canvas draw so
+     that wipe and onion cost nothing per frame. */
+  #snapWrap { position: absolute; inset: 0; pointer-events: none; display: none; }
+  #snapWrap img { position: absolute; inset: 0; width: 100%; height: 100%; }
+  #diffCv { position: absolute; inset: 0; width: 100%; height: 100%; display: none;
+            pointer-events: none; }
+  /* Bottom right rather than top right: in the multi-viewport layouts the top of the right-hand
+     cell is where the head is, and a readout that covers the face of the thing being measured is
+     a poor trade. The floor underneath it is the cheapest part of the picture to lose. */
+  #meas { position: absolute; right: 10px; bottom: 10px; width: 208px; display: none;
+          background: #0b0d10d8; border: 1px solid #2b2f36; border-radius: 5px;
+          pointer-events: none; overflow: hidden; }
+  #prof { display: block; width: 208px; height: 250px; }
+  #measTxt { padding: 6px 8px 7px; font-size: 11px; line-height: 1.5; color: #b6c0cb;
+             font-variant-numeric: tabular-nums; border-top: 1px solid #2b2f36; }
+  #measTxt b { color: #9ec4e0; font-weight: 600; }
+  #measTxt .bad { color: #e8916a; }
+  #measTxt .ok { color: #8fbf8a; }
+</style>
+</head>
+<body>
+<div id="wrap">
+  <div id="stage">
+    <canvas id="cv"></canvas>
+    <div id="snapWrap"><img id="snapImg" alt=""></div>
+    <canvas id="diffCv"></canvas>
+    <div id="cells"></div>
+    <div id="meas"><canvas id="prof" width="416" height="500"></canvas>
+      <div id="measTxt"></div></div>
+    <div id="read"></div>
+    <div id="hint">drag to orbit · wheel to zoom · M measures · N snapshots · V compares</div>
+  </div>
+  <div id="panel">
+    <h1>Character studio</h1>
+    <div class="row" id="views"></div>
+    <div class="row" id="poses"></div>
+    <div class="row" id="layout"></div>
+    <div class="row" id="toggles"></div>
+
+    <h2>Who</h2>
+    <div class="row" id="cast"></div>
+    <div class="row" id="castTools"></div>
+    <div class="hexrow"><input type="text" id="whoName" spellcheck="false"></div>
+
+    <h2>Scene</h2>
+    <div class="row" id="scenes"></div>
+    <div id="light"></div>
+
+    <h2>Look at it</h2>
+    <div class="row" id="lookTools"></div>
+    <div class="row" id="compareTools"></div>
+    <div id="lookNums"></div>
+    <p class="note" id="snapNote"></p>
+
+    <div id="wardrobe"></div>
+
+    <h2>Face</h2>
+    <div class="row" id="faceTarget"></div>
+    <div class="row" id="faceTools"></div>
+    <div id="faceNums"></div>
+
+    <h2>Export</h2>
+    <div class="row" id="exportTools"></div>
+    <textarea id="out" spellcheck="false"></textarea>
+    <p class="note">Paste a <code>look:{…}</code> entry or a whole roster in here and press Load.</p>
+  </div>
+</div>
+
+<script src="js/math.js"></script>
+<script src="js/gl.js"></script>
+<script src="js/figure.js"></script>
+<!-- The wardrobe files that register themselves into FigureFit. index.html already loads these;
+     without them the studio draws a figure with every garment its owners have added missing, and
+     the one tool for judging clothes is the one place they cannot be seen. Each is wrapped so that
+     a second copy of the tag re-registers rather than throwing. -->
+<script src="js/fig-tops.js"></script>
+<!-- Added by hand after the bottoms owner finished: it was the one fig-* file this page did not
+     load, so trousers, footwear and the skirt were invisible in the only tool built for judging
+     them. Whoever owns this page next should load every js/fig-*.js by pattern rather than by
+     name — three separate agents have now been silently unable to see their own work. -->
+<script src="js/fig-bottoms.js"></script>
+<script src="js/fig-uniform.js"></script>
+<script src="js/fig-acc.js"></script>
+<script src="js/fig-hair.js"></script>
+<script src="js/fig-outer.js"></script>
+<script src="js/fig-face.js"></script>
+<script>
+(() => {
+const cv = document.getElementById('cv');
+R.init(cv);
+// The same context R.init just made — asking a canvas for a context it already has hands back
+// the one it has. Wanted for exactly one thing the renderer does not expose: the scissor box,
+// which is what lets several cameras share a frame. Nothing here draws through it.
+const gl = cv.getContext('webgl2');
+
+// ---------------------------------------------------------------- watching the rig draw
+// Every shape the figure is made of goes through R.draw, so this is where the studio can see
+// what the rig actually did without touching a line of it — the rule here is that figure.js
+// belongs to somebody else and the studio only observes.
+//
+// Two things hang off the same interception:
+//   · the meter, which counts draws and which mesh each one used, so "what does a change cost"
+//     has a number on screen instead of an opinion;
+//   · the matte, which throws away every shading input and re-issues the same geometry as flat
+//     white, so the figure can be photographed as a silhouette and measured.
+const R_draw = R.draw.bind(R);
+const MATTE_COL = [1, 1, 1];
+let meter = null, matte = 0;
+R.draw = function (name, model, color, opt) {
+  if (meter) {
+    meter.n++; meter.mesh[name] = (meter.mesh[name] || 0) + 1;
+    // A hash of everything that decides what this shape looks like. Two bodies with the same
+    // hash are the same body, which is how a wardrobe option that the rig does not implement
+    // can be told from one that it does — without anybody having to read figure.js and count.
+    let h = mix(meter.sig, name.length * 131 + name.charCodeAt(0));
+    for (let i = 0; i < 16; i++) h = mix(h, Math.round(model[i] * 8192));
+    if (color) for (let i = 0; i < 3; i++) h = mix(h, Math.round(color[i] * 255));
+    const o = opt || {};
+    meter.sig = mix(h, (o.mode | 0) * 7919
+      + Math.round((o.alpha === undefined ? 1 : o.alpha) * 255));
+    if (meter.dry) return;
+  }
+  if (!matte) return R_draw(name, model, color, opt);
+  const o = opt || {};
+  // A silhouette is geometry, so everything that shades is discarded and everything that moves
+  // the outline is kept. `round` is the one that matters and the one that is easy to lose: it
+  // carves the corners off a softBox in the fragment shader, so a jacket or a skirt measured
+  // without it is measured wider than it draws. Its default depends on the mode being replaced,
+  // which is why the original mode is read before it is thrown away.
+  const mode = o.mode || 0;
+  return R_draw(name, model, MATTE_COL, {
+    // Emissive with a hard glow: `lit += base * uGlow * 2.4` is the one term in that shader
+    // that does not care what the sun is doing, so the matte comes out the same white under
+    // any hour of any scene.
+    mode: 1, glow: 3.0, gloss: 0, bevel: 0,
+    alpha: o.alpha === undefined ? 1 : o.alpha,
+    round: name === 'softBox'
+      ? (o.round === undefined ? (mode === 7 ? 0.055 : 0.022) : o.round) : 0,
+  });
+};
+// Run `fn` with a fresh meter and hand back what it counted. Nested runs do not accumulate:
+// each caller wants its own figure's number, not the frame's.
+//
+// `dry` records without drawing. That turns drawFigure into a pure description of a body — every
+// mesh, every matrix, every colour, hashed — for the price of the arithmetic and nothing on the
+// GPU, which is what makes it safe to call forty times inside one frame to ask forty questions
+// about a rig that is meanwhile still being rendered.
+const mix = (h, v) => Math.imul(h ^ (v | 0), 0x27d4eb2d) >>> 0;
+function meterRun(fn, dry) {
+  const m = { n: 0, mesh: Object.create(null), sig: 0x811c9dc5, dry: !!dry }, prev = meter;
+  meter = m;
+  try { fn(); } finally { meter = prev; }
+  return m;
+}
+const meshLine = m => Object.keys(m.mesh).sort((a, b) => m.mesh[b] - m.mesh[a])
+  .map(k => k + '×' + m.mesh[k]).join(' ');
+
+// ---------------------------------------------------------------- palettes
+// Colour is where a stylised character most easily goes wrong, and a free colour picker is an
+// invitation to go wrong: pure hues read as fancy dress. These are the ranges the game's own cast
+// was drawn from — skin from porcelain through to weathered, hair from blue-black through to
+// white, and cloth kept desaturated, because clothes in a hutong have been washed a hundred times.
+// The picker is still there for anything these miss.
+const PAL = {
+  skin: ['#f2d6bd', '#eec39b', '#e8bb96', '#e4b08d', '#e0ae82', '#dda87c', '#d9a878',
+         '#d3a37c', '#cf9d74', '#c99468', '#c68e68', '#bf8560', '#b07a55', '#a06d4c'],
+  hair: ['#141110', '#1e1a18', '#241f1d', '#2b2523', '#332b28', '#3f342e', '#4a4340',
+         '#5a5048', '#6b6055', '#8f8a80', '#b9b5ad', '#c8c6c0', '#ddd9d2', '#69412f'],
+  cloth: ['#e8e6dd', '#dcd8cc', '#c8c4b6', '#a8a49a', '#7a7772', '#5a5f6a', '#4a4f57',
+          '#3a4048', '#2f353d', '#22262c',
+          '#5a6c9a', '#4a6f9c', '#3f5f7a', '#3c5a72', '#2f4a63', '#39414d', '#2b3340',
+          '#47766f', '#5c7f8c', '#4a6f7c', '#4a6c5a', '#5d6a52', '#4a7f6a', '#6b6f5a',
+          '#b5503e', '#a8443a', '#8a4a44', '#c0485a', '#8a4a5c', '#7a4a5c',
+          '#d8a13a', '#c98f3a', '#b07a34', '#8a6f4e', '#8a6f3a', '#5b4636', '#6b6252'],
+  shoe: ['#e8e2d6', '#d9d3c6', '#cfc9bc', '#c8c2b4', '#8d8a82', '#4a4f57', '#43474d',
+         '#3a3f46', '#33373c', '#2e3238', '#1f2226'],
+};
+
+// ---------------------------------------------------------------- the wardrobe, as data
+// One entry per thing `makeLook` understands, so the panel cannot drift out of step with the rig:
+// adding a garment to figure.js and a line here is the whole job.
+//   col  a colour. `opt` means the garment is optional — unticked, the key is left out entirely,
+//        which is what makes a plain shirt plain rather than a shirt wearing an invisible coat.
+//   enum a choice. 'none' is stored by deleting the key.
+const FIELDS = [
+  ['Build', [
+    { k: 'tall', t: 'num', min: 0.60, max: 1.16, step: 0.005, d: 1 },
+    { k: 'wide', t: 'num', min: 0.82, max: 1.26, step: 0.005, d: 1 },
+    { k: 'headScale', t: 'num', min: 0.90, max: 1.16, step: 0.005, d: 1 },
+    { k: 'youth', t: 'num', min: 0, max: 1, step: 0.02, d: 0 },
+    { k: 'stoop', t: 'num', min: 0, max: 0.28, step: 0.005, d: 0 },
+    { k: 'skin', t: 'col', pal: 'skin' },
+  ]],
+  ['Hair and face', [
+    { k: 'hair', t: 'col', pal: 'hair' },
+    { k: 'hairStyle', t: 'enum', d: 'short',
+      // The first ten are figure.js's; the rest are js/fig-hair.js's, and are only selectable
+      // because the tag for that file is in the wardrobe block above.
+      opts: ['short', 'tousled', 'buzz', 'bald', 'bun', 'bob', 'long', 'ponytail', 'braid', 'perm',
+             'set', 'bowl', 'undercut', 'thinning', 'clasp', 'plaits'] },
+    // Age is a face, not a hair colour: it puts the fold beside the mouth, the pouch under the
+    // eye and, past the middle of its range, the lines across the forehead.
+    { k: 'age', t: 'num', min: 0, max: 1, step: 0.02, d: 0 },
+    { k: 'beard', t: 'enum', d: 'none',
+      opts: ['none', 'stubble', 'moustache', 'goatee', 'full'] },
+    { k: 'beardColor', t: 'col', pal: 'hair', opt: true, dflt: '#2b2523' },
+    { k: 'glasses', t: 'bool', d: false },
+    { k: 'hat', t: 'enum', d: 'none',
+      opts: ['none', 'cap', 'flat', 'beanie', 'sun', 'visor', 'hard'] },
+    { k: 'hatColor', t: 'col', pal: 'cloth', opt: true, dflt: '#3a4048' },
+  ]],
+  ['Upper body', [
+    { k: 'top', t: 'col', pal: 'cloth' },
+    { k: 'collar', t: 'enum', d: 'crew',
+      opts: ['crew', 'shirt', 'polo', 'vneck', 'turtle', 'hood'] },
+    { k: 'sleeve', t: 'enum', d: 'long', opts: ['long', 'half', 'short', 'none'] },
+    { k: 'yoke', t: 'col', pal: 'cloth', opt: true, dflt: '#8a4a44' },
+    { k: 'jacket', t: 'col', pal: 'cloth', opt: true, dflt: '#2f4a63' },
+    { k: 'vest', t: 'col', pal: 'cloth', opt: true, dflt: '#d9a63a' },
+    { k: 'apron', t: 'col', pal: 'cloth', opt: true, dflt: '#4a6f7c' },
+    { k: 'scarf', t: 'col', pal: 'cloth', opt: true, dflt: '#a84a4a' },
+    { k: 'badge', t: 'col', pal: 'cloth', opt: true, dflt: '#eee9dc' },
+  ]],
+  ['Lower body', [
+    { k: 'pants', t: 'col', pal: 'cloth' },
+    { k: 'skirt', t: 'col', pal: 'cloth', opt: true, dflt: '#39414d' },
+    { k: 'legs', t: 'col', pal: 'skin', opt: true, dflt: '#e3b48d' },
+    { k: 'shoe', t: 'col', pal: 'shoe' },
+  ]],
+  ['Carried', [
+    { k: 'bag', t: 'enum', d: 'none', opts: ['none', 'pack', 'shoulder', 'tote', 'delivery'] },
+    { k: 'bagColor', t: 'col', pal: 'cloth', opt: true, dflt: '#7a5340' },
+  ]],
+];
+// The order an exported look is written in: how somebody would describe a person out loud, head
+// downward, rather than however the editor happens to hold the keys.
+const KEY_ORDER = ['skin', 'hair', 'hairStyle', 'age', 'beard', 'beardColor',
+  'glasses', 'hat', 'hatColor',
+  'top', 'collar', 'sleeve', 'yoke', 'jacket', 'vest', 'apron', 'scarf', 'badge',
+  'pants', 'skirt', 'legs', 'shoe', 'bag', 'bagColor',
+  'tall', 'wide', 'headScale', 'youth', 'stoop', 'faceSeed', 'faceVary', 'face'];
+// The one place that decides what picking an enum value means in a look: the key is left out
+// when the value is that field's own default, and written otherwise. Shared by the panel button
+// and by the option check below so that the two cannot come to disagree about what a button
+// does — which is exactly how the sleeveless button came to be dead while the harness that
+// tests sleeves went on passing, because the harness set the key and the button did not.
+const enumSet = (sp, f, v) => { if (v === f.d) delete sp[f.k]; else sp[f.k] = v; return sp; };
+const DEFAULTS = { collar: 'crew', sleeve: 'long', hat: 'none', bag: 'none', beard: 'none',
+                   tall: 1, wide: 1, headScale: 1, youth: 0, stoop: 0, age: 0,
+                   glasses: false, faceVary: 1 };
+
+// ---------------------------------------------------------------- the starting roster
+// The set the studio has always opened on: chosen to exercise every branch of the rig at once, so
+// that a change to any layer can be judged against every other layer in a single picture.
+const PRESETS = [
+  { n: 'player', look: { skin:'#e4b08d', hair:'#3f3029', hairStyle:'tousled',
+      top:'#ece6d9', jacket:'#47766f', collar:'shirt', sleeve:'half', pants:'#34465b',
+      shoe:'#e8e2d6', bag:'pack', faceSeed:41, faceVary:0.76 } },
+  { n: 'kid', look: { skin:'#eec39b', hair:'#241f1c', hairStyle:'tousled', top:'#d8a13a',
+      pants:'#54627a', shoe:'#d64f3f', sleeve:'short', tall:0.70, wide:0.82, youth:1,
+      headScale:1.08, faceSeed:37 } },
+  { n: 'bun', look: { skin:'#e8bb96', hair:'#3a3330', hairStyle:'bun', tall:0.96,
+      top:'#9c4b45', pants:'#3b3f4a', shoe:'#d9d3c6', apron:'#cfd3cc' } },
+  { n: 'buzz', look: { skin:'#d8a274', hair:'#26221f', hairStyle:'buzz', wide:1.06,
+      top:'#3c5a72', pants:'#2f3742', shoe:'#3a3a3c' } },
+  { n: 'glasses', look: { skin:'#e0b184', hair:'#2a2523', hairStyle:'short', glasses:true,
+      top:'#e6e2d8', pants:'#39414d', shoe:'#cfc9bc', apron:'#b9c2c6' } },
+  { n: 'long', look: { skin:'#eec39b', hair:'#241f1c', hairStyle:'long', tall:0.94,
+      top:'#d8a13a', pants:'#54627a', shoe:'#e2ded2' } },
+  { n: 'cap', look: { skin:'#c68e68', hair:'#1f1b19', hairStyle:'short', hat:'cap',
+      hatColor:'#c8542f', tall:1.03, top:'#4d5a4a', pants:'#333a44', shoe:'#4a4a4c',
+      stoop:0.10 } },
+  { n: 'jacket', look: { skin:'#d8a274', hair:'#26221f', hairStyle:'short', top:'#dfd8c8',
+      jacket:'#3b4a63', collar:'shirt', pants:'#2f3742', shoe:'#3a3a3c' } },
+  { n: 'tee', look: { skin:'#e0b184', hair:'#241f1d', hairStyle:'buzz', top:'#c9c3b4',
+      sleeve:'short', yoke:'#8a4a44', pants:'#39414d', shoe:'#cfc9bc' } },
+  { n: 'vest', look: { skin:'#cf9b6f', hair:'#211d1b', hairStyle:'short', top:'#4a5566',
+      vest:'#d9a63a', sleeve:'half', pants:'#2f353d', shoe:'#33373c', hat:'hard',
+      hatColor:'#c8542f' } },
+  { n: 'skirt', look: { skin:'#e8bb96', hair:'#2b2522', hairStyle:'bob', top:'#b8443a',
+      collar:'vneck', skirt:'#39414d', pants:'#39414d', shoe:'#3b4046', bag:'shoulder',
+      tall:0.96 } },
+  { n: 'perm', look: { skin:'#dcae86', hair:'#4a4340', hairStyle:'perm', top:'#c0485a',
+      sleeve:'short', pants:'#39414d', shoe:'#e8e2d6', hat:'sun', hatColor:'#e4dcc4',
+      tall:0.95, wide:1.08 } },
+  { n: 'scarf', look: { skin:'#d3a37c', hair:'#302925', hairStyle:'ponytail', top:'#4a6c5a',
+      collar:'turtle', jacket:'#5b4636', scarf:'#a84a4a', pants:'#2b3340', shoe:'#43474d',
+      tall:0.97 } },
+  { n: 'hoodie', look: { skin:'#e2b189', hair:'#241f1d', hairStyle:'braid', top:'#4a6f9c',
+      collar:'hood', pants:'#39414d', shoe:'#e8e2d6', bag:'pack', tall:0.98 } },
+  { n: 'singlet', look: { skin:'#c9905f', hair:'#8f8a80', hairStyle:'short', top:'#dfd9c8',
+      sleeve:'none', pants:'#3a4048', shoe:'#3f4349', hat:'flat', hatColor:'#6b6252',
+      tall:0.94, stoop:0.16 } },
+  { n: 'beanie', look: { skin:'#d6a87f', hair:'#2b2522', hairStyle:'short', top:'#3f4a63',
+      collar:'polo', jacket:'#2f3641', pants:'#2f3641', shoe:'#33373c',
+      hat:'beanie', hatColor:'#7a3f3a', bag:'tote', glasses:true } },
+  { n: 'courier', look: { skin:'#d9a97f', hair:'#221e1c', hairStyle:'buzz', top:'#cfd6cc',
+      vest:'#3f8f66', pants:'#333840', shoe:'#2f3339', hat:'hard', hatColor:'#2c7a56',
+      bag:'delivery', bagColor:'#31845d', badge:'#e9d76d', faceSeed:89 } },
+  { n: 'dress', look: { skin:'#e3b48d', hair:'#2a2320', hairStyle:'long', top:'#5c7f8c',
+      sleeve:'short', skirt:'#5c7f8c', legs:'#e3b48d', pants:'#3b4250', shoe:'#42474e',
+      collar:'crew', tall:0.97 } },
+];
+
+// A roster entry as the studio holds it: the spec you would paste into game.js, the name, and the
+// resolved look. `rebuild` is called after every edit — makeLook is cheap and doing it once per
+// change rather than once per frame keeps the draw loop free of wardrobe logic.
+const SAFE = { skin: '#e4b08d', hair: '#241f1d', top: '#c8c4b6', pants: '#39414d' };
+const HEX = /^#[0-9a-fA-F]{6}$/;
+function entry(n, look) {
+  // `face` is copied too, or a snapshot and the person it was taken of would share one object and
+  // A/B would compare a thing with itself.
+  const o = { ...SAFE, ...look };
+  if (o.face) o.face = { ...o.face };
+  const e = { n, look: o };
+  rebuild(e);
+  return e;
+}
+const COLOR_KEYS = new Set(FIELDS.flatMap(([, fs]) => fs.filter(f => f.t === 'col')
+  .map(f => f.k)));
+function coerce(sp) {
+  // A look can arrive from the clipboard, so a colour is only a colour if it looks like one. Left
+  // unchecked, 'navy' or a typo reaches C() and comes back as NaN, which draws as a black hole in
+  // the middle of the figure and gives no clue where it came from.
+  for (const k of COLOR_KEYS)
+    if (typeof sp[k] === 'string' && !HEX.test(sp[k])) delete sp[k];
+  for (const k in SAFE) if (typeof sp[k] !== 'string') sp[k] = SAFE[k];
+  // The rig reads the hat's *colour* as the fact of wearing one, so a kind with no colour is no
+  // hat at all — which on a panel with a row of hat buttons reads as the buttons being broken.
+  if (sp.hat && sp.hat !== 'none' && !sp.hatColor) sp.hatColor = '#3a4048';
+  if (!sp.hat || sp.hat === 'none') delete sp.hatColor;
+  if (!sp.beard || sp.beard === 'none') { delete sp.beard; delete sp.beardColor; }
+  return sp;
+}
+function rebuild(e) {
+  try { e.lk = makeLook(coerce(e.look)); e.bad = ''; }
+  catch (err) {
+    e.bad = 'cannot draw that: ' + String(err && err.message || err);
+    if (!e.lk) e.lk = makeLook(SAFE);        // something to draw, so the page stays up
+  }
+  return e;
+}
+const STORE = 'studio.roster.v2';
+const CAST = load() || PRESETS.map(p => entry(p.n, p.look));
+const setCast = list => { CAST.length = 0; for (const c of list) CAST.push(c); };
+function load() {
+  try {
+    const raw = JSON.parse(localStorage.getItem(STORE));
+    if (!Array.isArray(raw) || !raw.length) return null;
+    return raw.map(r => entry(r.n, r.look));
+  } catch (_) { return null; }
+}
+const save = () => {
+  try {
+    localStorage.setItem(STORE, JSON.stringify(CAST.map(c => ({ n: c.n, look: c.look }))));
+  } catch (_) {}
+};
+
+// ---------------------------------------------------------------- a plausible stranger
+// Random colours make a clown. What makes a person is that their clothes agree with each other and
+// with their age, so this picks a walk of life first and dresses to it — which is also how the
+// game's own roster was written, one paragraph of intent per entry.
+function rnd(seed) {
+  let a = (seed >>> 0) + 0x9e3779b9;
+  return () => {
+    a = (a + 0x6D2B79F5) >>> 0;
+    let t = Math.imul(a ^ (a >>> 15), 1 | a);
+    t = (t + Math.imul(t ^ (t >>> 7), 61 | t)) ^ t;
+    return ((t ^ (t >>> 14)) >>> 0) / 4294967296;
+  };
+}
+const WALKS = ['office', 'shop', 'labour', 'market', 'student', 'retired'];
+function stranger(seed) {
+  const r = rnd(seed), pick = a => a[Math.floor(r() * a.length)];
+  const woman = r() < 0.5;
+  const walk = pick(WALKS);
+  // Age drives three things at once: how grey the hair is, how much the back has gone, and height.
+  const age = walk === 'retired' ? 0.72 + r() * 0.28
+            : walk === 'student' ? r() * 0.18 : 0.15 + r() * 0.55;
+  const greys = Math.max(0, (age - 0.55) / 0.45);
+  const hairs = PAL.hair.slice(0, 6), old = PAL.hair.slice(8, 13);
+  const look = {
+    skin: pick(PAL.skin.slice(walk === 'labour' ? 6 : 0, walk === 'labour' ? 14 : 10)),
+    hair: greys > 0.35 && r() < greys ? pick(old) : pick(hairs),
+    // Which styles reach the crowd is a decision about the crowd rather than about hair, so it
+    // is made here and not in js/fig-hair.js. Each of the four added is placed where that file
+    // says it belongs: `set` is a lacquered blow-out and `clasp` a claw clip at the nape, both
+    // grown-up women's, the set skewing older; `thinning` is written to "read as sixty from the
+    // other side of a courtyard"; `undercut` is a young man's.
+    //
+    // `bowl` and `plaits` are deliberately not here. Both are children's — the plaits comment
+    // says outright that stubby ones are what a six-year-old has — and stranger() does not make
+    // children: .studiocheck.js holds its hundred and twenty to between 1.35 m and 1.95 m, and
+    // a child in this rig is about 1.24 m. Putting children in the crowd is a change to that
+    // contract and to the harness that guards it, not a line in this list.
+    hairStyle: woman ? pick(age > 0.6 ? ['perm', 'perm', 'set', 'set', 'clasp', 'bun', 'bob']
+                                      : ['bun', 'bob', 'long', 'ponytail', 'braid', 'clasp'])
+                     : pick(age > 0.7 ? ['short', 'short', 'thinning', 'thinning', 'buzz', 'bald']
+                                      : ['short', 'short', 'short', 'buzz', 'undercut']),
+    pants: pick(['#39414d', '#2f353d', '#2b3340', '#333a44', '#3a4048', '#2f3641']),
+    shoe: pick(PAL.shoe),
+    tall: +((woman ? 0.93 : 0.99) + r() * 0.08 - age * 0.03).toFixed(3),
+    wide: +(0.94 + r() * 0.16 + (age > 0.6 ? 0.04 : 0)).toFixed(3),
+    faceSeed: (seed * 2654435761) % 100000,
+  };
+  // The age it already chose, now on the face as well as in the hair and the back.
+  look.age = +age.toFixed(2);
+  if (age > 0.62) look.stoop = +(0.04 + r() * 0.12).toFixed(3);
+  if (r() < 0.22 + age * 0.25) look.glasses = true;
+  // Facial hair only on the men, and mostly on the older ones — a stubble at any age, the rest
+  // of it rarely, because a street where half the men have full beards is not this street.
+  if (!woman) {
+    const p = r();
+    if (p < 0.16 + age * 0.10) look.beard = 'stubble';
+    else if (p < 0.22 + age * 0.16) look.beard = age > 0.5 ? 'moustache' : 'stubble';
+    else if (p < 0.25 + age * 0.10) look.beard = age > 0.6 ? 'full' : 'goatee';
+    if (look.beard && greys > 0.4 && r() < greys) look.beardColor = pick(old);
+  }
+  const neutral = ['#e8e6dd', '#dcd8cc', '#c8c4b6', '#a8a49a'];
+  const colour = ['#5a6c9a', '#4a6f9c', '#3f5f7a', '#47766f', '#5c7f8c', '#4a6c5a', '#5d6a52',
+                  '#b5503e', '#a8443a', '#c0485a', '#8a4a5c', '#d8a13a', '#c98f3a', '#8a6f4e'];
+  if (walk === 'office') {
+    look.top = pick(neutral); look.collar = 'shirt';
+    if (r() < 0.6) look.jacket = pick(['#2f4a63', '#39414d', '#3a4048', '#2b3340']);
+    look.bag = r() < 0.7 ? 'shoulder' : 'none';
+    look.shoe = pick(['#c8c2b4', '#43474d', '#33373c', '#2e3238']);
+  } else if (walk === 'shop') {
+    look.top = pick(neutral); look.collar = r() < 0.5 ? 'shirt' : 'polo';
+    look.sleeve = r() < 0.5 ? 'half' : 'long';
+    look.apron = pick(['#4a6f7c', '#5a5348', '#cfd3cc', '#7a4a5c']);
+  } else if (walk === 'labour') {
+    look.top = pick(['#4a5566', '#3c5a72', '#6b6f5a', '#5b4636']);
+    look.sleeve = pick(['half', 'short', 'none']);
+    if (r() < 0.55) { look.vest = pick(['#d9a63a', '#c8542f', '#c98f3a']); }
+    if (r() < 0.5) { look.hat = pick(['hard', 'flat', 'cap']); look.hatColor = pick(['#c8542f', '#6b6252', '#2b3a46']); }
+  } else if (walk === 'market') {
+    look.top = pick(colour); look.sleeve = pick(['short', 'half', 'long']);
+    if (r() < 0.45) { look.hat = 'sun'; look.hatColor = pick(['#e4dcc4', '#c8c4b6', '#8a6f4e']); }
+    look.bag = r() < 0.5 ? 'tote' : 'none';
+  } else if (walk === 'student') {
+    look.top = pick(colour); look.collar = pick(['crew', 'crew', 'hood', 'vneck']);
+    look.sleeve = pick(['long', 'short']);
+    if (r() < 0.4) look.yoke = pick(colour);
+    look.bag = r() < 0.8 ? 'pack' : 'none';
+  } else {
+    look.top = pick(['#c4bcc8', '#8a6f3a', '#c0485a', '#dcd8cc', '#5d6a52']);
+    look.sleeve = pick(['long', 'half']);
+    if (r() < 0.4) look.vest = pick(['#7c5a63', '#5a5f6a', '#6b6252']);
+    if (r() < 0.3) look.scarf = pick(['#a84a4a', '#7a4a5c', '#5b4636']);
+  }
+  if (woman && r() < 0.3) { look.skirt = pick(['#39414d', '#2b3340', '#3a4048']); look.legs = look.skin; }
+  return look;
+}
+
+// ---------------------------------------------------------------- state
+const S = {
+  who: 0, all: false, perRow: 6, spread: 0.78, rowGap: 1.30,
+  pose: 'stand', lod: 0, phase: 0, moving: true, frozenAt: 0,
+  yaw: 0, pitch: 0.02, dist: 1.15, tgt: 1.42,
+  spin: false, grid: true, dome: false,
+  hour: 13, scene: 'street', faceTo: 'person',   // person | everyone
+  subjectYaw: Math.PI,
+  // the looking-at-it half
+  measure: false,                                // silhouette readout on/off
+  compare: 'off',                                // off | onion | wipe | diff — against the snapshot
+  wipe: 0.5,
+  crowdN: 96, crowdSeed: 1, crowdLod: 2,
+  seed: 0,                                       // the scrubber's stranger seed for this person
+};
+const VIEWS = {
+  face:    { dist: 0.62, tgt: 1.56, yaw: 0,             pitch: 0.00 },
+  bust:    { dist: 1.20, tgt: 1.42, yaw: Math.PI * .16, pitch: 0.04 },
+  whole:   { dist: 2.90, tgt: 0.95, yaw: Math.PI * .16, pitch: 0.03 },
+  profile: { dist: 1.00, tgt: 1.52, yaw: Math.PI * .5,  pitch: 0.00 },
+  back:    { dist: 1.55, tgt: 1.40, yaw: Math.PI,       pitch: 0.04 },
+};
+const FACE0 = { ...FACE };
+let before = null;                               // the A of an A/B comparison
+
+const cur = () => CAST[Math.min(S.who, CAST.length - 1)];
+const spec = () => cur().look;
+
+// ---------------------------------------------------------------- the layout, and its aliases
+// `S.mode` is the one field every sibling reaches for from a .shot.js snippet, and the name on
+// the button was not the name in the code — the roster button said "roster" and the state said
+// 'row', so `S.mode = 'roster'` fell through to the single-figure branch and quietly took a
+// picture of one person. Every name that appears on a button or in a comment is accepted here,
+// and anything unrecognised lands on 'one' rather than on nothing.
+//
+// Setting the mode also frames it. A snippet that says `S.mode = 'crowd'` means "show me the
+// crowd", not "show me the crowd from fifteen centimetres away", and having to know the right
+// distance for each layout is how a tool ends up with a page of incantations beside it. An
+// explicit `S.dist` after the assignment still wins, and re-setting the mode it is already in
+// does nothing, so a camera moved by hand is not snatched back.
+const MODES = {
+  one: 'one', single: 'one',
+  row: 'row', roster: 'row', all: 'row',
+  lod: 'lod', lods: 'lod',
+  ab: 'ab', AB: 'ab', 'a/b': 'ab', compare: 'ab',
+  light: 'light', lights: 'light', lighting: 'light',
+  turn: 'turn', turntable: 'turn', spin: 'turn',
+  crowd: 'crowd', strangers: 'crowd',
+};
+const FRAMING = {
+  one:   { dist: 1.15, tgt: 1.42 },
+  row:   { dist: 6.2, tgt: 1.00, yaw: 0 },
+  lod:   { dist: 2.9, tgt: 1.00 },
+  ab:    { dist: 2.9, tgt: 1.00 },
+  light: { dist: 2.9, tgt: 1.00 },
+  turn:  { dist: 2.9, tgt: 1.00 },
+  crowd: { dist: 15.0, tgt: 1.30, yaw: 0, pitch: 0.14 },
+};
+let mode_ = 'one';
+Object.defineProperty(S, 'mode', {
+  enumerable: true, configurable: true,
+  get: () => mode_,
+  set(v) {
+    const m = MODES[String(v)] || MODES[String(v).toLowerCase()] || 'one';
+    S.all = m === 'row';                        // the old flag, still honoured on its own
+    if (m === mode_) return;
+    mode_ = m;
+    if (m === 'ab' && !before) before = entry('before', spec());
+    Object.assign(S, FRAMING[m] || {});
+  },
+});
+
+// ---------------------------------------------------------------- the game's own light
+// A copy of SKYKEYS from js/game.js, and it is a copy on purpose: the studio loads three files and
+// stays instant, where reaching for the real table would mean loading the game and its world. The
+// numbers are what matter — a face tuned under studio lighting that the game does not have is a
+// face tuned for nothing — so if that table is ever retuned, retune this one.
+const SKYKEYS = [
+  { h:0.0,  dir:[-0.10,0.42,-1.0], col:[0.44,0.55,0.86], amt:0.13,
+    sky:[0.070,0.092,0.150], gnd:[0.046,0.042,0.050], bg:[0.017,0.021,0.031] },
+  { h:4.6,  dir:[-0.55,0.28,-1.0], col:[0.52,0.55,0.82], amt:0.18,
+    sky:[0.090,0.108,0.165], gnd:[0.052,0.046,0.052], bg:[0.021,0.026,0.038] },
+  { h:6.4,  dir:[-0.70,0.20,-1.0], col:[1.00,0.68,0.48], amt:0.72,
+    sky:[0.220,0.216,0.260], gnd:[0.130,0.098,0.082], bg:[0.052,0.048,0.058] },
+  { h:8.2,  dir:[-0.56,0.46,-1.0], col:[1.00,0.88,0.74], amt:1.42,
+    sky:[0.310,0.348,0.430], gnd:[0.186,0.140,0.108], bg:[0.030,0.035,0.044] },
+  { h:13.0, dir:[-0.10,0.95,-1.0], col:[1.00,0.96,0.90], amt:1.72,
+    sky:[0.350,0.392,0.482], gnd:[0.204,0.152,0.116], bg:[0.031,0.036,0.045] },
+  { h:16.6, dir:[ 0.36,0.55,-1.0], col:[1.00,0.90,0.74], amt:1.52,
+    sky:[0.336,0.360,0.428], gnd:[0.212,0.156,0.112], bg:[0.033,0.036,0.043] },
+  { h:18.6, dir:[ 0.50,0.30,-1.0], col:[1.00,0.62,0.34], amt:1.02,
+    sky:[0.256,0.226,0.238], gnd:[0.196,0.130,0.086], bg:[0.046,0.038,0.040] },
+  { h:19.9, dir:[ 0.42,0.13,-1.0], col:[0.92,0.46,0.34], amt:0.38,
+    sky:[0.150,0.140,0.180], gnd:[0.110,0.076,0.068], bg:[0.033,0.028,0.036] },
+  { h:21.4, dir:[ 0.30,0.34,-1.0], col:[0.48,0.56,0.86], amt:0.16,
+    sky:[0.082,0.100,0.158], gnd:[0.050,0.044,0.052], bg:[0.020,0.024,0.035] },
+  { h:24.0, dir:[-0.10,0.42,-1.0], col:[0.44,0.55,0.86], amt:0.13,
+    sky:[0.070,0.092,0.150], gnd:[0.046,0.042,0.050], bg:[0.017,0.021,0.031] },
+];
+const mixArr = (a, b, t) => a.map((v, i) => v + (b[i] - v) * t);
+function daylight(h) {
+  h = ((h % 24) + 24) % 24;
+  let i = 0;
+  while (i < SKYKEYS.length - 2 && SKYKEYS[i + 1].h <= h) i++;
+  const a = SKYKEYS[i], b = SKYKEYS[i + 1];
+  const raw = (h - a.h) / Math.max(1e-6, b.h - a.h), t = raw * raw * (3 - 2 * raw);
+  return { dir: mixArr(a.dir, b.dir, t), col: mixArr(a.col, b.col, t),
+           sky: mixArr(a.sky, b.sky, t), gnd: mixArr(a.gnd, b.gnd, t),
+           bg: mixArr(a.bg, b.bg, t), amt: a.amt + (b.amt - a.amt) * t };
+}
+// Where the figure is standing. The exposures and fog are the scenes' own, out of street.js and
+// the interiors, and `bulb` is the overhead lamp an interior has and the alley does not.
+const SCENES = {
+  street: { indoor: false, expose: 0.50, fogNear: 18, fogD: 0.0078, bulb: 0 },
+  shop:   { indoor: true, expose: 1.00, fogNear: 0, fogD: 0, bulb: 1 },
+  metro:  { indoor: true, expose: 1.00, fogNear: 0, fogD: 0, bulb: 1, hour: 13 },
+  studio: { indoor: false, expose: 0.50, fogNear: 0, fogD: 0, bulb: 0, flat: true },
+};
+// `sceneName` and `hour` are how a panel asks for a light that is not the one the panel controls
+// are set to — which is the whole point of the four-up lighting layout.
+function setLight(sceneName, hour) {
+  const sc = SCENES[sceneName || S.scene] || SCENES.street;
+  const dl = daylight(hour === undefined ? S.hour : hour);
+  if (sc.flat) {
+    // A neutral key from the front-left: not a place, just enough light from a known direction to
+    // see a shape by. This is the one lighting here that the game does not have, and it is for
+    // looking at geometry rather than for judging how somebody will read in the alley.
+    R.setDaylight([0.42, 0.72, -1.0], [1.0, 0.97, 0.92], 1.45, [0.36, 0.40, 0.48],
+      [0.20, 0.18, 0.16]);
+  } else {
+    R.setDaylight(dl.dir, dl.col, sc.indoor ? Math.max(0.55, dl.amt * 0.55) : dl.amt,
+      dl.sky, dl.gnd);
+  }
+  // Indoors the room's own lamps carry the figure and the sun does not; the game lifts a room's
+  // bulb as the daylight through its shopfront goes, so this does too.
+  const dayAmt = clamp((dl.amt - 0.14) / 1.3, 0, 1);
+  R.setBulb(0, 2.5, 0.4, sc.bulb ? (sc.indoor ? 1 : 1 - dayAmt) : 0);
+  const twilight = 1 - Math.abs(dayAmt * 2 - 1);
+  R.setEnv({ indoor: sc.indoor, winOn: sc.indoor, fogNear: sc.fogNear, fogD: sc.fogD,
+             fogCol: dl.bg, expose: sc.expose * (sc.indoor ? 1 : 1 + 0.35 * twilight) });
+  return dl;
+}
+
+// ---------------------------------------------------------------- poses
+// A frozen figure has to be frozen all the way down, or a snapshot is not comparable with the
+// render that follows it. `now` is not only the stride: gaitPose breathes and shifts its weight
+// on it, the eyes blink on it and the gaze wanders on it. So when the clock is stopped it is
+// stopped for all of them, at a value that is saved with the snapshot and restored with it —
+// which is what makes a diff across a page reload show the rig change and nothing else.
+// `lk` is the person being drawn, and it is passed through to the gait because `age` and
+// `stoop` reach the walk now and not only the face: without it the studio shows a seventy-year-
+// old striding about on a young man's legs, which is the one thing this page exists to catch.
+function posed(now, seed, lk) {
+  if (S.moving) { S.phase = (now / 380) % 6.283185307; S.frozenAt = now; }
+  else now = S.frozenAt;
+  const p = { ...POSE };
+  const ph = S.phase;
+  if (S.pose === 'walk') gaitPose(p, 1.0, ph + seed, 0, now, lk);
+  else if (S.pose === 'run') gaitPose(p, 1.55, ph * 1.5 + seed, 0, now, lk);
+  else if (S.pose === 'sit') {
+    p.rootDrop = -0.44; p.torsoPitch = 0.10;
+    p.thighL = -1.42; p.thighR = -1.35; p.kneeL = -1.44; p.kneeR = -1.34;
+    p.ankleL = 0.04; p.ankleR = 0.02;
+    p.shL = 0.16; p.shR = 0.14; p.elbL = -0.52; p.elbR = -0.48;
+    p.shLz = -0.10; p.shRz = 0.10;
+  } else if (S.pose === 'reach') {
+    p.shL = -1.05; p.elbL = -0.42; p.shLz = -0.16;
+    p.shR = -0.34; p.elbR = -0.30;
+    p.torsoPitch = 0.12; p.torsoYaw = -0.16; p.headPitch = 0.14;
+  } else {
+    gaitPose(p, 0, ph * 0.2 + seed, 0, now, lk);
+  }
+  p.blink = blinkOf(now, seed * 7 + 3);
+  saccade(now, seed * 5 + 1, p);
+  p.grip = S.pose === 'reach' ? 0.85 : 0.22;
+  return p;
+}
+
+// ---------------------------------------------------------------- backdrop
+const FLOOR = C('#3b3f45'), GRID = C('#4d535b'), RULER = C('#8d949e'), MARK = C('#d0552f');
+function backdrop() {
+  R.draw('quad', M.trs(0, 0, 0, 0, 24, 1, 24), FLOOR, { mode: 0, gloss: 0.06 });
+  if (!S.grid) return;
+  for (let i = -6; i <= 6; i++) {
+    const w = i === 0 ? 0.012 : 0.005;
+    R.draw('box', M.trs(i, 0.002, 0, 0, w, 0.004, 13), GRID, { mode: 0, bevel: 0 });
+    R.draw('box', M.trs(0, 0.002, i, 0, 13, 0.004, w), GRID, { mode: 0, bevel: 0 });
+  }
+  // A post behind the subject's shoulder with a band every 10 cm. Judging a figure without a
+  // scale beside it is guesswork: a head always looks a plausible size until there is a 1.7 m
+  // mark next to it.
+  R.draw('box', M.trs(0.62, 0.90, -0.34, 0, 0.020, 1.80, 0.020), RULER, { mode: 0, bevel: 0 });
+  for (let h = 1; h <= 17; h++) {
+    const big = h % 5 === 0;
+    R.draw('box', M.trs(0.62 + (big ? 0.028 : 0.018), h * 0.1, -0.34, 0,
+      big ? 0.075 : 0.045, 0.008, 0.024), big ? MARK : RULER, { mode: 0, bevel: 0 });
+  }
+}
+
+// How tall this person actually is, to the crown, out of the same constants the rig draws with:
+// the pelvis at 0.86 of the height scale, the shoulders 0.80 above that, and a head whose size is
+// its own — a child in this rig has a full-sized skull, which is very nearly true of children.
+function heightOf(lk) {
+  const F = lk.F || FACE;
+  const hs = lk.headScale || 1;
+  return 1.66 * lk.tall + (F.headH * 0.5 - 0.004
+    + (lk.hairStyle === 'bald' ? 0 : F.hairGrow)) * hs;
+}
+
+// ---------------------------------------------------------------- a hundred strangers
+// Kept apart from CAST on purpose. CAST is the roster being authored and is what `window.__cast`
+// and every harness reads; the crowd is a hundred throwaway people generated to answer one
+// question — does the variation hold up in bulk — and pushing them into the roster would bury
+// the eighteen entries that are actually being worked on.
+// Declared up here, above every function that reads them, and not beside the code that owns
+// them further down. `let` in this file is a closure variable in one very long IIFE, so a
+// binding declared after the draw loop is in its temporal dead zone until execution reaches it
+// — and a read from inside frame() before then does not warn, it throws, which stops the
+// requestAnimationFrame chain dead. The page then sits there showing frame one, which looks
+// exactly like a change that did nothing rather than like a crash. That cost somebody two
+// renders to work out, so anything the frame touches is bound before the frame can run.
+let snapRec = null, diffLine = '', lastDiff = 0, missingMods = '';
+let CROWD = [], crowdKey = '', crowdStats = null;
+
+// ---------------------------------------------------------------- am I loading everything?
+// Three separate agents have now built a wardrobe layer that this page did not have a tag for,
+// and from where they were standing that is indistinguishable from a change that did nothing:
+// the studio drew a figure without their garment on it and said nothing was wrong. Listing the
+// files by hand is what caused it and a static page cannot read its own directory — but it does
+// not need to. index.html carries the game's module list, and a fig-* file that is not in that
+// list is not in the game either, so the game is the authority on what exists. The studio asks
+// it, and anything this page is missing goes on screen in red rather than into a silence that
+// somebody else has to spend an afternoon interpreting.
+(async () => {
+  try {
+    const txt = await (await fetch('index.html', { cache: 'no-store' })).text();
+    const want = [...new Set((txt.match(/['"](fig-[a-z0-9-]+)['"]/g) || [])
+      .map(s => s.slice(1, -1)))];
+    const missing = want.filter(n => !document.querySelector(`script[src="js/${n}.js"]`));
+    if (!missing.length) return;
+    missingMods = 'studio.html is not loading ' + missing.map(n => 'js/' + n + '.js').join(', ')
+      + ' — whoever owns those cannot see their work in here';
+    console.error(missingMods);
+  } catch (_) { /* opened off file://, or the game moved. Not worth a banner either way. */ }
+})();
+function crowdCast() {
+  const key = S.crowdN + '/' + S.crowdSeed;
+  if (key === crowdKey) return CROWD;
+  crowdKey = key;
+  CROWD = [];
+  for (let i = 0; i < S.crowdN; i++)
+    CROWD.push(entry('c' + i, stranger((S.crowdSeed * 977 + i * 7919) >>> 0)));
+  crowdStats = variation(CROWD);
+  return CROWD;
+}
+// "Everyone looks the same" is a complaint about a distribution, so it wants numbers rather than
+// a second opinion. Per key: how many distinct values are in use, and what share the commonest
+// one takes — a hairstyle field where 62% of the crowd has the same value is the thing being
+// seen, and it is invisible when the crowd is judged eight people at a time.
+function variation(list) {
+  const keys = ['hairStyle', 'hat', 'bag', 'collar', 'sleeve', 'beard', 'top', 'skin', 'hair'];
+  const out = { n: list.length, keys: {}, dupes: 0, worst: '' };
+  for (const k of keys) {
+    const c = Object.create(null);
+    for (const e of list) { const v = String(e.look[k] === undefined ? 'none' : e.look[k]);
+                            c[v] = (c[v] || 0) + 1; }
+    const top = Object.keys(c).sort((a, b) => c[b] - c[a])[0];
+    out.keys[k] = { n: Object.keys(c).length, top, share: c[top] / list.length };
+  }
+  // Two people identical from across the street: same hair, same silhouette, same colours.
+  // One pair in a hundred is a coincidence; twelve is a generator with too small a vocabulary.
+  const sig = Object.create(null);
+  for (const e of list) {
+    const s = ['hairStyle', 'hair', 'skin', 'top', 'pants', 'hat', 'bag', 'shoe']
+      .map(k => e.look[k]).join('|');
+    if (sig[s]) out.dupes++; else sig[s] = 1;
+  }
+  let worstShare = 0;
+  for (const k of keys)
+    if (out.keys[k].share > worstShare && out.keys[k].n > 1) {
+      worstShare = out.keys[k].share; out.worst = k;
+    }
+  return out;
+}
+
+// ---------------------------------------------------------------- viewports
+// The rule this whole section exists to enforce: two things being compared must be drawn at the
+// same place on the screen, at the same size, through the same lens. The old A/B put one figure
+// at x = -0.42 and the other at +0.42 in a single 49° perspective, which gives them different
+// foreshortening and different positions in the lens' distortion — so a silhouette difference of
+// a few millimetres was buried under a difference of viewpoint that was much larger. Each cell
+// below is its own scissored viewport with its own camera looking straight down its own middle,
+// and the figure inside it is centred. What differs between two cells is then only what was
+// meant to differ.
+//
+// x/y/w/h are fractions of the drawing buffer in GL's convention: y counts up from the bottom.
+const FOV = 0.86;
+const LIGHT_CELLS = [
+  { n: 'panel', now: true },                       // whatever the Scene controls are set to
+  { n: 'alley 13:00', scene: 'street', hour: 13 },
+  { n: 'alley 18:40', scene: 'street', hour: 18.66 },
+  { n: 'shop bulb', scene: 'shop', hour: 13 },
+];
+function grid(n, wide) {
+  // n cells laid out as a grid, top-left first, returned bottom-up for GL.
+  const cols = wide || Math.ceil(Math.sqrt(n)), rows = Math.ceil(n / cols);
+  return Array.from({ length: n }, (_, i) => {
+    const c = i % cols, r = (i / cols) | 0;
+    return { x: c / cols, y: 1 - (r + 1) / rows, w: 1 / cols, h: 1 / rows };
+  });
+}
+function cellsFor() {
+  const m = S.mode, me = cur();
+  if (m === 'lod')
+    return grid(3, 3).map((g, i) => ({ ...g, label: 'lod ' + i, lod: i, lk: me.lk }));
+  if (m === 'ab') {
+    const a = before || me;
+    return grid(2, 2).map((g, i) => ({ ...g, lk: i ? me.lk : a.lk,
+      label: i ? 'B · ' + me.n : 'A · ' + a.n, tone: i ? '' : 'a' }));
+  }
+  if (m === 'light')
+    return grid(4, 2).map((g, i) => ({ ...g, lk: me.lk, label: LIGHT_CELLS[i].n,
+      scene: LIGHT_CELLS[i].now ? S.scene : LIGHT_CELLS[i].scene,
+      hour: LIGHT_CELLS[i].now ? S.hour : LIGHT_CELLS[i].hour,
+      warn: LIGHT_CELLS[i].now && S.scene === 'studio' }));
+  if (m === 'turn')
+    return grid(4, 2).map((g, i) => ({ ...g, lk: me.lk, yaw: i * Math.PI / 2,
+      label: (i * 90) + '°' }));
+  if (m === 'crowd')
+    return [{ x: 0, y: 0, w: 1, h: 1, crowd: true, label: '' }];
+  if (m === 'row' || S.all) return [{ x: 0, y: 0, w: 1, h: 1, roster: true, label: '' }];
+  return [{ x: 0, y: 0, w: 1, h: 1, lk: me.lk, label: '' }];
+}
+function cameraOf(c, aspect) {
+  const yaw = S.yaw + (c.yaw || 0), cp = Math.cos(S.pitch), sp = Math.sin(S.pitch);
+  const tgt = [0, S.tgt, 0];
+  const eye = [tgt[0] - Math.sin(yaw) * cp * S.dist,
+               tgt[1] + sp * S.dist,
+               tgt[2] - Math.cos(yaw) * cp * S.dist];
+  return { eye, tgt, proj: M.persp(FOV, aspect, 0.02, 160), view: M.lookAt(eye, tgt) };
+}
+function drawInto(now, c) {
+  if (c.roster) {
+    const per = Math.min(CAST.length, S.perRow), rows = Math.ceil(CAST.length / per);
+    CAST.forEach((e, i) => {
+      const col = i % per, row = (i / per) | 0;
+      drawFigure(posed(now, i + 1, e.lk), (col - (per - 1) / 2) * S.spread,
+        -(row - (rows - 1) / 2) * S.rowGap, S.subjectYaw, e.lk, S.lod);
+    });
+    return;
+  }
+  if (c.crowd) {
+    const list = crowdCast();
+    const per = Math.ceil(Math.sqrt(list.length * 2.2)), rows = Math.ceil(list.length / per);
+    // Batched, because a hundred people at one draw a limb is thirty thousand calls a frame and
+    // the answer to "does the variation hold" should not depend on whether the page can keep up.
+    R.beginCollect();
+    list.forEach((e, i) => {
+      const col = i % per, row = (i / per) | 0;
+      drawFigure(posed(now, i + 1, e.lk), (col - (per - 1) / 2) * 0.62,
+        -(row - (rows - 1) / 2) * 1.15, S.subjectYaw, e.lk, S.crowdLod);
+    });
+    R.endCollect();
+    return;
+  }
+  const lk = c.lk || cur().lk;
+  drawFigure(posed(now, 1, lk), 0, 0, S.subjectYaw, lk,
+    c.lod === undefined ? S.lod : c.lod);
+}
+
+// ---------------------------------------------------------------- frame
+// The loop re-arms whatever happens inside it. An exception thrown anywhere in a rAF callback
+// simply does not schedule the next one, and the page then sits on the last frame it managed —
+// which from the other side of a screenshot is indistinguishable from a change that did
+// nothing, and is the more expensive of the two to diagnose because nothing about the picture
+// says "crash". So the draw is wrapped, the loop always continues, and the error goes on screen
+// in red where a stale picture used to be. Reported once per distinct message: a fault in the
+// draw path happens sixty times a second and would otherwise fill the console.
+let frameErr = '', frameErrN = 0;
+function frame(now) {
+  try { drawFrame(now); }
+  catch (e) {
+    const msg = String((e && e.stack ? e.stack.split('\n').slice(0, 2).join(' — ') : e) || e);
+    if (msg !== frameErr) { frameErr = msg; frameErrN = 0; console.error(e); }
+    frameErrN++;
+    // Looked up rather than closed over, so that reporting a fault cannot itself be the fault.
+    document.getElementById('read').innerHTML =
+      `<span style="color:#e07a6a">the studio threw while drawing `
+      + `(×${frameErrN}) — the picture below is stale<br>${msg.replace(/</g, '&lt;')}</span>`;
+  }
+  requestAnimationFrame(frame);
+}
+function drawFrame(now) {
+  const aspect = R.resize(cv);
+  if (S.spin) S.yaw += 0.006;
+  R.setTime(now);
+  if (S.measure) tickMeasure(now, aspect);
+
+  const cells = cellsFor(), multi = cells.length > 1;
+  const W = cv.width, H = cv.height;
+  let dl0 = null;
+  if (multi) gl.enable(gl.SCISSOR_TEST);
+  try {
+    for (const c of cells) {
+      const x = Math.round(c.x * W), y = Math.round(c.y * H);
+      const w = Math.max(1, Math.round(c.w * W)), h = Math.max(1, Math.round(c.h * H));
+      // The scissor is set before R.begin because begin is what clears, and a clear obeys the
+      // scissor — which is the whole trick: four begins, four clears, four cameras, one frame.
+      if (multi) gl.scissor(x, y, w, h);
+      const dl = setLight(c.scene, c.hour);
+      if (!dl0) dl0 = dl;
+      const cam = cameraOf(c, w / h);
+      R.begin(cam.proj, cam.view, cam.eye,
+        (c.scene || S.scene) === 'studio' ? [0.078, 0.086, 0.098] : dl.bg);
+      if (multi) gl.viewport(x, y, w, h);      // begin resets it to the whole buffer
+      if (S.dome) R.dome(cam.eye, [0.30, 0.44, 0.66], [0.72, 0.74, 0.72]);
+      backdrop();
+      c.met = meterRun(() => drawInto(now, c));
+    }
+  } finally {
+    // Off before present, or the post chain's blit is clipped to the last cell — and in a
+    // finally, because a scissor left enabled by a throw would clip every later frame to a
+    // quarter of the canvas. A fault that outlives what caused it is the worst kind to chase.
+    if (multi) gl.disable(gl.SCISSOR_TEST);
+  }
+  R.present();
+  paintCells(cells);
+  paintRead(cells, dl0);
+  if (S.compare !== 'off') tickDiff(now);
+}
+
+// ---- the captions over each viewport, and the readout in the corner
+const cellHost = document.getElementById('cells'), hintEl = document.getElementById('hint');
+let cellSig = '';
+function paintCells(cells) {
+  const rect = cv.getBoundingClientRect();
+  const sig = cells.map(c => [c.x, c.y, c.w, c.h, c.label, c.met && c.met.n,
+    c.warn, rect.width | 0, rect.height | 0, S.measure].join(',')).join('|');
+  if (sig === cellSig) return;
+  cellSig = sig;
+  cellHost.textContent = '';
+  // The keyboard crib lives in the bottom-right corner, which in a split layout belongs to the
+  // right-hand viewport's caption and to the measuring tape. It is the least important thing on
+  // screen, so it is the thing that goes.
+  hintEl.style.display = cells.length > 1 || S.measure ? 'none' : '';
+  if (cells.length < 2 && !cells[0].label) return;
+  for (const c of cells) {
+    const d = el('div', cellHost);
+    // Along the bottom of each viewport. The top-left corner of the canvas belongs to the
+    // readout, and a caption that lands on top of it is two unreadable things instead of one.
+    // GL counts y from the bottom; the page counts it from the top.
+    d.style.left = (c.x * rect.width + 7) + 'px';
+    d.style.bottom = (c.y * rect.height + 7) + 'px';
+    d.innerHTML = `<b>${c.label}</b>` + (c.met ? ` · ${c.met.n} draws` : '')
+      + (c.warn ? '  <i>not a light the game has</i>' : '');
+    if (c.tone === 'a') d.style.borderLeft = '2px solid #9ec4e0';
+  }
+  // Hairlines between the viewports, so four pictures read as four and not as one composite.
+  for (const c of cells) {
+    if (c.x > 0.001) { const e = el('div', cellHost); e.className = 'edge';
+      e.style.left = (c.x * rect.width) + 'px'; e.style.top = ((1 - c.y - c.h) * rect.height) + 'px';
+      e.style.width = '1px'; e.style.height = (c.h * rect.height) + 'px'; }
+    if (c.y > 0.001) { const e = el('div', cellHost); e.className = 'edge';
+      e.style.left = (c.x * rect.width) + 'px'; e.style.top = ((1 - c.y) * rect.height) + 'px';
+      e.style.width = (c.w * rect.width) + 'px'; e.style.height = '1px'; }
+  }
+}
+const readEl = document.getElementById('read');
+// A .shot.js snippet assigns to S directly and never touches a button, so without this the
+// panel in the screenshot says "alley" while the picture is of the shop — and the panel is
+// half of what a sibling is reading in that screenshot. Only on an actual change, and only for
+// fields no slider owns, or a sync would land under a dragging pointer and pin it.
+let stateSig = '';
+function syncIfChanged() {
+  const sig = [S.mode, S.scene, S.pose, S.lod, S.who, S.measure, S.compare, S.grid,
+               S.spin, S.dome, S.moving].join('|');
+  if (sig === stateSig) return;
+  stateSig = sig; sync();
+}
+function paintRead(cells, dl) {
+  syncIfChanged();
+  const me = cur();
+  const cm = (heightOf(me.lk) * 100).toFixed(0);
+  const total = cells.reduce((a, c) => a + (c.met ? c.met.n : 0), 0);
+  // Only the crowd batches, and collectStats keeps whatever it last saw — so it is read here
+  // rather than trusted anywhere else, and a stale count from three modes ago never shows.
+  const bat = S.mode === 'crowd' ? R.collectStats : { calls: 0, items: 0 };
+  let s = `<b>${me.n}</b> · ${cm} cm · ${S.pose} · lod ${S.lod} · ${S.mode}<br>`
+    + `${S.scene} ${String(Math.floor(S.hour)).padStart(2, '0')}:`
+    + `${String(Math.round((S.hour % 1) * 60)).padStart(2, '0')} · `
+    + `${S.dist.toFixed(2)} m · ${(S.yaw * 180 / Math.PI % 360).toFixed(0)}°`
+    + (me.look.faceSeed ? ` · face ${me.look.faceSeed}` : ' · default face');
+  // The draw budget, always on. It is two numbers and it is the difference between "that got
+  // heavier" as a feeling and as a fact.
+  if (S.mode === 'crowd' && crowdStats) {
+    const v = crowdStats;
+    s += `<br>${v.n} strangers · seed ${S.crowdSeed} · lod ${S.crowdLod}`
+      + ` · ${total} draws`
+      + (bat.calls ? ` → ${bat.calls} batched calls` : ' (unbatched: no instancing)')
+      + `<br>hair ${v.keys.hairStyle.n} kinds, commonest ${(v.keys.hairStyle.share * 100)
+        .toFixed(0)}% · tops ${v.keys.top.n} · hats ${v.keys.hat.n} · bags ${v.keys.bag.n}`
+      + `<br>` + (v.dupes ? `<span style="color:#e8916a">${v.dupes} look-alike pair`
+        + `${v.dupes > 1 ? 's' : ''}</span>` : 'no two alike')
+      + (v.worst ? ` · least varied: ${v.worst} at ${(v.keys[v.worst].share * 100).toFixed(0)}%`
+        + ` ${v.keys[v.worst].top}` : '');
+  } else {
+    const one = cells.find(c => c.met && !c.roster && !c.crowd);
+    s += `<br>${total} draws` + (cells.length > 1 ? ` over ${cells.length} views` : '')
+      + (bat.calls ? ` → ${bat.calls} batched` : '')
+      + (one ? ` · ${meshLine(one.met)}` : '');
+  }
+  if (S.scene === 'studio' && S.mode !== 'light')
+    s += `<br><span style="color:#e8b06a">neutral is not a light this game has — `
+      + `K for the four-up</span>`;
+  if (missingMods) s = `<span style="color:#e07a6a">${missingMods}</span><br>` + s;
+  if (me.bad) s += `<br><span style="color:#e07a6a">${me.bad}</span>`;
+  if (snapRec && S.compare !== 'off') s += `<br>${diffLine}`;
+  readEl.innerHTML = s;
+}
+
+// ---------------------------------------------------------------- does the rig do that?
+// The panel is data — one line per thing makeLook understands — and the whole point of writing
+// it that way was that it cannot drift out of step with the rig. It can still drift the other
+// way: a list here can offer a hat the rig has no case for, and the button then looks exactly
+// like the ones that work. That already cost real time downstream, because the counts on this
+// panel were passed on to people as though they were the rig's counts.
+//
+// So the panel stops claiming and starts checking. Every value of every choice is built into a
+// look and dry-drawn, and the resulting body is hashed. Two options that hash the same are the
+// same body, which means one of them does nothing — and the panel says so, on the button, in
+// the tool where the mistake would otherwise be made.
+//
+// Run against a plain look rather than against whoever is selected, or the answer depends on
+// the person: a sleeve length is genuinely invisible under a jacket, and that is the jacket
+// doing its job, not the sleeve failing to do its own.
+let DEAD = {};
+function optionCheck(base) {
+  const look = base || {};
+  const out = [];
+  const was = { moving: S.moving, phase: S.phase, frozenAt: S.frozenAt, pose: S.pose };
+  S.moving = false; S.phase = 0; S.frozenAt = 0; S.pose = 'stand';
+  try {
+    for (const [, fields] of FIELDS) for (const f of fields) {
+      if (f.t !== 'enum' && f.t !== 'bool') continue;
+      const opts = f.t === 'bool' ? [false, true] : f.opts;
+      const sig = {}, err = {};
+      for (const v of opts) {
+        const l = { ...SAFE, ...look };
+        // Through the same rule the button uses, not a second copy of it.
+        if (f.t === 'bool') { if (v) l[f.k] = true; else delete l[f.k]; }
+        else enumSet(l, f, v);
+        try {
+          const lk = makeLook(coerce(l));
+          sig[String(v)] = meterRun(
+            () => drawFigure(posed(0, 1, lk), 0, 0, Math.PI, lk, 0), true).sig;
+        } catch (e) { err[String(v)] = String((e && e.message) || e); }
+      }
+      const byHash = {};
+      for (const k in sig) (byHash[sig[k]] = byHash[sig[k]] || []).push(k);
+      for (const h in byHash)
+        if (byHash[h].length > 1) out.push({ key: f.k, same: byHash[h] });
+      for (const k in err) out.push({ key: f.k, opt: k, err: err[k] });
+    }
+  } finally { Object.assign(S, was); }
+  // Flattened into something the buttons can look themselves up in: 'hat:visor' -> what it is
+  // indistinguishable from. The first name in a group is treated as the real one.
+  DEAD = {};
+  for (const g of out) {
+    if (!g.same) { DEAD[g.key + ':' + g.opt] = 'throws: ' + g.err; continue; }
+    for (const k of g.same.slice(1)) DEAD[g.key + ':' + k] = 'draws the same as ' + g.same[0];
+  }
+  return out;
+}
+
+// ---------------------------------------------------------------- measuring the silhouette
+// The complaint that started this was "lego", and the evidence for it was a number nobody could
+// see: a thigh arriving at the knee 0.0469 wide with a 0.0540 knee ball sitting on it, so the
+// outline ran in to a waist and back out to a bead. Finding that took an afternoon in node with
+// a copy of the rig's constants, which is a thing that should not have to happen twice.
+//
+// So: draw the figure again, flat white, on black, through a long lens; read the pixels back;
+// and the outline is then just an array. Every joint on the body is checked at once, and the
+// check is the same one an eye would make if an eye could measure — does the width run in and
+// then back out, and by how much.
+//
+// The lens is 9° rather than the 49° the camera uses. At 49° a thigh 40 cm nearer the eye than
+// the shin behind it is magnified by several percent relative to it, which is the same size as
+// the fault being looked for; at 9° from twelve metres away that error is under half a percent
+// and the picture is near enough orthographic to treat as a technical drawing.
+const MFOV = 0.16;
+const profCv = document.getElementById('prof'), measBox = document.getElementById('meas');
+const measTxt = document.getElementById('measTxt');
+let lastMeasure = 0, measured = null;
+function tickMeasure(now, aspect) {
+  // Twice a second. A readPixels of the whole buffer is a stall, and a number that settles in
+  // half a second is still a number that arrives while the hand is still on the slider.
+  if (now - lastMeasure < 480) return;
+  lastMeasure = now;
+  measured = measure();
+  paintMeasure();
+}
+function measure(lk, lod) {
+  const me = cur();
+  lk = lk || me.lk;
+  const H = cv.height, W = cv.width;
+  if (!W || !H) return null;
+  const h = heightOf(lk);
+  const halfH = h * 0.56;                       // the figure fills most of the frame, with air
+  const dist = halfH / Math.tan(MFOV / 2);
+  const tgt = [0, h * 0.5, 0];
+  const yaw = S.subjectYaw + Math.PI;           // square on to whichever way the figure faces
+  const eye = [tgt[0] - Math.sin(yaw) * dist, tgt[1], tgt[2] - Math.cos(yaw) * dist];
+  // A pass with no sun in it: the matte is emissive, and fog or bloom would put a soft skirt of
+  // grey around the outline that the threshold below would then have to guess about.
+  R.setDaylight([0, 1, -1], [1, 1, 1], 1, [0, 0, 0], [0, 0, 0]);
+  R.setBulb(0, 2.5, 0.4, 0);
+  R.setEnv({ indoor: false, winOn: false, fogNear: 0, fogD: 0, fogCol: [0, 0, 0],
+             expose: 1, bloom: 0 });
+  // The same pose the camera is looking at, and held onto: how far the pose has lifted the body
+  // off its legs is needed below, or every walking figure measures three centimetres short.
+  const pose = posed(performance.now(), 1, lk);
+  matte = 1;
+  let met;
+  try {
+    R.begin(M.persp(MFOV, W / H, dist * 0.4, dist * 2.2), M.lookAt(eye, tgt), eye, [0, 0, 0]);
+    met = meterRun(() => drawFigure(pose, 0, 0, S.subjectYaw, lk,
+      lod === undefined ? S.lod : lod));
+    R.present();
+  } finally { matte = 0; }
+  // present() leaves the composite on the default framebuffer; that is what gets read.
+  gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  const px = new Uint8Array(W * H * 4);
+  gl.readPixels(0, 0, W, H, gl.RGBA, gl.UNSIGNED_BYTE, px);
+
+  // Rows, top of the buffer downward. GL hands them back bottom-up. Each row is cut into runs
+  // of solid pixels rather than reduced to one width, because a figure standing with its feet
+  // apart is three things at that height — left leg, gap, right leg — and calling that one span
+  // 0.29 m wide is how a leg gets measured as a torso.
+  const pxPerM = (H / 2) / halfH;
+  const rows = [];
+  let top = -1, bot = -1;
+  for (let ry = 0; ry < H; ry++) {
+    const gy = H - 1 - ry;                      // buffer row for screen row ry
+    const runs = []; let o = gy * W * 4, s = -1;
+    for (let x = 0; x < W; x++, o += 4) {
+      const on = px[o] >= 96;                   // emissive white against a cleared black
+      if (on && s < 0) s = x;
+      else if (!on && s >= 0) {
+        // A one-pixel hole is an antialiased seam between two shapes, not a gap in the body.
+        const last = runs[runs.length - 1];
+        if (last && s - last[1] <= 2) last[1] = x - 1; else runs.push([s, x - 1]);
+        s = -1;
+      }
+    }
+    if (s >= 0) runs.push([s, W - 1]);
+    // World height of this row: the target plane is at tgt[1], the top of the frame halfH above.
+    const wy = tgt[1] + halfH - (ry + 0.5) / pxPerM;
+    if (!runs.length) { rows.push({ y: wy, runs: [], span: 0 }); continue; }
+    if (top < 0) top = ry;
+    bot = ry;
+    rows.push({ y: wy, runs,
+                span: (runs[runs.length - 1][1] - runs[0][0] + 1) / pxPerM });
+  }
+  if (top < 0) return { empty: true, draws: met.n, mesh: met.mesh };
+  const body = rows.slice(top, bot + 1);
+  const crown = body[0].y, floor = body[body.length - 1].y;
+
+  // ---- limbs, by following each run down the picture
+  // Runs in adjacent rows that overlap horizontally are the same piece of body. Where two of
+  // them merge into one (the legs meeting at the hips) or one splits into two (the head giving
+  // way to a neck beside a shoulder), both are ended and new ones begin — so what comes out is
+  // a set of segments each of which really is one continuous limb, measured along its length.
+  const segs = [];
+  let open = [];
+  for (let i = 0; i < body.length; i++) {
+    const runs = body[i].runs;
+    const hitsOf = runs.map(() => []);
+    const mine = open.map(() => []);
+    open.forEach((sg, oi) => runs.forEach((r, ri) => {
+      if (r[0] <= sg.x1 && r[1] >= sg.x0) { hitsOf[ri].push(oi); mine[oi].push(ri); }
+    }));
+    const next = [];
+    runs.forEach((r, ri) => {
+      const h = hitsOf[ri];
+      const sg = h.length === 1 && mine[h[0]].length === 1 ? open[h[0]] : null;
+      if (sg) { sg.x0 = r[0]; sg.x1 = r[1]; sg.w.push((r[1] - r[0] + 1) / pxPerM);
+                sg.y.push(body[i].y); next.push(sg); }
+      else next.push({ x0: r[0], x1: r[1], w: [(r[1] - r[0] + 1) / pxPerM], y: [body[i].y] });
+    });
+    for (const sg of open) if (next.indexOf(sg) < 0) segs.push(sg);
+    open = next;
+  }
+  for (const sg of open) segs.push(sg);
+
+  // ---- the fault this whole apparatus exists to find
+  // A peg joint is a *local bulge*: the outline runs in, swells past what it was on both sides,
+  // and runs back in. That "on both sides" is the whole discrimination. A neck is narrow and
+  // then the shoulders are wide and stay wide, so it is not a bulge, it is a body. A shoe is
+  // wider than the ankle and then the floor arrives, so it is not a bulge either. What is left
+  // is a bead threaded on a limb, which is what makes a figure read as assembled from parts.
+  const near = Math.round(0.055 * pxPerM);      // a joint is about five centimetres of leg
+  const beads = [];
+  for (const sg of segs) {
+    if (sg.w.length < near * 2.2) continue;     // too short to have an inside
+    // Five-row box blur: the antialiased edge alone makes every third row a turning point.
+    const sm = sg.w.map((_, i) => {
+      let s = 0, n = 0;
+      for (let k = -2; k <= 2; k++) if (sg.w[i + k] !== undefined) { s += sg.w[i + k]; n++; }
+      return s / n;
+    });
+    for (let i = near; i < sm.length - near; i++) {
+      if (sm[i] < sm[i - 1] || sm[i] < sm[i + 1]) continue;   // not a local maximum
+      let lo = Infinity, hi = Infinity;
+      for (let k = 1; k <= near; k++) {
+        lo = Math.min(lo, sm[i - k]); hi = Math.min(hi, sm[i + k]);
+      }
+      // Against the *shallower* of the two sides, so a swell that only narrows one way — a
+      // shoulder, a calf running into an ankle — does not count.
+      const ref = Math.max(lo, hi);
+      const gain = sm[i] / Math.max(1e-6, ref) - 1;
+      if (gain < 0.055 || sm[i] < 0.004) continue;
+      beads.push({ at: sg.y[i], w: sm[i], wMin: ref, gain, seg: sg.w.length });
+      i += near;                                // one report per joint, not one per row
+    }
+  }
+  beads.sort((a, b) => b.gain - a.gain);
+
+  // ---- landmarks
+  // `core` is the widest single run at that height — the torso without the arms beside it, one
+  // leg rather than the pair. `span` is the whole silhouette, which is what shoulders and reach
+  // actually are. Reporting one number for both is how a hip ends up measured at 600 mm.
+  const at = f => body[Math.max(0, Math.min(body.length - 1,
+    Math.round((1 - f) * (body.length - 1))))];
+  const core = f => { const r = at(f);
+    return r.runs.reduce((a, q) => Math.max(a, (q[1] - q[0] + 1) / pxPerM), 0); };
+  const span = f => at(f).span;
+  // How high up the legs stop being one mass. In this rig the thighs are wide enough at the hip
+  // to touch, so there is no daylight between them until somewhere around the knee — and how
+  // far down that happens is the single number that says whether a standing figure reads as a
+  // person with two legs or as a body on a plinth. It is invisible in a render at any distance
+  // where it matters, and it moves whenever the thigh radius does.
+  // Walked up from the floor while the figure's own centre line is still showing daylight. The
+  // obvious test — "are there two runs in this row" — is wrong, and wrong in a way that reads
+  // as plausible: a figure standing with its arms down has an arm, a torso and an arm at hip
+  // height, which is three runs all the way up to the armpit, so that test reports the legs
+  // parting at chest height. What actually means "two legs" is that the gap between them
+  // straddles x = 0.
+  const cx0 = W / 2;
+  let part = floor;
+  for (let i = body.length - 1; i >= 0; i--) {
+    if (body[i].runs.some(q => q[0] <= cx0 && q[1] >= cx0)) break;
+    part = body[i].y;
+  }
+  // heightOf() describes the rig standing at rest; the pose then lifts or drops the whole body
+  // on its legs, so the offset is added back before the two are compared or every walking
+  // figure reads as a rig that has lost three centimetres.
+  const claimed = heightOf(lk) + (pose.bob - pose.rootDrop) * lk.tall;
+  return {
+    draws: met.n, mesh: met.mesh, pxPerM, segs: segs.length,
+    drawn: crown - floor, claimed, floor, crown,
+    // Runs are kept in buffer pixels; cx0 is the column world x = 0 landed on, so anything
+    // reading them can put them back into metres either side of the figure's own centre line.
+    cx0, rows: body,
+    head: core(0.955), shoulder: span(0.83), chest: core(0.78), waist: core(0.66),
+    hip: core(0.53), knee: core(0.29), ankle: core(0.085), legsPart: part - floor,
+    reach: body.reduce((a, r) => Math.max(a, r.span), 0),
+    beads: beads.slice(0, 5),
+  };
+}
+function paintMeasure() {
+  const m = measured;
+  measBox.style.display = S.measure ? 'block' : 'none';
+  if (!S.measure || !m) return;
+  const g = profCv.getContext('2d'), W = profCv.width, H = profCv.height;
+  g.clearRect(0, 0, W, H);
+  if (m.empty) { measTxt.innerHTML = 'nothing in frame'; return; }
+  // The matte itself, redrawn at ten times the width it deserves. Not a line graph: the runs
+  // are painted row by row, so this is the silhouette — gap between the legs and all — with the
+  // horizontal blown up against the vertical. A bulge of seven millimetres on a 1.75 m body is
+  // one part in two hundred and fifty and invisible in the render; at this exaggeration it is a
+  // step you cannot look past. The vertical is true, so heights can still be read off it.
+  const pad = 16, ph = H - pad * 2;
+  const yOf = y => pad + (1 - (y - m.floor) / Math.max(1e-6, m.drawn)) * ph;
+  const sx = (W * 0.86) / Math.max(1e-6, m.reach);
+  g.fillStyle = '#161a1f'; g.fillRect(0, 0, W, H);
+  // Every ten centimetres, so the shape has a ruler beside it like the post in the scene does.
+  g.strokeStyle = '#ffffff12'; g.lineWidth = 1; g.fillStyle = '#6f7681'; g.font = '10px monospace';
+  for (let cm = 0; cm <= m.drawn * 100; cm += 10) {
+    const y = yOf(m.floor + cm / 100);
+    g.beginPath(); g.moveTo(16, y); g.lineTo(W - 4, y); g.stroke();
+    if (cm % 50 === 0) g.fillText(cm + '', 2, y - 2);
+  }
+  const rh = Math.max(1, ph / Math.max(1, m.rows.length) + 0.6);
+  g.fillStyle = '#7fa8c8';
+  for (const r of m.rows) {
+    const y = yOf(r.y);
+    for (const q of r.runs)
+      g.fillRect(W / 2 + (q[0] - m.cx0) * sx / m.pxPerM, y,
+        Math.max(0.7, (q[1] - q[0] + 1) * sx / m.pxPerM), rh);
+  }
+  // Where the outline swells and comes back in. Marked on the shape, and listed underneath.
+  g.strokeStyle = '#e8916a'; g.lineWidth = 1.5; g.fillStyle = '#e8916a';
+  for (const p of m.beads) {
+    const y = yOf(p.at);
+    g.beginPath(); g.moveTo(2, y); g.lineTo(W - 2, y); g.stroke();
+  }
+  const mm = v => (v * 1000).toFixed(1);
+  // heightOf() adds up the rig's own constants from the pelvis; the matte is what actually
+  // reached the screen. They differ by about three centimetres on everybody, which is the shoe
+  // sole the formula does not know about — so the gap is printed plainly rather than in red,
+  // and only shouts past six centimetres, where it would mean something has genuinely moved.
+  const gap = (m.drawn - m.claimed) * 1000;
+  const gapTxt = `${gap > 0 ? '+' : ''}${gap.toFixed(0)} mm`;
+  measTxt.innerHTML =
+    `<b>${(m.drawn * 100).toFixed(1)} cm</b> drawn · ${(m.claimed * 100).toFixed(1)} by formula `
+    + (Math.abs(gap) > 60 ? `<span class="bad">(${gapTxt})</span>` : `(${gapTxt})`)
+    + `<br>head ${mm(m.head)} · shoulders ${mm(m.shoulder)} · reach ${mm(m.reach)}`
+    + `<br>chest ${mm(m.chest)} · waist ${mm(m.waist)} · hip ${mm(m.hip)}`
+    + `<br>knee ${mm(m.knee)} · ankle ${mm(m.ankle)} mm`
+    + `<br>legs part at ${(m.legsPart * 100).toFixed(0)} cm`
+    + `<br>${m.draws} draws · ${(m.pxPerM / 100).toFixed(1)} px/cm`
+    // Listed rather than accused. Every one of these is the outline going narrow, wide and
+    // narrow again over a few centimetres, which is what a bead on a string looks like — but a
+    // cuff and a hairline are that shape on purpose and a knee is not, and which is which is a
+    // judgement the person holding the rig makes. What the tool is for is that the list is the
+    // same list before and after a change, so an entry that appears, or a percentage that goes
+    // up, is the thing to go and look at.
+    + (m.beads.length
+      ? '<br><b>outline swells</b> (in, out, in)<br>' + m.beads.map(p =>
+          `<span class="bad">${((p.at - m.floor) * 100).toFixed(0)} cm: `
+          + `${mm(p.wMin)} → ${mm(p.w)} mm  +${(p.gain * 100).toFixed(0)}%</span>`).join('<br>')
+      : '<br><span class="ok">no swell anywhere in the outline</span>');
+}
+
+// ---------------------------------------------------------------- snapshot, and the diff
+// The one comparison a single page load cannot make. A snapshot is pixels plus everything that
+// produced them — the camera, the pose, the light, the person, and the frozen clock — kept in
+// localStorage so that it outlives editing js/figure.js and reloading. Take one, make the
+// change, reload, press V: what is left in the difference is the change.
+const SNAPK = 'studio.snap.v1';
+const snapWrap = document.getElementById('snapWrap'), snapImg = document.getElementById('snapImg');
+const diffCv = document.getElementById('diffCv'), snapNote = document.getElementById('snapNote');
+try { snapRec = JSON.parse(localStorage.getItem(SNAPK) || 'null'); } catch (_) { snapRec = null; }
+function snapState() {
+  return { who: S.who, pose: S.pose, phase: S.phase, frozenAt: S.frozenAt, lod: S.lod,
+           mode: S.mode, scene: S.scene, hour: S.hour, yaw: S.yaw, pitch: S.pitch,
+           dist: S.dist, tgt: S.tgt, subjectYaw: S.subjectYaw, grid: S.grid, dome: S.dome,
+           name: cur().n };
+}
+function takeSnap() {
+  // Stop the clock first, and stop it everywhere: the stride, the breath, the weight shift, the
+  // blink and the gaze all run off `now`, so a snapshot taken while any of them is moving is a
+  // snapshot of a pose that will never occur again.
+  S.moving = false;
+  const w = 720, h = Math.max(1, Math.round(w * cv.height / cv.width));
+  const c2 = document.createElement('canvas'); c2.width = w; c2.height = h;
+  c2.getContext('2d').drawImage(cv, 0, 0, w, h);
+  snapRec = { at: Date.now(), w, h, png: c2.toDataURL('image/png'),
+              state: snapState(), look: JSON.parse(JSON.stringify(spec())) };
+  try { localStorage.setItem(SNAPK, JSON.stringify(snapRec)); }
+  catch (_) { /* over quota: it still works for this session */ }
+  if (S.compare === 'off') S.compare = 'diff';
+  applyCompare();
+  return snapRec;
+}
+// Put the camera, the pose and the clock back where the snapshot was taken. Without this the
+// diff is a picture of the camera having moved.
+function restoreSnap() {
+  if (!snapRec) return false;
+  Object.assign(S, snapRec.state);
+  S.moving = false;
+  if (S.who >= CAST.length) S.who = CAST.length - 1;
+  buildPanel();
+  return true;
+}
+function applyCompare() {
+  const on = snapRec && S.compare !== 'off';
+  snapWrap.style.display = on && S.compare !== 'diff' ? 'block' : 'none';
+  diffCv.style.display = on && S.compare === 'diff' ? 'block' : 'none';
+  if (!on) { snapNote.textContent = snapRec ? 'a snapshot is stored — V to compare' : ''; return; }
+  snapImg.src = snapRec.png;
+  snapImg.style.opacity = S.compare === 'onion' ? 0.5 : 1;
+  snapImg.style.clipPath = S.compare === 'wipe'
+    ? `inset(0 ${((1 - S.wipe) * 100).toFixed(1)}% 0 0)` : 'none';
+  const d = new Date(snapRec.at);
+  snapNote.textContent = `snapshot: ${snapRec.state.name}, ${snapRec.state.pose}, `
+    + `${d.toTimeString().slice(0, 5)} — ${S.compare}`;
+}
+function tickDiff(now) {
+  if (!snapRec || S.compare !== 'diff' || now - lastDiff < 260) return;
+  lastDiff = now;
+  const w = snapRec.w, h = snapRec.h;
+  if (diffCv.width !== w) { diffCv.width = w; diffCv.height = h; }
+  const g = diffCv.getContext('2d', { willReadFrequently: true });
+  g.clearRect(0, 0, w, h);
+  g.drawImage(snapImg, 0, 0, w, h);
+  const a = g.getImageData(0, 0, w, h);
+  g.clearRect(0, 0, w, h);
+  g.drawImage(cv, 0, 0, w, h);
+  const b = g.getImageData(0, 0, w, h);
+  const A = a.data, B = b.data;
+  let moved = 0, sum = 0, max = 0;
+  for (let i = 0; i < A.length; i += 4) {
+    const d = Math.max(Math.abs(A[i] - B[i]), Math.abs(A[i + 1] - B[i + 1]),
+                       Math.abs(A[i + 2] - B[i + 2]));
+    if (d > 6) moved++;
+    sum += d; if (d > max) max = d;
+    // Amplified, and tinted: a difference of three levels is invisible at 1:1 and is exactly
+    // the size of the change that gets argued about.
+    const v = Math.min(255, d * 5);
+    A[i] = v; A[i + 1] = (v * 0.62) | 0; A[i + 2] = (v * 0.35) | 0; A[i + 3] = 255;
+  }
+  g.putImageData(a, 0, 0);
+  const n = A.length / 4;
+  diffLine = `diff vs snapshot: <b>${(moved / n * 100).toFixed(2)}%</b> of pixels moved · `
+    + `mean ${(sum / n).toFixed(1)} · peak ${max}`;
+}
+
+// ---------------------------------------------------------------- controls
+const el = (tag, parent, txt) => {
+  const e = document.createElement(tag); if (txt !== undefined) e.textContent = txt;
+  parent.appendChild(e); return e;
+};
+const syncs = [];
+function sync() { syncs.forEach(f => f()); }
+function buttons(host, items, isOn, onPick) {
+  const made = items.map(([label, val]) => {
+    const b = el('button', host, label);
+    b.onclick = () => { onPick(val); sync(); };
+    b.dataset.val = String(val);
+    return b;
+  });
+  return () => made.forEach(b => b.classList.toggle('on', isOn(b.dataset.val)));
+}
+function slider(host, label, get, set, min, max, step, isOver) {
+  const l = el('label', host); l.className = 's';
+  el('span', l, label);
+  const r = el('input', l); r.type = 'range';
+  r.min = min; r.max = max; r.step = step; r.value = get();
+  const o = el('output', l, (+get()).toFixed(3));
+  r.oninput = () => { set(+r.value); o.textContent = (+r.value).toFixed(3); softSync(); };
+  syncs.push(() => {
+    r.value = get(); o.textContent = (+get()).toFixed(3);
+    if (isOver) l.classList.toggle('over', !!isOver());
+  });
+}
+// Everything that does not need the whole panel rebuilt. Dragging a slider through a full sync
+// resets the slider under the pointer, which makes it impossible to drag.
+function softSync() { save(); }
+
+syncs.push(buttons(document.getElementById('views'),
+  Object.keys(VIEWS).map(k => [k, k]), () => false,
+  k => Object.assign(S, VIEWS[k])));
+syncs.push(buttons(document.getElementById('poses'),
+  [['stand', 'stand'], ['walk', 'walk'], ['run', 'run'], ['sit', 'sit'], ['reach', 'reach']],
+  v => S.pose === v, v => { S.pose = v; }));
+// Every one of these is a `S.mode = '…'` and nothing else — the framing and the A-side snapshot
+// are the setter's job, so a .shot.js snippet gets exactly what a click gets.
+syncs.push(buttons(document.getElementById('layout'),
+  [['one', 'one'], ['roster', 'row'], ['crowd', 'crowd'], ['lod 0·1·2', 'lod'],
+   ['A/B', 'ab'], ['lights', 'light'], ['turn', 'turn']],
+  v => S.mode === v, v => { S.mode = v; }));
+const tg = document.getElementById('toggles');
+syncs.push(buttons(tg, [['lod 0', 0], ['lod 1', 1], ['lod 2', 2]],
+  v => String(S.lod) === v, v => { S.lod = +v; }));
+syncs.push(buttons(tg, [['grid', 'grid'], ['sky', 'dome'], ['spin', 'spin'], ['freeze', 'freeze']],
+  v => v === 'freeze' ? !S.moving : !!S[v],
+  v => { if (v === 'freeze') S.moving = !S.moving; else S[v] = !S[v]; }));
+
+// ---- who
+const castHost = document.getElementById('cast');
+function rebuildCast() {
+  castHost.textContent = '';
+  const b = buttons(castHost, CAST.map((c, i) => [c.n, i]),
+    v => S.who === +v, v => { S.who = +v; S.mode = S.mode === 'row' ? 'one' : S.mode; buildPanel(); });
+  b();
+}
+const ct = document.getElementById('castTools');
+el('button', ct, 'new').onclick = () => {
+  CAST.push(entry('person ' + (CAST.length + 1), stranger(Date.now() & 0xffff)));
+  S.who = CAST.length - 1; rebuildCast(); buildPanel(); save();
+};
+el('button', ct, 'stranger').onclick = () => {
+  const look = stranger((Date.now() ^ (S.who * 7919)) & 0xffff);
+  cur().look = look; rebuild(cur()); buildPanel(); save();
+};
+el('button', ct, 'copy').onclick = () => {
+  CAST.splice(S.who + 1, 0, entry(cur().n + ' copy', spec()));
+  S.who++; rebuildCast(); buildPanel(); save();
+};
+el('button', ct, 'delete').onclick = () => {
+  if (CAST.length < 2) return;
+  CAST.splice(S.who, 1); S.who = Math.max(0, S.who - 1);
+  rebuildCast(); buildPanel(); save();
+};
+el('button', ct, 'snapshot A').onclick = () => { before = entry('before', spec()); sync(); };
+el('button', ct, 'presets').onclick = () => {
+  setCast(PRESETS.map(p => entry(p.n, p.look))); S.who = 0;
+  rebuildCast(); buildPanel(); save();
+};
+const nameBox = document.getElementById('whoName');
+nameBox.oninput = () => { cur().n = nameBox.value || 'person'; rebuildCast(); save(); };
+syncs.push(() => { if (nameBox.value !== cur().n) nameBox.value = cur().n; });
+
+// ---- scene
+syncs.push(buttons(document.getElementById('scenes'),
+  [['alley', 'street'], ['shop', 'shop'], ['platform', 'metro'], ['neutral', 'studio']],
+  v => S.scene === v, v => { S.scene = v; if (SCENES[v].hour) S.hour = SCENES[v].hour; }));
+const lightHost = document.getElementById('light');
+slider(lightHost, 'hour', () => S.hour, v => S.hour = v, 0, 23.99, 0.05);
+slider(lightHost, 'turn', () => S.subjectYaw, v => S.subjectYaw = v, -3.14, 3.14, 0.01);
+slider(lightHost, 'stride', () => S.phase, v => { S.phase = v; S.moving = false; }, 0, 6.28, 0.01);
+
+// ---- look at it: the measuring tape, the snapshot and the crowd dials
+const lookTools = document.getElementById('lookTools');
+syncs.push(buttons(lookTools, [['measure', 'measure']], () => S.measure,
+  () => { S.measure = !S.measure; paintMeasure(); }));
+el('button', lookTools, 'snapshot px').onclick = () => { takeSnap(); sync(); };
+el('button', lookTools, 'restore').onclick = () => { restoreSnap(); sync(); };
+el('button', lookTools, 'swap A/B').onclick = () => {
+  const b = entry(cur().n, spec());
+  if (before) { cur().look = before.look; rebuild(cur()); }
+  before = b; S.mode = 'ab'; buildPanel(); save();
+};
+const compareTools = document.getElementById('compareTools');
+syncs.push(buttons(compareTools,
+  [['no overlay', 'off'], ['onion', 'onion'], ['wipe', 'wipe'], ['diff', 'diff']],
+  v => S.compare === v, v => { S.compare = v; applyCompare(); }));
+const lookNums = document.getElementById('lookNums');
+slider(lookNums, 'wipe', () => S.wipe, v => { S.wipe = v; applyCompare(); }, 0, 1, 0.01);
+// The seed scrubber. Dragging it walks through strangers one seed at a time, which is how you
+// find out whether the generator has a range or a habit — clicking "stranger" twenty times
+// tells you far less than dragging through twenty in two seconds.
+slider(lookNums, 'stranger seed', () => S.seed, v => {
+  S.seed = Math.round(v);
+  cur().look = stranger(S.seed); rebuild(cur()); softSync();
+}, 0, 4096, 1);
+slider(lookNums, 'crowd size', () => S.crowdN,
+  v => { S.crowdN = Math.round(v); softSync(); }, 8, 160, 1);
+slider(lookNums, 'crowd seed', () => S.crowdSeed,
+  v => { S.crowdSeed = Math.round(v); softSync(); }, 1, 400, 1);
+slider(lookNums, 'crowd lod', () => S.crowdLod,
+  v => { S.crowdLod = Math.round(v); softSync(); }, 0, 2, 1);
+
+// ---- the wardrobe panel, rebuilt whenever the person changes
+const wardrobe = document.getElementById('wardrobe');
+function colourField(host, f) {
+  const sp = spec();
+  const g = el('div', host); g.className = 'g';
+  const h = el('div', g); h.className = 'gh';
+  const chip = el('span', h); chip.className = 'chip';
+  el('em', h, f.k);
+  let tick = null;
+  if (f.opt) {
+    tick = el('button', h, ''); tick.className = 'mini';
+    tick.onclick = () => {
+      if (sp[f.k] === undefined) sp[f.k] = f.dflt || '#808080'; else delete sp[f.k];
+      rebuild(cur()); buildPanel(); save();
+    };
+  }
+  const sw = el('div', g); sw.className = 'sw';
+  for (const hex of PAL[f.pal] || PAL.cloth) {
+    const i = el('i', sw); i.style.background = hex; i.title = hex;
+    i.onclick = () => { sp[f.k] = hex; rebuild(cur()); paint(); save(); };
+    i.dataset.hex = hex;
+  }
+  const hr = el('div', g); hr.className = 'hexrow';
+  const txt = el('input', hr); txt.type = 'text'; txt.spellcheck = false;
+  txt.oninput = () => {
+    if (HEX.test(txt.value)) { sp[f.k] = txt.value; rebuild(cur()); paint(); save(); }
+  };
+  const pick = el('input', hr); pick.type = 'color'; pick.style.width = '34px';
+  pick.oninput = () => { sp[f.k] = pick.value; rebuild(cur()); paint(); save(); };
+  function paint() {
+    const v = sp[f.k];
+    const on = v !== undefined;
+    g.style.opacity = on ? 1 : 0.42;
+    chip.style.background = on ? v : 'transparent';
+    if (tick) tick.textContent = on ? 'worn' : 'off';
+    txt.value = on && typeof v === 'string' ? v : '';
+    if (HEX.test(String(v))) pick.value = v;
+    for (const i of sw.children) i.classList.toggle('on', i.dataset.hex === v);
+  }
+  syncs.push(paint);
+  paint();
+}
+function enumField(host, f) {
+  const sp = spec();
+  const g = el('div', host); g.className = 'g';
+  const h = el('div', g); h.className = 'gh';
+  el('em', h, f.k);
+  const row = el('div', g); row.className = 'row';
+  syncs.push(buttons(row, f.opts.map(o => [o, o]),
+    v => (sp[f.k] === undefined ? (f.d === undefined ? '' : f.d) : sp[f.k]) === v,
+    v => {
+      // The rule here used to be "delete on the default *or* on 'none'", which is right for a
+      // hat, a bag and a beard — for those, none is the default and storing it is a longer way
+      // of writing nothing — and wrong for a sleeve, where the default is `long` and `none`
+      // means a singlet. So the sleeveless button put long sleeves on, and had done since the
+      // panel was written. It survived .studiocheck.js because that harness sets sleeve through
+      // __studioAPI.set, which writes the key directly and never reached this line: the
+      // callable twin worked and the button did not. Found by the option check above.
+      enumSet(sp, f, v);
+      rebuild(cur()); save();
+    }));
+  markDead(row, f.k);
+}
+// An option the rig cannot tell from another one is struck through and says why on hover. It is
+// left clickable: the fault is in the rig or in this list, not in the person pressing it, and a
+// button that vanishes is a button nobody can report.
+function markDead(row, key) {
+  for (const b of row.children) {
+    const why = DEAD[key + ':' + b.dataset.val];
+    b.classList.toggle('dead', !!why);
+    if (why) b.title = key + ' ' + b.dataset.val + ': ' + why;
+  }
+}
+function boolField(host, f) {
+  const sp = spec();
+  const row = el('div', host); row.className = 'row';
+  syncs.push(buttons(row, [[f.k, f.k]], () => !!sp[f.k],
+    () => { if (sp[f.k]) delete sp[f.k]; else sp[f.k] = true; rebuild(cur()); save(); }));
+  for (const b of row.children) {
+    const why = DEAD[f.k + ':true'];
+    b.classList.toggle('dead', !!why);
+    if (why) b.title = f.k + ': ' + why;
+  }
+}
+function buildPanel() {
+  // Every control is rebuilt against the person now being edited, so the sync list has to be cut
+  // back to the ones that do not belong to the wardrobe. Keeping stale closures around means a
+  // slider quietly editing somebody who is no longer on screen.
+  syncs.length = keepSyncs;
+  wardrobe.textContent = '';
+  for (const [title, fields] of FIELDS) {
+    el('h2', wardrobe, title);
+    for (const f of fields) {
+      if (f.t === 'col') colourField(wardrobe, f);
+      else if (f.t === 'enum') enumField(wardrobe, f);
+      else if (f.t === 'bool') boolField(wardrobe, f);
+      else slider(wardrobe, f.k, () => spec()[f.k] === undefined ? f.d : spec()[f.k],
+        v => { if (v === f.d) delete spec()[f.k]; else spec()[f.k] = v; rebuild(cur()); },
+        f.min, f.max, f.step);
+    }
+  }
+  buildFace();
+  rebuildCast();
+  sync();
+}
+// ---- the face. Either this person's own head, or the table everybody who has not been given one
+// is drawn with — which is the difference between designing a character and retuning the game.
+const faceNums = document.getElementById('faceNums');
+function buildFace() {
+  faceNums.textContent = '';
+  const sp = spec();
+  if (S.faceTo === 'person') {
+    slider(faceNums, 'faceSeed', () => sp.faceSeed || 0,
+      v => { const n = Math.round(v); if (n) sp.faceSeed = n; else delete sp.faceSeed;
+             rebuild(cur()); }, 0, 99999, 1);
+    slider(faceNums, 'faceVary', () => sp.faceVary === undefined ? 1 : sp.faceVary,
+      v => { if (v === 1) delete sp.faceVary; else sp.faceVary = +v.toFixed(2);
+             rebuild(cur()); }, 0, 2.2, 0.02);
+  }
+  for (const k of Object.keys(FACE0)) {
+    const v0 = FACE0[k], span = Math.max(0.030, Math.abs(v0) * 0.75);
+    if (S.faceTo === 'everyone') {
+      slider(faceNums, k, () => FACE[k], v => { FACE[k] = v; for (const c of CAST) rebuild(c); },
+        +(v0 - span).toFixed(4), +(v0 + span).toFixed(4), 0.0005,
+        () => Math.abs(FACE[k] - v0) > 1e-6);
+    } else {
+      slider(faceNums, k,
+        () => (sp.face && sp.face[k] !== undefined) ? sp.face[k] : (cur().lk.F || FACE)[k],
+        v => { sp.face = sp.face || {}; sp.face[k] = +v.toFixed(5); rebuild(cur()); },
+        +(v0 - span).toFixed(4), +(v0 + span).toFixed(4), 0.0005,
+        () => !!(sp.face && sp.face[k] !== undefined));
+    }
+  }
+}
+syncs.push(buttons(document.getElementById('faceTarget'),
+  [['this person', 'person'], ['everyone (FACE)', 'everyone']],
+  v => S.faceTo === v, v => { S.faceTo = v; buildPanel(); }));
+const ft = document.getElementById('faceTools');
+el('button', ft, 'roll a face').onclick = () => {
+  spec().faceSeed = 1 + Math.floor(Math.random() * 99998);
+  rebuild(cur()); sync(); save();
+};
+el('button', ft, 'default face').onclick = () => {
+  delete spec().faceSeed; delete spec().face; delete spec().faceVary;
+  rebuild(cur()); sync(); save();
+};
+el('button', ft, 'clear overrides').onclick = () => {
+  delete spec().face; rebuild(cur()); sync(); save();
+};
+el('button', ft, 'reset FACE').onclick = () => {
+  Object.assign(FACE, FACE0); for (const c of CAST) rebuild(c); sync();
+};
+
+// ---------------------------------------------------------------- export and import
+const out = document.getElementById('out');
+function fmt(v) {
+  if (typeof v === 'string') return `'${v}'`;
+  if (typeof v === 'number') return String(+v.toFixed(5));
+  if (v && typeof v === 'object')
+    return '{ ' + Object.keys(v).map(k => `${k}:${fmt(v[k])}`).join(', ') + ' }';
+  return String(v);
+}
+// Only what makes this person this person. A look that names every default it inherits is a look
+// nobody can read, and unreadable is how a roster stops being edited by hand.
+function lookJs(sp, indent = '          ') {
+  const parts = [];
+  for (const k of KEY_ORDER) {
+    const v = sp[k];
+    if (v === undefined) continue;
+    if (k === 'face' && !Object.keys(v).length) continue;
+    if (DEFAULTS[k] !== undefined && v === DEFAULTS[k]) continue;
+    parts.push(`${k}:${fmt(v)}`);
+  }
+  const lines = [];
+  let line = '';
+  for (const p of parts) {
+    if (line && line.length + p.length > 74) { lines.push(line); line = ''; }
+    line += (line ? ' ' : '') + p + ',';
+  }
+  if (line) lines.push(line.replace(/,$/, ''));
+  return 'look: { ' + lines.join('\n' + indent) + ' },';
+}
+function faceJs() {
+  const keys = Object.keys(FACE), lines = [];
+  for (let i = 0; i < keys.length; i += 4)
+    lines.push('  ' + keys.slice(i, i + 4).map(k => `${k}: ${(+FACE[k]).toFixed(3)},`).join(' '));
+  return 'const FACE = {\n' + lines.join('\n') + '\n};';
+}
+const xt = document.getElementById('exportTools');
+el('button', xt, 'this look').onclick = () => { out.value = lookJs(spec()); out.select(); };
+el('button', xt, 'whole roster').onclick = () => {
+  out.value = CAST.map(c => `  { n: '${c.n}',\n    ${lookJs(c.look, '            ')} },`)
+    .join('\n');
+};
+el('button', xt, 'FACE table').onclick = () => { out.value = faceJs(); out.select(); };
+el('button', xt, 'copy').onclick = () => { out.select(); document.execCommand('copy'); };
+// Paste anything that has a look in it — a whole roster entry out of game.js, a bare object, or
+// what this panel just wrote — and get it back as somebody editable. A hand-editable format is
+// only half a format if it cannot be read back.
+const loadBtn = el('button', xt, 'load');
+loadBtn.onclick = () => {
+  const txt = out.value.trim();
+  if (!txt) return;
+  let got = null;
+  try {
+    // eslint-disable-next-line no-new-func
+    got = (new Function('return (' + txt.replace(/^\s*look:\s*/, '')
+      .replace(/,\s*$/, '') + ')'))();
+  } catch (e) {
+    try { got = (new Function('return ([' + txt.replace(/,\s*$/, '') + '])'))(); }
+    catch (e2) { out.value = '// could not read that: ' + (e2.message || e2); return; }
+  }
+  const list = Array.isArray(got) ? got : [got];
+  const added = [];
+  for (const g of list) {
+    const look = g && g.look ? g.look : g;
+    if (!look || typeof look !== 'object') continue;
+    added.push(entry(g && g.n ? g.n : (g && g.name) || 'loaded ' + (added.length + 1),
+      normalise(look)));
+  }
+  if (!added.length) { out.value = '// nothing in there looked like a look'; return; }
+  for (const a of added) CAST.push(a);
+  S.who = CAST.length - added.length;
+  rebuildCast(); buildPanel(); save();
+};
+// The roster in game.js predates some of this panel's names: `cap` was a colour that also meant
+// "wears a peaked cap", and `pack:true` was the only bag there was. Both still mean what they
+// meant, so they are translated on the way in rather than being left to read as nothing.
+function normalise(look) {
+  const o = { ...look };
+  if (o.cap && !o.hatColor) { o.hatColor = o.cap; o.hat = o.hat || 'cap'; }
+  delete o.cap;
+  if (o.pack && !o.bag) o.bag = 'pack';
+  delete o.pack;
+  if (o.skirt === true) o.skirt = o.pants || '#3a4048';
+  for (const k in SAFE) if (typeof o[k] !== 'string') o[k] = SAFE[k];
+  return o;
+}
+
+// ---------------------------------------------------------------- mouse and keys
+let drag = null;
+cv.onpointerdown = e => { drag = [e.clientX, e.clientY]; cv.setPointerCapture(e.pointerId); };
+cv.onpointerup = () => { drag = null; };
+cv.onpointermove = e => {
+  if (!drag) return;
+  S.yaw -= (e.clientX - drag[0]) * 0.008;
+  S.pitch = clamp(S.pitch + (e.clientY - drag[1]) * 0.005, -0.9, 1.2);
+  drag = [e.clientX, e.clientY];
+};
+cv.onwheel = e => {
+  e.preventDefault();
+  S.dist = clamp(S.dist * (1 + Math.sign(e.deltaY) * 0.08), 0.30, 24);
+};
+addEventListener('keydown', e => {
+  if (e.target && /INPUT|TEXTAREA/.test(e.target.tagName)) return;
+  const k = e.key.toLowerCase();
+  const vk = { '1': 'face', '2': 'bust', '3': 'whole', '4': 'profile', '5': 'back' }[e.key];
+  const pk = { q: 'stand', w: 'walk', e: 'run', r: 'sit', t: 'reach' }[k];
+  const mk = { o: 'one', l: 'lod', b: 'ab', a: 'row', c: 'crowd', k: 'light', p: 'turn' }[k];
+  if (vk) Object.assign(S, VIEWS[vk]);
+  else if (pk) S.pose = pk;
+  else if (mk) S.mode = mk;
+  else if (k === 'g') S.grid = !S.grid;
+  else if (k === 'y') S.spin = !S.spin;
+  else if (k === 'm') { S.measure = !S.measure; paintMeasure(); }
+  else if (k === 'n') takeSnap();
+  else if (k === 'v') {
+    const order = ['off', 'onion', 'wipe', 'diff'];
+    S.compare = order[(order.indexOf(S.compare) + 1) % order.length];
+    applyCompare();
+  } else if (k === 'x') {
+    const b = entry(cur().n, spec());
+    if (before) { cur().look = before.look; rebuild(cur()); }
+    before = b; S.mode = 'ab'; buildPanel(); save(); return;
+  } else if (k === 'd') {
+    cur().look = stranger((Date.now() ^ (S.who * 7919)) & 0xffff);
+    rebuild(cur()); buildPanel(); save(); return;
+  } else if (k === '[' || k === ']') {
+    S.who = (S.who + (k === '[' ? CAST.length - 1 : 1)) % CAST.length;
+    buildPanel(); return;
+  } else if (k === 's') {
+    const a = document.createElement('a');
+    a.download = `studio-${cur().n}-${Date.now()}.png`;
+    a.href = cv.toDataURL('image/png');
+    a.click();
+    return;
+  } else return;
+  sync();
+});
+
+// ---------------------------------------------------------------- handles for the harnesses
+// `.shot.js` and `.figsheet.js` drive this page with nobody at the keyboard, and there is no
+// clicking a colour swatch over a debugging connection — so everything the panel does is also
+// reachable from here. That is not only for the harnesses: a UI whose every action has a callable
+// twin is a UI that can be tested, and this one is tested by .studiocheck.js.
+const keepSyncs = syncs.length;
+window.__studio = S;
+window.__cast = CAST;
+window.__studioSync = sync;
+window.__studioAPI = {
+  get cast() { return CAST; },
+  get spec() { return spec(); },
+  get look() { return cur().lk; },
+  pick(i) { S.who = i; buildPanel(); },
+  set(k, v) {
+    if (v === undefined || v === null) delete spec()[k]; else spec()[k] = v;
+    rebuild(cur()); sync(); save(); return cur().bad || '';
+  },
+  face(k, v) {
+    const sp = spec();
+    if (v === undefined) { if (sp.face) delete sp.face[k]; }
+    else { sp.face = sp.face || {}; sp.face[k] = v; }
+    rebuild(cur()); sync(); return (cur().lk.F || FACE)[k];
+  },
+  add(look, n) {
+    CAST.push(entry(n || 'added', normalise(look)));
+    S.who = CAST.length - 1; rebuildCast(); buildPanel(); save();
+    return cur().bad || '';
+  },
+  stranger(seed) { return stranger(seed); },
+  rollFace(seed) { spec().faceSeed = seed; rebuild(cur()); sync(); return cur().lk.F; },
+  height() { return heightOf(cur().lk); },
+  exportLook(i) { return lookJs(CAST[i === undefined ? S.who : i].look); },
+  exportRoster() { return CAST.map(c => lookJs(c.look)).join('\n'); },
+  exportFace: faceJs,
+  load(text) { out.value = text; loadBtn.click(); return out.value; },
+  normalise,
+  presets() { return PRESETS; },
+  reset() { setCast(PRESETS.map(p => entry(p.n, p.look))); S.who = 0;
+            rebuildCast(); buildPanel(); },
+  faceKeys() { return Object.keys(FACE0); },
+  wardrobeKeys() { return FIELDS.flatMap(([, fs]) => fs.map(f => f.k)); },
+
+  // ---- the looking half, all of it callable, because a measurement that can only be read off
+  // the screen is a measurement that cannot be put in a test.
+  //
+  // measure() renders the current figure as a matte and hands back the silhouette: the drawn
+  // height against the claimed one, the widths at head, shoulder, waist, hip, knee and ankle in
+  // metres, and every place the outline pinches in and swells back out. `pinches` is the array
+  // to assert on — it should be empty, and each entry that is not says where the joint is and
+  // by what fraction the bulge exceeds the neck above it.
+  measure(opt) {
+    const o = opt || {};
+    const m = measure(o.look ? makeLook(coerce({ ...SAFE, ...o.look })) : undefined, o.lod);
+    if (!m || m.empty) return m;
+    // The row array is a few thousand entries; useful on screen, noise over a debugger wire.
+    return o.rows ? m : { ...m, rows: undefined, mesh: m.mesh };
+  },
+  // What the rig cost to draw, per LOD, with the meshes it spent it on. Ten milliseconds and
+  // no screenshot, where the alternative is three runs of the harness and a guess.
+  cost(look) {
+    const lk = look ? makeLook(coerce({ ...SAFE, ...look })) : cur().lk;
+    const out = [];
+    for (let l = 0; l < 3; l++) {
+      const m = meterRun(() => drawFigure(posed(S.frozenAt || 0, 1, lk), 0, 0, S.subjectYaw, lk, l));
+      out.push({ lod: l, draws: m.n, mesh: m.mesh });
+    }
+    return out;
+  },
+  crowd(n, seed) {
+    if (n) S.crowdN = n;
+    if (seed !== undefined) S.crowdSeed = seed;
+    S.mode = 'crowd';
+    crowdCast();
+    return crowdStats;
+  },
+  variation(n, seed) {
+    const list = [];
+    for (let i = 0; i < (n || 120); i++)
+      list.push(entry('v' + i, stranger((((seed || 1) * 977 + i * 7919)) >>> 0)));
+    return variation(list);
+  },
+  snap() { const r = takeSnap(); return { at: r.at, w: r.w, h: r.h, state: r.state }; },
+  restore() { return restoreSnap(); },
+  get snapshot() { return snapRec && { at: snapRec.at, state: snapRec.state, look: snapRec.look }; },
+  compare(m) { if (m !== undefined) { S.compare = m; applyCompare(); } return S.compare; },
+  swap() {
+    const b = entry(cur().n, spec());
+    if (before) { cur().look = before.look; rebuild(cur()); }
+    before = b; S.mode = 'ab'; buildPanel(); save();
+    return { a: before.n, b: cur().n };
+  },
+  setBefore(look) { before = entry('before', look || spec()); return before.n; },
+  modes() { return Object.keys(MODES); },
+  // Which of the panel's choices the rig can actually tell apart. Every value of every enum is
+  // built and dry-drawn and the body hashed; entries come back as either `{key, same:[...]}` —
+  // those options draw an identical figure, so at most one of them is real — or `{key, opt,
+  // err}` where building it threw. An empty array means the panel is telling the truth.
+  optionCheck(base) { const r = optionCheck(base); buildPanel(); return r; },
+  // How many things the rig actually draws for each choice. Counting `opts.length` off this
+  // panel gives one too many for every optional garment, because their lists carry a 'none'
+  // that is not a garment at all — it is how "take the key out" is spelled on a row of
+  // buttons. That is where "the studio offers seven hats" came from; it offers six hats and a
+  // way to wear no hat. Dropped only where 'none' is that field's default, because on `sleeve`
+  // it is a real answer — a singlet — and counting it out would then be wrong the other way.
+  wardrobeCounts() {
+    const out = {};
+    for (const [, fs] of FIELDS) for (const f of fs)
+      if (f.t === 'enum')
+        out[f.k] = f.opts.filter(o => !(o === 'none' && f.d === 'none')).length;
+    return out;
+  },
+};
+
+// Before the panel is built, so the wardrobe buttons know on their first appearance which of
+// them the rig actually implements. Forty dry draws, no GPU work, a few milliseconds once.
+try { optionCheck(); } catch (e) { console.error('optionCheck', e); }
+buildPanel();
+applyCompare();
+requestAnimationFrame(frame);
+})();
+</script>
+</body>
+</html>

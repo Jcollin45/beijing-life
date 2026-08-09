@@ -1,0 +1,11 @@
+Model Information:
+* title:	Stainless Steel Wok
+* source:	https://sketchfab.com/3d-models/stainless-steel-wok-ad73e31b3f4543de9a6f42d9ff3e3f1c
+* author:	Aullwen (https://sketchfab.com/Aullwen)
+
+Model License:
+* license type:	CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
+* requirements:	Author must be credited. Commercial use is allowed.
+
+If you use this 3D model in your project be sure to copy paste this credit wherever you share it:
+This work is based on "Stainless Steel Wok" (https://sketchfab.com/3d-models/stainless-steel-wok-ad73e31b3f4543de9a6f42d9ff3e3f1c) by Aullwen (https://sketchfab.com/Aullwen) licensed under CC-BY-4.0 (http://creativecommons.org/licenses/by/4.0/)
