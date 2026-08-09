@@ -3285,7 +3285,14 @@ const Street = Lazy('Street', () => {
     for (let f = 1; f < 5; f++) for (let i = 0; i < 3; i++) {
       const wx = 13.6 + i * 4.2;
       fwin(wx, f * FL + 1.55, czb, 2.05, 1.50);
-      if (rnd() > .4) acBox(wx + 1.35, f * FL + .50, czb);
+      // Not on the first deck. `f * FL + .50` puts a deck-1 condenser at y 3.60, which is inside
+      // the 3.12 .. 3.80 the 五金电器 board occupies and 15 cm proud of its face — so the two the
+      // seeded stream happened to place, at x 14.95 and 19.15, stood over the board and ate a
+      // character each. Found while proving the awning had stopped hiding the 侧招: the sign was
+      // clear and 器 still was not. The `rnd()` is still CONSUMED on deck 1 and only the draw is
+      // skipped, because dropping the call re-deals every later decision in the district — down
+      // to which of the parade's units have their shutters down.
+      if (rnd() > .4 && f > 1) acBox(wx + 1.35, f * FL + .50, czb);
     }
     pane(box(17.8, 1.70, czb + .16, 7.20, 2.40, .07, col.glassDay,
       { hard: true, mode: 1, gloss: G.glass }), .95);
