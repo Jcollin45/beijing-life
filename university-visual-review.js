@@ -9,6 +9,8 @@ const fs=require('fs'),os=require('os'),path=require('path'),zlib=require('zlib'
 const CHROME=process.env.CHROME||'/usr/bin/google-chrome';
 const GAME_URL=process.env.GAME_URL||'http://127.0.0.1:8000/index.html';
 const OUTPUT_DIR=path.resolve(process.env.UNIVERSITY_REVIEW_DIR||'test-results/university-visuals');
+const VIEWPORT={width:1152,height:720,deviceScaleFactor:1,mobile:false};
+const CAPTURE_ATTEMPTS=3,CAPTURE_TIMEOUT_MS=25000,CAPTURE_SETTLE_MS=220,CAPTURE_RETRY_MS=450;
 const DEBUG_PORT=14000+Math.floor(Math.random()*10000),sleep=ms=>new Promise(r=>setTimeout(r,ms));
 const profile=fs.mkdtempSync(path.join(os.tmpdir(),'beijing-life-university-review-'));
 let chrome,socket,sequence=0;const pending=new Map(),runtimeErrors=[];
@@ -38,9 +40,9 @@ async function evaluate(expression,timeoutMs=30000){
   return response.result.value;
 }
 
-function pngStats(file){
-  const png=fs.readFileSync(file),signature='89504e470d0a1a0a';
-  if(png.subarray(0,8).toString('hex')!==signature)throw new Error(`${file}: invalid PNG signature`);
+function pngStats(source,label=Buffer.isBuffer(source)?'PNG buffer':String(source)){
+  const png=Buffer.isBuffer(source)?source:fs.readFileSync(source),signature='89504e470d0a1a0a';
+  if(png.subarray(0,8).toString('hex')!==signature)throw new Error(`${label}: invalid PNG signature`);
   let offset=8,width=0,height=0,bitDepth=0,colorType=0,interlace=0;const idat=[];
   while(offset+12<=png.length){
     const length=png.readUInt32BE(offset),type=png.toString('ascii',offset+4,offset+8),data=png.subarray(offset+8,offset+8+length);
@@ -48,7 +50,7 @@ function pngStats(file){
     if(type==='IDAT')idat.push(data);offset+=12+length;if(type==='IEND')break;
   }
   const bpp=colorType===6?4:colorType===2?3:0;
-  if(!width||!height||bitDepth!==8||!bpp||interlace)throw new Error(`${file}: unsupported PNG format ${width}x${height}/${bitDepth}/${colorType}/${interlace}`);
+  if(!width||!height||bitDepth!==8||!bpp||interlace)throw new Error(`${label}: unsupported PNG format ${width}x${height}/${bitDepth}/${colorType}/${interlace}`);
   const raw=zlib.inflateSync(Buffer.concat(idat)),stride=width*bpp,recon=Buffer.alloc(stride*height);let src=0;
   const paeth=(a,b,c)=>{const p=a+b-c,pa=Math.abs(p-a),pb=Math.abs(p-b),pc=Math.abs(p-c);return pa<=pb&&pa<=pc?a:pb<=pc?b:c;};
   for(let y=0;y<height;y++){
@@ -70,10 +72,26 @@ async function capture(file){
   // Travel already waits for camera easing and material upload. Encoding three additional full
   // PNGs per view made the software-WebGL runner spend minutes on images we discarded and could
   // eventually stall DevTools; one final surface capture is the actual review evidence.
-  await sleep(220);
-  const shot=await send('Page.captureScreenshot',{format:'png',fromSurface:true,captureBeyondViewport:false},60000);
-  const target=path.join(OUTPUT_DIR,file);fs.writeFileSync(target,Buffer.from(shot.data,'base64'));
-  return pngStats(target);
+  const target=path.join(OUTPUT_DIR,file),failures=[];
+  for(let attempt=1;attempt<=CAPTURE_ATTEMPTS;attempt++){
+    await sleep(attempt===1?CAPTURE_SETTLE_MS:CAPTURE_RETRY_MS*attempt);
+    try{
+      const shot=await send('Page.captureScreenshot',{
+        format:'png',fromSurface:true,captureBeyondViewport:false,optimizeForSpeed:true,
+      },CAPTURE_TIMEOUT_MS);
+      if(!shot||typeof shot.data!=='string'||shot.data.length<128)throw new Error('DevTools returned no PNG data');
+      const png=Buffer.from(shot.data,'base64'),stats=pngStats(png,file);
+      if(!stats.healthy)throw new Error(`blank or visually degenerate frame: ${JSON.stringify(stats)}`);
+      fs.writeFileSync(target,png);
+      if(attempt>1)console.warn(`${file}: screenshot recovered on attempt ${attempt}/${CAPTURE_ATTEMPTS}`);
+      return stats;
+    }catch(error){
+      failures.push((error&&error.message||String(error)).slice(0,500));
+      if(attempt<CAPTURE_ATTEMPTS)console.warn(
+        `${file}: screenshot attempt ${attempt}/${CAPTURE_ATTEMPTS} failed; retrying: ${failures.at(-1)}`);
+    }
+  }
+  throw new Error(`${file}: screenshot failed after ${CAPTURE_ATTEMPTS} bounded attempts (${failures.join(' | ')})`);
 }
 
 async function main(){
@@ -81,7 +99,7 @@ async function main(){
   chrome=spawn(CHROME,['--headless=new','--no-first-run','--disable-default-apps','--mute-audio',
     '--autoplay-policy=no-user-gesture-required','--enable-webgl','--ignore-gpu-blocklist',
     '--use-angle=swiftshader-webgl','--enable-unsafe-swiftshader',`--remote-debugging-port=${DEBUG_PORT}`,
-    `--user-data-dir=${profile}`,'--window-size=1440,900','about:blank'],{stdio:['ignore','ignore','pipe']});
+    `--user-data-dir=${profile}`,`--window-size=${VIEWPORT.width},${VIEWPORT.height}`,'about:blank'],{stdio:['ignore','ignore','pipe']});
   let chromeError='';chrome.stderr.on('data',chunk=>{chromeError+=chunk;});
   const tabs=await waitJson(`http://127.0.0.1:${DEBUG_PORT}/json/list`),tab=tabs.find(q=>q.type==='page');
   if(!tab)throw new Error('Chrome opened no page target');
@@ -104,7 +122,7 @@ async function main(){
   });
 
   await send('Page.enable');await send('Runtime.enable');await send('Log.enable');
-  await send('Emulation.setDeviceMetricsOverride',{width:1440,height:900,deviceScaleFactor:1,mobile:false});
+  await send('Emulation.setDeviceMetricsOverride',VIEWPORT);
   await send('Page.navigate',{url:GAME_URL});
   let ready=null;
   for(let i=0;i<900;i++){

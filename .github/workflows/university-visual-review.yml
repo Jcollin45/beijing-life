@@ -71,7 +71,7 @@ jobs:
         run: node university-visual-review.js
 
       - name: Upload complete university review
-        if: always()
+        if: success()
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: university-visual-review-${{ github.sha }}
@@ -119,6 +119,88 @@ jobs:
           git -C "$review_dir" commit -m "University visual review for $SOURCE_SHA"
           git -C "$review_dir" remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git -C "$review_dir" push --force origin HEAD:university-visual-review
+
+      - name: Upload partial university review diagnostics
+        if: failure()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: university-visual-review-debug-${{ github.run_id }}-${{ github.run_attempt }}
+          path: |
+            test-results/university-visuals/
+            /tmp/university-review-server.log
+          if-no-files-found: warn
+          retention-days: 14
+
+      - name: Publish GitHub debug branch
+        if: failure()
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
+          SOURCE_SHA: ${{ github.sha }}
+          SOURCE_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+          SOURCE_JOB: ${{ github.job }}
+          SOURCE_ATTEMPT: ${{ github.run_attempt }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          debug_dir="$(mktemp -d)"
+          mkdir -p "$debug_dir/captures" "$debug_dir/logs"
+
+          shopt -s nullglob
+          captures=(test-results/university-visuals/*.png)
+          if ((${#captures[@]})); then
+            cp "${captures[@]}" "$debug_dir/captures/"
+          fi
+          capture_count=${#captures[@]}
+
+          if [[ -f test-results/university-visuals/report.json ]]; then
+            cp test-results/university-visuals/report.json "$debug_dir/report.json"
+            report_origin=partial-capture-report
+          else
+            printf '{\n  "complete": false,\n  "captureCount": %d,\n  "sourceSha": "%s",\n  "workflowRun": "%s"\n}\n' \
+              "$capture_count" "$SOURCE_SHA" "$SOURCE_RUN" > "$debug_dir/report.json"
+            report_origin=failure-fallback
+          fi
+
+          if [[ -f /tmp/university-review-server.log ]]; then
+            cp /tmp/university-review-server.log "$debug_dir/logs/server.log"
+          fi
+          printf '{\n  "status": "failed",\n  "sourceSha": "%s",\n  "workflowRun": "%s",\n  "job": "%s",\n  "attempt": "%s",\n  "captureCount": %d,\n  "reportOrigin": "%s"\n}\n' \
+            "$SOURCE_SHA" "$SOURCE_RUN" "$SOURCE_JOB" "$SOURCE_ATTEMPT" "$capture_count" "$report_origin" \
+            > "$debug_dir/failure.json"
+
+          {
+            echo '# University visual review — failed run diagnostics'
+            echo
+            echo "Partial GitHub-hosted capture output for source commit \`$SOURCE_SHA\`."
+            echo
+            echo "[Failed workflow run]($SOURCE_RUN) · [Failure metadata](failure.json) · [Capture report](report.json)"
+            echo
+            echo "Captured $capture_count PNG file(s) before the run failed. This branch is diagnostic only and never replaces the successful \`university-visual-review\` branch."
+            if [[ -f "$debug_dir/logs/server.log" ]]; then
+              echo
+              echo '[No-cache server log](logs/server.log)'
+            fi
+            echo
+            for building in B01 B02 B03 B04 B05 B06 B07 B08; do
+              building_images=("$debug_dir"/captures/${building}-*.png)
+              ((${#building_images[@]})) || continue
+              echo "## $building"
+              echo
+              for image in "${building_images[@]}"; do
+                name="$(basename "$image")"
+                echo "<img src=\"captures/$name\" alt=\"$name\" width=\"48%\">"
+              done
+              echo
+            done
+          } > "$debug_dir/README.md"
+
+          git -C "$debug_dir" init -b university-visual-review-debug
+          git -C "$debug_dir" config user.name 'github-actions[bot]'
+          git -C "$debug_dir" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git -C "$debug_dir" add -A
+          git -C "$debug_dir" commit -m "University visual review failure for $SOURCE_SHA"
+          git -C "$debug_dir" remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
+          git -C "$debug_dir" push --force origin HEAD:university-visual-review-debug
 
       - name: Print server failures
         if: failure()
