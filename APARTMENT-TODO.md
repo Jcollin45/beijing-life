@@ -1536,7 +1536,7 @@ section F builds. The point of the exercise: what happens somewhere else has to 
    works.
     @check `node -e 'const s=require("fs").readFileSync("js/data.js","utf8");if(!/爬楼梯/.test(s))process.exit(1)'`
 
-251. `[ ]` Charge the stairs in minutes and rest scaled by storey, using `A.STOREY` (3.10) and the
+251. `[x]` Charge the stairs in minutes and rest scaled by storey, using `A.STOREY` (3.10) and the
    deck the player is on — a flat cost makes floor 11 the same as floor 3 and the tower pointless.
     @check `sed "s,//.*,," js/home-life.js | grep -qE "\bstair[A-Za-z]* *[:=(]" && sed "s,//.*,," js/game.js | grep -qE "\bstair"`
 
@@ -1567,7 +1567,7 @@ section F builds. The point of the exercise: what happens somewhere else has to 
    parcel locker downstairs is exactly where a real one goes.
     @check `sed "s,//.*,," js/game.js | grep -q 'RIDER_WAIT' && sed "s,//.*,," js/game.js | grep -q '快递柜'`
 
-257. `[ ]` Give missing him a cost: a 外卖 order is paid 货到付款 at the door
+257. `[x]` Give missing him a cost: a 外卖 order is paid 货到付款 at the door
    (`js/game.js:6494`) so nothing is lost today, which means there is no reason to be home.
     @check `sed "s,//.*,," js/game.js | grep -q 'missedDelivery\|超时'`
 
@@ -1589,7 +1589,7 @@ section F builds. The point of the exercise: what happens somewhere else has to 
    not a second mechanism.
     @check `sed "s,//.*,," js/disrupt.js | grep -q '新婚' && sed "s,//.*,," js/game.js js/world.js js/home-lobby.js js/home-lift.js | grep -q '新婚'`
 
-261. `[ ]` Give the four neighbour doors on your own corridor (`js/home-corridor.js:586–606`, 201 /
+261. `[x]` Give the four neighbour doors on your own corridor (`js/home-corridor.js:586–606`, 201 /
    203 / 204 / 205) something behind them that changes: a smell, a row, a television. 敲门 currently
    always answers 敲了敲门，里面没有人应 (`js/data.js:2603`).
     @check `node -e 'const s=require("fs").readFileSync("js/data.js","utf8");if(!/neighbour: \{[\s\S]{0,600}?(HomeLife|Disrupt)/.test(s))process.exit(1)'`
@@ -1599,11 +1599,11 @@ section F builds. The point of the exercise: what happens somewhere else has to 
    `js/disrupt.js:14` gives for the metro.
     @check `sed "s,//.*,," js/disrupt.js | grep -q 'neighbour\|floorLife' && test $(sed "s,//.*,," js/disrupt.js | grep -c 'Math.random') -eq 0`
 
-263. `[ ]` Make noise on the floor above cost sleep, reusing the sleep quality item 199 builds —
+263. `[x]` Make noise on the floor above cost sleep, reusing the sleep quality item 199 builds —
    this is the flat's version of `HOTEL-TODO.md` H111 and the two should share a rule, not two.
     @check `sed "s,//.*,," js/home-life.js | grep -qE "\bnoise[A-Za-z]* *[:=(]" && sed "s,//.*,," js/game.js | grep -qE "\bnoise"`
 
-264. `[ ]` Let one neighbour met on their own floor turn up in the lobby or the lift — NPC depth over
+264. `[x]` Let one neighbour met on their own floor turn up in the lobby or the lift — NPC depth over
    NPC count, the standing rule already written into `HOTEL-TODO.md` H137.
     @check `sed "s,//.*,," js/home-life.js | grep -qE "Story\.(knows|level|heard)\("`
 
@@ -1894,7 +1894,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
    promising exactly that gap since it was built (`js/world.js:2472`, 明天).
     @check `sed "s,//.*,," js/data.js | grep -qE '维修师傅|修理工'`
 
-316. `[ ]` Promote the broken pendant from dressing to state. `js/world.js:2472` already has the
+316. `[x]` Promote the broken pendant from dressing to state. `js/world.js:2472` already has the
    flat's light saying 灯坏了 and the 房东 promising someone 明天, and `js/world.js:2755` gives it a
    real flicker curve — but nothing can query the fault, nothing clears it, and 明天 never comes.
    Give it a flag item 315's repairman can read and clear.
@@ -2744,7 +2744,7 @@ exist as furniture with nobody in them — `js/home-f3.js` 老李家, `f5` 小�
 *Owner: lane 4 (`js/vocab.js`), lane 2 (`js/game.js`), lane 6 (`js/assets.js`). Added after the
 board was written, because the gate and the harness found things no item owned.*
 
-471. `[ ]` Add the seventeen home-module headwords that `node .dictcheck.js --home` reports missing
+471. `[x]` Add the seventeen home-module headwords that `node .dictcheck.js --home` reports missing
    from `js/vocab.js` — 鸽子, 杂物, 马扎, 配电箱, 检修口, 储藏 and eleven others — so no authored
    fixture in the tower can raise a silent blank prompt. Found by lane 11; no item on the board
    owned it.
@@ -2964,7 +2964,7 @@ board was written, because the gate and the harness found things no item owned.*
 
 ---
 
-517. `[ ]` Arm the harness watchdog at **gate acquisition**, not at the first Chrome spawn.
+517. `[x]` Arm the harness watchdog at **gate acquisition**, not at the first Chrome spawn.
    `.harness-env.js:57` takes the slot; `:75-76` arms the hard deadline only when a Chrome process
    appears. A harness that dies or hangs *before* the browser comes up — the observed
    `Error: devtools never came up` at `.bootcheck.js:28`, seen twice on 2026-08-09 — therefore holds

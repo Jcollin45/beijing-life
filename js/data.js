@@ -3292,6 +3292,14 @@ const HOME_DOOR_USE = {
   // sentence, which is correct on those days rather than wrong on all of them.
   neighbour: { zh:'敲门', py:'qiāo mén', en:"knock on the neighbour's door", secs:1.8, mins:2,
           gain:{}, pose:{ type:'reach' }, knock:true,
+          // Resolving the day to an answer is one lookup and it lives here, beside the table, so a
+          // caller never has to know that the key is a DOORS row's hz.  Returns null on a day with
+          // no door state, which is the caller's cue to fall back to the `done` line below.
+          answer: day => {
+            const d = (typeof Disrupt !== 'undefined' && Disrupt.floorLife)
+              ? Disrupt.floorLife(day).door : null;
+            return (d && HOME_DOOR_USE.neighbour.heard[d.hz]) || null;
+          },
           heard: {
             '电视': { zh:'敲了两下，电视声音小了一点，门没开。',
                       en:'Two knocks. The television drops a little. The door does not open.',
@@ -3305,6 +3313,14 @@ const HOME_DOOR_USE = {
             '搬东西': { zh:'门开着，箱子堆到门口，“借过借过。”',
                         en:'The door is already open, boxes to the threshold. "Coming through, coming through."',
                         mood:2, open:true },
+          },
+          // Resolving the day to an answer is one lookup and it lives here, beside the table, so a
+          // caller never has to know that the key is a DOORS row's hz.  Returns null on a day with
+          // no door state, which is the caller's cue to fall back to the `done` line below.
+          answer: day => {
+            const d = (typeof Disrupt !== 'undefined' && Disrupt.floorLife)
+              ? Disrupt.floorLife(day).door : null;
+            return (d && HOME_DOOR_USE.neighbour.heard[d.hz]) || null;
           },
           done:'敲了敲门，里面没有人应。', doneTr:'You knock; nobody answers.' },
 };
@@ -3534,6 +3550,18 @@ const MALL_FOOD = {
   },
 };
 
+// `ship:true` — the shop sends this one home instead of handing it over the counter, which is what
+// item 255 needs before a mall purchase can produce a delivery.  Keyed on **bulk, not price**: a
+// carton nobody carries onto the subway.  A price threshold was refused deliberately — it would be
+// an invented constant standing in for data, and it would sweep in 手表 890 and 香水 480, which any
+// shop hands you in a bag.
+//
+// The flag is set only on `keep` rows, and that exclusion is load-bearing:
+//   - never on `wear` — the wardrobe takes ownership of a coat at the till, so deferring the
+//     purchase to a doorstep leaves it thinking you already own something not in the flat;
+//   - never on `eat` — it is consumed at the counter and there is nothing left to deliver.
+// The other half is game.js's: `mallPay` decides whether a paid basket is carried or shipped, and
+// only a `ship` row may be shipped.  Until that lands this flag reads as inert data, not a bug.
 const MALL_GOODS = {
   '服装店': [
     { hz:'外套',   py:'wàitào',    en:'a lined jacket',   price:189, wear:'#8d4a45' },
@@ -3629,13 +3657,13 @@ const MALL_GOODS = {
     { hz:'盘子',   py:'pánzi',     en:'a plate',          price:28,  keep:1 },
     { hz:'毛巾',   py:'máojīn',    en:'a bath towel',     price:42,  keep:1, clean:10 },
     { hz:'枕头',   py:'zhěntou',   en:'a pillow',         price:89,  keep:1, rest:12 },
-    { hz:'被子',   py:'bèizi',     en:'a quilt',          price:320, keep:1, rest:18 },
-    { hz:'台灯',   py:'táidēng',   en:'a desk lamp',      price:168, keep:1, mood:12 },
+    { hz:'被子',   py:'bèizi',     en:'a quilt',          price:320, keep:1, rest:18, ship:true },
+    { hz:'台灯',   py:'táidēng',   en:'a desk lamp',      price:168, keep:1, mood:12, ship:true },
     { hz:'拖把',   py:'tuōbǎ',     en:'a mop',            price:45,  keep:1, clean:8 },
   ],
   '玩具店': [
     { hz:'玩具',   py:'wánjù',     en:'a toy',            price:55,  keep:1, mood:14 },
-    { hz:'积木',   py:'jīmù',      en:'a set of building blocks', price:128, keep:1, mood:16 },
+    { hz:'积木',   py:'jīmù',      en:'a set of building blocks', price:128, keep:1, mood:16, ship:true },
     { hz:'娃娃',   py:'wáwa',      en:'a doll',           price:79,  keep:1, mood:15 },
     { hz:'球',     py:'qiú',       en:'a ball',           price:25,  keep:1, mood:10 },
     { hz:'拼图',   py:'pīntú',     en:'a jigsaw',         price:45,  keep:1, mood:12 },
@@ -3659,7 +3687,7 @@ const MALL_GOODS = {
     { hz:'篮球',   py:'lánqiú',    en:'a basketball',     price:158, keep:1, mood:14 },
     { hz:'跑鞋',   py:'pǎoxié',    en:'running shoes',    price:420, keep:1, mood:16 },
     { hz:'球拍',   py:'qiúpāi',    en:'a racket',         price:240, keep:1, mood:12 },
-    { hz:'瑜伽垫', py:'yújiādiàn', en:'a yoga mat',       price:98,  keep:1, mood:10 },
+    { hz:'瑜伽垫', py:'yújiādiàn', en:'a yoga mat',       price:98,  keep:1, mood:10, ship:true },
     { hz:'水壶',   py:'shuǐhú',    en:'a water bottle',   price:45,  keep:1 },
     { hz:'运动服', py:'yùndòngfú', en:'a tracksuit',      price:268, wear:'#3a4a5c' },
   ],

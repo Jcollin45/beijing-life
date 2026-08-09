@@ -1800,6 +1800,7 @@ X光片|X guāng piàn|X-ray film|medical
 单元门|dānyuánmén|the street door of your unit|home
 楼道|lóudào|the corridor and stairwell of a block|home
 楼梯间|lóutījiān|the stairwell|home
+楼层表|lóucéngbiǎo|the board in the lobby listing which households live on each floor|home
 水表|shuǐbiǎo|water meter|home
 车棚|chēpéng|the bike shed|home
 楼顶|lóudǐng|the roof, the top of the building|home

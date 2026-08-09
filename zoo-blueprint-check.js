@@ -6,6 +6,7 @@
 
 const fs = require('fs');
 const path = require('path');
+const crypto = require('crypto');
 
 const FILE = path.join(__dirname, 'ZOO-EXPANSION-BLUEPRINT.json');
 const errors = [];
@@ -39,6 +40,29 @@ const segmentRect = (a, b, width) => ({
   x0:Math.min(a[0],b[0])-width/2, x1:Math.max(a[0],b[0])+width/2,
   z0:Math.min(a[1],b[1])-width/2, z1:Math.max(a[1],b[1])+width/2,
 });
+const segmentsIntersect = (a,b,c,d) => {
+  const cross=(p,q,r)=>(q[0]-p[0])*(r[1]-p[1])-(q[1]-p[1])*(r[0]-p[0]);
+  const on=(p,q,r)=>near(cross(p,q,r),0)&&r[0]>=Math.min(p[0],q[0])-1e-7&&
+    r[0]<=Math.max(p[0],q[0])+1e-7&&r[1]>=Math.min(p[1],q[1])-1e-7&&
+    r[1]<=Math.max(p[1],q[1])+1e-7;
+  const x1=cross(a,b,c), x2=cross(a,b,d), x3=cross(c,d,a), x4=cross(c,d,b);
+  return (x1*x2<0&&x3*x4<0)||on(a,b,c)||on(a,b,d)||on(c,d,a)||on(c,d,b);
+};
+const segmentDistance = (a,b,c,d) => segmentsIntersect(a,b,c,d) ? 0 : Math.min(
+  pointSegmentDistance(a,c,d),pointSegmentDistance(b,c,d),
+  pointSegmentDistance(c,a,b),pointSegmentDistance(d,a,b));
+const polylineDistance = (a,b) => {
+  let d=Infinity;
+  for(let i=1;i<a.centerline.length;i++) for(let j=1;j<b.centerline.length;j++)
+    d=Math.min(d,segmentDistance(a.centerline[i-1],a.centerline[i],b.centerline[j-1],b.centerline[j]));
+  return d;
+};
+const stable = value => {
+  if (Array.isArray(value)) return `[${value.map(stable).join(',')}]`;
+  if (value && typeof value==='object') return `{${Object.keys(value).sort().map(k=>
+    `${JSON.stringify(k)}:${stable(value[k])}`).join(',')}}`;
+  return JSON.stringify(value);
+};
 
 let bp;
 try { bp = JSON.parse(fs.readFileSync(FILE, 'utf8')); }
@@ -52,6 +76,19 @@ assert(bp.schema === 'chinesegame.zoo-expansion/v1', 'SCHEMA', 'root',
 assert(Number.isInteger(bp.revision) && bp.revision > 0, 'REVISION', 'root',
   'revision must be a positive integer');
 assert(bp.units === 'metres', 'UNITS', 'root', 'units must be metres');
+
+const geometryPayload = {
+  revision:bp.revision, site:bp.site, districts:bp.districts, preservation:bp.preservation,
+  outerWalls:bp.outerWalls, gates:bp.gates, paths:bp.paths,
+  controlledCrossings:bp.controlledCrossings, habitatBarrierSystem:bp.habitatBarrierSystem,
+  habitats:bp.habitats, buildings:bp.buildings,
+  animalTransferCrossings:bp.animalTransferCrossings, objectSchedules:bp.objectSchedules,
+  planting:bp.planting, wayfinding:bp.wayfinding, routes:bp.routes, interactions:bp.interactions,
+};
+const geometryHash='sha256:'+crypto.createHash('sha256').update(stable(geometryPayload)).digest('hex');
+assert(bp.geometryHash===geometryHash,'GEOMETRY_HASH','root',
+  `declared ${bp.geometryHash}; calculated ${geometryHash}`);
+if (process.argv.includes('--print-hash')) console.log(geometryHash);
 
 const site = bp.site && bp.site.bounds;
 assert(ordered(site), 'SITE_BOUNDS', 'site', 'site bounds must be finite, ordered and non-zero');

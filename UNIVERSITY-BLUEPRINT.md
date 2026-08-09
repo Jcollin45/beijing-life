@@ -51,11 +51,13 @@ signs, galvanized steel, bicycles, practical hardscape, and warm pools of light 
 ## 2. Frozen coordinate contract
 
 ```js
-const CAMPUS = Object.freeze({
+const CAMPUS_CONTRACT = window.CampusContract = Object.freeze({
+  layoutVersion: 2,
   x0: -48.0, x1: 48.0,
   z0: -13.0, z1: 67.0,
   cx:   0.0, cz: 27.0,
   w:   96.0, d: 80.0,
+  spawn: Object.freeze({ x: -11.40, z: -9.35, yaw: 0 }),
 });
 
 // Compatibility metadata. Outdoor movement must use the explicit zones below,
@@ -64,7 +66,7 @@ const RX = 48.0;
 const RZ = 40.0;
 const GROUND = { x: 0, z: 27, w: 104, d: 88 };
 const AXIS_X = -3.0;
-const SPAWN = { x: -11.40, z: -9.35, yaw: 0 };
+const SPAWN = CAMPUS_CONTRACT.spawn;
 const OUT = SPAWN;
 ```
 
@@ -82,12 +84,14 @@ zone clamp.
 | `campus-core` | `-28.40..28.40` | `18.00..66.60` | academic quad; light `(-3,4,36)` |
 | `campus-west` | `-47.80..-27.60` | `18.00..66.60` | admin/science edge; light `(-35,4,44)` |
 | `campus-east` | `27.60..47.80` | `18.00..66.60` | centre/library edge; light `(36,4,44)` |
-| `main-gate-apron` | `-6.35..0.35` | `-15.70..-12.60` | outside the clear gate opening |
-| `west-gate-apron` | `-50.70..-47.00` | `17.30..22.70` | short public pavement at west gate |
-| `east-gate-apron` | `47.00..50.70` | `17.30..22.70` | short public pavement at east gate |
+| `main-gate-apron` | `-6.35..0.35` | `-15.70..-12.60` | gate pavement; light `(-3,4,-1)` |
+| `west-gate-apron` | `-50.70..-47.00` | `17.30..22.70` | west pavement; light `(-35,4,44)` |
+| `east-gate-apron` | `47.00..50.70` | `17.30..22.70` | east pavement; light `(36,4,44)` |
 
 `roomAt(x,z)` should return the first zone containing the point, with the three apron zones checked
-before the four campus zones. Gate-apron outer edges receive visible rails and matching solids.
+before the four campus zones. If no zone contains the point, return the previous room when supplied,
+otherwise `campus-south`; never return a room without a three-number `light`. Gate-apron outer edges
+receive visible rails and matching solids.
 Every adjoining pair overlaps by at least 0.80 m. This is mandatory: `clampMove` insets a candidate
 zone by the 0.30 m player radius and only considers zones containing the previous point, so zones
 that merely touch are impassable. Preserve these overlaps if a boundary is edited.
@@ -199,7 +203,13 @@ They are scenery/maintenance lanes, not moving vehicle systems in v2.
 
 - West shaded lawn: `x=-18..-6.4, z=24..46`, flat centre `(-12.2,35)`, size `11.6 × 22`.
 - East shaded lawn: `x=.4..18, z=24..46`, flat centre `(9.2,35)`, size `17.6 × 22`.
-- Lawn kerbs: 0.18 m wide × 0.14 m high around each lawn; omit 2.4 m openings at bench pads.
+- Lawn kerbs are 0.18 m wide × 0.14 m high and visual-only—do **not** call `solid()`, because this
+  engine's 2D solids are infinitely high and would turn a step-over kerb into a wall. Exact runs:
+  west lawn north `x=-18..-6.4,z=46`, east edge `x=-6.4,z=24..46`, south segments
+  `x=-18..-17.2` and `-14.8..-9.2` at z=24, and west-edge segments z=`24..28.8`,
+  `31.2..40.8`,`43.2..46` at x=-18. East lawn north `x=.4..18,z=46`, west edge
+  `x=.4,z=24..46`, south segments x=`.4..9.8`,`12.2..18` at z=24, and east-edge segments
+  z=`24..28.8`,`31.2..40.8`,`43.2..46` at x=18. Every omitted interval is a bench-pad opening.
 - Jogging centreline: `(-19.0,23.0) → (19.0,23.0) → (19.0,47.0) → (-19.0,47.0) → close`.
   Draw a 0.12 m red line with 0.45 m corner dots and metre marks every 10 m. It is paint only,
   not a collider. One lap is approximately 124 m and teaches `跑步` without consuming more land.
@@ -215,9 +225,9 @@ project into paths but never reduce a clear path below 2.0 m.
 
 | id | building | footprint `(x0..x1, z0..z1)` | height / floors | public face and entry |
 |---|---|---|---|---|
-| `B01` | 第一教学楼 | `-19..13, 52..63` | 17.70 m / 5 | south; `(-3,52)`, focus `(-3,48.0)` |
+| `B01` | 第一教学楼 | `-19..13, 52..63` | 17.70 m / 5 | south; `(-3,52)`, building focus `(-3,47.0)` |
 | `B02` | 图书馆 | `30..43, 38..62` | 14.00 m / 4 | west; `(30,50)`, focus `(27.3,50)` |
-| `B03` | 学生食堂 | `-43..-29, -7..12` | 5.80 m / 1 | east; `(-29,2.5)`, focus `(-26.7,2.5)` |
+| `B03` | 学生食堂 | `-43..-29, -7..12` | 5.80 m / 1 | east; `(-29,2.5)`, focus `(-26.6,2.5)` |
 | `B04` | 学生宿舍 | `30..43, -9..7` | 19.00 m / 6 | west; `(30,-2)`, focus `(27.4,-2)` |
 | `B05` | 行政楼·国际学生中心 | `-43..-29, 24..36` | 13.60 m / 4 | east; `(-29,30)`, focus `(-26.6,30)` |
 | `B06` | 科学与创新楼 | `-43..-28, 40..62` | 16.20 m / 4 | east; `(-28,50)`, focus `(-25.5,50)` |
@@ -235,7 +245,7 @@ All multi-storey blocks use these rules unless their own section overrides them:
 - Window: dark reveal, inset sky pane, vertical/horizontal steel bars, stone sill. Reuse `fwinZ`
   for north/south faces and add `fwinX` for east/west faces.
 - AC units: only above ground floor, on roughly one of every three window bays using the stable
-  formula `(bay*3 + floor) % 3 === 0`.
+  formula `(bay + floor*2) % 3 === 0`; `bay` and `floor` are zero-based indices.
 - Public entrance: 2.4–3.6 m glazed opening, two or three shallow steps, 2.8–4.0 m canopy, bilingual
   blue directory sign, red/gold primary Chinese name.
 - Every public door has a 2.0 m clear waiting rectangle outside its collider and a `thing()` focus
@@ -284,8 +294,9 @@ All multi-storey blocks use these rules unless their own section overrides them:
 - Red vertical fascia `学生食堂` centred `(-28.72,4.25,4.0)`, yaw `Math.PI/2`.
 - Menu board at `(-28.78,1.75,-1.0)`; retain today's four dish/price rows.
 - Vending machine moves to `(-28.35,1.10,8.0)`, focus `(-26.9,8.0)`.
-- Jianbing cart moves to `(-26.0,1.0,1.0)`, customer focus `(-24.2,1.0)`; queue marks run north
-  at `(-24.2,1.0),(-24.2,2.2),(-24.2,3.4)`, entirely west of the bicycle shelter pad.
+- Jianbing cart moves to `(-26.0,1.0,-3.5)`, customer focus `(-24.2,-3.5)`; queue marks run south
+  at `(-24.2,-3.5),(-24.2,-4.7),(-24.2,-5.9)`, entirely west of the bicycle shelter pad and
+  outside the canteen waiting rectangle `x=-28.8..-26.8,z=.1..4.9`.
 - Rear delivery door at `(-43,1.25,5.5)` opens only visually to the west service lane; bins and
   gas cages are behind a 1.8 m screen at x=-44.1.
 - Body solid: `x=-43.20..-28.80,z=-7.20..12.20`; blocker top 6.20.
@@ -301,7 +312,9 @@ All multi-storey blocks use these rules unless their own section overrides them:
 - Parcel lockers: 12 blue/grey doors in a 3 × 4 grid centred `(29.55,1.20,3.5)`; locker solid
   `x=29.25..29.75,z=1.55..5.45`; interaction focus `(27.8,3.5)`. Delivery trolley parks at
   `(27.8,5.2)` outside the entry line.
-- Two laundry frames on the roof, visible but not interactive; six AC units by the standard rule.
+- Two laundry frames on the roof, visible but not interactive. Override the common AC rule with
+  exactly six west-facade units at `(bay,floor)=[(0,2),(1,4),(2,1),(3,3),(4,2),(4,5)]`, where
+  bay `0..4` maps to z=`[-7,-4,-1,2,5]` and floor `1..5` maps to y=`floor*3+1.35`.
 - Body solid: `x=29.80..43.20,z=-9.20..7.20`; blocker top 20.0.
 - `宿舍` interaction `(29.55,4.0,-2)`, focus `(27.4,-2)`, reach 2.6.
 
@@ -312,7 +325,9 @@ All multi-storey blocks use these rules unless their own section overrides them:
 - East facade window bays at z=`[25.5,28.5,31.5,34.5]`, floors `1..3`.
 - Primary sign `行政楼`; blue subordinate board `国际学生中心 / International Student Centre`.
 - Exterior directory at `(-26.8,1.65,27)`, 1.8 × 1.3 m, facing east path.
-- Two flag sockets at `(-27.2,29)` and `(-27.2,31)`; flags remain below the roofline.
+- Two flag sockets at `(-27.2,25.5)` and `(-27.2,34.5)`; each has a .24 m square base solid and
+  a .05 m radius pole. Flags remain below the roofline and outside the clear entrance rectangle
+  `x=-28.8..-26.8,z=28.1..31.9`.
 - Body solid: `x=-43.20..-28.80,z=23.80..36.20`; blocker top 14.20.
 - Interactions: `行政楼` focus `(-26.6,30)` and `学生服务中心` focus `(-26.6,27)`.
   The student-services action is the authoritative source of the persistent `学生证` used by the
@@ -321,7 +336,7 @@ All multi-storey blocks use these rules unless their own section overrides them:
 ### 6.7 B06 — 科学与创新楼
 
 - Mass: centre `(-35.5,8.10,51)`, size `15 × 16.20 × 22`, four floors at 3.65 m.
-- East entrance `(-28,1.60,50)`, 3.20 m wide; glass stair tower on the southeast corner from
+- East entrance `(-28,1.60,50)`, 3.20 m wide; glass stair tower on the northeast corner from
   z=55..60; blue `实验室` directory beside the door.
 - East facade bays at z=`[42,45.5,49,52.5,56,59.5]`, floors `1..3`; alternate bays use a taller
   lab-window transom. South wall has four ordinary office windows.
@@ -375,8 +390,9 @@ navigation and prop budgets pass.
 | print kiosk | centre `(-10.5,.60,15)`, size `1.6×1.2×1.0`, hatch faces south | `x=-11.35..-9.65,z=14.45..15.55` |
 
 The flag plinth leaves two 1.8 m marked lanes inside the 5.2 m spine, while the surrounding paved
-forecourt provides more than 4 m of unobstructed bypass on either side. Nothing else may be placed
-inside `x=-6..0,z=-12..52` unless explicitly listed as an axial object.
+forecourt provides more than 4 m of unobstructed bypass on either side. The gate/truss, flag/plinth,
+seal mosaic, teaching steps/canopy/door, and their interaction glyphs are the complete axial-object
+exception list. Nothing else may be placed inside `x=-6..0,z=-12..52`.
 
 ### 7.2 Bicycle hub
 
@@ -431,7 +447,7 @@ batch. Exact centres:
 ```js
 const CAMPUS_LAMPS = [
   [-7,-8],[1,-8],[-7,2],[1,2],[-7,12],[1,12],
-  [-12,24],[1,24],[-7,36],[1,36],[-12,48],[6,48],
+  [-12,25],[1,25],[-7,36],[1,36],[-12,48],[6,48],
   [-24,28],[-24,40],[22,28],[22,40],
   [-26.5,5.5],[27,1.5],[25,9],[23,17],
 ];
@@ -475,10 +491,10 @@ only the western table receives a second `书桌` anchor, reusing the existing s
 
 ```js
 const FOUNTAINS = [
-  [-1,-4],[-9,17],[8,23.2],[-18,46.5],[18,46.5],[-26.5,33.5],[27,35.5],[25,13],
+  [5,-4],[-9,17],[8,23.2],[-18,46.5],[18,46.5],[-24.5,33.5],[27,35.5],[25,13],
 ];
 const SORTING_BINS = [
-  [-20,-5],[18,-7],[-26,-3.5],[26,-6.5],[-15,16],[11,23],
+  [-20,-5],[18,-7],[-24.8,10.5],[26,-6.5],[-15,16],[11,23],
   [-25.5,38],[27,42],[-25,58],[25,61.5],[-27,14],[27,7.5],
 ];
 const FIRE_POINTS = [
@@ -497,7 +513,7 @@ const FIRE_POINTS = [
 
 ```js
 const INTERACTIVE_FOUNTAINS = [
-  { at:[-1,.78,-4],    focus:[-1,-3.2] },
+  { at:[5,.78,-4],     focus:[5,-3.2] },
   { at:[-9,.78,17],    focus:[-9,17.8] },
   { at:[8,.78,23.2],   focus:[8,22.4] },
   { at:[-18,.78,46.5], focus:[-18,47.3] },
@@ -510,7 +526,7 @@ const INTERACTIVE_FOUNTAINS = [
 | id | coordinate | content / construction |
 |---|---:|---|
 | `S01` | `(15,-2.5)` | campus map, south-facing, `校园地图` interaction |
-| `S02` | `(-4,16)` | four-way fingerpost: `教学楼 / 图书馆 / 食堂 / 宿舍` |
+| `S02` | `(3,16)` | four-way fingerpost: `教学楼 / 图书馆 / 食堂 / 宿舍` |
 | `S03` | `(-24,20)` | west district board: `食堂 / 行政楼 / 实验楼` |
 | `S04` | `(22,20)` | east district board: `宿舍 / 活动中心 / 校医院 / 图书馆` |
 | `S05` | `(-24,49)` | `实验楼 ← / 第一教学楼 →` |
@@ -519,7 +535,7 @@ const INTERACTIVE_FOUNTAINS = [
 | `S08` | `(46,20)` | east-gate campus map, faces west |
 | `O01` | `(29.5,3.5)` | 12-door parcel locker on dorm facade, `快递柜` interaction |
 | `O02` | `(-10.7,3)` | bicycle charging cabinet, six sockets |
-| `O03` | `(-26,1)` | animated jianbing cart, unchanged component recipe |
+| `O03` | `(-26,-3.5)` | animated jianbing cart; solid `x=-27.25..-24.70,z=-4.20..-2.80` |
 | `O04` | `(-28.35,8)` | drinks vending machine, unchanged component recipe |
 | `O05` | `(27.2,27)` | student-centre club notice case |
 | `O06` | `(27.2,31)` | clinic hours/department board |
@@ -619,7 +635,7 @@ do not identify as 杨柳胡同.
 | 图书馆 | `(29.55,2.6,50)` | `(27.3,50)` |
 | 食堂 | `(-28.55,2.4,2.5)` | `(-26.6,2.5)` |
 | 售货机 | `(-28.35,1.1,8)` | `(-26.9,8)` |
-| 煎饼 | `(-26,2.0,1)` | `(-24.2,1)` |
+| 煎饼 | `(-26,2.0,-3.5)` | `(-24.2,-3.5)` |
 | 大学 | `(-3,5.6,-12.4)` | `(-3,-10.4)` |
 | 自行车 | `(-10.3,1.1,5.8)` | `(-8.9,5.8)` |
 | 布告板 | `(9,2.72,-2.8)` | `(9,-4.0)` |
@@ -650,13 +666,15 @@ building is its single authoritative source; do not mint the item from multiple 
 ### 9.4 Save migration for the new footprint
 
 Existing v1 saves restore a campus `x/z/yaw` verbatim, and many coordinates that were formerly open
-become walls in this layout. Define `CAMPUS_LAYOUT_VERSION = 2`, export the canonical `SPAWN`, and
-write `layouts:{campus:CAMPUS_LAYOUT_VERSION}` into the existing save blob. During `loadGame()`,
-before `setPlace`, normalize a campus save whose marker is absent or differs:
+become walls in this layout. `campus.js` publishes the top-level `window.CampusContract` before its
+Lazy scene closure, so `game.js` can write
+`layouts:{campus:window.CampusContract.layoutVersion}` into the existing save blob. During
+`loadGame()`, before `setPlace`, normalize a campus save whose marker is absent or differs:
 
 ```js
-if (savedPlace === 'campus' && s.layouts?.campus !== CAMPUS_LAYOUT_VERSION)
-  savedAt = { ...CAMPUS_SPAWN };
+const cc = window.CampusContract;
+if (savedPlace === 'campus' && s.layouts?.campus !== cc.layoutVersion)
+  savedAt = { ...cc.spawn };
 ```
 
 This is a one-time layout migration, not a save-format bump: old `v:1` lives remain readable and
