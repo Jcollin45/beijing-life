@@ -54,6 +54,7 @@ jobs:
           BOOT_DEVTOOLS_TRIES: "600"
           BOOTCHECK_TIMEOUT_MS: "180000"
           HARNESS_TIMEOUT_MS: "600000"
+          LIVE_SCREENSHOT_DIR: test-results/zoo-visuals
         shell: bash
         run: |
           set +e
@@ -73,6 +74,15 @@ jobs:
             echo "::error title=Remote game boot failed::$message"
           fi
           exit "$status"
+
+      - name: Upload zoo visual-review captures
+        if: always()
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: zoo-visual-review-${{ github.sha }}
+          path: test-results/zoo-visuals/
+          if-no-files-found: warn
+          retention-days: 7
 
       - name: Print server failures
         if: failure()

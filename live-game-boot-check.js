@@ -11,6 +11,7 @@ const path = require('path');
 
 const CHROME = process.env.CHROME || '/usr/bin/google-chrome';
 const GAME_URL = process.env.GAME_URL || 'http://127.0.0.1:8000/index.html';
+const SCREENSHOT_DIR = process.env.LIVE_SCREENSHOT_DIR || '';
 const DEBUG_PORT = 12000 + Math.floor(Math.random() * 12000);
 const profile = fs.mkdtempSync(path.join(os.tmpdir(), 'beijing-life-cloud-'));
 const sleep = ms => new Promise(resolve => setTimeout(resolve, ms));
@@ -104,6 +105,35 @@ async function main() {
     return response.result.value;
   }
 
+  async function capture(name) {
+    if (!SCREENSHOT_DIR) return null;
+    fs.mkdirSync(SCREENSHOT_DIR, { recursive: true });
+    const shot = await send('Page.captureScreenshot', {
+      format: 'png', fromSurface: true, captureBeyondViewport: false,
+    });
+    const file = path.join(SCREENSHOT_DIR, `${name}.png`);
+    fs.writeFileSync(file, Buffer.from(shot.data, 'base64'));
+    return file;
+  }
+
+  async function enterScene(place, at, name) {
+    const result = await evaluate(`(async()=>{
+      try {
+        window.__game.setPlace(${JSON.stringify(place)},${JSON.stringify(at)});
+        await new Promise(resolve=>setTimeout(resolve,2200));
+        const scene=window.__game.scene();
+        return {ok:true,place:window.__game.state().place,props:scene.props.length,
+          things:scene.things.length,solids:scene.solids.length,
+          art:scene.artStats?scene.artStats.props.length:
+            scene.expansion&&scene.expansion.artStats?scene.expansion.artStats.props.length:0};
+      } catch(error) { return {ok:false,error:error.stack||error.message}; }
+    })()`, 30000);
+    if (!result.ok || result.place !== place)
+      throw new Error(`${name} entry failed: ${JSON.stringify(result)}`);
+    result.screenshot = await capture(name);
+    return result;
+  }
+
   await send('Page.enable');
   await send('Runtime.enable');
   await send('Log.enable');
@@ -161,8 +191,20 @@ async function main() {
   if (!campus.ok || campus.place !== 'campus')
     throw new Error(`Campus entry failed: ${JSON.stringify(campus)}`);
 
+  // These hosted-runner views are the visual handoff for the zoo remaster.  Nothing launches on
+  // the developer's computer: GitHub's disposable Chrome renders the deployed source and the
+  // workflow publishes the PNGs as a review artifact.
+  const zooViews = {};
+  zooViews.core = await enterScene('zoo', {x:-12,z:-13.4,yaw:0}, 'zoo-core-arrival');
+  zooViews.west = await enterScene('zoo', {x:-37.5,z:-5,yaw:-Math.PI/2}, 'zoo-west-wetlands');
+  zooViews.central = await enterScene('zoo', {x:-19,z:29,yaw:Math.PI/2}, 'zoo-central-conservation');
+  zooViews.east = await enterScene('zoo', {x:20.5,z:2.5,yaw:Math.PI/2}, 'zoo-east-savannah');
+  zooViews.north = await enterScene('zoo', {x:23,z:52,yaw:Math.PI/2}, 'zoo-north-buildings');
+  zooViews.tropical = await enterScene('zoo_tropical', {x:-11.5,z:0,yaw:Math.PI/2},
+    'zoo-tropical-house');
+
   const lateErrors = errors.filter(text => !/favicon|autoplay|Download the React/i.test(text));
-  const report = { loader, entered, campus, errors: lateErrors.slice(0, 12) };
+  const report = { loader, entered, campus, zooViews, errors: lateErrors.slice(0, 12) };
   console.log(JSON.stringify(report, null, 2));
   if (lateErrors.length) throw new Error(`runtime errors: ${lateErrors.join(' || ')}`);
   socket.close();

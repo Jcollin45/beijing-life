@@ -166,10 +166,12 @@ const ZooContents = (() => {
           b(x,y+.016,z,w,.032,d,m.color,{mode:1});
           for(let i=-2;i<=2;i++)b(x+i*w*.16,y+.034,z,w*.045,.012,d*.88,mats.get('M-MESH').color,{mode:1});break;
         case 'keeper-safe-zone':
-          fl(rectOf(q),y,m.color,{mode:9,gloss:.10});
+          // Clear the broad habitat-art floor by 2.7 cm. At the old two-millimetre separation the
+          // painted pad shimmered whenever the wide camera crossed a district.
+          fl(rectOf(q),y+.027,m.color,{mode:9,gloss:.10});
           // The two painted edge bars are untextured markings, so submit them through the zoo's
           // existing mode-1 box batch instead of inheriting the concrete pad material.
-          for(const s of [-1,1])add(box(x+s*w*.42,y+.025,z,w*.08,.025,d*.82,
+          for(const s of [-1,1])add(box(x+s*w*.42,y+.052,z,w*.08,.025,d*.82,
             mats.get('M-ROOF-RED').color,{hard:true,mode:1}));break;
         case 'counter':
           b(x,y+h*.45,z,w,h*.9,d,m.color,{ry:yaw});b(x,y+h*.96,z,w+Math.min(.16,w*.08),h*.1,d+Math.min(.12,d*.1),mats.get('M-TIMBER').color,{ry:yaw});break;

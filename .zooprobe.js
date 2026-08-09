@@ -51,6 +51,13 @@ function buildProbe() {
   run(ctx, 'js/zoo-animals.js');
   run(ctx, 'js/lazy.js');
   run(ctx, 'js/build.js');
+  run(ctx, 'js/zoo-art-core.js');
+  run(ctx, 'js/zoo-art-west.js');
+  run(ctx, 'js/zoo-art-central.js');
+  run(ctx, 'js/zoo-art-east.js');
+  run(ctx, 'js/zoo-art-infrastructure.js');
+  run(ctx, 'js/zoo-art-tropical.js');
+  run(ctx, 'js/zoo-art.js');
   run(ctx, 'js/zoo-contents.js');
   run(ctx, 'js/zoo-expansion.js');
   run(ctx, 'js/zoo.js');
@@ -198,8 +205,10 @@ function validate(probe = buildProbe()) {
         Math.hypot(q.at[0]-q.interaction.focus[0],q.at[2]-q.interaction.focus[1])<=q.interaction.reach+1e-6);
     }
   }
-  check('outdoor prop budget', o.props.length <= p.performanceBudgets.outdoorTotalProps,
-    `${o.props.length}/${p.performanceBudgets.outdoorTotalProps}`);
+  const remasterAllowance=vm.runInContext('ZooArt.CONTRACT.outdoorArtPropAllowance',probe.ctx);
+  const remasterPropCap=p.performanceBudgets.outdoorTotalProps+remasterAllowance;
+  check('outdoor construction plus explicit art-remaster prop budget',
+    o.props.length <= remasterPropCap,`${o.props.length}/${remasterPropCap}`);
   check('tropical prop budget', t.props.length <= p.performanceBudgets.tropicalProps,
     `${t.props.length}/${p.performanceBudgets.tropicalProps}`);
   check('outdoor batch budget',o.batches.length<=p.performanceBudgets.outdoorBatches,
@@ -208,6 +217,20 @@ function validate(probe = buildProbe()) {
     `${t.batches.length}/${p.performanceBudgets.tropicalBatches}`);
   check('loose dynamic-prop budget',o.loose.length<=p.performanceBudgets.looseDynamicProps,
     `${o.loose.length}/${p.performanceBudgets.looseDynamicProps}`);
+  const outdoorArt=o.props.filter(q=>/^ART-/.test(q.blueprintId||''));
+  const tropicalArt=t.props.filter(q=>/^ART-/.test(q.blueprintId||''));
+  check('outdoor art modules expose their canonical build result',!!(o.expansion.artStats&&
+    o.expansion.artStats.props.length===outdoorArt.length&&
+    o.expansion.artStats.ids.length===outdoorArt.length));
+  check('Tropical House art module exposes its canonical build result',!!(t.artStats&&
+    t.artStats.props.length===tropicalArt.length&&t.artStats.ids.length===tropicalArt.length));
+  check('every art prop is opaque, static, unpickable and distance bounded',
+    [...outdoorArt,...tropicalArt].every(q=>!q.tag&&!q.dynamic&&!q.glow&&!q.alphaGroup&&
+      (q.alpha===undefined||q.alpha>=.999)&&(q.zooLodMax===26||q.zooLodMax===34)));
+  check('every outdoor art prop belongs to the canonical five-chunk renderer',
+    outdoorArt.every(q=>p.performanceBudgets.districtChunking.includes(q.renderChunk)));
+  check('art IDs are globally unique',new Set([...outdoorArt,...tropicalArt]
+    .map(q=>q.blueprintId)).size===outdoorArt.length+tropicalArt.length);
   check('outdoor solid budget', o.solids.length <= p.performanceBudgets.bodySolids,
     `${o.solids.length}/${p.performanceBudgets.bodySolids}`);
   check('outdoor blocker budget', o.blockers.length <= p.performanceBudgets.cameraBlockers,

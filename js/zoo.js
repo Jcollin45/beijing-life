@@ -173,8 +173,10 @@ const Zoo = Lazy('Zoo', () => {
         { rz: s2 * .58, gloss: G.wood });
     const crownStart=B.props.length;
     ball(cx, h * .665, cz, 1.24, .38, 1.24, col.leafU, { gloss: .08, mode: 15 });
-    const RING = [[.715, 1.00, 5, .82, [1, 3, 3]], [.845, 1.14, 6, .90, [3, 0, 1]],
-                  [.965, .76, 4, .78, [2, 0, 2]], [1.055, 0, 1, .72, [2, 2, 2]]];
+    // Seven offset masses plus the low under-crown make one irregular canopy. The former fifteen
+    // equal balls produced the repeated lollipop skyline that dominated every wide zoo view.
+    const RING = [[.735, 1.00, 4, .88, [1, 3, 0]], [.900, .62, 2, .78, [3, 2, 1]],
+                  [1.025, 0, 1, .68, [2, 2, 2]]];
     const T5 = [col.leaf, col.leafD, col.leafL, col.leafM, col.leafU];
     let li = 0;
     for (const [ry0, rad, n, cr, tone] of RING)
@@ -184,8 +186,13 @@ const Zoo = Lazy('Zoo', () => {
           cr, cr * .78, cr, T5[tone[i % 3]], { gloss: .12, mode: 15, ry: a });
       }
     B.props.slice(crownStart).forEach(p=>{p.zooLodMax=34;});
-    const crownProxy=ball(cx,h*.82,cz,1.72,1.42,1.72,col.leafU,{gloss:.08,mode:15});
-    crownProxy.zooLodMin=34;
+    // Two flattened, offset far masses keep the asymmetric silhouette instead of collapsing every
+    // species and tree size to the same green sphere.
+    const crownProxyA=ball(cx-.38,h*.80,cz+.22,1.36,1.06,1.48,col.leafU,
+      {gloss:.08,mode:15});
+    const crownProxyB=ball(cx+.48,h*.86,cz-.28,1.18,.92,1.30,col.leafM,
+      {gloss:.08,mode:15});
+    crownProxyA.zooLodMin=34;crownProxyB.zooLodMin=34;
     solid(cx - .28, cx + .28, cz - .28, cz + .28);
     shade(cx, cz, 3.0, 3.0, .26);
   }
@@ -249,6 +256,7 @@ const Zoo = Lazy('Zoo', () => {
   // 长椅 a park bench: a concrete frame and wooden slats. The same one the park has, because it is
   // the same bench — every one of them in the city came off the same production line.
   function bench(cx, cz, ry) {
+    const propStart=B.props.length;
     const T = { ry, tag: '长椅' };
     for (const s of [-1, 1])
       box(cx + Math.cos(ry) * s * .74, .22, cz - Math.sin(ry) * s * .74,
@@ -271,16 +279,19 @@ const Zoo = Lazy('Zoo', () => {
       '长 long + 椅 chair. 休息 is to rest.',
       { focus: [cx + Math.sin(ry) * 1.2, cz + Math.cos(ry) * 1.2], reach: 1.9 });
     th.seat={at:[cx,cz],yaw:ry,seatY:.48};th.stand=th.focus.slice();
+    B.props.slice(propStart).forEach(p=>{p.zooLodMax=26;});
   }
 
   // 垃圾桶 a bin. Placed on the centre of a run of benches rather than in the gap between two
   // enclosures: a 2 m gap with a bin in it is not a way through, and the player finds that out by
   // being unable to reach a label they can see.
   function bin(bx, bz) {
+    const propStart=B.props.length;
     cyl(bx, .38, bz, .21, .76, col.leafD, { gloss: .26 });
     cyl(bx, .78, bz, .22, .06, col.charcoal, { gloss: .24 });
     box(bx, .58, bz - .22, .22, .16, .02, col.cream, { hard: true, mode: 1 });
     solid(bx - .24, bx + .24, bz - .24, bz + .24);
+    B.props.slice(propStart).forEach(p=>{p.zooLodMax=26;});
   }
 
   // ---- 说明牌 the interpretation board every enclosure has.
@@ -398,12 +409,13 @@ const Zoo = Lazy('Zoo', () => {
   // stood. The wider face grows along the path, not across it, so the player's clear route is
   // unchanged even at the two east/west-facing habitats.
   function plaque(px, pz, yaw, name, accent = col.greenD) {
+    const propStart=B.props.length;
     const c = Math.cos(yaw), s = Math.sin(yaw), info = HABITAT_BY_NAME.get(name);
     const point = (u, y, d = .057) => [px + c * u + s * d, y, pz - s * u + c * d];
     for (const o of [-.76, .76])
       cyl(px + c * o, .53, pz - s * o, .038, 1.06, col.steelD,
         { tag: name, gloss: G.metal, ...MAT.rail });
-    box(px, 1.36, pz, 2.22, 1.28, .080, col.greenD,
+    const panel=box(px, 1.36, pz, 2.22, 1.28, .080, col.greenD,
       { tag: name, hard: true, ry: yaw, gloss: .24, ...MAT.metal });
 
     // One coloured cap and two tiny bullets continue the habitat colour without sacrificing the
@@ -445,6 +457,8 @@ const Zoo = Lazy('Zoo', () => {
         { size: .035, gap: -.008, color: col.cream, mode: 1, lift: .006, tag: name });
     }
 
+    // Full copy and relief are close-reading detail; one backing silhouette remains farther out.
+    B.props.slice(propStart).forEach(p=>{p.zooLodMax=26;});panel.zooLodMax=42;
     const hx = Math.abs(c) * 1.16 + Math.abs(s) * .11;
     const hz2 = Math.abs(s) * 1.16 + Math.abs(c) * .11;
     solid(px - hx, px + hx, pz - hz2, pz + hz2);
@@ -526,7 +540,10 @@ const Zoo = Lazy('Zoo', () => {
     ];
     for (const [k, sx, sz, sw, sd] of sides) {
       const pub = p.face === k;
-      const h = pub ? LO : HI;
+      // Invisible collision remains the authored full habitat rectangle. Visually, a continuous
+      // 1–2 m concrete back wall around every pen made the core read as a prison grid; a low planted
+      // curb is enough on non-public sides, while the public edge keeps its handrail and identity.
+      const h = pub ? LO : Math.min(HI, .68);
       // Poured concrete at a 1.75 m repeat for the wall, and a finer 95 cm one for the coping
       // that caps it — the same material at two scales is what tells the eye they are two
       // different pours, which is the only thing distinguishing them now that both are grey.
@@ -534,8 +551,8 @@ const Zoo = Lazy('Zoo', () => {
         { ...T, hard: true, gloss: G.matte, ...MAT.conc });
       // The public coping matches the habitat panel: one restrained band of colour is enough to
       // turn seven near-identical concrete rectangles into seven places you can navigate by eye.
-      box(sx, h + .045, sz, sw + .10, .09, sd + .10, pub && o.accent ? o.accent : col.concL,
-        { ...T, hard: true, gloss: .18, ...MAT.concF });
+      if (pub) box(sx, h + .045, sz, sw + .10, .09, sd + .10,
+        o.accent || col.concL, { ...T, hard: true, gloss: .18, ...MAT.concF });
       if (!pub || o.rail === false) continue;
       // The handrail: uprights every 1.6 m and two rails, running along whichever axis this side
       // lies on. A rail is the one thing that gives the barrier a human scale to read it against.
@@ -598,30 +615,30 @@ const Zoo = Lazy('Zoo', () => {
     cyl(cx, .34, cz, 1.27, .16, col.grassD, { tag: '动物园', gloss: .10 });
 
     // A seated stone panda, facing the gate (-z).
-    ball(cx, .96, cz + .02, .55, .68, .48, col.stoneL,
+    ball(cx, .78, cz + .02, .40, .49, .35, col.stoneL,
       { tag: '动物园', gloss: .12 });
-    ball(cx, 1.52, cz - .06, .47, .45, .43, col.stoneL,
+    ball(cx, 1.18, cz - .06, .34, .33, .31, col.stoneL,
       { tag: '动物园', gloss: .12 });
     for (const s of [-1, 1]) {
-      ball(cx + s * .37, 1.82, cz - .05, .18, .18, .15, col.stoneD,
+      ball(cx + s * .27, 1.40, cz - .05, .13, .13, .11, col.stoneD,
         { tag: '动物园', gloss: .12 });
-      ball(cx + s * .19, 1.58, cz - .43, .13, .18, .055, col.stoneD,
+      ball(cx + s * .14, 1.22, cz - .32, .095, .13, .040, col.stoneD,
         { tag: '动物园', gloss: .10, rz: s * .24 });
-      capsule(cx + s * .45, 1.02, cz - .01, .14, .68, .14, col.stoneD,
+      capsule(cx + s * .33, .82, cz - .01, .10, .49, .10, col.stoneD,
         { tag: '动物园', gloss: .10, rz: s * .32 });
-      ball(cx + s * .37, .54, cz - .12, .29, .25, .38, col.stoneD,
+      ball(cx + s * .27, .48, cz - .10, .21, .18, .28, col.stoneD,
         { tag: '动物园', gloss: .10 });
     }
-    ball(cx, 1.40, cz - .47, .25, .16, .10, col.stone,
+    ball(cx, 1.13, cz - .35, .18, .12, .075, col.stone,
       { tag: '动物园', gloss: .12 });
-    ball(cx, 1.45, cz - .565, .075, .055, .035, col.charcoal,
+    ball(cx, 1.17, cz - .42, .055, .040, .026, col.charcoal,
       { tag: '动物园', gloss: .20 });
 
     // Flowers are kept as broad low clumps, not dozens of individual stems: at entrance distance
     // the colour mass is what reads, and the shared ball mesh keeps the garden cheap to draw.
-    const petals = [col.pink, col.yellow, col.purple, col.white, col.redL];
-    for (let i = 0; i < 14; i++) {
-      const a = i / 14 * Math.PI * 2, r = 1.78 + (i % 2) * .12;
+    const petals = [col.pink, col.purple, col.white];
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2 + (i % 2) * .14, r = 1.68 + (i % 2) * .10;
       const x = cx + Math.sin(a) * r, z = cz + Math.cos(a) * r;
       ball(x, .20 + (i % 3) * .025, z, .30, .16, .30, col.leafM,
         { gloss: .08, mode: 15 });
@@ -1260,6 +1277,7 @@ const Zoo = Lazy('Zoo', () => {
     // respond. Outdoors the engine switches these with the sun, so they are off all day.
     for (const [lx, lz] of [[GX - 5.6, -RZ + 4.6], [-20.55, -6.0], [-20.55, 10.0],
                             [20.55, -6.0], [20.55, 10.0], [16.2, 9.5], [0, -14.65]]) {
+      const lampStart=B.props.length;
       cyl(lx, 1.90, lz, .075, 3.80, col.charcoal, { gloss: .28 });
       box(lx, 3.92, lz, .46, .18, .46, col.charcoal, { hard: true, gloss: .28 });
       litten(box(lx, 3.78, lz, .38, .10, .38, C('#ffe6ae'),
@@ -1269,6 +1287,7 @@ const Zoo = Lazy('Zoo', () => {
       // it belongs to puts its brightest ring on the top of the lamp head, where nobody is.
       light(lx, 3.55, lz, [1.00, 0.84, 0.58], 1.00, 6.6);
       solid(lx - .12, lx + .12, lz - .12, lz + .12);
+      B.props.slice(lampStart).forEach(p=>{p.zooLodMax=26;});
     }
 
     // ---- 地铁站 the way back to the line, at the west end of the entrance plaza

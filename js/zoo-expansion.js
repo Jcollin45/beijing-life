@@ -251,10 +251,18 @@ const ZooExpansion = (() => {
         }
       }
       for (const p of props.slice(crownStart)) p.zooLodMax = 34;
-      const proxy = kind === 'pine' ?
-        taper(x,h*.75,z,h*.46,h*.72,h*.46,P.pine,{mode:15,gloss:.06}) :
-        ball(x,h*.72,z,h*.36,h*.30,h*.36,crown,{mode:15,gloss:.06});
-      proxy.zooLodMin = 34;
+      if (kind === 'pine') {
+        const proxy=taper(x,h*.75,z,h*.46,h*.72,h*.46,P.pine,{mode:15,gloss:.06});
+        proxy.zooLodMin=34;
+      } else {
+        // Broadleaf and willow crowns keep two offset flattened masses at distance. The previous
+        // single round proxy recreated the same lollipop silhouette the near LOD had avoided.
+        const a=ball(x-h*.10,h*.70,z+h*.05,h*.29,h*.22,h*.32,crown,
+          {mode:15,gloss:.06});
+        const b=ball(x+h*.14,h*.75,z-h*.06,h*.25,h*.20,h*.28,P.leafL,
+          {mode:15,gloss:.06});
+        a.zooLodMin=34;b.zooLodMin=34;
+      }
       // The planting contract gives every scheduled trunk the same measured 0.56 m body. Crowns
       // remain visual only, so paths under a canopy stay usable while nobody walks through bark.
       solid(x - .28, x + .28, z - .28, z + .28);
@@ -485,6 +493,7 @@ const ZooExpansion = (() => {
       const isGlass = /GLASS|HIPPO|BIGCAT/.test(archetype.id);
       const isTimber = archetype.id === 'BA-FAMILY-TIMBER';
       const isRail = /RAIL|LAKE|MOAT|RHINO/.test(archetype.id);
+      const isMesh = /AVIARY|FINE-MESH|PRIMATE-MESH/.test(archetype.id);
       const matCol = isTimber ? P.timber : isGlass ? P.rock :
         isRail ? P.rock : P.steelD;
       let x, z, w, d, rect;
@@ -517,6 +526,24 @@ const ZooExpansion = (() => {
           box(x, y, z, side[0] === 'z' ? w : .045, .045,
             side[0] === 'x' ? d : .045, P.steelD,
             { hard: true, gloss: .54, ...MAT.steel });
+      } else if (isMesh) {
+        // Mesh must be visually open. The old fallback was one full-height opaque steel box with
+        // bars drawn over it, which turned every aviary and primate habitat into a blind metal
+        // cell. Collision still comes from the exact canonical rectangle below; this is a low
+        // plinth, spaced uprights and three cable rails only.
+        first = box(x, .10, z, side[0] === 'z' ? w : Math.max(w, .18), .20,
+          side[0] === 'x' ? d : Math.max(d, .18), P.rock,
+          { hard: true, gloss: .08, ...MAT.concrete });
+        const len = range[1] - range[0], n = Math.max(2, Math.ceil(len / 1.8));
+        for (let i = 0; i <= n; i++) {
+          const v = range[0] + len * i / n;
+          if (side[0] === 'x') cyl(x, height / 2, v, .025, height, P.steel, { gloss: .46 });
+          else cyl(v, height / 2, z, .025, height, P.steel, { gloss: .46 });
+        }
+        for (const y of [height * .34, height * .67, height])
+          box(x, y, z, side[0] === 'z' ? w : .038, .038,
+            side[0] === 'x' ? d : .038, P.steelD,
+            { hard: true, gloss: .50, ...MAT.steel });
       } else {
         first = box(x, height / 2, z, w, height, d, matCol,
           { hard: true, gloss: isTimber ? .16 : .30,
@@ -852,6 +879,8 @@ const ZooExpansion = (() => {
         { tag: rec.hz, focus: rec.focus, reach: rec.reach }, rec.id);
       // The backing and district strip remain as the distant silhouette; relief, facts and small
       // type collapse at the plan's 28 m sign-detail threshold.
+      p.zooLodMax=42;
+      if(props[propStart+1])props[propStart+1].zooLodMax=42;
       props.slice(propStart + 2).forEach(p => { p.zooLodMax = 28; });
       return p;
     }
@@ -1359,6 +1388,7 @@ const ZooExpansion = (() => {
     }
 
     function buildBench(rec) {
+      const propStart=props.length;
       const [x, z] = rec.at, yaw = rec.faceYaw || 0;
       const tag = '长椅', c = Math.cos(yaw), s = Math.sin(yaw);
       const atLocal = (u, v) => [x + c * u + s * v, z - s * u + c * v];
@@ -1383,20 +1413,24 @@ const ZooExpansion = (() => {
         { tag, focus: rec.focus, reach: plan.objectScheduleContract.benches.reach },
         `TH-${rec.id}`);
       th.seat={at:[x,z],yaw,seatY:.48};th.stand=rec.focus.slice();
+      props.slice(propStart).forEach(p=>{p.zooLodMax=26;});
       counts.furniture++;
     }
 
     function buildBin(rec) {
+      const propStart=props.length;
       const [x, z] = rec.at;
       mark(cyl(x, .43, z, .22, .86, P.charcoal,
         { gloss: .34, ...MAT.steel }), rec.id);
       cyl(x, .88, z, .24, .08, P.steel, { gloss: .48, ...MAT.steel });
       box(x, .69, z - .205, .20, .20, .04, P.black, { hard: true });
       const r = plan.objectScheduleContract.bins.bodyRadius;
-      solid(x - r, x + r, z - r, z + r); counts.furniture++;
+      solid(x - r, x + r, z - r, z + r);
+      props.slice(propStart).forEach(p=>{p.zooLodMax=26;});counts.furniture++;
     }
 
     function buildLamp(rec, i) {
+      const propStart=props.length;
       const [x, z] = rec.at, h = plan.objectScheduleContract.lamps.bodyHeight;
       mark(cyl(x, h / 2, z, .07, h, P.steelD,
         { gloss: .52, ...MAT.steel }), rec.id);
@@ -1409,10 +1443,12 @@ const ZooExpansion = (() => {
       lampLight.on = false;
       nightGlows.push({ bulb, pool });
       const r = plan.objectScheduleContract.lamps.bodyRadius;
-      solid(x - r, x + r, z - r, z + r); counts.furniture++;
+      solid(x - r, x + r, z - r, z + r);
+      props.slice(propStart).forEach(p=>{p.zooLodMax=26;});counts.furniture++;
     }
 
     function facingBoard(rec, color = P.blue) {
+      const propStart=props.length;
       const [x, z] = rec.at, yaw = rec.yaw || 0, tag = rec.tag;
       const nx = Math.sin(yaw), nz = Math.cos(yaw), c = Math.cos(yaw), s = Math.sin(yaw);
       mark(box(x, 1.34, z, 1.18, 1.55, .13, color,
@@ -1475,6 +1511,7 @@ const ZooExpansion = (() => {
       glyphs(north[0], north[1], north[2], yaw, '北',
         { size:.10, gap:0, color:P.red, mode:1, tag, glyphRole:'micro' });
       props.slice(detailStart).forEach(p => { p.zooLodMax = 28; });
+      props.slice(propStart,detailStart).forEach(p=>{p.zooLodMax=42;});
       localThing(tag, [x, 1.34, z], '先看一下园区导游图。', 'Check the zoo map first.',
         `Map fixture ${rec.id} has its own plan-authored focus.`,
         { tag, focus: rec.focus, reach: rec.reach }, rec.thingId);
@@ -1627,8 +1664,15 @@ const ZooExpansion = (() => {
     }
     const routeTotal = routeCumulative[routeCumulative.length - 1];
 
+    // Each district's visual remaster composes here, before chunk and LOD ownership is assigned.
+    // ZooArt enforces a render-only contract, so this cannot alter routes, reachability, click
+    // targets or the already-audited collision budgets.
+    if (typeof ZooArt === 'undefined')
+      throw new Error('ZooExpansion: ZooArt orchestrator is missing');
+    const artStats = ZooArt.buildOutdoor(B, { plan });
+
     // The companion fit-out blueprint is compiled before render/collision chunk snapshots. This
-    // makes all 227 additive pen/building records first-class members of the same five render
+    // makes all 237 additive pen/building records first-class members of the same five render
     // chunks and the same 180/55 collision budgets instead of an unbudgeted overlay appended
     // after the fact. `existing-r2` records are documentation only and are skipped by the compiler.
     if (typeof ZooContents === 'undefined')
@@ -1839,7 +1883,7 @@ const ZooExpansion = (() => {
       accessibleRoute:Object.freeze(accessibleRouteSegments.map(q=>Object.freeze({
         a:Object.freeze(q.a),b:Object.freeze(q.b),owner:q.owner}))),
       refreshCollision, refreshRenderChunks, toggleAccessibleRoute,
-      contentsStats,
+      contentsStats, artStats,
       spawn: { x: plan.site.mainSpawn.at[0], z: plan.site.mainSpawn.at[1],
         yaw: plan.site.mainSpawn.yaw },
       secondarySpawn: { x: plan.site.secondarySpawn.at[0], z: plan.site.secondarySpawn.at[1],

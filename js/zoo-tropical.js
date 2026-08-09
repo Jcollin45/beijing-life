@@ -427,6 +427,9 @@ const ZooTropical = Lazy('ZooTropical', () => {
   buildShell();
   buildHabitats();
   buildObjects();
+  if (typeof ZooArt === 'undefined')
+    throw new Error('ZooTropical: ZooArt orchestrator is missing');
+  const artStats=ZooArt.buildTropical(B,{plan,scene:S});
   if (typeof ZooContents === 'undefined')
     throw new Error('ZooTropical: ZooContents compiler is missing');
   const contentsStats=ZooContents.buildTropical(B,
@@ -465,5 +468,6 @@ const ZooTropical = Lazy('ZooTropical', () => {
     },
   });
   scene.contentsStats=contentsStats;
+  scene.artStats=artStats;
   return scene;
 });
