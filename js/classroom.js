@@ -1,16 +1,16 @@
 // 教室 — a classroom inside the teaching block, reached through the entrance on the forecourt.
 //
-// What a Chinese classroom is: a green chalkboard across the front wall with the day's lesson
-// on it and the school slogan above it, a teacher's podium, rows of shared desks facing it,
-// fluorescent tubes in a suspended ceiling, and a window wall along one side letting the
-// forecourt light in. The door is at the back; out through it is the campus.
+// A twelve-seat university Chinese seminar room: a green chalkboard across the front wall with
+// the day's lesson on it and the university slogan above it, a teacher's podium, three rows of
+// shared desks facing it, fluorescent tubes in a suspended ceiling, and a window wall along one
+// side letting the forecourt light in. Its corridor door ultimately leads back out to the campus.
 //
 // Indoors, like the office and the shop: the renderer takes its light from the ceiling bulb
 // and the window, and the room shell is set from RX/H/RZ.
 const Classroom = Lazy('Classroom', () => {
   const col = {
-    floor: C('#cfc6b4'), floorD: C('#b8af9d'), floorL: C('#ded7c6'),
-    wall: C('#e7e2d6'), wallD: C('#cfc9bc'), trim: C('#9a9484'), ceil: C('#dcd6c8'),
+    floor: C('#cec4b1'), floorD: C('#afa694'), floorL: C('#e3dccd'),
+    wall: C('#eee9df'), wallD: C('#c8c0b2'), trim: C('#746a5b'), ceil: C('#f0eee8'),
     board: C('#2f5d4a'), boardF: C('#264a3a'), chalk: C('#f1ece0'), tray: C('#6b4a32'),
     desk: C('#c9a07a'), deskD: C('#9c764f'), deskTop: C('#d8b48c'),
     metal: C('#8a9097'), metalD: C('#5f656b'), steel: C('#b8bec4'),
@@ -20,7 +20,8 @@ const Classroom = Lazy('Classroom', () => {
     sky: C('#c2d4e2'), haze: C('#b4bcc0'), glass: C('#9fb6c4'),
     flagR: C('#b2412f'),
     leaf: C('#4f7a3c'), terracotta: C('#a2705a'), mud: C('#6b5a45'),
-    blue: C('#3a6ea8'), teal: C('#4c8a86'), green: C('#2f7a4f'), key: C('#3a3f45'),
+    blue: C('#315f8e'), blueL: C('#6f8eaa'), teal: C('#4c7f7b'), green: C('#2f7a4f'),
+    acoustic: C('#bdb3a3'), cork: C('#b78d62'), key: C('#3a3f45'),
   };
   const G = { matte: .05, wood: .20, paint: .16, metal: .58, glass: .80, fabric: .04 };
 
@@ -67,10 +68,13 @@ const Classroom = Lazy('Classroom', () => {
     for (const sx of [-1, 1]) for (const sz of [-1, 1])
       box(cx + sx * .60, .37, cz + sz * .28, .06, .74, .06, col.deskD,
         { hard: true, gloss: G.wood, ...T });
-    // two stools, tucked under
+    // two upholstered stools, tucked under.  The blue seats repeat the teaching-block
+    // wayfinding colour and stop the furniture field reading as one undifferentiated brown mass.
     for (const s of [-1, 1]) {
-      box(cx + s * .36, .46, cz - .46, .36, .05, .36, col.desk,
-        { hard: true, gloss: G.wood, ...W, ...T });
+      box(cx + s * .36, .46, cz - .46, .36, .06, .36, col.blue,
+        { hard: true, gloss: G.fabric, mat: 'fabric', matScale: .45, matAmt: .32, ...T });
+      box(cx + s * .36, .425, cz - .46, .31, .025, .31, col.blueL,
+        { hard: true, gloss: G.fabric, ...T });
       for (const lx of [-1, 1]) for (const lz of [-1, 1])
         box(cx + s * .36 + lx * .14, .23, cz - .46 + lz * .14, .04, .46, .04, col.deskD,
           { hard: true, gloss: G.wood, ...T });
@@ -108,6 +112,14 @@ const Classroom = Lazy('Classroom', () => {
       box(i * .98, H - .01, 0, .03, .02, RZ * 2, col.wallD, { hard: true, gloss: .18 });
       box(0, H - .01, i * .92, RX * 2, .02, .03, col.wallD, { hard: true, gloss: .18 });
     }
+    // Five shallow acoustic islands give the ceiling a designed rhythm while leaving the two
+    // long light rows readable.  They sit below the grid but above every walking sight line.
+    for (const [ax, az, aw, ad] of [[-3.28,0,1.10,4.70],[0,-2.25,1.28,1.35],
+      [0,0,1.28,1.35],[0,2.25,1.28,1.35],[3.28,0,1.10,4.70]]) {
+      box(ax,H-.095,az,aw,.07,ad,col.acoustic,
+        {hard:true,gloss:G.matte,mat:'fabric',matScale:.75,matAmt:.24});
+      box(ax,H-.135,az,aw*.88,.018,ad*.92,col.blueL,{hard:true,gloss:G.matte});
+    }
 
     // ================================================================ the window wall (-z)
     // A continuous ribbon of glazing with a sill, looking out onto the forecourt. A backdrop of
@@ -144,7 +156,7 @@ const Classroom = Lazy('Classroom', () => {
 
     // ================================================================ 黑板 the blackboard (+z, the front)
     // Dark green board across the middle of the front wall, a wood frame, a chalk tray, the
-    // day's lesson in chalk, and the school slogan in red above it.
+    // day's lesson in chalk, and the university language-centre identity above it.
     //
     // Two things about the depths here, both of which cost the room its text once already.
     // The carcass has to sit *behind* the writing surface: it used to be a 20 cm slab whose
@@ -161,6 +173,12 @@ const Classroom = Lazy('Classroom', () => {
     box(0, .96, RZ - .21, BW, .06, .12, col.tray,
       { hard: true, gloss: G.wood, mat: 'wood', matScale: .70, matAmt: .34 });
     box(-1.2, 1.00, RZ - .24, .26, .04, .04, col.chalk, { hard: true, gloss: .10 });
+    // A low oak datum and a pinboard flank turn the whole elevation into one teaching wall.
+    box(0,.50,RZ-.055,RX*2-.18,.82,.045,col.wood,
+      {hard:true,gloss:G.wood,mat:'wood',matScale:.92,matAmt:.34});
+    box(-3.54,1.69,RZ-.125,1.02,1.44,.032,col.acoustic,
+      {hard:true,mode:7,gloss:G.fabric,mat:'fabric',matScale:.65,matAmt:.28});
+    box(-3.54,1.69,RZ-.151,.88,1.28,.018,col.cork,{hard:true,gloss:.10});
     // The lesson, in chalk: a sentence the player is meant to read. `yaw` is Math.PI to match
     // the +z wall's own yaw, so the characters face down the room, and a short lift keeps them
     // a clean 9 mm off the green instead of fighting it for pixels.
@@ -168,10 +186,15 @@ const Classroom = Lazy('Classroom', () => {
       { size: .26, gap: .10, lift: .006, color: col.chalk, mode: 1, tag: '黑板' });
     glyphs(0, 1.40, BF - .003, Math.PI, '上课了',
       { size: .22, gap: .08, lift: .006, color: col.chalk, mode: 1, tag: '黑板' });
-    // the slogan in red across the top of the board
+    // the university identity in red across the top of the board
     box(0, 2.62, RZ - .16, BW + .10, .34, .10, col.redD, { hard: true, gloss: .22 });
-    for (const g of glyphs(0, 2.62, BF - .003, Math.PI, '好好学习 天天向上',
+    for (const g of glyphs(0, 2.62, BF - .003, Math.PI, '文华大学 汉语中心',
         { size: .20, gap: .08, lift: .006, color: col.goldL, mode: 1, tag: '黑板' })) litten(g, .4);
+    // A simple 文 crest gives the side pinboard an institutional anchor without copying the
+    // much denser chalkboard composition.
+    box(-3.54,2.16,RZ-.176,.48,.48,.025,col.blue,{hard:true,mode:1,gloss:.22});
+    glyphs(-3.54,2.16,RZ-.195,Math.PI,'文',
+      {size:.26,gap:.04,lift:.006,color:col.goldL,mode:1,tag:'汉语中心'});
     thing('黑板', 0, 1.70, RZ - .50, '黑板上写着今天的课。', "Today's lesson is on the board.",
       '黑 black + 板 board. 上课 is to start class; 下课 to end it.',
       { focus: [0, RZ - 2.0], reach: 2.4 });
@@ -189,21 +212,36 @@ const Classroom = Lazy('Classroom', () => {
     for (const s of [-1, 1]) for (const sz of [-1, 1])
       box(s * .50, .25, RZ - 1.30 + sz * .24, .06, .50, .06, col.deskD,
         { hard: true, gloss: G.wood });
+    // A compact chair offset to the teacher's right, behind the lectern and below the board tray.
+    const TCX = 1.05, TCZ = RZ - .62;
+    box(TCX, .46, TCZ, .46, .05, .42, col.desk,
+      { hard: true, gloss: G.wood, mat: 'wood', matScale: .70, matAmt: .34 });
+    box(TCX, .72, TCZ + .19, .46, .42, .05, col.deskD,
+      { hard: true, gloss: G.wood, mat: 'wood', matScale: .70, matAmt: .34 });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1])
+      box(TCX + sx * .18, .23, TCZ + sz * .16, .04, .42, .04, col.deskD,
+        { hard: true, gloss: G.wood });
     solid(-.72, .72, RZ - 1.66, RZ - .98);
     shade(0, RZ - 1.30, 1.6, 1.0, .20);
 
     // ================================================================ 学生桌 the desks
-    // Four rows of shared desks down the room, facing the board. The first is the 上课 seat.
+    // Three rows of shared desks down the room, facing the board. The first is the 上课 seat.
     desk(-1.6, .6); desk(1.6, .6);
     desk(-1.6, -.6); desk(1.6, -.6);
     desk(-1.6, -1.8); desk(1.6, -1.8);
-    // the seat you take a class from — sits at the front-centre desk, facing the board.
-    thing('学生桌', 0, .74, .6, '上课认真听。', 'Listen carefully in class.',
-      '学生 student + 桌 table. 上课 is to attend class.',
+    // The seminar interaction resolves to the inner stool at the front-left desk.
+    thing('学生桌', 0, .74, .6, '研讨课认真听，也要发言。', 'Listen and take part in the seminar.',
+      '研讨课 is a seminar. 学生 student + 桌 table.',
       { focus: [0, .6 - 1.1], reach: 1.8 });
 
-    // ================================================================ 门 the way out (+x, back)
+    // ================================================================ 门 the corridor door (+z, east end)
     const dz = RZ - .10;
+    // A fixed blue-grey casing remains in the wall while the oak leaf swings.  The old moving
+    // dark slab made the whole opening appear to detach from the architecture.
+    for(const s of [-1,1]) box(DX+s*.64,1.10,dz-.055,.10,2.28,.13,col.blue,
+      {hard:true,gloss:G.paint,mat:'wood',matScale:.72,matAmt:.20});
+    box(DX,2.22,dz-.055,1.38,.12,.13,col.blue,
+      {hard:true,gloss:G.paint,mat:'wood',matScale:.72,matAmt:.20});
     movingDoor(box(DX, 1.06, dz + .04, 1.18, 2.20, .14, col.woodD,
       { hard: true, gloss: G.wood, mat: 'wood', matScale: .90, matAmt: .36 }));
     movingDoor(box(DX, 1.02, dz, 1.00, 2.06, .07, col.wood,
@@ -260,6 +298,20 @@ const Classroom = Lazy('Classroom', () => {
         { rx: .12 + i * .06, rz: .10, gloss: G.wood });
     cyl(-RX + .70, .30, -RZ + .40, .22, .60, col.steel,
       { gloss: G.metal, mat: 'metal', matScale: .50, matAmt: .30 });
+    // A cork collaboration wall and a short coat rail make the otherwise blank east elevation
+    // useful.  The note cards are deliberately offset so it reads as a live seminar board.
+    box(RX-.055,1.54,-.62,.045,1.12,2.14,col.acoustic,
+      {hard:true,gloss:G.fabric,mat:'fabric',matScale:.60,matAmt:.28});
+    box(RX-.082,1.54,-.62,.025,.96,1.96,col.cork,{hard:true,gloss:.10});
+    for(const [ny,nz,nc] of [[1.76,-1.20,col.cream],[1.48,-.82,col.blueL],
+      [1.28,-.36,col.goldL],[1.67,.02,col.white],[1.34,.28,col.teal]])
+      box(RX-.102,ny,nz,.016,.18,.30,nc,{hard:true,mode:1,gloss:.12});
+    glyphs(RX-.112,1.96,-.62,-Math.PI/2,'研讨问题',
+      {size:.11,gap:.035,lift:.006,color:col.charcoal,mode:1,tag:'研讨墙'});
+    box(RX-.06,1.52,-2.60,.06,.10,1.15,col.woodD,
+      {hard:true,gloss:G.wood,mat:'wood',matScale:.65,matAmt:.30});
+    for(const hz of [-2.98,-2.72,-2.46,-2.20])
+      capsule(RX-.16,1.42,hz,.022,.18,.022,col.steel,{rz:Math.PI/2,gloss:G.metal});
 
     // ================================================================ 投影仪 projector + screen
     // A white roll-down screen, and a projector on the ceiling at the back. The screen hangs
@@ -286,22 +338,28 @@ const Classroom = Lazy('Classroom', () => {
     box(0, 1.02, RZ - 1.02, .20, .01, .10, col.key, { hard: true, gloss: .20 });  // key surface
 
     // ================================================================ 书架 bookshelves along the -x wall
-    // Three tall shelves between the back and the front, with books.
+    // Three real bays now run between the back and front.  The earlier implementation described
+    // three bookcases but built two near-coplanar sides around one 1.6 m shelf at z=0.
     const SX = -RX + .14;
-    for (const side of [-1, 1]) {
-      box(SX + side * .02, 1.10, 0, .06, 1.90, 1.60, col.deskD,
-        { hard: true, gloss: G.wood, mat: 'wood', matScale: .90, matAmt: .36 });
-      for (let i = 0; i < 4; i++)
-        box(SX, .22 + i * .54, 0, .04, .03, 1.50, col.deskD, { hard: true, gloss: G.wood });
-    }
-    // books: randomly coloured boxes on the shelves
     let bookSeed = 0x7a3e9b;
     const next = () => (bookSeed = (bookSeed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
-    for (let i = 0; i < 18; i++) {
-      const by = .40 + Math.floor(i / 6) * .54, bz = -.70 + next() * 1.40;
-      const bw = .06 + next() * .10, bh = .14 + next() * .12;
-      const bcol = [col.red, col.blue, col.teal, col.green, col.gold, col.cream][i % 6];
-      box(SX + .04, by + bh / 2, bz, bw, bh, .04, bcol, { hard: true, gloss: .22 });
+    for (const [bay,bz,label] of [[0,-2.42,'语言'],[1,0,'文化'],[2,2.42,'词典']]) {
+      box(SX,1.08,bz,.08,2.08,1.58,col.deskD,
+        {hard:true,gloss:G.wood,mat:'wood',matScale:.90,matAmt:.36});
+      for(const side of [-1,1]) box(SX+.15,1.08,bz+side*.75,.30,2.08,.07,col.deskD,
+        {hard:true,gloss:G.wood,mat:'wood',matScale:.90,matAmt:.36});
+      for(let shelf=0;shelf<5;shelf++) box(SX+.15,.14+shelf*.48,bz,.30,.06,1.48,col.deskD,
+        {hard:true,gloss:G.wood,mat:'wood',matScale:.82,matAmt:.34});
+      box(SX+.32,1.94,bz,.035,.22,.78,col.blue,{hard:true,mode:1,gloss:.20});
+      glyphs(SX+.345,1.94,bz,-Math.PI/2,label,
+        {size:.10,gap:.025,lift:.006,color:col.white,mode:1,tag:'书架'});
+      for(let i=0;i<15;i++) {
+        const row=Math.floor(i/5),slot=i%5,bw=.10+next()*.09,bh=.20+next()*.16;
+        const bookZ=bz-.54+slot*.26+(next()-.5)*.025;
+        const bcol=[col.red,col.blue,col.teal,col.green,col.gold,col.cream][(bay*3+i)%6];
+        box(SX+.33,.20+row*.48+bh/2,bookZ,.07,bh,bw,bcol,
+          {hard:true,gloss:.22});
+      }
     }
 
     // ================================================================ 班级牌 · 课程表 beside the door
@@ -312,10 +370,10 @@ const Classroom = Lazy('Classroom', () => {
     const SGX = 4.29;
     box(SGX, 1.86, RZ - .08, .44, .18, .04, col.charcoal, { hard: true, gloss: .26 });
     box(SGX, 1.86, RZ - .105, .42, .16, .02, col.white, { hard: true, mode: 1, gloss: .18 });
-    glyphs(SGX, 1.86, RZ - .117, Math.PI, '高三二班',
+    glyphs(SGX, 1.86, RZ - .117, Math.PI, '汉语研讨',
       { size: .08, gap: .02, lift: .005, color: col.charcoal, mode: 1, tag: '班级牌' });
-    thing('班级牌', SGX, 1.86, RZ - .30, '高三·二班的教室。', 'Senior 3, Class 2.',
-      '高三 is third-year senior high (aged 17-18). 班 is class.',
+    thing('班级牌', SGX, 1.86, RZ - .30, '大学汉语研讨课的教室。', 'A university Chinese seminar room.',
+      '研讨课 is a seminar course. 大学 is university.',
       { focus: [SGX - .20, RZ - .95], reach: 2.0 });
 
     box(SGX, 1.28, RZ - .06, .26, .38, .03, col.charcoal, { hard: true, gloss: .26 });
@@ -391,9 +449,9 @@ const Classroom = Lazy('Classroom', () => {
 
   return B.finish({
     setNight, tick, RX, RZ, H, WIN, OUT,
-    // Where the body goes to 上课: the front-centre desk, facing the board (+z).
-    SEAT_AT: [0, .6 - .46], SEAT_FACE: 0, SEAT_Y: .46,
-    label: '教室', labelK: '教室 · classroom',
+    // The inner stool at the front-left desk, facing the board (+z).
+    SEAT_AT: [-1.6 + .36, .6 - .46], SEAT_FACE: 0, SEAT_Y: .46,
+    label: '教室', labelK: '教室 · seminar classroom',
     indoor: true, cutaway: true, near: .05, far: 40, expose: 1,
     spawn: { x: DX - .50, z: RZ - 1.10, yaw: Math.PI * 1.02 },
     zones: [{ id: 'classroom', x0: -RX, x1: RX, z0: -RZ, z1: RZ, light: [0, H - .30, 0] }],

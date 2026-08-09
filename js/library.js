@@ -31,6 +31,8 @@ const Library = Lazy('Library', () => {
     leaf: C('#4f7a3c'), leafD: C('#3c6130'), terracotta: C('#a2705a'),
     mud: C('#6b5a45'),
     blue: C('#2f6392'), teal: C('#4c8a86'), green: C('#2f7a4f'),
+    navy: C('#183a5a'), navyL: C('#2d5c82'), brass: C('#b28a45'),
+    acoustic: C('#d6cdbb'), acousticD: C('#b8aa91'), rug: C('#314f64'),
     paper: C('#f0ead8'), binder: C('#6a4a3a'),
     baize: C('#27452f'), seat: C('#5e372a'),
   };
@@ -65,11 +67,11 @@ const Library = Lazy('Library', () => {
     const OAK = { mat: 'wood', matScale: .62, matAmt: .48 };
     const OAKS = { mat: 'wood', matScale: .34, matAmt: .46 };
     // table top and skirt
-    box(cx, .76, cz, 1.20, .04, .60, col.woodL, { hard: true, gloss: G.wood, ...OAK, ...T });
-    box(cx, .72, cz, 1.16, .04, .56, col.wood, { hard: true, gloss: G.wood, ...OAK, ...T });
+    box(cx, .76, cz, 2.40, .04, .60, col.woodL, { hard: true, gloss: G.wood, ...OAK, ...T });
+    box(cx, .72, cz, 2.32, .04, .56, col.wood, { hard: true, gloss: G.wood, ...OAK, ...T });
     // The baize writing inlay, the way a reading-room desk is actually made — and the one
     // place in the room a woven material belongs. Everything on the table sits on top of it.
-    box(cx, .784, cz, 1.02, .010, .44, col.baize,
+    box(cx, .784, cz, 2.04, .010, .44, col.baize,
       { hard: true, mode: 7, gloss: G.fabric, mat: 'fabric', matScale: .34, matAmt: .34, ...T });
     // legs
     for (const sx of [-1, 1]) for (const sz of [-1, 1])
@@ -114,6 +116,70 @@ const Library = Lazy('Library', () => {
     // solid zone under the table
     solid(cx - 1.30, cx + 1.30, cz - .60, cz - .10);
     shade(cx, cz, 2.3, 1.1, .20);
+  }
+
+  // A fitted side-wall bay: back, stiles, crown, seven shelf boards, readable spines and a
+  // classification plate.  Keeping the cases in 2.15 m modules makes the end panels and gaps
+  // legible from the entrance instead of producing one featureless wall-sized box.
+  function shelfBay(sx, zc, label, seed) {
+    const wallX=sx*(RX-.10), shelfX=sx*(RX-.34), faceX=sx*(RX-.63);
+    const OAK={mat:'wood',matScale:.62,matAmt:.48};
+    box(wallX,1.92,zc,.08,3.72,2.20,col.shelfD,{hard:true,gloss:G.wood,...OAK});
+    for(const ez of [-1,1]) box(shelfX,1.92,zc+ez*1.07,.54,3.78,.07,col.shelfD,
+      {hard:true,gloss:G.wood,...OAK});
+    box(shelfX,.12,zc,.56,.20,2.12,col.shelfD,{hard:true,gloss:G.wood,...OAK});
+    box(shelfX,3.76,zc,.58,.16,2.18,col.shelfL,{hard:true,gloss:G.wood,...OAK});
+    const palette=[col.red,col.blue,col.teal,col.green,col.gold,col.cream,col.binder,col.charcoal];
+    for(let row=0;row<7;row++) {
+      const sy=.23+row*.50;
+      box(shelfX,sy,zc,.58,.035,2.08,col.shelf,{hard:true,gloss:G.wood,...OAK});
+      if(row===6) continue;
+      let bz=zc-.95,j=0;
+      while(bz<zc+.88) {
+        const bw=.055+((seed*7+row*11+j*5)%5)*.013;
+        const bh=.23+((seed*3+row*7+j*2)%5)*.035;
+        box(faceX,sy+.025+bh/2,bz+bw/2,.11,bh,bw,palette[(seed+row*3+j)%palette.length],
+          {hard:true,gloss:.18});
+        bz+=bw+.018+((seed+row+j)%3)*.008; j++;
+      }
+      // A warm concealed strip gives each shelf a readable leading edge at night.
+      if(row===2||row===5) litten(box(faceX-sx*.015,sy+.055,zc,.025,.018,1.98,col.lampGlow,
+        {hard:true,mode:1,glow:.07}),.35);
+    }
+    box(faceX-sx*.015,3.48,zc,.035,.34,1.26,col.navy,{hard:true,gloss:.26});
+    for(const g of glyphs(faceX-sx*.038,3.48,zc,sx>0?-Math.PI/2:Math.PI/2,label,
+      {size:.105,gap:.025,color:col.goldL,mode:1,tag:'书架'})) litten(g,.25);
+    shade(shelfX,zc,.7,2.25,.16);
+  }
+
+  function wallPlate(x,y,z,yaw,text,width=2.4,tag='图书馆') {
+    box(x,y,z,width,.44,.055,col.navy,{hard:true,ry:yaw,gloss:.28,tag});
+    box(x,y-.225,z,width+.08,.028,.07,col.brass,{hard:true,ry:yaw,gloss:.48,tag});
+    for(const g of glyphs(x,y,z-.035,yaw,text,
+      {size:.13,gap:.04,color:col.goldL,mode:1,tag})) litten(g,.35);
+  }
+
+  function loungeBench(cx,cz) {
+    box(cx,.34,cz,1.55,.12,.50,col.woodD,
+      {hard:true,gloss:G.wood,mat:'wood',matScale:.45,matAmt:.40});
+    box(cx,.43,cz,1.45,.11,.44,col.rug,
+      {hard:true,mode:7,gloss:G.fabric,mat:'fabric',matScale:.34,matAmt:.42});
+    box(cx,.76,cz+.20,1.45,.58,.10,col.rug,
+      {hard:true,mode:7,gloss:G.fabric,mat:'fabric',matScale:.34,matAmt:.42,rx:-.08});
+    for(const x of [cx-.61,cx+.61]) box(x,.18,cz,.07,.34,.42,col.woodD,
+      {hard:true,gloss:G.wood,mat:'wood',matScale:.34,matAmt:.40});
+    solid(cx-.83,cx+.83,cz-.34,cz+.36); shade(cx,cz,1.7,.7,.18);
+  }
+
+  function selfCheckKiosk(cx,cz) {
+    box(cx,.45,cz,.60,.82,.45,col.woodD,
+      {hard:true,gloss:G.wood,mat:'wood',matScale:.50,matAmt:.38});
+    box(cx,.90,cz-.08,.52,.16,.32,col.charcoal,{hard:true,rx:-.25,gloss:G.metal});
+    litten(box(cx,.91,cz-.18,.43,.11,.02,C('#5f96bd'),
+      {hard:true,rx:-.25,mode:1,glow:.16}),.35);
+    box(cx+.18,.62,cz-.23,.10,.03,.08,col.red,{hard:true,gloss:.20});
+    glyphs(cx,.26,cz-.235,0,'自助借还',{size:.065,gap:.018,color:col.goldL,mode:1,tag:'自助借还'});
+    solid(cx-.38,cx+.38,cz-.30,cz+.30); shade(cx,cz,.8,.65,.16);
   }
 
   function build() {
@@ -197,10 +263,19 @@ const Library = Lazy('Library', () => {
     // A 90 cm board on the front panel and the same on the counter — a joinery counter, and
     // at that scale the grain runs the length of it rather than repeating every hand's width.
     const CTR = { mat: 'wood', matScale: .90, matAmt: .44 };
+    // A ribbed oak service wall and blue/brass fascia frame the desk from the first camera view.
+    for(let i=0;i<13;i++) box(CX-1.38+i*.23,1.65,-RZ+.14,.10,2.72,.08,
+      i%2?col.woodD:col.shelfL,{hard:true,gloss:G.wood,mat:'wood',matScale:.46,matAmt:.42});
+    wallPlate(CX,3.20,-RZ+.105,0,'借还书处 · CIRCULATION',2.95,'借书处');
     box(CX, .52, CZ, 1.80, .04, .70, col.woodL, { hard: true, gloss: G.wood, ...CTR });
     box(CX, .48, CZ - .30, 1.74, .96, .04, col.woodD, { hard: true, gloss: G.wood, ...CTR });
     // the counter top, slightly proud
     box(CX, .56, CZ, 1.90, .06, .74, col.wood, { hard: true, gloss: G.wood, ...CTR });
+    // A lower return wing makes the desk accessible and breaks up the single long counter mass.
+    box(CX+1.38,.38,CZ+.02,.86,.04,.62,col.woodL,{hard:true,gloss:G.wood,...CTR});
+    box(CX+1.38,.35,CZ-.27,.80,.70,.04,col.woodD,{hard:true,gloss:G.wood,...CTR});
+    box(CX+1.38,.425,CZ+.02,.92,.05,.66,col.wood,{hard:true,gloss:G.wood,...CTR});
+    box(CX+1.38,.37,CZ-.305,.34,.12,.025,col.charcoal,{hard:true,gloss:.30});
     // a computer on the desk
     box(CX + .60, .80, CZ - .08, .22, .20, .02, col.charcoal,
       { hard: true, gloss: .40, mat: 'metal', matScale: .16, matAmt: .30 });
@@ -217,64 +292,76 @@ const Library = Lazy('Library', () => {
     // the 借书处 sign on the front panel
     glyphs(CX, .80, CZ - .32, 0, '借书处', { size: .10, gap: .03, color: col.goldL,
       mode: 1, tag: '借书处' });
-    solid(CX - 1.60, CX + 1.60, CZ - .76, CZ - .10);
+    solid(CX - 1.60, CX + 1.92, CZ - .76, CZ - .10);
     shade(CX, CZ, 2.6, .8, .22);
     thing('借书处', CX, 1.00, CZ - .70, '借书处可以借书和还书。',
       'You can borrow and return books at the desk.',
       '借 to borrow + 书 book + 处 place. 还书 is to return a book.',
       { focus: [CX, CZ - 1.2], reach: 1.8 });
 
-    // ================================================================ 书架 bookshelves
-    // Floor-to-ceiling shelves along both side walls, with books in rows.
-    for (const sx of [-1, 1]) {
-      const wx = sx * (RX - .10);
-      // side panels — the largest unbroken surfaces in the room, and until now the flattest.
-      // A wide repeat so a 3.8 m panel gets a few long boards rather than a printed pattern.
-      for (const sz of [-1, 1])
-        box(wx + sx * sz * .04, 2.00, sz * 3.00, .08, 3.80, 3.20, col.shelfD,
-          { hard: true, gloss: G.wood, mat: 'wood', matScale: .70, matAmt: .50 });
-      // shelves
-      for (let i = 0; i < 7; i++) {
-        const sy = .20 + i * .52;
-        box(wx, sy, 0, .04, .03, 3.00, col.shelf,
-          { hard: true, gloss: G.wood, mat: 'wood', matScale: .70, matAmt: .40 });
-        // books on each shelf
-        if (i > 5) continue;
-        const books = 8 + ((i * 3 + (sx > 0 ? 2 : 0)) % 5);
-        let bz = -1.30;
-        for (let j = 0; j < books; j++) {
-          const bw = .06 + ((j * 7 + i * 13) % 5) * .02;
-          const bh = .12 + ((j * 3 + i * 7) % 5) * .03;
-          const bc = [col.red, col.blue, col.teal, col.green, col.gold, col.cream,
-                      col.binder, col.charcoal][((j + i) * 3) % 8];
-          box(wx + sx * .04, sy + .02 + bh / 2, bz, bw, bh, .03, bc,
-            { hard: true, gloss: .20 });
-          bz += bw + .02 + ((j * 11 + i * 5) % 3) * .01;
-        }
-      }
+    // Entry sequence: woven threshold, transparent security leaves, self-check and a compact
+    // directional plate.  The 2.1 m centre lane from the door to the reading-room aisle stays open.
+    flat(DX,.010,-RZ+1.25,2.45,1.70,col.rug,
+      {mode:7,gloss:G.fabric,mat:'fabric',matScale:.42,matAmt:.42});
+    for(const gx of [.68,2.92]) {
+      box(gx,.82,-RZ+1.12,.075,1.42,.42,col.metalD,
+        {hard:true,gloss:G.metal,mat:'metal',matScale:.24,matAmt:.34});
+      box(gx,.98,-RZ+1.12,.025,1.05,.30,col.glass,
+        {hard:true,mode:1,alpha:.30,gloss:G.glass});
+      litten(box(gx,1.48,-RZ+1.12,.055,.05,.30,col.blue,
+        {hard:true,mode:1,glow:.08}),.35);
     }
+    selfCheckKiosk(4.45,-RZ+.92);
+    wallPlate(4.55,2.18,-RZ+.11,0,'自助借还 · SELF CHECK',2.05,'自助借还');
+    wallPlate(.05,2.55,-RZ+.11,0,'借还书 ←  ·  阅览区 ↑',2.65,'图书馆');
+
+    // ================================================================ 书架 bookshelves
+    // Six fitted, labelled bays form a rhythm of oak piers and illuminated book spines.  The
+    // north end stops short of the windows so daylight and the lounge remain visually open.
+    const westLabels=['文学','历史','艺术'],eastLabels=['语言','社会科学','工具书'];
+    const bayZ=[-3.82,-.98,1.86];
+    for(const sx of [-1,1]) for(let i=0;i<bayZ.length;i++)
+      shelfBay(sx,bayZ[i],(sx<0?westLabels:eastLabels)[i],i+(sx>0?7:1));
     // blocker so the camera doesn't slip inside the shelves
     blocker(-RX, -RX + .30, -RZ, RZ, H + 1);
     blocker(RX - .30, RX, -RZ, RZ, H + 1);
 
     // ================================================================ 书桌 reading tables
-    // Three large tables in a row down the centre of the room.
-    readingTable(0, -.8);
-    readingTable(0, 1.6);
-    readingTable(0, 4.0);
+    // Staggered tables make two intimate reading pockets while preserving the oak centre aisle
+    // and the long arrival view to the window wall.
+    readingTable(-2.10, -.45);
+    readingTable(2.10, 1.45);
+    readingTable(-2.10, 3.55);
 
-    thing('书桌', 0, .76, 4.0, '在这里看书很安静。', 'It is quiet enough to read here.',
+    thing('书桌', -2.10, .76, 3.55, '在这里看书很安静。', 'It is quiet enough to read here.',
       '书 book + 桌 table. 看书 is to read a book.',
-      { focus: [0, 3.0], reach: 1.8 });
+      { focus: [-1.50, 2.69], reach: 1.8 });
+
+    // A window seat and rug create a softer destination beyond the desks without filling the
+    // centre aisle.  It is deliberately offset to the east, opposite the north reading table.
+    flat(3.92,.008,4.70,2.05,1.20,col.floorL,
+      {mode:7,gloss:G.fabric,mat:'fabric',matScale:.40,matAmt:.34});
+    loungeBench(3.92,4.78);
+    wallPlate(3.92,1.11,RZ-.12,0,'校园阅读窗',1.58,'书架');
 
     // ================================================================ 门 the exit (-z wall)
     const dz = -RZ + .10;
+    // Static jambs, lintel and stone threshold give the moving leaf an architectural opening.
+    for(const fx of [DX-.67,DX+.67]) box(fx,1.12,dz+.08,.10,2.28,.22,col.trim,
+      {hard:true,gloss:G.wood,mat:'wood',matScale:.42,matAmt:.42});
+    box(DX,2.25,dz+.08,1.44,.12,.22,col.trim,
+      {hard:true,gloss:G.wood,mat:'wood',matScale:.42,matAmt:.42});
+    box(DX,.035,dz+.17,1.48,.055,.42,col.white,
+      {hard:true,gloss:.26,mat:'concrete',matScale:.50,matAmt:.26});
+    wallPlate(DX,2.72,dz+.03,0,'出口 · EXIT',1.72,'门');
     movingDoor(box(DX, 1.06, dz + .04, 1.18, 2.20, .14, col.woodD,
       { hard: true, gloss: G.wood, mat: 'wood', matScale: .60, matAmt: .40 }));
     movingDoor(box(DX, 1.02, dz, 1.00, 2.06, .07, col.wood,
       { tag: '门', gloss: .28, mat: 'wood', matScale: .60, matAmt: .40 }));
     movingDoor(box(DX, 1.42, dz - .04, .44, .60, .02, col.glass,
       { tag: '门', hard: true, mode: 1, alpha: .40, gloss: G.glass }));
+    movingDoor(box(DX,.24,dz-.045,.90,.22,.025,col.brass,
+      {tag:'门',hard:true,gloss:.46,mat:'metal',matScale:.28,matAmt:.24}));
     movingDoor(capsule(DX - .38, 1.02, dz - .09, .026, .22, .026, col.steel,
       { tag: '门', rx: Math.PI / 2, gloss: G.metal }));
     for(const g of glyphs(DX, 1.86, dz - .05, 0, '出口',
@@ -284,13 +371,27 @@ const Library = Lazy('Library', () => {
       { focus: [DX, dz - 1.0], reach: 1.9 }).exit = { place: 'campus', at: OUT };
 
     // ================================================================ lighting and atmosphere
-    // Flush ceiling lights — warm panels, not fluorescents
-    for (const lx of [-2.4, 0, 2.4]) {
-      box(lx, H - .04, 0, 1.40, .06, RZ * 1.2, col.white, { hard: true, gloss: .30 });
-      litten(box(lx, H - .07, 0, 1.30, .04, RZ * 1.1, C('#fff0d0'),
-        { hard: true, mode: 1, glow: .15 }), .8);
-      tubes.push(glow(M.trs(lx, H - .09, 0, 0, 1.30, 1, RZ * 1.1), C('#fff0d0'), 0));
+    // Local acoustic rafts now follow the actual service, reading and lounge zones.  They replace
+    // the three room-length luminous slabs, so ceiling depth and furniture grouping are visible.
+    const ceilingModules=[
+      [-2.40,-4.42,2.65,.82],[1.80,-4.15,2.75,.78],
+      [-2.10,-.45,2.85,1.02],[2.10,1.45,2.85,1.02],[-2.10,3.55,2.85,1.02],
+      [3.92,4.48,2.05,.78],
+    ];
+    for(const [lx,lz,lw,ld] of ceilingModules) {
+      box(lx,H-.12,lz,lw,.10,ld,col.acoustic,
+        {hard:true,gloss:.10,mat:'fabric',matScale:.52,matAmt:.22});
+      box(lx,H-.19,lz,lw*.76,.035,.15,col.acousticD,{hard:true,gloss:.16});
+      litten(box(lx,H-.215,lz,lw*.68,.025,.11,C('#fff0d0'),
+        {hard:true,mode:1,glow:.17}),.85);
+      tubes.push(glow(M.trs(lx,H-.23,lz,0,lw*.68,1,.11),C('#fff0d0'),0));
+      B.light(lx,H-.42,lz,[1.00,.89,.72],.72,3.4);
     }
+    // Slim oak rails continue the floor's centre-line language overhead without darkening it.
+    for(const sx of [-1,1]) box(sx*.47,H-.105,.12,.065,.09,9.65,col.woodD,
+      {hard:true,gloss:G.wood,mat:'wood',matScale:.60,matAmt:.34});
+    for(const sx of [-1,1]) litten(box(sx*(RX-.70),3.93,-.95,.026,.025,8.15,col.lampGlow,
+      {hard:true,mode:1,glow:.07}),.30);
 
     // ================================================================ decor
     // A globe on a stand, near the circulation desk
@@ -371,9 +472,11 @@ const Library = Lazy('Library', () => {
 
   return B.finish({
     setNight, tick, RX, RZ, H,
-    WIN: { x: 0, y: 2.40, z: RZ - .03, hw: RX * 2 - .4, hh: 2.60 },
+    // Half-extents match the 11.6 x 2.6 m glazing ribbon. `n` records that this opening is on the
+    // +z wall for renderer paths that accept oriented window metadata.
+    WIN: { x: 0, y: 2.40, z: RZ - .03, hw: RX - .2, hh: 1.30, n: [0, 0, 1] },
     OUT,
-    SEAT_AT: [0, 3.0], SEAT_FACE: 0, SEAT_Y: .46,
+    SEAT_AT: [-1.50, 2.69], SEAT_FACE: 0, SEAT_Y: .46,
     label: '图书馆', labelK: '图书馆 · library',
     indoor: true, cutaway: true, near: .05, far: 40, expose: 1,
     spawn: { x: DX - .40, z: -RZ + 2.20, yaw: Math.PI * .02 },

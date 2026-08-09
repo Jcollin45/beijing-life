@@ -163,10 +163,11 @@ CampusFits.register('west', 30, kit => {
 
   solid(-43.20, -28.80, -7.20, 12.20);
   blocker(-43.20, -28.80, -7.20, 12.20, 6.20);
-  thing('食堂', -28.55, 2.40, 2.5, '食堂的饭又便宜又快。',
+  const canteenThing = thing('食堂', -28.55, 2.40, 2.5, '食堂的饭又便宜又快。',
     'The canteen food is cheap and quick.',
     '食 food + 堂 hall. 便宜 is cheap; a canteen meal is eight kuai.',
     { focus:[-26.6,2.5], reach:2.6 });
+  canteenThing.exit = { place:'campus_canteen' };
 
   // O04 — vending machine beside the canteen.
   box(-28.35, 1.05, 8.0, .72, 2.10, .70, col.blue,
@@ -232,9 +233,10 @@ CampusFits.register('west', 30, kit => {
   }
   solid(-43.20, -28.80, 23.80, 36.20);
   blocker(-43.20, -28.80, 23.80, 36.20, 14.20);
-  thing('行政楼', -28.75, 3.20, 30, '行政楼里可以办理学校事务。',
+  const adminThing = thing('行政楼', -28.75, 3.20, 30, '行政楼里可以办理学校事务。',
     'University administration is handled here.',
     '行政 means administration.', { focus:[-26.6,30], reach:2.6 });
+  adminThing.exit = { place:'campus_admin_f1' };
   thing('学生服务中心', -28.62, 2.20, 27, '这里可以办理学生证。',
     'The student service centre can issue a student card.',
     '学生证 is a student ID card.', { focus:[-26.6,27], reach:2.5 });
@@ -302,9 +304,10 @@ CampusFits.register('west', 30, kit => {
 
   solid(-43.20, -27.80, 39.80, 62.20);
   blocker(-43.20, -27.80, 39.80, 62.20, 16.90);
-  thing('实验楼', -27.55, 3.00, 50, '实验楼里正在做研究。',
+  const scienceThing = thing('实验楼', -27.55, 3.00, 50, '实验楼里正在做研究。',
     'Research is under way in the science building.',
     '实验 means experiment; 研究 means research.', { focus:[-25.5,50], reach:2.6 });
+  scienceThing.exit = { place:'campus_science_f1' };
 
   return {};
 });
