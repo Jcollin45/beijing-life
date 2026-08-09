@@ -65,11 +65,11 @@ const Library = Lazy('Library', () => {
     const OAK = { mat: 'wood', matScale: .62, matAmt: .48 };
     const OAKS = { mat: 'wood', matScale: .34, matAmt: .46 };
     // table top and skirt
-    box(cx, .76, cz, 1.20, .04, .60, col.woodL, { hard: true, gloss: G.wood, ...OAK, ...T });
-    box(cx, .72, cz, 1.16, .04, .56, col.wood, { hard: true, gloss: G.wood, ...OAK, ...T });
+    box(cx, .76, cz, 2.40, .04, .60, col.woodL, { hard: true, gloss: G.wood, ...OAK, ...T });
+    box(cx, .72, cz, 2.32, .04, .56, col.wood, { hard: true, gloss: G.wood, ...OAK, ...T });
     // The baize writing inlay, the way a reading-room desk is actually made — and the one
     // place in the room a woven material belongs. Everything on the table sits on top of it.
-    box(cx, .784, cz, 1.02, .010, .44, col.baize,
+    box(cx, .784, cz, 2.04, .010, .44, col.baize,
       { hard: true, mode: 7, gloss: G.fabric, mat: 'fabric', matScale: .34, matAmt: .34, ...T });
     // legs
     for (const sx of [-1, 1]) for (const sz of [-1, 1])
@@ -371,7 +371,9 @@ const Library = Lazy('Library', () => {
 
   return B.finish({
     setNight, tick, RX, RZ, H,
-    WIN: { x: 0, y: 2.40, z: RZ - .03, hw: RX * 2 - .4, hh: 2.60 },
+    // Half-extents match the 11.6 x 2.6 m glazing ribbon. `n` records that this opening is on the
+    // +z wall for renderer paths that accept oriented window metadata.
+    WIN: { x: 0, y: 2.40, z: RZ - .03, hw: RX - .2, hh: 1.30, n: [0, 0, 1] },
     OUT,
     SEAT_AT: [0, 3.0], SEAT_FACE: 0, SEAT_Y: .46,
     label: '图书馆', labelK: '图书馆 · library',

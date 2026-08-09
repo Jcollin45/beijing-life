@@ -1,9 +1,9 @@
 // 教室 — a classroom inside the teaching block, reached through the entrance on the forecourt.
 //
-// What a Chinese classroom is: a green chalkboard across the front wall with the day's lesson
-// on it and the school slogan above it, a teacher's podium, rows of shared desks facing it,
-// fluorescent tubes in a suspended ceiling, and a window wall along one side letting the
-// forecourt light in. The door is at the back; out through it is the campus.
+// A twelve-seat university Chinese seminar room: a green chalkboard across the front wall with
+// the day's lesson on it and the university slogan above it, a teacher's podium, three rows of
+// shared desks facing it, fluorescent tubes in a suspended ceiling, and a window wall along one
+// side letting the forecourt light in. Its corridor door ultimately leads back out to the campus.
 //
 // Indoors, like the office and the shop: the renderer takes its light from the ceiling bulb
 // and the window, and the room shell is set from RX/H/RZ.
@@ -189,20 +189,29 @@ const Classroom = Lazy('Classroom', () => {
     for (const s of [-1, 1]) for (const sz of [-1, 1])
       box(s * .50, .25, RZ - 1.30 + sz * .24, .06, .50, .06, col.deskD,
         { hard: true, gloss: G.wood });
+    // A compact chair offset to the teacher's right, behind the lectern and below the board tray.
+    const TCX = 1.05, TCZ = RZ - .62;
+    box(TCX, .46, TCZ, .46, .05, .42, col.desk,
+      { hard: true, gloss: G.wood, mat: 'wood', matScale: .70, matAmt: .34 });
+    box(TCX, .72, TCZ + .19, .46, .42, .05, col.deskD,
+      { hard: true, gloss: G.wood, mat: 'wood', matScale: .70, matAmt: .34 });
+    for (const sx of [-1, 1]) for (const sz of [-1, 1])
+      box(TCX + sx * .18, .23, TCZ + sz * .16, .04, .42, .04, col.deskD,
+        { hard: true, gloss: G.wood });
     solid(-.72, .72, RZ - 1.66, RZ - .98);
     shade(0, RZ - 1.30, 1.6, 1.0, .20);
 
     // ================================================================ 学生桌 the desks
-    // Four rows of shared desks down the room, facing the board. The first is the 上课 seat.
+    // Three rows of shared desks down the room, facing the board. The first is the 上课 seat.
     desk(-1.6, .6); desk(1.6, .6);
     desk(-1.6, -.6); desk(1.6, -.6);
     desk(-1.6, -1.8); desk(1.6, -1.8);
-    // the seat you take a class from — sits at the front-centre desk, facing the board.
-    thing('学生桌', 0, .74, .6, '上课认真听。', 'Listen carefully in class.',
-      '学生 student + 桌 table. 上课 is to attend class.',
+    // The seminar interaction resolves to the inner stool at the front-left desk.
+    thing('学生桌', 0, .74, .6, '研讨课认真听，也要发言。', 'Listen and take part in the seminar.',
+      '研讨课 is a seminar. 学生 student + 桌 table.',
       { focus: [0, .6 - 1.1], reach: 1.8 });
 
-    // ================================================================ 门 the way out (+x, back)
+    // ================================================================ 门 the corridor door (+z, east end)
     const dz = RZ - .10;
     movingDoor(box(DX, 1.06, dz + .04, 1.18, 2.20, .14, col.woodD,
       { hard: true, gloss: G.wood, mat: 'wood', matScale: .90, matAmt: .36 }));
@@ -312,10 +321,10 @@ const Classroom = Lazy('Classroom', () => {
     const SGX = 4.29;
     box(SGX, 1.86, RZ - .08, .44, .18, .04, col.charcoal, { hard: true, gloss: .26 });
     box(SGX, 1.86, RZ - .105, .42, .16, .02, col.white, { hard: true, mode: 1, gloss: .18 });
-    glyphs(SGX, 1.86, RZ - .117, Math.PI, '高三二班',
+    glyphs(SGX, 1.86, RZ - .117, Math.PI, '汉语研讨',
       { size: .08, gap: .02, lift: .005, color: col.charcoal, mode: 1, tag: '班级牌' });
-    thing('班级牌', SGX, 1.86, RZ - .30, '高三·二班的教室。', 'Senior 3, Class 2.',
-      '高三 is third-year senior high (aged 17-18). 班 is class.',
+    thing('班级牌', SGX, 1.86, RZ - .30, '大学汉语研讨课的教室。', 'A university Chinese seminar room.',
+      '研讨课 is a seminar course. 大学 is university.',
       { focus: [SGX - .20, RZ - .95], reach: 2.0 });
 
     box(SGX, 1.28, RZ - .06, .26, .38, .03, col.charcoal, { hard: true, gloss: .26 });
@@ -391,9 +400,9 @@ const Classroom = Lazy('Classroom', () => {
 
   return B.finish({
     setNight, tick, RX, RZ, H, WIN, OUT,
-    // Where the body goes to 上课: the front-centre desk, facing the board (+z).
-    SEAT_AT: [0, .6 - .46], SEAT_FACE: 0, SEAT_Y: .46,
-    label: '教室', labelK: '教室 · classroom',
+    // The inner stool at the front-left desk, facing the board (+z).
+    SEAT_AT: [-1.6 + .36, .6 - .46], SEAT_FACE: 0, SEAT_Y: .46,
+    label: '教室', labelK: '教室 · seminar classroom',
     indoor: true, cutaway: true, near: .05, far: 40, expose: 1,
     spawn: { x: DX - .50, z: RZ - 1.10, yaw: Math.PI * 1.02 },
     zones: [{ id: 'classroom', x0: -RX, x1: RX, z0: -RZ, z1: RZ, light: [0, H - .30, 0] }],

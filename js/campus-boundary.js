@@ -161,6 +161,10 @@ CampusFits.register('boundary', 10, kit => {
     box(x,3.72,z,.42,.18,.18,col.charcoal,{hard:true,ry,gloss:.25});
   }
   solid(6.2,12.6,-12.6,-6.8); blocker(6.2,12.6,-12.6,-6.8,3.60);
+  const security=kit.thing('门卫',11.2,1.35,-7.02,'门卫室里可以登记访客。',
+    'Visitors can register inside the security room.',
+    '门卫 is a gate guard; 访客 is a visitor.',{focus:[11.2,-5.8],reach:2.2});
+  security.exit={place:'campus_security'};
   // O10 guard stool and thermos.
   box(5.55,.21,-8,.38,.42,.38,col.steelD,{hard:true,gloss:.28});
   cyl(5.70,.60,-7.92,.07,.34,col.chrome,{gloss:G.metal});

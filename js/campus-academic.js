@@ -236,10 +236,11 @@ CampusFits.register('academic', 20, kit => {
     'The first class is in teaching block one.',
     '教学 teaching + 楼 building. 上课 is to go to class, 下课 when it ends.',
     { focus:[-3,47.0], reach:3.0 });
-  thing('教室', -3, 3.00, 51.3, '教学楼里是教室。',
+  const classroomThing = thing('教室', -3, 3.00, 51.3, '教学楼里是教室。',
     'Inside the teaching block is a classroom.',
     '教 to teach + 室 room. 进 is to enter; 出 to go out.',
     { focus:[-3,48.4], reach:2.8 });
+  classroomThing.exit = { place:'campus_b01_f1' };
 
   function studyTable(x, z, picnic = false, interactive = false, focus = [x, z - 1.2]) {
     const w = picnic ? 1.8 : 1.4, d = picnic ? 1.0 : .8;
@@ -345,7 +346,7 @@ CampusFits.register('academic', 20, kit => {
     '图书馆里很安静。', 'It is very quiet in the library.',
     '图书 books + 馆 hall. 看书 is to read; 安静 is quiet.',
     { focus:[27.30,50], reach:2.6 });
-  libraryThing.exit = { place:'library', at:{ x:1.4, z:-3.3, yaw:.02 * Math.PI } };
+  libraryThing.exit = { place:'campus_b02_f1' };
 
   ensureCustomMeshes();
   return { tick(){ ensureCustomMeshes(); } };
