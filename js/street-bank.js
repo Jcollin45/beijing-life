@@ -1,7 +1,7 @@
-// 北京银行 — the bank frontage on the far side of the business-district road.
+// 北京银行 — the bank frontage on the WEST footway, facing east.
 //
-// Mirrors js/street-hospital.js: a StreetFit district that skins the west-side civic block as a
-// real bank branch and gives the long pavement a second destination. The branch is one storey of
+// Mirrors js/street-hospital.js: a StreetFit district that skins a civic block as a real bank
+// branch and gives a long pavement a second destination. The branch is one storey of
 // banking hall under a small office mezzanine — wide, low, signed in the deep red and gold every
 // Chinese municipal bank uses. Access is from the west-side pavement only; it does not extend the
 // carriageway or the opposite pavement, so this building cannot become a way around the crossing.
@@ -28,11 +28,27 @@
             thing, light, C, G, col } = S;
 
     // ---------------------------------------------------------------- site and palette
-    // The procedural parade stands at x=41.6 and faces west.  A 4.3 m bay between the mall and
-    // office entrances was the one unnamed shopfront left on this pavement, so the branch skins
-    // that bay instead of inventing a second, unreachable street outside the scene bounds.
-    const FACE = 40.55;
-    const Z0 = -4.35, Z1 = -.05, MID = -2.20;
+    // MIRRORED off the far parade and onto the corner block's EAST elevation — see
+    // STREET-BLUEPRINT.md and sheet A02 of STREET-PLAN.html.
+    //
+    // The branch used to be a 4.3 m bay at x 40.55 on the far building line, one of seven doors
+    // standing on a single 27 m stretch of pavement at x 41.60. The corner block (js/street.js,
+    // x 12.0 .. 23.4, z -19.15 .. -3.05) has a blank east elevation onto the road's WEST footway,
+    // which is the pavement the player steps onto every time they leave the hutong and which
+    // carried nothing but a bus stop. So the whole frontage is reflected about its own face plane:
+    // every `FACE + d` became `FACE - d` and the glyph yaw turned from -PI/2 to +PI/2. Nothing
+    // about the building changed except which way it looks.
+    //
+    // 23.42 is 12 cm proud of the block's east face at 23.30, which is the same trick
+    // js/street-hospital.js uses to skin the anonymous shell without fighting it. The road zone
+    // is NOT widened: it starts at x 24.0, so `clampMove` holds the body at 24.30 and the 0.88 m
+    // in front of the glass is unreachable — the same strip the alley's shopfronts stand in, and
+    // the reason none of the furniture below needs a collider.
+    //
+    // z -11.40 .. -7.10 keeps the branch's own 4.30 m footprint. It leaves 2.10 m of elevation
+    // south of it to the block corner at -13.5, and 0.20 m north of it to 药店.
+    const FACE = 23.42;
+    const Z0 = -11.40, Z1 = -7.10, MID = -9.25;
     const TAG = { tag: '银行' };
 
     const STONE = C('#dcd6c8'), STONE2 = C('#c4bdad'), STONED = C('#8a8378');
@@ -44,45 +60,45 @@
     const PLASTER = { mat: 'plaster', matScale: 2.8, matAmt: .13 };
 
     const faceText = (y, z, text, size, color, o = {}) =>
-      glyphs(FACE - .105, y, z, -Math.PI / 2, text,
+      glyphs(FACE + .105, y, z, Math.PI / 2, text,
         { size, gap: size * .20, color, mode: 1, lift: .009, tag: o.tag || '银行' });
 
     // ---------------------------------------------------------------- the opaque skin
     // One stone skin over the whole block, so the bank reads as one building, not a skin over the
     // anonymous civic windows. Mode 14 is the painted-render flank the hospital uses.
-    box(FACE + .14, 6.80, MID, .28, 6.40, Z1 - Z0, STONE,
+    box(FACE - .14, 6.80, MID, .28, 6.40, Z1 - Z0, STONE,
       { hard: true, mode: 14, gloss: G.paint, ...PLASTER, ...TAG });
     for(const z of [Z0+.38,Z1-.38])
-      box(FACE+.14,1.80,z,.28,3.60,.76,STONE,
+      box(FACE - .14,1.80,z,.28,3.60,.76,STONE,
         {hard:true,mode:14,gloss:G.paint,...PLASTER,...TAG});
-    box(FACE - .015, .46, MID, .16, .92, Z1 - Z0 + .20, STONED,
+    box(FACE + .015, .46, MID, .16, .92, Z1 - Z0 + .20, STONED,
       { hard: true, mode: 9, gloss: .20, ...TAG });
     // a short office mezzanine above the hall
-    box(FACE + .10, 8.60, MID, .20, 3.20, Z1 - Z0, STONE2,
+    box(FACE - .10, 8.60, MID, .20, 3.20, Z1 - Z0, STONE2,
       { hard: true, mode: 14, gloss: G.paint, ...PLASTER, ...TAG });
 
     // ---------------------------------------------------------------- the banking-hall glazing
     // A Chinese bank branch is mostly glass at street level — the hall is a lit display of itself.
     // Wide bays of dark glass with lit panes, a gold spandrel band carrying the floor rhythm.
-    const bayZ = [-3.55, -0.85];
+    const bayZ = [MID - 1.35, MID + 1.35];
     for (const z of bayZ) {
-      box(FACE - .035, 2.40, z, .10, 3.60, .78, GLASSD, { hard: true, gloss: .24, ...TAG });
-      const pane = box(FACE - .095, 2.40, z, .035, 3.40, .62, GLASS,
+      box(FACE + .035, 2.40, z, .10, 3.60, .78, GLASSD, { hard: true, gloss: .24, ...TAG });
+      const pane = box(FACE + .095, 2.40, z, .035, 3.40, .62, GLASS,
         { hard: true, mode: 1, gloss: G.glass, ...TAG });
       remember(pane, .025, .16 + ((z * 7) % 3) * .04);
       // the gold spandrel band under each bay
-      box(FACE - .12, .60, z, .20, .10, .82, GOLD, { hard: true, gloss: G.paint, ...TAG });
+      box(FACE + .12, .60, z, .20, .10, .82, GOLD, { hard: true, gloss: G.paint, ...TAG });
     }
     // the mezzanine windows — smaller, staggered warmth at night
-    const upperZ = [-3.35, -1.05];
+    const upperZ = [MID - 1.15, MID + 1.15];
     for (const z of upperZ) {
-      box(FACE - .025, 8.30, z, .09, 1.60, 2.60, GLASSD, { hard: true, gloss: .24, ...TAG });
-      const p = box(FACE - .082, 8.30, z, .028, 1.40, 2.40,
+      box(FACE + .025, 8.30, z, .09, 1.60, 2.60, GLASSD, { hard: true, gloss: .24, ...TAG });
+      const p = box(FACE + .082, 8.30, z, .028, 1.40, 2.40,
         (z * 3) % 2 ? LOBBY : GLASS, { hard: true, mode: 1, gloss: G.glass, ...TAG });
       remember(p, .012, ((z * 5) % 4) ? .18 : .05);
     }
     // a continuous gold cornice between hall and mezzanine
-    box(FACE - .04, 6.40, MID, .18, .30, Z1 - Z0, GOLD, { hard: true, gloss: G.paint, ...TAG });
+    box(FACE + .04, 6.40, MID, .18, .30, Z1 - Z0, GOLD, { hard: true, gloss: G.paint, ...TAG });
 
     // ---------------------------------------------------------------- the entrance
     // A recessed doorway in the centre of the hall glazing: two automatic leaves, a canopy, the
@@ -91,25 +107,25 @@
     // A metre-deep vestibule survives behind the moving glass.  The old procedural shopfront is
     // still farther back at x=41.6; the floor, cool-lit rear wall and queue posts here hide it and
     // make an opened doorway read as somewhere the player can enter, not stone behind glass.
-    flat(FACE+.50,.020,EDZ,1.25,2.46,STONE2,{gloss:.20,tag:'门'});
-    const lobbyBack=box(FACE+1.02,1.48,EDZ,.06,2.82,2.50,LOBBY,
+    flat(FACE - .50,.020,EDZ,1.25,2.46,STONE2,{gloss:.20,tag:'门'});
+    const lobbyBack=box(FACE - 1.02,1.48,EDZ,.06,2.82,2.50,LOBBY,
       {hard:true,mode:1,glow:.06,tag:'门'});
     remember(lobbyBack,.035,.28);
     for(const z of [EDZ-.72,EDZ+.72]) {
-      cyl(FACE+.66,.47,z,.030,.94,STEEL,{gloss:G.metal,tag:'门'});
-      box(FACE+.66,.91,z,.08,.05,.62,RED,{hard:true,mode:1,tag:'门'});
+      cyl(FACE - .66,.47,z,.030,.94,STEEL,{gloss:G.metal,tag:'门'});
+      box(FACE - .66,.91,z,.08,.05,.62,RED,{hard:true,mode:1,tag:'门'});
     }
     for (const s of [-1, 1]) {
-      const p = box(FACE - .12, 1.50, EDZ + s * .62, .04, 2.80, 1.16, GLASS,
+      const p = box(FACE + .12, 1.50, EDZ + s * .62, .04, 2.80, 1.16, GLASS,
         { hard: true, mode: 1, alpha: .38, gloss: G.glass, tag: '门' });
-      p.ob = null; p.fixed = true; p.cx = FACE - .12; p.cy = 1.50; p.cz = EDZ + s * .62;
+      p.ob = null; p.fixed = true; p.cx = FACE + .12; p.cy = 1.50; p.cz = EDZ + s * .62;
       p.r = 2.15;
       entranceLeaves.push({ p, s, m0: p.m });
     }
     // canopy
-    box(FACE - .30, 3.10, EDZ, 1.00, .12, 4.20, REDD,
+    box(FACE + .30, 3.10, EDZ, 1.00, .12, 4.20, REDD,
       { hard: true, gloss: G.paint, tag: '门' });
-    remember(box(FACE - .36, 3.04, EDZ, .90, .04, 4.00, REDL,
+    remember(box(FACE + .36, 3.04, EDZ, .90, .04, 4.00, REDL,
       { hard: true, mode: 1, glow: .30, tag: '门' }), .04, .50);
     // the name, large, gold on red — the sign every Chinese bank has
     faceText(2.70, EDZ, '北京银行', .34, GOLDL, { tag: '门' });
@@ -119,7 +135,7 @@
 
     // two stone lions flanking the door — every Chinese bank has them
     for (const s of [-1, 1]) {
-      const lx = FACE - .50, lz = EDZ + s * 1.70;
+      const lx = FACE + .50, lz = EDZ + s * 1.70;
       box(lx, .40, lz, .50, .50, .80, STONE, { hard: true, mode: 9, gloss: .14, tag: '石狮子' });
       box(lx, .78, lz, .34, .30, .50, STONE2, { hard: true, mode: 9, gloss: .14, tag: '石狮子' });
       cyl(lx, .92, lz, .12, .20, STONE2, { mode: 9, gloss: .14, tag: '石狮子' });
@@ -129,15 +145,15 @@
     // Warm downlights under the canopy and a pool on the pavement, lit only after dark.
     if (typeof light === 'function') {
       for (const z of [EDZ - 1.45, EDZ, EDZ + 1.45]) {
-        const lm = light(FACE - .70, 3.0, z, [.9, .72, .42], .50, 4.8);
+        const lm = light(FACE + .70, 3.0, z, [.9, .72, .42], .50, 4.8);
         lm.on = false; lamps.push(lm);
       }
     }
-    pools.push({ g: glow(M.trs(FACE - 1.05, .032, EDZ, 0, 2.8, 1, 4.8), WARM, 0), a: .20 });
+    pools.push({ g: glow(M.trs(FACE + 1.05, .032, EDZ, 0, 2.8, 1, 4.8), WARM, 0), a: .20 });
 
     // ---------------------------------------------------------------- the door thing
     // The street-side half of the threshold. Inside, js/bank.js's 门 sets .exit back to BANK_OUT.
-    thing('银行', FACE - 1.0, 2.0, EDZ, '我进去办点事。',
+    thing('银行', FACE + 1.0, 2.0, EDZ, '我进去办点事。',
       'I am going in to do some business.',
       '银行 bank. 办事 to handle business.',
       { tag: '银行', focus: [BANK_OUT.x, BANK_OUT.z], reach: 2.6 }).exit =

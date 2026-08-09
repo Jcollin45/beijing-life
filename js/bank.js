@@ -23,7 +23,11 @@ const BankCast = [];
 // onto the main road. street-bank.js builds the other half of this threshold.
 // The branch occupies the narrow free bay between the mall and office entrances on the far
 // business-district pavement.  This is the clear standing point in front of its street doors.
-const BANK_OUT = { x: 39.32, z: -2.20, yaw: -Math.PI / 2 };
+// Moved with the branch. The frontage is on the corner block's east elevation now (x 23.42,
+// facing +x onto the west footway), not on the far parade at 40.55 facing -x, so the point you
+// step back out onto is 1.20 m east of the door and faces east — away from the shop, the way you
+// leave a building. See js/street-bank.js.
+const BANK_OUT = { x: 24.62, z: -9.25, yaw: Math.PI / 2 };
 
 const BankCore = (() => {
   // The public hall needs enough volume for a real ceiling datum, integrated wayfinding and a
