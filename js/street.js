@@ -2852,8 +2852,16 @@ const Street = Lazy('Street', () => {
         const boardProp = box(FX - .20, 3.72, sz2, .28, .84, sw - .30, board,
           { hard: true, gloss: .30 });
         box(FX - .14, 4.19, sz2, .34, .10, sw - .20, board, { hard: true, gloss: .26 });
-        litten(box(FX - .34, 3.26, sz2, .03, .07, sw - .36, col.cream,
-          { hard: true, mode: 1, glow: .10 }), 1.15);
+        // NO lit valance on the parade, and that is the district's own rule rather than restraint.
+        // js/street-retail.js:12 records what a mode-1 glowing quad costs here: "a glowing glyph
+        // is a light-mask quad and three dozen of them lay a half-transparent copy of the scene
+        // over the top of it. That is a mistake this project has already paid for once." There are
+        // FORTY units on this parade. The eleven named shops — the five off `signBoard`, the four
+        // in the lane and its two anchors — get a lit lip; forty anonymous ones do not, and they
+        // keep the deeper board and the bigger glyphs, which cost nothing but geometry.
+        //
+        // If the valance is ever wanted here, it is one strip for the whole run rather than one
+        // per unit: same read, one quad.
         let signTag;
         // The name of the shop, in characters, not a row of blank cream squares — which is what
         // this was: every business on the far side of the road advertised ■■■. The whole premise
