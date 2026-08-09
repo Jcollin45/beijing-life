@@ -157,16 +157,28 @@
     // that puts a two-character name half a metre above and below its own light box.
     function blade(axis, x, y, z, out, h, base, ink, text, key) {
       const T = .075, size = Math.min(h * .68, (out - .20) / text.length * .88);
+      // CASE is the half-width of the red carcass and T the half-width of the lit panel, and
+      // **CASE must be the smaller of the two**. It was not. The case was `T*2 + .05` = 0.200
+      // wide over a 0.150 panel, so its own faces stood 12.5 mm outside the panel's and 12 mm
+      // outside the glyphs' — and since every surface in this renderer is single-sided and the
+      // case is opaque REDD, all three alley box signs shipped as blank red boxes with their
+      // names sealed inside them. Reported off the west footway, where street-civic.js had
+      // copied the same proportions, and re-derived here.
+      //
+      // Read out from the middle now: case ±.065, panel ±.075, glyphs ±.087. The case is still
+      // 6 cm taller and 9 cm deeper than the panel, so what shows round the lit face is a red
+      // returned edge — which is what a 侧招 looks like — rather than a red lid over it.
+      const CASE = .065;
       let panel;
       if (axis === 'z') {
         // 10 cm wall plate, then a 10 mm gap, then the case: two faces on one plane is the
         // failure mode this district has to avoid more than any other.
         const cz = z + .11 + out / 2;
         box(x, y, z + .05, .22, h * .86, .10, col.steelD, { hard: true, gloss: .34 });
-        box(x, y, cz, T * 2 + .05, h + .06, out, REDD, { hard: true, gloss: .26 });
+        box(x, y, cz, CASE * 2, h + .06, out, REDD, { hard: true, gloss: .26 });
         panel = box(x, y, cz, T * 2, h - .05, out - .09, base, { hard: true, mode: 1, gloss: .20 });
         for (const s of [-1, 1])
-          glyphs(x + s * (T + .013), y, cz, s * Math.PI / 2, text,
+          glyphs(x + s * (T + .012), y, cz, s * Math.PI / 2, text,
             { size, gap: size * .20, color: ink, mode: 1, lift: .008 });
         for (const sy of [-1, 1])                      // stays, above and below the case
           cap(x, y + sy * (h / 2 + .07), cz - .01, .014, out * .98, .014,
@@ -174,10 +186,10 @@
       } else {
         const cx = x - .11 - out / 2;
         box(x - .05, y, z, .10, h * .86, .22, col.steelD, { hard: true, gloss: .34 });
-        box(cx, y, z, out, h + .06, T * 2 + .05, REDD, { hard: true, gloss: .26 });
+        box(cx, y, z, out, h + .06, CASE * 2, REDD, { hard: true, gloss: .26 });
         panel = box(cx, y, z, out - .09, h - .05, T * 2, base, { hard: true, mode: 1, gloss: .20 });
         for (const s of [-1, 1])
-          glyphs(cx, y, z + s * (T + .013), s > 0 ? 0 : Math.PI, text,
+          glyphs(cx, y, z + s * (T + .012), s > 0 ? 0 : Math.PI, text,
             { size, gap: size * .20, color: ink, mode: 1, lift: .008 });
         for (const sy of [-1, 1])
           cap(cx + .01, y + sy * (h / 2 + .07), z, .014, out * .98, .014,
@@ -281,15 +293,21 @@
     // 营业时间 — the hours plate beside a door. The times are FORMATTED OFF `HOURS` and never
     // written out, so a plate cannot drift from the hours the shop's own lights keep. Change the
     // table and every plate in the district changes with it.
+    // The two times are STACKED and not run together with a dash, and that is a width
+    // measurement rather than a style: the plate is 30 cm and `07:00-22:30` at a size anybody
+    // could read off it is 70 cm of glyph run. Every text block in this kit was sized the same
+    // way — n·size + (n-1)·gap against the panel it sits on — because a glyph run does not clip,
+    // it simply walks off the end of its own board and onto the brickwork.
     function hoursPlate(x, y, z, key, ry = 0) {
       const r = HOURS[key], [sn, cs] = fwd(ry), o = ry ? { ry } : {};
-      box(x, y, z, .30, .34, .014, C('#f1ece0'), { hard: true, gloss: .18, ...o });
-      box(x + sn * .009, y + .112, z + cs * .009, .30, .11, .008, REDD,
+      box(x, y, z, .30, .44, .014, C('#f1ece0'), { hard: true, gloss: .18, ...o });
+      box(x + sn * .009, y + .155, z + cs * .009, .30, .12, .008, REDD,
         { hard: true, gloss: .20, ...o });
-      glyphs(x + sn * .016, y + .112, z + cs * .016, ry, '营业时间',
-        { size: .066, gap: .009, color: CREAM, mode: 1, gloss: .10, lift: .004 });
-      glyphs(x + sn * .011, y - .040, z + cs * .011, ry, hm(r[0]) + '-' + hm(r[1]),
-        { size: .058, gap: .006, color: INK, mode: 1, gloss: .08, lift: .004 });
+      glyphs(x + sn * .016, y + .155, z + cs * .016, ry, '营业时间',   // .272 of .30
+        { size: .062, gap: .008, color: CREAM, mode: 1, gloss: .10, lift: .004 });
+      [r[0], r[1]].forEach((v, i) =>                                   // .280 of .30
+        glyphs(x + sn * .011, y + .020 - i * .120, z + cs * .011, ry, hm(v),
+          { size: .052, gap: .005, color: INK, mode: 1, gloss: .08, lift: .004 }));
     }
 
     // 支付 — the 微信支付 / 支付宝 stickers on the glass, which are the single most characteristic
@@ -335,17 +353,21 @@
     // millimetre off a street the header already calls 5.70 m at its worst. Three chicanes in
     // fifty metres is what this alley has and it is staying at three.
     function aBoard(x, z, head, lines, headCol) {
-      box(x, .58, z, .54, 1.08, .045, C('#2b2f33'), { hard: true, gloss: .22 });
-      box(x, .58, z + .030, .46, .98, .018, CREAM, { hard: true, mode: 1, gloss: .12 });
+      // 70 cm frame, 62 cm face. The face width is what sets every size below: a four-character
+      // head at .13 with a .022 gap is .586 and a six-character line at .085 with a .012 gap is
+      // .570, both inside .62. A glyph run does not clip — an oversized one walks off its own
+      // board onto the wall behind it — so the arithmetic is the constraint, not the taste.
+      box(x, .58, z, .70, 1.08, .045, C('#2b2f33'), { hard: true, gloss: .22 });
+      box(x, .58, z + .030, .62, .98, .018, CREAM, { hard: true, mode: 1, gloss: .12 });
       glyphs(x, .92, z + .044, 0, head,
-        { size: .120, gap: .022, color: headCol, mode: 1, gloss: .10, lift: .004 });
+        { size: .130, gap: .022, color: headCol, mode: 1, gloss: .10, lift: .004 });
       lines.forEach((t, i) => glyphs(x, .60 - i * .20, z + .044, 0, t,
-        { size: .088, gap: .014, color: i ? C('#6f6a5f') : INK, mode: 1, gloss: .08, lift: .004 }));
+        { size: .085, gap: .012, color: i ? C('#6f6a5f') : INK, mode: 1, gloss: .08, lift: .004 }));
       // The back leg. `cyl` and not `capsule`: a capsule's caps are a quarter of its height each
       // and scale with sy, so a 1.0 m "rod" comes out as a limb (gl.js:1466).
       cyl(x, .50, z - .13, .016, .90, col.steelD, { rx: .26, gloss: G.metal });
       for (const s of [-1, 1])
-        box(x + s * .21, .020, z - .02, .10, .04, .28, col.steelD, { hard: true, gloss: .28 });
+        box(x + s * .27, .020, z - .02, .12, .04, .28, col.steelD, { hard: true, gloss: .28 });
       shade(x, z - .06, .9, .7, .22);
     }
 
@@ -1075,14 +1097,14 @@
     // one of them stands entirely inside the strip the body cannot reach:
     //
     //   x 10.30  front face -2.512   45.9 cm north of the body's limit at -2.05
-    //   x -8.20  front face -2.402   35.2 cm      (2.4 cm clear of 面馆's tiled stallriser)
+    //   x -8.35  front face -2.402   35.2 cm      (2.4 cm clear of 面馆's tiled stallriser)
     //   x 12.55  front face -2.422   37.2 cm      (3.4 cm clear of the block's plinth at -2.74)
     //
     // No `solid`, no `blocker`, and the narrowest run in the district is still the 1.21 m beside
     // the fruit trike, untouched by any of the three.
-    aBoard(10.30, -2.55, '今日特价', ['鸡蛋 一斤 四块五', '青菜 两斤 五块'], REDD);
-    aBoard(-8.20, -2.44, '本店招牌', ['牛肉面 一碗 十八', '加面 免费'], C('#8a2f2f'));
-    aBoard(12.55, -2.46, '五金电器', ['水电五金 电料齐全', '开锁 换锁 修水管'], C('#1f4f8f'));
+    aBoard(10.30, -2.55, '今日特价', ['鸡蛋 四块五', '青菜 两块'], REDD);
+    aBoard(-8.35, -2.44, '本店招牌', ['牛肉面 十八', '加面 免费'], C('#8a2f2f'));
+    aBoard(12.55, -2.46, '五金电器', ['水暖 电料', '开锁 换锁'], C('#1f4f8f'));
 
     // ---- A8. 门牌号. The same blue enamel plate as the 单元门's, on the same alley's numbering:
     // even numbers on the block side, rising eastward, with the 单元门's own 十八号 between the
@@ -1102,7 +1124,7 @@
     // 超市's own awning at 3.16 would have swallowed a strip hung below it.
     subPlate(3.05, 2.09, EZ + .022, 'chāoshì', 'supermarket');
     subPlate(-3.40, 2.09, EZ + .022, 'miànguǎn', 'noodle shop');
-    subPlate(17.00, 2.09, HWG + .03, 'wǔjīn diànqì', 'hardware & electrical');
+    subPlate(17.00, 2.09, HWG + .03, 'wǔjīn diànqì', 'hardware');
 
     // ---- D6. 春联 on three shop doors. The alley's residential gates have had a pair since
     // street-entry.js and its shops have had none, which is backwards: a shop puts them up
