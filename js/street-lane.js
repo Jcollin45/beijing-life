@@ -64,10 +64,15 @@
 // and without it.
 //
 // **One collider is added**, and only one: the 三轮车 unloading outside 大超市 (B2), which has to
-// stand out in the lane or it is not a delivery. `solid(49.30, 51.70, -12.60, -10.62)` holds the
-// body at z >= -10.32 across those 2.40 m, leaving 3.52 m of body-centre travel and **4.12 m
-// clear**. B1's floor is 3.40 m, so it clears it by 0.72 m and it is the narrowest point in the
-// lane.
+// stand out in the lane or it is not a delivery. `solid(49.30, 52.25, -12.60, -10.84)`.
+//
+// The number that matters here came from the gate's full-profile scan through the real
+// `Street.clampMove` at r = 0.30, NOT from this file's own arithmetic, and the two disagreed:
+// the lane's clear run is **4.85 m**, not the 5.40 m that `S.LANE_ZONE` less two body radii
+// predicts. Trust the scan. At the first shipped depth (-10.62) that scan read **3.55 m** across
+// x 49.30..51.80 — passing B1's 3.40 m floor by 0.15 m, which the gate called thin and told this
+// lane not to spend. So the bed was narrowed from 0.88 to 0.70 and pulled back to -10.84, which
+// buys 0.22 m of that margin back.
 //
 // The cycle bay (B4) is at x 39.70 .. 41.45, z -14.60 .. -12.90: south of the lane's mouth, on
 // the far pavement, where the road zone already stops the body at x 39.50 and the lane zone does
@@ -475,28 +480,31 @@
 
     // ---- B2. A delivery. One 三轮车 in the district outside the alley's 超市, and none here.
     // Pulled up ALONGSIDE the frontage rather than backed square into it, and that is a measured
-    // decision, not a stylistic one: a trike backed in perpendicular is 1.90 m of lane, which
-    // leaves 3.20 m clear and fails B1's 3.40 m floor. Alongside, its collider is
-    // `solid(49.30, 51.70, -12.60, -10.62)` — the body is held at z >= -10.32 across those
-    // 2.40 m, 3.52 m of body-centre travel and **4.12 m clear**. It is the narrowest point in the
-    // lane and it clears the floor by 0.72 m.
-    const TB = 50.50, TZ = -11.10;
-    box(TB, .62, TZ, 1.55, .30, .88, C('#3d6f5a'), { hard: true, gloss: .26 });      // the bed
-    box(TB, .82, TZ - .40, 1.55, .40, .06, C('#356252'), { hard: true, gloss: .26 });
-    box(TB, .82, TZ + .40, 1.55, .40, .06, C('#356252'), { hard: true, gloss: .26 });
-    box(TB - .90, .78, TZ, .30, .62, .52, C('#2f3742'), { hard: true, gloss: .30 });  // the saddle end
-    cyl(TB - .96, 1.02, TZ, .026, .52, STEEL, { rz: Math.PI / 2, gloss: G.metal });   // handlebar
-    for (const [wx, wz] of [[TB + .62, TZ - .30], [TB + .62, TZ + .30], [TB - 1.02, TZ]])
+    // decision, not a stylistic one: backed in square it is 1.90 m of lane and fails B1's floor.
+    // The gate's clampMove scan measured the first shipped depth at 3.55 m clear against a 3.40 m
+    // floor — see the note in this file's header for why that number and not this file's own.
+    // The bed is 0.70 deep now rather than 0.88 and the collider stops at -10.84, which is 0.22 m
+    // of margin bought back. It is still the narrowest point in the lane.
+    const TB = 50.50, TZ = -11.22;
+    box(TB, .62, TZ, 1.55, .30, .70, C('#3d6f5a'), { hard: true, gloss: .26 });      // the bed
+    box(TB, .82, TZ - .31, 1.55, .40, .06, C('#356252'), { hard: true, gloss: .26 });
+    box(TB, .82, TZ + .31, 1.55, .40, .06, C('#356252'), { hard: true, gloss: .26 });
+    box(TB - .90, .78, TZ, .30, .62, .48, C('#2f3742'), { hard: true, gloss: .30 });  // the saddle end
+    cyl(TB - .96, 1.02, TZ, .026, .48, STEEL, { rz: Math.PI / 2, gloss: G.metal });   // handlebar
+    for (const [wx, wz] of [[TB + .62, TZ - .24], [TB + .62, TZ + .24], [TB - 1.02, TZ]])
       cyl(wx, .28, wz, .28, .07, col.black,
         { ry: Math.PI / 2, rz: Math.PI / 2, gloss: .26 });
     for (let i = 0; i < 3; i++)                                                       // the load
-      box(TB - .30 + i * .46, .92, TZ + (i % 2) * .10, .42, .30, .40,
+      box(TB - .30 + i * .46, .92, TZ + (i % 2) * .07, .42, .30, .34,
         C(i === 1 ? '#a3814e' : '#8c6b3f'), { hard: true, gloss: .18 });
-    box(TB + .20, 1.12, TZ, 1.30, .05, .80, C('#5a6a52'), { mode: 7, gloss: G.fabric });
-    for (let i = 0; i < 2; i++)                                                       // half off
-      box(TB + 1.02 + i * .48, .18, TZ - .16 + i * .22, .44, .34, .40, C('#8c6b3f'),
+    box(TB + .20, 1.12, TZ, 1.30, .05, .64, C('#5a6a52'), { mode: 7, gloss: G.fabric });
+    // The load half off, on the ground beside the tailboard. These stand EAST of the bed, so the
+    // collider has to run out to 52.25 to cover them — a wider stretch of lane at the same depth,
+    // which costs nothing, where leaving them out would have left two crates you walk through.
+    for (let i = 0; i < 2; i++)
+      box(TB + 1.02 + i * .48, .18, TZ - .10 + i * .16, .44, .34, .34, C('#8c6b3f'),
         { hard: true, gloss: .18 });
-    solid(49.30, 51.70, -12.60, -10.62);
+    solid(49.30, 52.25, -12.60, -10.84);
 
     // ---- B3. Bins. The lane had none. Two, as a pair, which is how this city puts them out —
     // 可回收物 beside 其他垃圾 — and they go on the north side because that is the only place on
