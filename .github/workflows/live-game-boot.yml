@@ -1,0 +1,60 @@
+name: Live game boot
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - index.html
+      - ZOO-EXPANSION-BLUEPRINT.json
+      - js/**
+      - .bootcheck.js
+      - .harness-env.js
+      - .render-gate.js
+      - serve.py
+      - .github/workflows/live-game-boot.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-game-boot-main
+  cancel-in-progress: true
+
+jobs:
+  boot:
+    runs-on: ubuntu-latest
+    timeout-minutes: 12
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Start the no-cache game server
+        run: |
+          python3 serve.py 8000 > /tmp/beijing-life-server.log 2>&1 &
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8000/index.html >/dev/null && exit 0
+            sleep 1
+          done
+          cat /tmp/beijing-life-server.log
+          exit 1
+
+      - name: Boot, enter, and draw the game
+        env:
+          CHROME: /usr/bin/google-chrome
+          GAME_TEST_SOFTWARE_WEBGL: "1"
+          BOOT_DEVTOOLS_TRIES: "600"
+          BOOTCHECK_TIMEOUT_MS: "180000"
+          HARNESS_TIMEOUT_MS: "600000"
+        run: node .bootcheck.js
+
+      - name: Print server failures
+        if: failure()
+        run: tail -200 /tmp/beijing-life-server.log || true
