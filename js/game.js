@@ -12237,6 +12237,15 @@ const ASSET_ROOM = { home:'World', street:'Street', shop:'Shop', diner:'Diner', 
 const assetRoom = name => ASSET_ROOM[name] || name;
 
 function setPlace(name, at) {
+  // `at` is a spawn point — `{x, z, yaw}` — and nothing below checks it. A debug caller handing
+  // a room name instead (`setPlace('home', 'flat')`) set P.x/P.z/P.yaw to undefined, which the
+  // camera copied on the next line as NaN. A NaN view matrix rasterises nothing, so the frame is
+  // the clear colour: a black screen with a healthy GL context, props still in the draw list and
+  // not one console error. Two agents have now chased that as a deck-cull fault. Refuse it here.
+  if (at && !(Number.isFinite(at.x) && Number.isFinite(at.z))) {
+    console.warn('setPlace(' + name + ', …): `at` must be {x, z, yaw} — ignoring', at);
+    at = null;
+  }
   // A room is constructed the first time anything reads a property off it, and the very next
   // line does exactly that — so this is the last moment at which its models can still arrive in
   // time. Built without them, the room caches without them, permanently: `Lazy` keeps what it
