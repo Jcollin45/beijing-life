@@ -1803,7 +1803,7 @@
                'mall-jewel','mall-fashion','mall-shoes','mall-digital','mall-optical','mall-flowers','mall-coffee','mall-bakery','mall-pets','mall-restaurant','mall-beauty','mall-books','mall-sport','mall-home','mall-toys','mall-dessert','mall-cinema','mall-arcade',
                'office-core','office-lift','office-b1','office-f1','office-f2','office-f3','office','office-f4','office-f5','office-f6','office-f7','office-roof',
                'park','zoo-animals','zoo-expansion','zoo-contents','zoo','zoo-tropical',
-               'campus','campus-boundary','campus-academic','campus-west','campus-east',
+               'campus','campus-boundary','campus-academic','campus-west','campus-east','campus-interior-core',
                'campus-furniture','campus-life','classroom','library','nightmarket','rail','airport',
                'air-info','air-ticket','air-checkin','air-belt','air-kiosks','air-board','air-shop','air-security',
                'air-dutyfree','air-cafe','air-smoke','air-wc','air-gate','air-apron','air-runway',
@@ -1858,7 +1858,7 @@
     ['ZooAnimals', 'profiles'], ['ZooExpansion', 'build npcRows useRows validatePlan'],
     ['ZooContents', 'buildOutdoor buildTropical useRows validatePlan'],
     ['ZooTropical', 'things'],
-    ['Campus', 'things'],     ['Classroom', 'things'],
+    ['Campus', 'things'], ['CampusInteriors', 'places placeKey buildFloor validate'], ['Classroom', 'things'],
     ['Library', 'things'], ['NightMarket', 'things tick setNight'],
     ['Rail', 'things'],
     ['Airport', 'things NOTICES setDay statusOf checkinOpen gateOf nextFlight noticeOf'],
@@ -1937,13 +1937,37 @@
     Lazy.onstale = show;
     if (missing.length)
       show('a stale or partial build — missing ' + missing.join(', '));
+    // Construction-review deep link.  It is intentionally restricted to the validated campus
+    // interior registry: `?campusInterior=campus_science_f3` opens that floor after normal game
+    // initialisation, making every blueprint deck directly inspectable without a second viewer.
+    if (!missing.length) {
+      var previewParams = new URLSearchParams(location.search);
+      var preview = previewParams.get('campusInterior');
+      if (preview && CampusInteriors.places[preview] && window.__game) {
+        var enter = document.getElementById('start');
+        if (enter) enter.click();
+        var previewX = Number(previewParams.get('x'));
+        var previewZ = Number(previewParams.get('z'));
+        var previewYaw = Number(previewParams.get('yaw'));
+        var previewAt = previewParams.has('x') && previewParams.has('z') &&
+                        Number.isFinite(previewX) && Number.isFinite(previewZ)
+          ? { x:previewX, z:previewZ, yaw:Number.isFinite(previewYaw) ? previewYaw : 0 }
+          : undefined;
+        window.__game.setPlace(preview, previewAt);
+      }
+    }
   };
   }
 
-  // The expansion blueprint is runtime data, not a second handwritten copy in the scene. Loading
-  // it before any game module runs means geometry, routes, interactions and the standalone checker
-  // all consume the same revision and SHA-256 identity. A missing plan is a real boot failure: the
-  // old seven-pen room must never masquerade as the completed expansion.
+  // NOTE 2026-08-09: the university-interiors blueprint was cut back out of this loader. It was
+  // committed here half-finished by a `git add -A` that swept up another lane's work-in-progress,
+  // and it took the live site down twice — first on a schema mismatch, then on a 404 once the JSON
+  // was reverted and this fetch was not. Nothing consumes it today. Put it back with the consumer,
+  // the JSON and a matching blueprintVersion in one change, not before.
+  //
+  // The zoo expansion is runtime data, not a second handwritten copy in
+  // their scenes. Loading them before any game module runs means geometry, routes, interactions and
+  // standalone checkers all consume the same revision and SHA-256 identity.
   function loadZooBlueprint() {
     return Promise.all([
       fetch('ZOO-EXPANSION-BLUEPRINT.json?v=' + v, { cache:'no-store' }),
@@ -1962,7 +1986,7 @@
         window.ZOO_BLUEPRINT = plan;
         window.ZOO_CONTENTS_BLUEPRINT = contents;
       }).catch(function (e) {
-        show('zoo blueprints did not load — ' + e.message);
+        show('runtime blueprints did not load — ' + e.message);
         throw e;
       });
   }
