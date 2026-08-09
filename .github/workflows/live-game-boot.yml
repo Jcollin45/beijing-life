@@ -53,7 +53,25 @@ jobs:
           BOOT_DEVTOOLS_TRIES: "600"
           BOOTCHECK_TIMEOUT_MS: "180000"
           HARNESS_TIMEOUT_MS: "600000"
-        run: node .bootcheck.js
+        shell: bash
+        run: |
+          set +e
+          node .bootcheck.js 2>&1 | tee /tmp/live-game-boot.log
+          status=${PIPESTATUS[0]}
+          if (( status != 0 )); then
+            {
+              echo '### Live game boot failure'
+              echo '```text'
+              tail -80 /tmp/live-game-boot.log
+              echo '```'
+            } >> "$GITHUB_STEP_SUMMARY"
+            message="$(tail -30 /tmp/live-game-boot.log | tr '\n' ' ' | cut -c1-3500)"
+            message="${message//'%'/'%25'}"
+            message="${message//$'\r'/'%0D'}"
+            message="${message//$'\n'/'%0A'}"
+            echo "::error title=Remote game boot failed::$message"
+          fi
+          exit "$status"
 
       - name: Print server failures
         if: failure()
