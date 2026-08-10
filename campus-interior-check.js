@@ -359,6 +359,12 @@ for(const [name,build] of builders){
   check(`${name} navigation targets exist`,scene&&scene.things.filter(t=>t.exit).every(t=>
     ['campus','classroom','library'].includes(t.exit.place)||keys.includes(t.exit.place)),
     scene&&scene.things.filter(t=>t.exit&&!['campus','classroom','library'].includes(t.exit.place)&&!keys.includes(t.exit.place)).map(t=>t.exit.place).join(','));
+  const campusDoorHotspots=scene&&scene.things.filter(t=>t.exit&&t.exit.place==='campus');
+  check(`${name} visible campus exit door is usable at its threshold`,campusDoorHotspots&&campusDoorHotspots.every(t=>
+    Math.hypot(t.pos[0]-t.focus[0],t.pos[2]-t.focus[1])<=1.55&&
+    !scene.solids.some(s=>!s.open&&t.focus[0]>s.x0-.30&&t.focus[0]<s.x1+.30&&
+      t.focus[1]>s.z0-.30&&t.focus[1]<s.z1+.30)),
+    campusDoorHotspots&&campusDoorHotspots.map(t=>`${t.hz}:${Math.hypot(t.pos[0]-t.focus[0],t.pos[2]-t.focus[1]).toFixed(2)}m`).join(','));
 
   const b=plan.buildings.find(q=>q.id===scene.buildingId),f=scene.blueprintFloor;
   const programmeReview=f.visualReview&&f.visualReview.programme;

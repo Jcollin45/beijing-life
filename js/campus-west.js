@@ -306,7 +306,9 @@ CampusFits.register('west', 30, kit => {
   blocker(-43.20, -27.80, 39.80, 62.20, 16.90);
   const scienceThing = thing('实验楼', -27.55, 3.00, 50, '实验楼里正在做研究。',
     'Research is under way in the science building.',
-    '实验 means experiment; 研究 means research.', { focus:[-25.5,50], reach:2.6 });
+    // Put the usable point on the line where the building collider actually stops the player,
+    // not two metres out under the canopy. The visible science door now offers Q immediately.
+    '实验 means experiment; 研究 means research.', { focus:[-27.43,50], reach:2.8 });
   scienceThing.exit = { place:'campus_science_f1' };
 
   return {};

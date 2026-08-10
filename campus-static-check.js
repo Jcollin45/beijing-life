@@ -104,6 +104,10 @@ const campusEntries = [
 ];
 for (const [label,destination] of campusEntries)
   check(`${label} exterior entry destination`,scene.things.some(t=>t.hz===label&&t.exit&&t.exit.place===destination));
+const scienceEntry=scene.things.find(t=>t.hz==='实验楼'&&t.exit&&t.exit.place==='campus_science_f1');
+check('science entrance interaction is on the visible threshold',!!scienceEntry&&
+  near(scienceEntry.focus[0],-27.43)&&near(scienceEntry.focus[1],50)&&scienceEntry.reach>=2.8,
+  scienceEntry&&JSON.stringify({focus:scienceEntry.focus,reach:scienceEntry.reach}));
 const dataSource=fs.readFileSync(path.join(ROOT,'js/data.js'),'utf8');
 const campusUse=dataSource.match(/\n  campus:\s*\{([\s\S]*?)\n  \},\n  \/\/ ---- 大堂/);
 check('campus-specific entry action table',!!campusUse);

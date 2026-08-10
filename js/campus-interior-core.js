@@ -888,10 +888,10 @@ const CampusInteriors = (() => {
     for(const p of portals){
       const [spawnX,,spawnZ]=p.localSpawn;
       const nearest=[
-        {d:Math.abs(spawnX-x0),x:x0+.07,z:spawnZ,yaw:Math.PI/2},
-        {d:Math.abs(spawnX-x1),x:x1-.07,z:spawnZ,yaw:Math.PI/2},
-        {d:Math.abs(spawnZ-z0),x:spawnX,z:z0+.07,yaw:0},
-        {d:Math.abs(spawnZ-z1),x:spawnX,z:z1-.07,yaw:0},
+        {d:Math.abs(spawnX-x0),x:x0+.07,z:spawnZ,yaw:Math.PI/2,ix:1,iz:0},
+        {d:Math.abs(spawnX-x1),x:x1-.07,z:spawnZ,yaw:Math.PI/2,ix:-1,iz:0},
+        {d:Math.abs(spawnZ-z0),x:spawnX,z:z0+.07,yaw:0,ix:0,iz:1},
+        {d:Math.abs(spawnZ-z1),x:spawnX,z:z1-.07,yaw:0,ix:0,iz:-1},
       ].sort((a,b)=>a.d-b.d)[0];
       prop(`${p.id}/DOOR`,nearest.x,1.08,nearest.z,1.35,2.16,.08,'M-GLASS',{ry:nearest.yaw,alpha:.42});
       const vertical=Math.abs(nearest.yaw)>1,half=.72;
@@ -908,9 +908,18 @@ const CampusInteriors = (() => {
         prop(`${p.id}/PULL-A`,nearest.x-.22,1.12,nearest.z-.07,.035,.70,.05,'M-BRASS');
         prop(`${p.id}/PULL-B`,nearest.x+.22,1.12,nearest.z-.07,.035,.70,.05,'M-BRASS');
       }
-      const approach=publicArrival(p);
+      // The camera-safe arrival can be several metres into a large lobby. It is not the place
+      // from which the visible front door should be usable: B06 consequently put the door label
+      // at its east wall but left its interaction hot spot 5.03 m behind it. Pick the first
+      // body-clear point immediately inside the threshold instead, with a small lateral search
+      // for compact vestibules; retain the arrival only as a defensive fallback.
+      const tx=-nearest.iz,tz=nearest.ix,doorFocus=[.72,1.0,1.3].flatMap(inset=>
+        [0,.42,-.42].map(side=>({
+          x:nearest.x+nearest.ix*inset+tx*side,
+          z:nearest.z+nearest.iz*inset+tz*side,
+        }))).find(q=>q.x>x0+.34&&q.x<x1-.34&&q.z>z0+.34&&q.z<z1-.34&&clearAt(q.x,q.z,.30))||publicArrival(p);
       const t=thing('门',nearest.x,1.15,nearest.z,'从这里回到校园。','This door returns to the campus.','门 is a door; 出门 is to step outside.',
-        {focus:[approach.x,approach.z],reach:1.8});
+        {focus:[doorFocus.x,doorFocus.z],reach:2.0});
       t.exit={place:'campus',at:{x:p.campusReturn[0],z:p.campusReturn[1],yaw:p.campusReturn[2]}};
     }
 
