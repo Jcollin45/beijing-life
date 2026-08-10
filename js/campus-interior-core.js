@@ -71,7 +71,10 @@ const CampusInteriors = (() => {
       if (m.texture && m.texture !== 'none' && m.texture !== 'glass') {
         o.mat=m.texture === 'terrazzo' ? 'tile' : m.texture === 'steel' ? 'metal' : m.texture;
         o.matScale=m.texture === 'wood' ? .62 : m.texture === 'brick' ? .9 : .38;
-        o.matAmt=m.texture === 'wood' ? .42 : .30;
+        // A full-strength plaster normal reads as dirty clouding on large white university walls,
+        // especially under the close review cameras. Keep a restrained tooth while leaving wood,
+        // brick, tile and terrazzo materially legible.
+        o.matAmt=m.texture === 'wood' ? .42 : m.texture === 'plaster' ? .12 : .30;
       }
       if (o.mode === undefined && m.renderMode !== undefined) o.mode=m.renderMode;
       return o;
@@ -350,19 +353,38 @@ const CampusInteriors = (() => {
           localBox(f,-.11,y+h+.08,-d*.04,.25,.05,.24,'M-STEEL-DARK',{round:.030});
         } else if(f.prefab==='PF-ROBOTICS'){
           localBox(f,0,y+h+.42,d*.38,w*.78,.52,.045,'M-STEEL-DARK',{round:.018});
-          for(const dx of [-w*.22,0,w*.22])localBox(f,dx,y+h+.42,d*.345,.08,.08,.025,'M-SAFETY-YELLOW',{round:.018,glow:.06});
+          for(const dx of [-w*.22,0,w*.22]){
+            localBox(f,dx,y+h+.42,d*.345,.075,.075,.025,'M-SCREEN',{round:.018,glow:.08});
+            localBox(f,dx,y+h+.31,d*.342,w*.11,.028,.018,
+              dx<0?'M-WALL-GREEN':dx>0?'M-SAFETY-YELLOW':'M-WALL-WHITE',{round:.006,glow:.08});
+          }
           const variant=[...f.id].reduce((n,ch)=>n+ch.charCodeAt(0),0)%3,
             armX=(variant-1)*w*.09,lowerAngle=[-.48,.12,.42][variant],upperAngle=[.62,-.55,.28][variant];
-          localCyl(f,armX,y+h+.12,-d*.07,.13,.10,'M-STEEL-DARK',{gloss:.28});
-          localBall(f,armX,y+h+.22,-d*.07,.12,.10,.12,'M-LAB-BLUE',{gloss:.24});
-          localBox(f,armX+(variant-1)*.035,y+h+.39,-d*.07,.09,.36,.10,'M-SAFETY-YELLOW',
-            {round:.028,rz:lowerAngle});
-          localBall(f,armX+(variant-1)*.075,y+h+.56,-d*.07,.105,.095,.105,'M-STEEL-DARK',{gloss:.30});
-          localBox(f,armX-(variant-1)*.045,y+h+.70,-d*.07,.085,.31,.09,'M-LAB-BLUE',
-            {round:.025,rz:upperAngle});
-          localBall(f,armX-(variant-1)*.09,y+h+.84,-d*.07,.075,.070,.075,'M-SAFETY-RED',{gloss:.24});
-          for(const dx of [-.045,.045])localBox(f,armX-(variant-1)*.09+dx,y+h+.91,-d*.07,.025,.14,.035,
-            'M-STEEL-DARK',{round:.010,rz:dx<0?-.28:.28});
+          // Predominantly stainless articulated hardware with small blue covers and yellow joint
+          // collars reads as a real cobot rather than a stack of primary-colour toy blocks.
+          localCyl(f,armX,y+h+.095,-d*.07,.15,.075,'M-STEEL-DARK',{gloss:.34});
+          localCyl(f,armX,y+h+.165,-d*.07,.11,.08,'M-STAINLESS',{gloss:.58});
+          localBall(f,armX,y+h+.24,-d*.07,.115,.105,.115,'M-LAB-BLUE',{gloss:.28});
+          localCyl(f,armX,y+h+.24,-d*.07,.128,.028,'M-SAFETY-YELLOW',{gloss:.30});
+          localBox(f,armX+(variant-1)*.035,y+h+.405,-d*.07,.085,.34,.095,'M-STAINLESS',
+            {round:.034,rz:lowerAngle,gloss:.54});
+          localBox(f,armX+(variant-1)*.030,y+h+.405,-d*.072,.035,.26,.101,'M-LAB-BLUE',
+            {round:.020,rz:lowerAngle,gloss:.22});
+          localBall(f,armX+(variant-1)*.075,y+h+.56,-d*.07,.108,.098,.108,'M-STEEL-DARK',{gloss:.38});
+          localCyl(f,armX+(variant-1)*.075,y+h+.56,-d*.07,.116,.026,'M-SAFETY-YELLOW',{gloss:.30});
+          localBox(f,armX-(variant-1)*.045,y+h+.705,-d*.07,.08,.30,.09,'M-STAINLESS',
+            {round:.030,rz:upperAngle,gloss:.54});
+          localBox(f,armX-(variant-1)*.045,y+h+.705,-d*.072,.032,.22,.096,'M-LAB-BLUE',
+            {round:.018,rz:upperAngle,gloss:.22});
+          localBall(f,armX-(variant-1)*.09,y+h+.84,-d*.07,.075,.070,.075,'M-STEEL-DARK',{gloss:.38});
+          localBox(f,armX-(variant-1)*.09,y+h+.885,-d*.07,.12,.055,.08,'M-STAINLESS',{round:.018,gloss:.52});
+          for(const dx of [-.045,.045])localBox(f,armX-(variant-1)*.09+dx,y+h+.94,-d*.07,.022,.13,.032,
+            'M-STEEL-DARK',{round:.010,rz:dx<0?-.30:.30});
+          // Machine-vision head, guarded lens and physical emergency stop complete the cell.
+          localBox(f,-w*.36,y+h+.18,-d*.22,.035,.32,.035,'M-STEEL-DARK',{round:.010});
+          localBox(f,-w*.36,y+h+.35,-d*.22,.18,.12,.12,'M-STAINLESS',{round:.025,bevel:.010});
+          localBall(f,-w*.36,y+h+.35,-d*.285,.052,.052,.020,'M-SCREEN',{glow:.12,gloss:.44});
+          localBall(f,w*.40,y+h+.10,-d*.25,.055,.045,.055,'M-SAFETY-RED',{glow:.06});
         }
       }
     }
@@ -442,6 +464,67 @@ const CampusInteriors = (() => {
       localBox(f,0,y+h*.56,-d*.51,w*.58,h*.18,.03,'M-STEEL-DARK');
       localBox(f,-w*.16,y+h*.50,-d*.54,.07,.07,.04,'M-SCREEN',{glow:.10});
       localBox(f,w*.16,y+h*.50,-d*.54,.07,.07,.04,'M-SAFETY-RED',{glow:.08});
+    }
+
+    function compactFixtureText(value,maxChars) {
+      const text=String(value||'').trim();
+      if(/accessible\s+service/i.test(text))return '无障碍';
+      if(/service\s+ready/i.test(text))return '就绪';
+      if(/visitor\s+check-?in/i.test(text))return '登记';
+      const han=[...text].filter(ch=>/[\u3400-\u9fff]/u.test(ch));
+      if(han.length)return han.slice(0,maxChars).join('');
+      const words=text.toUpperCase().match(/[A-Z0-9]+/g)||[];
+      const aliases={READY:'RDY',SERVICE:'SVC',ACCESSIBLE:'ACC',VISITOR:'VIS',CHECKIN:'IN'};
+      for(let i=words.length-1;i>=0;i--){const word=aliases[words[i]]||words[i];if(word.length<=maxChars)return word;}
+      const initials=words.map(word=>word[0]).join('');
+      return (initials||[...text].join('')).slice(0,maxChars);
+    }
+
+    function fixtureTextRows(value,maxRows,maxChars) {
+      const text=String(value||'').replace(/\s+/g,' ').trim();
+      if(!text)return[];
+      let pieces=text.split(/\s*(?:·|→|\/|｜|\|)\s*/u).filter(Boolean),expanded=[];
+      for(const piece of pieces){
+        const chars=[...piece];
+        if(chars.length<=maxChars){expanded.push(piece);continue;}
+        const words=piece.split(/\s+/).filter(Boolean);
+        if(words.length>1){
+          let line='';
+          for(const word of words){
+            if([...word].length>maxChars){
+              if(line){expanded.push(line);line='';}
+              const wordChars=[...word];
+              for(let i=0;i<wordChars.length;i+=maxChars)expanded.push(wordChars.slice(i,i+maxChars).join(''));
+            }else if(line&&[...`${line} ${word}`].length>maxChars){expanded.push(line);line=word;}
+            else line=line?`${line} ${word}`:word;
+          }
+          if(line)expanded.push(line);
+        }else for(let i=0;i<chars.length;i+=maxChars)expanded.push(chars.slice(i,i+maxChars).join(''));
+      }
+      pieces=expanded;
+      if(pieces.length<=maxRows)return pieces;
+      const joined=pieces.join('');
+      if([...joined].length<=maxRows*maxChars){
+        const chars=[...joined],rows=[];
+        while(chars.length&&rows.length<maxRows)rows.push(chars.splice(0,maxChars).join(''));
+        return rows;
+      }
+      if(maxRows===1)return[compactFixtureText(text,maxChars)];
+      return pieces.slice(0,maxRows-1).concat(compactFixtureText(pieces.slice(maxRows-1).join(' '),maxChars));
+    }
+
+    function paintFixtureText(f,w,panelH,centreY,faceZ,maxRows=3,value=f.text) {
+      const minSize=.065,gap=.006,maxChars=Math.max(2,Math.floor((w*.82+minSize*.06)/(minSize*1.06))),
+        rowLimit=Math.max(1,Math.min(maxRows,Math.floor(panelH*.68/minSize))),
+        rows=fixtureTextRows(value,rowLimit,maxChars);if(!rows.length)return;
+      const linePitch=panelH/rows.length,[gx,gz]=rotated(f.at[0],f.at[2],0,faceZ,f.yaw||0);
+      rows.forEach((row,index)=>{
+        const count=Math.max(1,[...row].length),
+          size=Math.max(minSize,Math.min(.18,linePitch*.68,(w*.82-gap*(count-1))/count)),
+          gy=centreY+(rows.length-1-index*2)*linePitch*.5;
+        glyphs(gx,gy,gz,(f.yaw||0)+Math.PI,row,{size,gap:Math.min(gap,size*.06),
+          color:C0('M-WALL-WHITE'),mode:1,tag:f.id,lift:.006,glyphRole:'primary'});
+      });
     }
 
     function renderWallRun(f,w,h,d) {
@@ -706,16 +789,64 @@ const CampusInteriors = (() => {
           localBox(f,0,y,0,w,h,d,'M-WALL-WHITE');
           for(let i=-2;i<=2;i++)localBox(f,i*w*.15,y-h*.20,-d*.52,w*.10,.025,.02,'M-STEEL-DARK');
           localBox(f,w*.35,y+h*.16,-d*.53,.08,.045,.02,'M-SCREEN',{glow:.12}); break;
-        case 'PF-FUME-HOOD':
-          localBox(f,0,y+h*.22,0,w,h*.44,d,'M-LAB-BLUE');
-          localBox(f,0,y+h*.63,d*.12,w*.90,h*.67,d*.70,'M-GLASS',{alpha:.30});
-          localBox(f,0,y+h*.94,0,w,h*.12,d,'M-STAINLESS');
-          localBox(f,w*.36,y+h*.49,-d*.47,.22,.28,.035,'M-SCREEN',{glow:.08}); break;
+        case 'PF-FUME-HOOD': {
+          // Read as real contained equipment from front and oblique review angles: a recessed
+          // toe-kick and divided base cabinet support a stainless work deck, while the chamber
+          // is enclosed by a framed glass sash instead of one opaque blue mass.
+          localBox(f,0,y+h*.035,0,w*.94,h*.07,d*.92,'M-STEEL-DARK',{round:.018});
+          localBox(f,-w*.255,y+h*.235,d*.025,w*.43,h*.38,d*.82,f.material,{round:.024,bevel:.012});
+          localBox(f,w*.255,y+h*.235,d*.025,w*.43,h*.38,d*.82,f.material,{round:.024,bevel:.012});
+          localBox(f,0,y+h*.43,0,w,h*.065,d,'M-STAINLESS',{round:.018,bevel:.010,gloss:.52});
+          localBox(f,0,y+h*.665,d*.30,w*.88,h*.44,d*.12,'M-CLINIC',{round:.018});
+          localBox(f,0,y+h*.675,-d*.19,w*.86,h*.43,d*.035,'M-GLASS',
+            {alpha:.27,round:.014,gloss:.74});
+          for(const dx of [-w*.465,w*.465])
+            localBox(f,dx,y+h*.675,-d*.18,w*.045,h*.52,d*.075,'M-STEEL-DARK',{round:.010});
+          localBox(f,0,y+h*.925,0,w,h*.13,d*.96,'M-STAINLESS',{round:.022,bevel:.012});
+          localBox(f,0,y+h*.49,-d*.455,w*.88,h*.055,d*.045,'M-STEEL-DARK',{round:.012});
+          // A deterministic flask/condenser assembly makes the contained process unmistakable;
+          // its position varies slightly between hoods without changing the authored footprint.
+          const hoodVariant=[...f.id].reduce((n,ch)=>n+ch.charCodeAt(0),0)%3,
+            apparatusX=(hoodVariant-1)*w*.12;
+          localCyl(f,apparatusX,y+h*.515,-d*.02,w*.12,h*.035,'M-STAINLESS',{gloss:.48});
+          localCyl(f,apparatusX,y+h*.615,-d*.02,.018,h*.20,'M-STEEL-DARK',{gloss:.32});
+          localBall(f,apparatusX+(hoodVariant-1)*w*.035,y+h*.57,-d*.06,w*.075,h*.075,d*.10,
+            hoodVariant===1?'M-WALL-GREEN':'M-SAFETY-YELLOW',{alpha:.78,gloss:.30});
+          localCyl(f,apparatusX+w*.13,y+h*.66,-d*.02,.028,h*.29,'M-GLASS',{alpha:.36,gloss:.68});
+          localBox(f,apparatusX+w*.13,y+h*.80,-d*.02,.055,h*.055,d*.22,'M-STAINLESS',{round:.010});
+          for(const dx of [-w*.28,-w*.12,w*.05]){
+            localCyl(f,dx,y+h*.475,-d*.39,.023,h*.075,'M-STAINLESS',{gloss:.46});
+            localBall(f,dx,y+h*.515,-d*.39,.038,.028,.038,
+              dx<-.2?'M-SAFETY-YELLOW':dx<0?'M-LAB-BLUE':'M-FABRIC-RED',{gloss:.20});
+          }
+          localBox(f,w*.37,y+h*.53,-d*.47,w*.18,h*.22,.035,'M-STEEL-DARK',{round:.018});
+          localBox(f,w*.37,y+h*.53,-d*.495,w*.145,h*.17,.020,'M-SCREEN',{round:.012,glow:.13});
+          localBox(f,w*.34,y+h*.565,-d*.515,w*.055,h*.025,.010,'M-WALL-WHITE',{round:.004,glow:.16});
+          localBox(f,w*.40,y+h*.505,-d*.516,w*.045,h*.055,.010,'M-WALL-GREEN',{round:.005,glow:.13});
+          localCyl(f,0,y+h*.985,d*.05,w*.14,h*.03,'M-STEEL-DARK',{gloss:.34});
+          break;
+        }
         case 'PF-EXAM-COUCH':
           localBox(f,0,y+.49,0,w,.18,d,'M-CLINIC');
           localBox(f,0,y+.67,0,w*.97,.18,d*.94,f.material);
           localBox(f,0,y+.76,d*.35,w*.96,.16,d*.24,'M-WALL-GREEN');
-          for(const dx of [-w*.37,w*.37])for(const dz of [-d*.30,d*.30])localBox(f,dx,y+.24,dz,.055,.48,.055,'M-STEEL-DARK'); break;
+          for(const dx of [-w*.37,w*.37])for(const dz of [-d*.30,d*.30])localBox(f,dx,y+.24,dz,.055,.48,.055,'M-STEEL-DARK');
+          if(f.trainingManikin){
+            // Optional teaching-only overlay.  The normal clinical couch remains byte-for-byte
+            // unchanged; B07's CPR station adds a rounded, articulated adult trainer wholly
+            // inside the same couch footprint and collision body.
+            localBall(f,-w*.34,y+.89,0,w*.105,.10,d*.15,'M-WOOD-DESK',{mode:7,gloss:.05});
+            localBall(f,-w*.11,y+.87,0,w*.22,.075,d*.23,'M-FABRIC-RED',{mode:7,gloss:.04});
+            localBall(f,w*.11,y+.855,0,w*.13,.065,d*.20,'M-STEEL-DARK',{mode:7,gloss:.05});
+            for(const dz of [-d*.285,d*.285]){
+              localBox(f,-w*.10,y+.84,dz,w*.35,.07,d*.09,'M-WOOD-DESK',{mode:7,round:.035,rz:dz<0?-.08:.08});
+              localBox(f,w*.31,y+.83,dz*.56,w*.33,.065,d*.10,'M-WOOD-DESK',{mode:7,round:.035,rz:dz<0?.035:-.035});
+            }
+            localCyl(f,-w*.11,y+.952,0,w*.055,.018,'M-WALL-WHITE',{gloss:.18});
+            localBox(f,-w*.34,y+.915,-d*.13,w*.13,.035,d*.09,'M-CLINIC',{round:.020});
+            localBox(f,-w*.33,y+.928,-d*.18,w*.07,.022,d*.05,'M-LAB-BLUE',{round:.012});
+          }
+          break;
         case 'PF-TOILET':
           localBall(f,0,y+.21,-d*.05,w*.34,.19,d*.36,'M-CERAMIC',{gloss:.34});
           localBall(f,0,y+.39,-d*.10,w*.46,.15,d*.40,'M-CERAMIC',{gloss:.40});
@@ -780,27 +911,22 @@ const CampusInteriors = (() => {
             }
             if(f.prefab==='PF-CHALKBOARD'||f.prefab==='PF-WHITEBOARD')for(const dx of [-w*.22,0,w*.22])
               localBox(f,dx,y-h*.52,-d*.52,w*.10,.035,.035,dx?'M-FABRIC-BLUE':'M-SAFETY-RED',{round:.008});
-            if(f.text&&f.prefab==='PF-SCREEN'){
-              const [gx,gz]=rotated(f.at[0],f.at[2],0,-d*.56,f.yaw||0);
-              glyphs(gx,y,gz,(f.yaw||0)+Math.PI,f.text,
-                {size:Math.min(.105,w/Math.max(5,[...f.text].length)),gap:.016,color:C0('M-WALL-WHITE'),mode:1,tag:f.id,lift:.006});
+            if(f.prefab==='PF-SCREEN'){
+              const screenCopy=f.text||(!/daylight|window|outlook/i.test(`${f.label||''} ${f.purpose||''}`)?f.label:'');
+              if(screenCopy)paintFixtureText(f,w,h*.72,y,-d*.56,4,screenCopy);
             }
           } break;
         case 'PF-DIRECTORY':
           localBox(f,0,y+h*.48,0,w,h*.90,d,'M-STEEL-DARK');
           localBox(f,0,y+h*.62,-d*.55,w*.84,h*.58,.035,'M-SCREEN',{glow:.15});
           localBox(f,0,y+.045,0,w*.98,.09,d*.98,'M-STEEL-DARK',{round:.018});
-          if(f.text){const faceZ=-(d*.55+.035/2+.010),[gx,gz]=rotated(f.at[0],f.at[2],0,faceZ,f.yaw||0);glyphs(gx,y+h*.66,gz,(f.yaw||0)+Math.PI,f.text,
-            {size:Math.min(.10,w/Math.max(4,[...f.text].length)),gap:.016,color:C0('M-WALL-WHITE'),mode:1,tag:f.id,lift:.006});} break;
+          if(f.text){const faceZ=-(d*.55+.035/2+.010);paintFixtureText(f,w*.84,h*.48,y+h*.62,faceZ,4);} break;
         case 'PF-ROOM-SIGN': case 'PF-EXIT-SIGN':
           {
           const cy=p.anchor==='floor'?y+h/2:y;
           localBox(f,0,cy,0,w,h,d,'M-STEEL-DARK',{round:.018,bevel:.010});
           localBox(f,0,cy,-d*.28,w*.90,h*.78,d*.55,f.material,{round:.012,glow:f.prefab==='PF-EXIT-SIGN'?.15:undefined});
-          if(f.text){const [gx,gz]=rotated(f.at[0],f.at[2],0,-d*.58,f.yaw||0);glyphs(gx,
-            p.anchor==='floor'?y+h*.62:y,gz,(f.yaw||0)+Math.PI,f.text,
-            {size:Math.min(.11,w/Math.max(4,[...f.text].length)),gap:.018,color:C0('M-WALL-WHITE'),mode:1,
-              tag:f.id,lift:.006});} break;
+          if(f.text)paintFixtureText(f,w*.90,h*.70,p.anchor==='floor'?y+h*.62:y,-d*.58,3); break;
           }
         case 'PF-CLOCK':
           localCyl(f,0,y,d*.10,w*.50,d,'M-OAK-DARK',{rx:Math.PI/2,gloss:.24});

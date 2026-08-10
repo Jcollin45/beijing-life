@@ -4,6 +4,7 @@
 // the real matrix, Build.scene and campus-interior renderer, then forces all 28 Lazy floor builders.
 const fs=require('fs'),path=require('path'),vm=require('vm');
 const ROOT=__dirname,builders=new Map(),failures=[];
+const REVIEW_FRONT_MIN=1.20;
 let passed=0;
 const check=(name,ok,detail='')=>ok?passed++:failures.push(name+(detail?` — ${detail}`:''));
 const color=hex=>{const raw=String(hex).replace('#',''),v=raw.length===3?[...raw].map(c=>c+c).join(''):raw;
@@ -12,7 +13,12 @@ const color=hex=>{const raw=String(hex).replace('#',''),v=raw.length===3?[...raw
 const context={
   console,C:color,
   performance:{now:()=>0},
-  Glyphs:{need:t=>String(t),role:()=> 'body',isHan:c=>/[\u3400-\u9fff]/u.test(c),rect:()=>[0,0,1,1]},
+  Glyphs:{
+    need:t=>String(t),
+    role:(text,size,opt={})=>opt.glyphRole||(size>=.14?'primary':'micro'),
+    isHan:c=>/[\u3400-\u9fff]/u.test(c),
+    rect:()=>[0,0,1,1]
+  },
   Lazy(name,builder){if(builders.has(name))throw new Error(`duplicate Lazy ${name}`);builders.set(name,builder);return {__lazyName:name};},
 };
 context.window=context;context.globalThis=context;
@@ -386,7 +392,7 @@ for(const [name,build] of builders){
     else {
       const back=reviewBack(scene,f,room.bounds,pose),front=reviewFront(scene,f,room.bounds,pose);
       if(!back)visualReviewDefects.push(`${b.id}/F${f.level}:rear-camera-blocked`);
-      if(front<.72)visualReviewDefects.push(`${b.id}/F${f.level}:front-depth-${front.toFixed(2)}m`);
+      if(front<REVIEW_FRONT_MIN)visualReviewDefects.push(`${b.id}/F${f.level}:front-depth-${front.toFixed(2)}m`);
       if(back){
         const focus=reviewFocusEvidence(scene,f,pose,back,programmeReview.focusFixtureIds,2),door=reviewForegroundDoor(f,pose,back);
         if(focus.error)visualReviewDefects.push(`${b.id}/F${f.level}:${focus.error}`);
@@ -416,7 +422,7 @@ for(const [name,build] of builders){
       }
       const back=reviewBack(scene,f,zone.bounds,pose),front=reviewFront(scene,f,zone.bounds,pose);
       if(!back)entryReviewDefects.push(`${b.id}/F${f.level}:entry-rear-camera-blocked`);
-      if(front<.72)entryReviewDefects.push(`${b.id}/F${f.level}:entry-front-depth-${front.toFixed(2)}m`);
+      if(front<REVIEW_FRONT_MIN)entryReviewDefects.push(`${b.id}/F${f.level}:entry-front-depth-${front.toFixed(2)}m`);
       if(back){
         const focus=reviewFocusEvidence(scene,f,pose,back,entryReview.focusFixtureIds,1),door=reviewForegroundDoor(f,pose,back);
         if(focus.error)entryReviewDefects.push(`${b.id}/F${f.level}:entry-${focus.error}`);
@@ -448,7 +454,7 @@ for(const [name,build] of builders){
       else {
         const back=reviewBack(scene,f,cameraZone.bounds,pose),front=reviewFront(scene,f,focusRoom.bounds,pose);
         if(!back)entryReviewDefects.push(`${key}:ground-rear-camera-blocked-${cameraZone.id}`);
-        if(front<.72)entryReviewDefects.push(`${key}:ground-front-depth-${front.toFixed(2)}m`);
+        if(front<REVIEW_FRONT_MIN)entryReviewDefects.push(`${key}:ground-front-depth-${front.toFixed(2)}m`);
         if(back){
           const focus=reviewFocusEvidence(scene,f,pose,back,entry.focusFixtureIds,1),door=reviewForegroundDoor(f,pose,back);
           if(focus.error)entryReviewDefects.push(`${key}:ground-${focus.error}`);
@@ -458,6 +464,28 @@ for(const [name,build] of builders){
     }
   }
   const fixtureRows=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects);
+  const textGlyphDefects=[],fixtureNeedsText=fixture=>
+    !!fixture.text||fixture.prefab==='PF-SCREEN'&&!/daylight|window|outlook/i.test(`${fixture.label||''} ${fixture.purpose||''}`);
+  for(const fixture of fixtureRows.filter(o=>fixtureNeedsText(o)&&
+    ['PF-SCREEN','PF-DIRECTORY','PF-ROOM-SIGN','PF-EXIT-SIGN'].includes(o.prefab))){
+    const glyphRows=scene.props.filter(p=>p.mesh==='quad'&&p.tag===fixture.id&&p.ch);
+    if(!glyphRows.length){textGlyphDefects.push(`${fixture.id}:missing`);continue;}
+    const minSize=Math.min(...glyphRows.map(p=>Math.hypot(p.m[0],p.m[1],p.m[2]))),
+      han=glyphRows.filter(p=>/[\u3400-\u9fff]/u.test(p.ch)),yaw=fixture.yaw||0,
+      axis=[Math.cos(yaw),-Math.sin(yaw)],faceRatio=fixture.prefab==='PF-DIRECTORY'?.84:
+        fixture.prefab==='PF-SCREEN'?1:.90,halfWidth=fixture.size[0]*faceRatio/2;
+    if(minSize<.064)textGlyphDefects.push(`${fixture.id}:size-${minSize.toFixed(3)}`);
+    if(han.some(p=>p.glyphPrimary!==true))textGlyphDefects.push(`${fixture.id}:unstable-han`);
+    for(const glyph of glyphRows){
+      const rel=[glyph.m[12]-fixture.at[0],glyph.m[14]-fixture.at[2]],centre=rel[0]*axis[0]+rel[1]*axis[1],
+        radius=.5*(Math.abs(glyph.m[0]*axis[0]+glyph.m[2]*axis[1])+
+          Math.abs(glyph.m[4]*axis[0]+glyph.m[6]*axis[1])+
+          Math.abs(glyph.m[8]*axis[0]+glyph.m[10]*axis[1]));
+      if(Math.abs(centre)+radius>halfWidth+.002){textGlyphDefects.push(`${fixture.id}:horizontal-overflow`);break;}
+    }
+  }
+  check(`${name} authored screen and sign text stays legible and distance-stable`,textGlyphDefects.length===0,
+    textGlyphDefects.slice(0,8).join(','));
   const directoryGlyphDefects=[];
   for(const fixture of fixtureRows.filter(o=>o.prefab==='PF-DIRECTORY'&&o.text)){
     const yaw=fixture.yaw||0,v=[Math.sin(yaw),Math.cos(yaw)],front=-(fixture.size[2]*.55+.035/2),
@@ -498,6 +526,17 @@ for(const [name,build] of builders){
     }
   }
   check(`${name} rendered parts stay in fixture footprints`,outside.length===0,[...new Set(outside)].slice(0,8).join(','));
+  if(b.id==='B07'&&f.level===3){
+    const manikin=fixtureRows.find(o=>o.id==='B07/F3/HEALTH/DEMO'),
+      manikinParts=scene.props.filter(p=>p.tag===manikin?.id&&p.mesh!=='quad'),
+      manikinBodies=fixtureBodies.filter(s=>s.fixtureId===manikin?.id),
+      manikinOutside=manikin&&manikinParts.filter(p=>renderedPartOutsideFixture(p,manikin));
+    check('B07 health-training manikin is a contained multipart couch variant',
+      !!manikin&&manikin.prefab==='PF-EXAM-COUCH'&&manikin.trainingManikin===true&&
+      manikin.size.join(',')==='1.75,0.78,0.68'&&manikinParts.length>=17&&
+      manikinParts.filter(p=>p.mesh==='ball').length>=3&&manikinBodies.length===1&&manikinOutside.length===0,
+      `parts=${manikinParts.length} bodies=${manikinBodies.length} footprintEscapes=${manikinOutside&&manikinOutside.length}`);
+  }
   const singlePrimitive=fixtureRows.filter(o=>(partCounts.get(o.id)||0)<2);
   check(`${name} has no single-primitive fixtures or architectural layers`,singlePrimitive.length===0,
     singlePrimitive.slice(0,8).map(o=>`${o.id}:${o.prefab}:${partCounts.get(o.id)||0}`).join(','));

@@ -19,6 +19,7 @@ const BUILDING_FLOORS={B01:5,B02:4,B03:1,B04:6,B05:4,B06:4,B07:3,B08:1};
 const OUTPUT_DIR=MERGE_MODE?OUTPUT_ROOT:REVIEW_BUILDING?path.join(OUTPUT_ROOT,REVIEW_BUILDING):OUTPUT_ROOT;
 const VIEWPORT={width:1024,height:640,deviceScaleFactor:1,mobile:false};
 const CAPTURE_ATTEMPTS=2,CAPTURE_TIMEOUT_MS=75000,CAPTURE_SETTLE_MS=220,CAPTURE_RETRY_MS=750;
+const MIN_REVIEW_FRONT=1.20;
 const DEBUG_PORT=14000+Math.floor(Math.random()*10000),sleep=ms=>new Promise(r=>setTimeout(r,ms));
 let profile=null;
 let chrome,socket,sequence=0,activeView=null;const pending=new Map(),runtimeErrors=[];
@@ -111,7 +112,7 @@ function hasFiniteFields(value,fields){
   return !!value&&typeof value==='object'&&!Array.isArray(value)&&fields.every(field=>Number.isFinite(value[field]));
 }
 function validReviewPrerequisites(value){
-  return !!value&&value.bodyControl===true&&value.fontReady===true&&value.fontCheck===true&&
+  return !!value&&value.bodyControl===true&&value.uiClean===true&&value.fontReady===true&&value.fontCheck===true&&
     Number.isInteger(value.glyphVariants)&&value.glyphVariants>=6&&
     Number.isInteger(value.glyphCount)&&value.glyphCount>=8&&
     Number.isFinite(value.minGlyphInk)&&value.minGlyphInk>=40;
@@ -192,7 +193,7 @@ function mergeReviewOutputs(){
       if(row.mode!==expectedMode)defects.push(`${building}: mode ${JSON.stringify(row.mode)} does not match suffix ${JSON.stringify(suffix)} for ${key}`);
       if(invalidMetrics.length)defects.push(`${building}: row ${key} has invalid ${invalidMetrics.join(', ')} count(s)`);
       const prerequisites=row.reviewPrerequisites,prerequisiteFields=[
-        'bodyControl','fontReady','fontCheck','glyphVariants','glyphCount','minGlyphInk'];
+        'bodyControl','uiClean','fontReady','fontCheck','glyphVariants','glyphCount','minGlyphInk'];
       if(!validReviewPrerequisites(prerequisites)){
         defects.push(`${building}: capture prerequisites are not proven for ${key}`);valid=false;
       }
@@ -214,7 +215,7 @@ function mergeReviewOutputs(){
       if(suffix==='programme'&&(
         typeof row.reviewRoom!=='string'||!row.reviewRoom.trim()||
         !hasFiniteFields(row.reviewAt,['x','z','yaw','cameraBack','frontDepth'])||
-        row.reviewAt.cameraBack<=0||row.reviewAt.frontDepth<.72||typeof row.reviewAt.authored!=='boolean'||
+        row.reviewAt.cameraBack<=0||row.reviewAt.frontDepth<MIN_REVIEW_FRONT||typeof row.reviewAt.authored!=='boolean'||
         CURATED_PROGRAMME_BUILDINGS.has(building)&&row.reviewAt.authored!==true||!validFocusEvidence(row.reviewAt,2))){
         defects.push(`${building}: programme camera evidence is incomplete for ${key}`);valid=false;
       }
@@ -222,7 +223,7 @@ function mergeReviewOutputs(){
       if((suffix==='clinic-entry'||suffix==='entry')&&
         (!hasFiniteFields(row.entryReviewAt,['x','z','yaw','inward','lateral','cameraBack'])||
           row.entryReviewAt.inward<0||row.entryReviewAt.cameraBack<=0||
-          !Number.isFinite(row.entryReviewAt.frontDepth)||row.entryReviewAt.frontDepth<.72||
+          !Number.isFinite(row.entryReviewAt.frontDepth)||row.entryReviewAt.frontDepth<MIN_REVIEW_FRONT||
           typeof row.entryReviewAt.authored!=='boolean'||
           (rowLevel>1||requiresAuthoredGround)&&row.entryReviewAt.authored!==true||
           !validFocusEvidence(row.entryReviewAt,1)||
@@ -342,6 +343,12 @@ async function main(){
     if(!window.__game||typeof window.__game.showBody!=='function')
       throw new Error('screenshot harness cannot hide the player body');
     window.__game.showBody(false);
+    let reviewStyle=document.getElementById('university-review-clean-ui');
+    const reviewUi=['hud','flightStatus','needs','goals','map','keys','touchControls','labels','prompt','doing','toast'];
+    if(!reviewStyle){reviewStyle=document.createElement('style');reviewStyle.id='university-review-clean-ui';
+      reviewStyle.textContent=reviewUi.map(id=>'#'+id).join(',')+'{display:none!important}';document.head.appendChild(reviewStyle);}
+    const uiClean=reviewUi.every(id=>{
+      const el=document.getElementById(id);return !!el&&getComputedStyle(el).display==='none';});
     if(!document.fonts)throw new Error('FontFaceSet API is unavailable');
     const probe='大学食堂医院图书馆校';
     await document.fonts.load('36px "Noto Sans CJK SC"',probe);
@@ -355,10 +362,10 @@ async function main(){
       for(let i=3;i<data.length;i+=4)if(data[i]){ink++;hash=Math.imul(hash^data[i],16777619);}
       signatures.push((hash>>>0).toString(16));inks.push(ink);
     }
-    return{bodyControl:true,fontReady:document.fonts.status==='loaded',fontCheck,
+    return{bodyControl:true,uiClean,fontReady:document.fonts.status==='loaded',fontCheck,
       glyphCount:probe.length,glyphVariants:new Set(signatures).size,minGlyphInk:Math.min(...inks)};
   })()`);
-  if(!reviewPrerequisites.bodyControl||!reviewPrerequisites.fontReady||!reviewPrerequisites.fontCheck||
+  if(!reviewPrerequisites.bodyControl||!reviewPrerequisites.uiClean||!reviewPrerequisites.fontReady||!reviewPrerequisites.fontCheck||
     reviewPrerequisites.glyphCount<8||reviewPrerequisites.glyphVariants<6||reviewPrerequisites.minGlyphInk<40)
     throw new Error(`university capture prerequisites failed: ${JSON.stringify(reviewPrerequisites)}`);
 
@@ -473,7 +480,7 @@ async function main(){
           const back=backOptions.find(q=>inside(cameraZone.bounds,x-Math.sin(reviewYaw)*q,z-Math.cos(reviewYaw)*q,.18)&&
               rearClear(x,z,reviewYaw,q))||0,front=frontDepth(x,z,reviewYaw,focusRoom.bounds);
           if(!back)throw new Error('authored ground arrival has no clear camera in '+cameraZone.id);
-          if(front<.72)throw new Error('authored ground arrival faces less than 0.72m of '+focusRoom.id);
+          if(front<${MIN_REVIEW_FRONT})throw new Error('authored ground arrival faces less than ${MIN_REVIEW_FRONT.toFixed(2)}m of '+focusRoom.id);
           if(foregroundDoor(x,z,reviewYaw,back))throw new Error('authored ground arrival has a foreground door leaf');
           const focus=focusEvidence(authored.focusFixtureIds,x,z,reviewYaw,back,1);
           if(authored.body!=='hidden'&&authored.body!=='evidence')
@@ -533,7 +540,7 @@ async function main(){
           const pose=authored.at||{},x=pose.x,z=pose.z,yaw=pose.yaw,back=zoneCameraBack(x,z,yaw),
             front=frontDepth(x,z,yaw,entryZone.bounds);
           if(![x,z,yaw].every(Number.isFinite)||!inside(entryZone.bounds,x,z,radius)||!free(x,z)||
-            !moveClear(x,z)||!back||front<.72)throw new Error('authored upper-floor arrival is not clear in '+entryZone.id);
+            !moveClear(x,z)||!back||front<${MIN_REVIEW_FRONT})throw new Error('authored upper-floor arrival is not clear in '+entryZone.id);
           if(foregroundDoor(x,z,yaw,back))throw new Error('authored upper-floor arrival has a foreground door leaf');
           candidates.push({x,z,yaw,back,front,move:Math.hypot(x-ox,z-oz),score:1e6,
             focus:focusEvidence(authored.focusFixtureIds,x,z,yaw,back,1)});
@@ -570,7 +577,7 @@ async function main(){
           const back=backOptions.find(q=>inside(room.bounds,x-Math.sin(yaw)*q,z-Math.cos(yaw)*q,.18)&&
             rearClear(x,z,yaw,q))||0,front=frontDepth(x,z,yaw,room.bounds);
           if(!back)throw new Error('authored programme pose has no clear rear-camera sightline in '+room.id);
-          if(front<.72)throw new Error('authored programme pose faces less than 0.72m of '+room.id);
+          if(front<${MIN_REVIEW_FRONT})throw new Error('authored programme pose faces less than ${MIN_REVIEW_FRONT.toFixed(2)}m of '+room.id);
           if(foregroundDoor(x,z,yaw,back))throw new Error('authored programme pose has a foreground door leaf in '+room.id);
           chosen={x,z,yaw,back,front,authored:true,focusFixtureIds:[...authored.focusFixtureIds],
             focusEvidence:focusEvidence(authored.focusFixtureIds,x,z,yaw,back,2)};
