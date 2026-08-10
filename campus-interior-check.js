@@ -472,11 +472,15 @@ for(const [name,build] of builders){
     const glyphRows=scene.props.filter(p=>p.mesh==='quad'&&p.tag===fixture.id&&p.ch);
     if(!glyphRows.length){textGlyphDefects.push(`${fixture.id}:missing`);continue;}
     const minSize=Math.min(...glyphRows.map(p=>Math.hypot(p.m[0],p.m[1],p.m[2]))),
-      han=glyphRows.filter(p=>/[\u3400-\u9fff]/u.test(p.ch)),yaw=fixture.yaw||0,
+      han=glyphRows.filter(p=>/[\u3400-\u9fff]/u.test(p.ch)),
+      latin=glyphRows.filter(p=>/[A-Za-z0-9]/.test(p.ch)),yaw=fixture.yaw||0,
       axis=[Math.cos(yaw),-Math.sin(yaw)],faceRatio=fixture.prefab==='PF-DIRECTORY'?.84:
         fixture.prefab==='PF-SCREEN'?1:.90,halfWidth=fixture.size[0]*faceRatio/2;
     if(minSize<.064)textGlyphDefects.push(`${fixture.id}:size-${minSize.toFixed(3)}`);
     if(han.some(p=>p.glyphPrimary!==true))textGlyphDefects.push(`${fixture.id}:unstable-han`);
+    if(latin.some(p=>{const size=Math.hypot(p.m[0],p.m[1],p.m[2]);return p.glyphProportional!==true||
+      !Number.isFinite(p.glyphAdvance)||p.glyphAdvance>size*.70;}))
+      textGlyphDefects.push(`${fixture.id}:full-width-latin`);
     for(const glyph of glyphRows){
       const rel=[glyph.m[12]-fixture.at[0],glyph.m[14]-fixture.at[2]],centre=rel[0]*axis[0]+rel[1]*axis[1],
         radius=.5*(Math.abs(glyph.m[0]*axis[0]+glyph.m[2]*axis[1])+

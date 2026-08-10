@@ -8,7 +8,7 @@
     "units": "metres",
     "generatedFrom": "tools/generate-university-interiors-blueprint.js",
     "sourceOfTruth": "JSON",
-    "canonicalGeometryHash": "1de979c64e67913d57e153d220a3a1fc2e003857d3e53b1d5900bcd36318254d"
+    "canonicalGeometryHash": "6679c29682a72d8f1d905d5c646862647eae9f8864de885d006f968552a5d660"
   },
   "coordinateContract": {
     "axis": {
@@ -381,13 +381,13 @@
     "buildings": 8,
     "floors": 28,
     "rooms": 205,
-    "fixtureInstances": 4588,
+    "fixtureInstances": 4567,
     "beds": 48,
-    "studentSeatPairs": 4,
+    "studentSeatPairs": 2,
     "labBenches": 24,
     "autoCompletedDoors": 47,
     "normalizedCirculationRoutes": 1,
-    "completedStairSafetyFixtures": 62
+    "completedStairSafetyFixtures": 58
   },
   "materials": [
     {
@@ -1839,7 +1839,7 @@
           "doorSideRoute": 2.55
         },
         "validation": {
-          "floorStandingFixturesChecked": 292,
+          "floorStandingFixturesChecked": 288,
           "containmentFailures": 0,
           "unintendedFootprintOverlaps": 0,
           "doorApproachObstructions": 0,
@@ -3120,6 +3120,26 @@
                   "purpose": "room changes and university notices",
                   "yaw": 1.5707963267948966,
                   "text": "教室变更 · 校园活动"
+                },
+                {
+                  "id": "B01/F1/CENTRE/ARRIVAL-SERVICE",
+                  "label": "side-wall teaching-block welcome display",
+                  "prefab": "PF-SCREEN",
+                  "at": [
+                    3.145,
+                    1.62,
+                    0.05
+                  ],
+                  "size": [
+                    2.45,
+                    1.02,
+                    0.05
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "large reception, accessible-service and room-finding identity viewed across the lobby with both doors outside the sightline",
+                  "yaw": 1.5707963267948966,
+                  "text": "第一教学楼 · 服务与导览"
                 },
                 {
                   "id": "B01/F1/CENTRE/FEATURE-L",
@@ -5877,14 +5897,13 @@
                 "focusRoomId": "B01/F1/CENTRE",
                 "cameraZoneId": "B01/F1/CENTRE",
                 "focusAt": {
-                  "x": 0,
-                  "z": -0.5,
-                  "yaw": 0
+                  "x": 0.3,
+                  "z": 1.05,
+                  "yaw": 1.5707963267948966
                 },
                 "body": "hidden",
                 "focusFixtureIds": [
-                  "B01/F1/CENTRE/WELCOME-L",
-                  "B01/F1/CENTRE/WELCOME-R"
+                  "B01/F1/CENTRE/ARRIVAL-SERVICE"
                 ]
               }
             ],
@@ -9589,7 +9608,7 @@
               "label": "floor teaching notice display",
               "prefab": "PF-SCREEN",
               "at": [
-                -8.15,
+                -4,
                 4.86,
                 4.89
               ],
@@ -9668,13 +9687,13 @@
               "label": "tutorial-floor arrival display",
               "prefab": "PF-SCREEN",
               "at": [
-                -4.4,
+                -10.05,
                 4.86,
                 4.89
               ],
               "size": [
-                2.1,
-                0.86,
+                2.55,
+                0.96,
                 0.05
               ],
               "material": "M-SCREEN",
@@ -9688,7 +9707,7 @@
               "label": "tutorial-floor class clock",
               "prefab": "PF-CLOCK",
               "at": [
-                -2.92,
+                -8.45,
                 4.92,
                 4.86
               ],
@@ -9856,9 +9875,9 @@
             "entry": {
               "zoneId": "B01/F2/CORRIDOR",
               "at": {
-                "x": -5.9,
-                "z": 4.15,
-                "yaw": 1.15
+                "x": -8.35,
+                "z": 4.1,
+                "yaw": -1.5707963267948966
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -13019,13 +13038,13 @@
               "label": "language-and-computing arrival display",
               "prefab": "PF-SCREEN",
               "at": [
-                2.7,
+                2.35,
                 8.16,
                 3.11
               ],
               "size": [
-                2.1,
-                0.86,
+                2.55,
+                0.96,
                 0.05
               ],
               "material": "M-SCREEN",
@@ -13039,7 +13058,7 @@
               "label": "language-floor monitor speaker",
               "prefab": "PF-SPEAKER",
               "at": [
-                4.08,
+                0.72,
                 8.18,
                 3.22
               ],
@@ -13208,9 +13227,9 @@
             "entry": {
               "zoneId": "B01/F3/CORRIDOR",
               "at": {
-                "x": 1.4,
-                "z": 4.05,
-                "yaw": 2
+                "x": 3.9,
+                "z": 4.1,
+                "yaw": -1.5707963267948966
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -14597,127 +14616,89 @@
                   "clearWidth": 1.2
                 },
                 {
-                  "id": "B01/F4/CENTRE/TABLE-L",
-                  "label": "west preparation table",
-                  "prefab": "PF-PREP-TABLE",
-                  "at": [
-                    -2.35,
-                    9.9,
-                    -0.7
-                  ],
-                  "size": [
-                    1.8,
-                    0.84,
-                    0.75
-                  ],
-                  "material": "M-OAK",
-                  "collision": "prefab-default",
-                  "purpose": "teaching material preparation",
-                  "yaw": -1.5707963267948966
-                },
-                {
-                  "id": "B01/F4/CENTRE/TABLE-R",
-                  "label": "east preparation table",
-                  "prefab": "PF-PREP-TABLE",
-                  "at": [
-                    2.35,
-                    9.9,
-                    -0.7
-                  ],
-                  "size": [
-                    1.8,
-                    0.84,
-                    0.75
-                  ],
-                  "material": "M-OAK",
-                  "collision": "prefab-default",
-                  "purpose": "teaching material preparation",
-                  "yaw": 1.5707963267948966
-                },
-                {
-                  "id": "B01/F4/CENTRE/KIT-CADDY-L",
-                  "label": "west course-kit sorting caddy",
-                  "prefab": "PF-TRAY-RACK",
-                  "at": [
-                    -2.35,
-                    10.74,
-                    -0.7
-                  ],
-                  "size": [
-                    0.68,
-                    0.52,
-                    0.42
-                  ],
-                  "material": "M-LAB-BLUE",
-                  "collision": "none",
-                  "purpose": "labelled handout, cable and demonstration-kit trays staged on the worktop",
-                  "yaw": -1.5707963267948966
-                },
-                {
-                  "id": "B01/F4/CENTRE/KIT-CADDY-R",
-                  "label": "east course-kit sorting caddy",
-                  "prefab": "PF-TRAY-RACK",
-                  "at": [
-                    2.35,
-                    10.74,
-                    -0.7
-                  ],
-                  "size": [
-                    0.68,
-                    0.52,
-                    0.42
-                  ],
-                  "material": "M-FABRIC-RED",
-                  "collision": "none",
-                  "purpose": "colour-coded assessment and classroom-equipment trays staged on the worktop",
-                  "yaw": 1.5707963267948966
-                },
-                {
                   "id": "B01/F4/CENTRE/KIT-DEMO-L",
-                  "label": "composed microscope demonstration kit",
+                  "label": "full microscope issue station",
                   "prefab": "PF-MICROSCOPE",
                   "at": [
-                    -2.35,
-                    10.74,
-                    0.03
+                    -1.82,
+                    9.9,
+                    -2.05
                   ],
                   "size": [
-                    0.54,
-                    0.31,
-                    0.32
+                    1.42,
+                    1,
+                    0.84
                   ],
                   "material": "M-STEEL-DARK",
-                  "collision": "none",
-                  "purpose": "scaled tabletop microscope, specimen tray and task-light assembly ready for classroom issue",
-                  "yaw": -1.5707963267948966
+                  "collision": "prefab-default",
+                  "purpose": "complete bench, stool, microscope, specimen tray and task light presented as one readable silhouette",
+                  "yaw": 0
                 },
                 {
                   "id": "B01/F4/CENTRE/KIT-DEMO-R",
-                  "label": "composed robotics demonstration kit",
+                  "label": "full robotics issue station",
                   "prefab": "PF-ROBOTICS",
                   "at": [
-                    2.35,
-                    10.74,
-                    0.03
+                    1.82,
+                    9.9,
+                    -2.05
                   ],
                   "size": [
-                    0.62,
-                    0.32,
-                    0.34
+                    1.42,
+                    1,
+                    0.84
                   ],
                   "material": "M-LAB-BLUE",
-                  "collision": "none",
-                  "purpose": "scaled tabletop controller, robot model, tool board and extraction assembly ready for classroom issue",
-                  "yaw": 1.5707963267948966
+                  "collision": "prefab-default",
+                  "purpose": "complete bench, controller, robot model, tool board and extraction assembly presented as one readable silhouette",
+                  "yaw": 0
                 },
                 {
-                  "id": "B01/F4/CENTRE/SHELF-1-1",
-                  "label": "labelled preparation shelf",
+                  "id": "B01/F4/CENTRE/KIT-CADDY-L",
+                  "label": "microscope specimen-and-lens caddy",
+                  "prefab": "PF-TRAY-RACK",
+                  "at": [
+                    -2.75,
+                    9.9,
+                    -2.05
+                  ],
+                  "size": [
+                    0.52,
+                    1.08,
+                    0.42
+                  ],
+                  "material": "M-LAB-BLUE",
+                  "collision": "prefab-default",
+                  "purpose": "labelled specimen, lens and cleaning trays beside the microscope station",
+                  "yaw": 3.141592653589793
+                },
+                {
+                  "id": "B01/F4/CENTRE/KIT-CADDY-R",
+                  "label": "robotics parts-and-tool caddy",
+                  "prefab": "PF-TRAY-RACK",
+                  "at": [
+                    2.75,
+                    9.9,
+                    -2.05
+                  ],
+                  "size": [
+                    0.52,
+                    1.08,
+                    0.42
+                  ],
+                  "material": "M-FABRIC-RED",
+                  "collision": "prefab-default",
+                  "purpose": "colour-coded controller, sensor and tool trays beside the robotics station",
+                  "yaw": 3.141592653589793
+                },
+                {
+                  "id": "B01/F4/CENTRE/SHELF-L",
+                  "label": "west labelled preparation shelf",
                   "prefab": "PF-SHELF",
                   "at": [
                     -2.95,
                     9.9,
-                    -3.1
+                    -3.78
                   ],
                   "size": [
                     0.9,
@@ -14726,36 +14707,17 @@
                   ],
                   "material": "M-STEEL",
                   "collision": "prefab-default",
-                  "purpose": "course materials and equipment",
+                  "purpose": "boxed course materials behind the demonstration stations",
                   "yaw": -1.5707963267948966
                 },
                 {
-                  "id": "B01/F4/CENTRE/SHELF-1-2",
-                  "label": "labelled preparation shelf",
-                  "prefab": "PF-SHELF",
-                  "at": [
-                    -2.95,
-                    9.9,
-                    1.55
-                  ],
-                  "size": [
-                    0.9,
-                    1.8,
-                    0.42
-                  ],
-                  "material": "M-STEEL",
-                  "collision": "prefab-default",
-                  "purpose": "course materials and equipment",
-                  "yaw": -1.5707963267948966
-                },
-                {
-                  "id": "B01/F4/CENTRE/SHELF-2-1",
-                  "label": "labelled preparation shelf",
+                  "id": "B01/F4/CENTRE/SHELF-R",
+                  "label": "east labelled preparation shelf",
                   "prefab": "PF-SHELF",
                   "at": [
                     2.95,
                     9.9,
-                    -3.1
+                    -3.78
                   ],
                   "size": [
                     0.9,
@@ -14764,26 +14726,7 @@
                   ],
                   "material": "M-STEEL",
                   "collision": "prefab-default",
-                  "purpose": "course materials and equipment",
-                  "yaw": 1.5707963267948966
-                },
-                {
-                  "id": "B01/F4/CENTRE/SHELF-2-2",
-                  "label": "labelled preparation shelf",
-                  "prefab": "PF-SHELF",
-                  "at": [
-                    2.95,
-                    9.9,
-                    1.55
-                  ],
-                  "size": [
-                    0.9,
-                    1.8,
-                    0.42
-                  ],
-                  "material": "M-STEEL",
-                  "collision": "prefab-default",
-                  "purpose": "course materials and equipment",
+                  "purpose": "boxed course materials behind the demonstration stations",
                   "yaw": 1.5707963267948966
                 },
                 {
@@ -17018,7 +16961,7 @@
               "label": "curated student-work pinboard",
               "prefab": "PF-WHITEBOARD",
               "at": [
-                6.1,
+                2.5,
                 11.46,
                 4.89
               ],
@@ -17077,38 +17020,38 @@
               "label": "course-kit issue rack",
               "prefab": "PF-TRAY-RACK",
               "at": [
-                -2.9,
-                10.52,
-                3.28
+                9.32,
+                10.93,
+                4.78
               ],
               "size": [
-                1.45,
-                1.05,
-                0.28
+                0.86,
+                0.66,
+                0.2
               ],
               "material": "M-FABRIC-RED",
               "collision": "none",
-              "purpose": "raised multi-tier handout and small-equipment issue rack kept entirely outside the walking envelope",
-              "yaw": 3.141592653589793
+              "purpose": "shallow wall-mounted multi-tier kit display kept above and outside the walking envelope",
+              "yaw": 0
             },
             {
               "id": "B01/F4/COR/ARRIVAL-KITS-STATUS",
               "label": "course-kit issue status",
               "prefab": "PF-SCREEN",
               "at": [
-                -1.52,
+                7.82,
                 11.46,
-                3.11
+                4.89
               ],
               "size": [
-                1.18,
-                0.86,
+                1.95,
+                0.92,
                 0.05
               ],
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "collection times and ready-to-issue teaching sets",
-              "yaw": 3.141592653589793,
+              "yaw": 0,
               "text": "课程器材 · 已备"
             },
             {
@@ -17253,22 +17196,21 @@
             "programme": {
               "roomId": "B01/F4/CENTRE",
               "at": {
-                "x": 0.6,
-                "z": -2.6,
-                "yaw": 0.62
+                "x": -0.2,
+                "z": -1,
+                "yaw": 3.05
               },
               "focusFixtureIds": [
-                "B01/F4/CENTRE/KIT-DEMO-R",
-                "B01/F4/CENTRE/KIT-CADDY-R",
-                "B01/F4/CENTRE/KIT-STATUS"
+                "B01/F4/CENTRE/KIT-DEMO-L",
+                "B01/F4/CENTRE/KIT-DEMO-R"
               ]
             },
             "entry": {
               "zoneId": "B01/F4/CORRIDOR",
               "at": {
-                "x": -1.7,
-                "z": 4.05,
-                "yaw": -2
+                "x": 7,
+                "z": 4.1,
+                "yaw": 1.5707963267948966
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -20399,8 +20341,8 @@
                 4.89
               ],
               "size": [
-                2.1,
-                0.86,
+                2.55,
+                0.96,
                 0.05
               ],
               "material": "M-SCREEN",
@@ -20582,9 +20524,9 @@
             "entry": {
               "zoneId": "B01/F5/CORRIDOR",
               "at": {
-                "x": 10.2,
-                "z": 4.15,
-                "yaw": -1.15
+                "x": 9.8,
+                "z": 4.1,
+                "yaw": -1.5707963267948966
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -20853,25 +20795,6 @@
                   ]
                 },
                 {
-                  "id": "B02/F1/LOBBY/PLANT",
-                  "label": "arrival plant",
-                  "prefab": "PF-PLANT",
-                  "at": [
-                    -5.65,
-                    0,
-                    -1.85
-                  ],
-                  "size": [
-                    0.58,
-                    1.35,
-                    0.58
-                  ],
-                  "material": "M-PLANT",
-                  "collision": "prefab-default",
-                  "purpose": "welcoming entry planting",
-                  "yaw": 0
-                },
-                {
                   "id": "B02/F1/LOBBY/PORTAL-HEAD",
                   "label": "oak entry portal head",
                   "prefab": "PF-WALL-RUN",
@@ -20933,9 +20856,9 @@
                   "label": "library arrival and service display",
                   "prefab": "PF-SCREEN",
                   "at": [
-                    -4.15,
+                    -6.08,
                     1.55,
-                    -2.35
+                    -1.5
                   ],
                   "size": [
                     1.9,
@@ -20945,7 +20868,7 @@
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "new books, borrowing and reading services visible from inside the public threshold",
-                  "yaw": 3.141592653589793,
+                  "yaw": -1.5707963267948966,
                   "text": "新书 · 借还 · 阅览"
                 },
                 {
@@ -23297,9 +23220,9 @@
                 "focusRoomId": "B02/F1/LOBBY",
                 "cameraZoneId": "B02/F1/LOBBY",
                 "focusAt": {
-                  "x": -3.7,
-                  "z": 0.3,
-                  "yaw": -2.885
+                  "x": -4.35,
+                  "z": -1.5,
+                  "yaw": -1.5707963267948966
                 },
                 "body": "hidden",
                 "focusFixtureIds": [
@@ -23310,9 +23233,9 @@
             "programme": {
               "roomId": "B02/F1/NEW",
               "at": {
-                "x": -0.6,
-                "z": 7,
-                "yaw": -2.7
+                "x": -1,
+                "z": 7.4,
+                "yaw": -2.25
               },
               "focusFixtureIds": [
                 "B02/F1/NEW/STACK01",
@@ -25717,14 +25640,14 @@
               "label": "floor-specific quiet-spine identity lining",
               "prefab": "PF-WALL-RUN",
               "at": [
-                3.36,
+                2.25,
                 4.62,
-                8.35
+                11.52
               ],
               "size": [
-                0.055,
+                2.2,
                 2.48,
-                2.45
+                0.055
               ],
               "material": "M-FABRIC-SAND",
               "collision": "none",
@@ -25736,9 +25659,9 @@
               "label": "floor-specific quiet-spine heading",
               "prefab": "PF-ROOM-SIGN",
               "at": [
-                3.32,
+                2.25,
                 5.54,
-                8.35
+                11.52
               ],
               "size": [
                 1.95,
@@ -25748,7 +25671,7 @@
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "concise collection heading above the composed arrival fixture",
-              "yaw": 1.5707963267948966,
+              "yaw": 0,
               "text": "人文学科 · HUMANITIES"
             },
             {
@@ -25756,9 +25679,9 @@
               "label": "humanities floor arrival screen",
               "prefab": "PF-SCREEN",
               "at": [
-                3.3,
+                2.25,
                 4.54,
-                8.35
+                11.485
               ],
               "size": [
                 1.9,
@@ -25768,7 +25691,7 @@
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "literature, history and philosophy collection map composed into the acoustic arrival wall",
-              "yaw": 1.5707963267948966,
+              "yaw": 0,
               "text": "文学 · 历史 · 哲学"
             },
             {
@@ -25840,9 +25763,9 @@
             "entry": {
               "zoneId": "B02/F2/SPINE",
               "at": {
-                "x": 2.45,
-                "z": 6.6,
-                "yaw": 0.45
+                "x": 2.25,
+                "z": 9,
+                "yaw": 0
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -28199,14 +28122,14 @@
               "label": "floor-specific quiet-spine identity lining",
               "prefab": "PF-WALL-RUN",
               "at": [
-                3.36,
+                2.25,
                 7.82,
-                3.2
+                -5.12
               ],
               "size": [
-                0.055,
+                2.2,
                 2.48,
-                2.45
+                0.055
               ],
               "material": "M-LAB-BLUE",
               "collision": "none",
@@ -28218,9 +28141,9 @@
               "label": "floor-specific quiet-spine heading",
               "prefab": "PF-ROOM-SIGN",
               "at": [
-                3.32,
+                2.25,
                 8.74,
-                3.2
+                -5.12
               ],
               "size": [
                 1.95,
@@ -28230,7 +28153,7 @@
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "concise collection heading above the composed arrival fixture",
-              "yaw": 1.5707963267948966,
+              "yaw": 3.141592653589793,
               "text": "科学期刊 · DIGITAL JOURNALS"
             },
             {
@@ -28238,9 +28161,9 @@
               "label": "digital-journals floor arrival screen",
               "prefab": "PF-SCREEN",
               "at": [
-                3.3,
+                2.03,
                 7.74,
-                3.2
+                -5.085
               ],
               "size": [
                 1.55,
@@ -28250,7 +28173,7 @@
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "live database, dataset and electronic-journal availability composed into the arrival wall",
-              "yaw": 1.5707963267948966,
+              "yaw": 3.141592653589793,
               "text": "期刊 · 数据库 · 数据集"
             },
             {
@@ -28258,9 +28181,9 @@
               "label": "digital-floor announcement speaker",
               "prefab": "PF-SPEAKER",
               "at": [
-                3.2,
+                3.12,
                 7.8,
-                4.23
+                -4.98
               ],
               "size": [
                 0.36,
@@ -28270,7 +28193,7 @@
               "material": "M-LAB-BLUE",
               "collision": "none",
               "purpose": "wall-bracketed service and closing-time audio monitor",
-              "yaw": 1.5707963267948966
+              "yaw": 3.141592653589793
             },
             {
               "id": "B02/F3/SPINE/CEILING/LIGHT01",
@@ -28341,9 +28264,9 @@
             "entry": {
               "zoneId": "B02/F3/SPINE",
               "at": {
-                "x": 2.45,
-                "z": 1.8,
-                "yaw": 0.55
+                "x": 2.25,
+                "z": -2.8,
+                "yaw": 3.141592653589793
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -28403,7 +28326,7 @@
                   "at": [
                     -4.25,
                     9.6,
-                    -9
+                    -5
                   ],
                   "size": [
                     0.82,
@@ -28425,7 +28348,7 @@
                   "at": [
                     -4.25,
                     11.03,
-                    -10.2
+                    -6.2
                   ],
                   "size": [
                     0.58,
@@ -28445,7 +28368,7 @@
                   "at": [
                     -1.55,
                     9.6,
-                    -9
+                    -5
                   ],
                   "size": [
                     0.82,
@@ -28467,7 +28390,7 @@
                   "at": [
                     -1.55,
                     11.03,
-                    -10.2
+                    -6.2
                   ],
                   "size": [
                     0.58,
@@ -28479,90 +28402,6 @@
                   "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "特藏与档案 · 2"
-                },
-                {
-                  "id": "B02/F4/SOUTH/STACK03",
-                  "label": "human-scale double-sided library stack",
-                  "prefab": "PF-BOOKSTACK",
-                  "at": [
-                    -4.25,
-                    9.6,
-                    -5
-                  ],
-                  "size": [
-                    0.82,
-                    1.85,
-                    2.35
-                  ],
-                  "material": "M-OAK",
-                  "collision": "prefab-default",
-                  "purpose": "classified collection with accessible parallel and cross aisles",
-                  "yaw": 0,
-                  "classification": "特藏与档案 3",
-                  "minimumFaceAisle": 1.2,
-                  "minimumCrossAisle": 1.2
-                },
-                {
-                  "id": "B02/F4/SOUTH/STACK03/MARKER",
-                  "label": "stack-end classification plate",
-                  "prefab": "PF-ROOM-SIGN",
-                  "at": [
-                    -4.25,
-                    11.03,
-                    -6.2
-                  ],
-                  "size": [
-                    0.58,
-                    0.22,
-                    0.035
-                  ],
-                  "material": "M-SCREEN",
-                  "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
-                  "yaw": 0,
-                  "text": "特藏与档案 · 3"
-                },
-                {
-                  "id": "B02/F4/SOUTH/STACK04",
-                  "label": "human-scale double-sided library stack",
-                  "prefab": "PF-BOOKSTACK",
-                  "at": [
-                    -1.55,
-                    9.6,
-                    -5
-                  ],
-                  "size": [
-                    0.82,
-                    1.85,
-                    2.35
-                  ],
-                  "material": "M-OAK",
-                  "collision": "prefab-default",
-                  "purpose": "classified collection with accessible parallel and cross aisles",
-                  "yaw": 0,
-                  "classification": "特藏与档案 4",
-                  "minimumFaceAisle": 1.2,
-                  "minimumCrossAisle": 1.2
-                },
-                {
-                  "id": "B02/F4/SOUTH/STACK04/MARKER",
-                  "label": "stack-end classification plate",
-                  "prefab": "PF-ROOM-SIGN",
-                  "at": [
-                    -1.55,
-                    11.03,
-                    -6.2
-                  ],
-                  "size": [
-                    0.58,
-                    0.22,
-                    0.035
-                  ],
-                  "material": "M-SCREEN",
-                  "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
-                  "yaw": 0,
-                  "text": "特藏与档案 · 4"
                 },
                 {
                   "id": "B02/F4/SOUTH/CART",
@@ -29014,42 +28853,80 @@
                 },
                 {
                   "id": "B02/F4/SOUTH/VIEW",
-                  "label": "special-collections display case",
-                  "prefab": "PF-SHELF",
+                  "label": "open supervised archive display table",
+                  "prefab": "PF-PREP-TABLE",
                   "at": [
                     -3,
                     9.6,
-                    -1.45
+                    -9.25
                   ],
                   "size": [
-                    1.4,
-                    1.05,
-                    0.55
+                    2.2,
+                    0.82,
+                    0.78
                   ],
-                  "material": "M-GLASS",
+                  "material": "M-OAK",
                   "collision": "prefab-default",
-                  "purpose": "rotating rare-book exhibit facing the full-context review aisle",
-                  "yaw": 1.5707963267948966
+                  "purpose": "open-leg consultation-height display with a stainless undershelf and unobstructed sightline",
+                  "yaw": 0
+                },
+                {
+                  "id": "B02/F4/SOUTH/VIEW-FOLIO-L",
+                  "label": "manuscript and map folio cradle",
+                  "prefab": "PF-TRAY-RACK",
+                  "at": [
+                    -3.48,
+                    10.42,
+                    -9.25
+                  ],
+                  "size": [
+                    0.62,
+                    0.34,
+                    0.46
+                  ],
+                  "material": "M-FABRIC-SAND",
+                  "collision": "none",
+                  "purpose": "tiered open manuscript, map and caption presentation on the archive display table",
+                  "yaw": 3.141592653589793
+                },
+                {
+                  "id": "B02/F4/SOUTH/VIEW-FOLIO-R",
+                  "label": "rare-book and request folio cradle",
+                  "prefab": "PF-TRAY-RACK",
+                  "at": [
+                    -2.64,
+                    10.42,
+                    -9.25
+                  ],
+                  "size": [
+                    0.62,
+                    0.34,
+                    0.46
+                  ],
+                  "material": "M-OAK-DARK",
+                  "collision": "none",
+                  "purpose": "tiered open rare-book, request slip and handling-support presentation",
+                  "yaw": 3.141592653589793
                 },
                 {
                   "id": "B02/F4/SOUTH/REQUEST-SCREEN",
                   "label": "special-collections request display",
                   "prefab": "PF-SCREEN",
                   "at": [
-                    0.84,
+                    -0.72,
                     11.22,
-                    -1.45
+                    -11.52
                   ],
                   "size": [
-                    1.45,
+                    1.38,
                     1.02,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "reader registration, handling rules and requested archive items above the supervised display case",
-                  "yaw": 1.5707963267948966,
-                  "text": "特藏申请 · 手稿 · 地图"
+                  "purpose": "reader registration, handling rules and requested items beside the south-wall collection identity",
+                  "yaw": 3.141592653589793,
+                  "text": "预约 · 阅览"
                 }
               ]
             },
@@ -30515,9 +30392,9 @@
               "label": "floor-specific quiet-spine identity lining",
               "prefab": "PF-WALL-RUN",
               "at": [
-                3.36,
+                3.34,
                 11.02,
-                -2.6
+                -3.6
               ],
               "size": [
                 0.055,
@@ -30534,9 +30411,9 @@
               "label": "floor-specific quiet-spine heading",
               "prefab": "PF-ROOM-SIGN",
               "at": [
-                3.32,
+                3.34,
                 11.94,
-                -2.6
+                -3.6
               ],
               "size": [
                 1.95,
@@ -30554,9 +30431,9 @@
               "label": "special-collections arrival screen",
               "prefab": "PF-SCREEN",
               "at": [
-                3.3,
+                3.34,
                 10.94,
-                -2.6
+                -3.6
               ],
               "size": [
                 1.55,
@@ -30576,7 +30453,7 @@
               "at": [
                 3.2,
                 11.02,
-                -1.57
+                -4.78
               ],
               "size": [
                 0.58,
@@ -30657,9 +30534,9 @@
             "entry": {
               "zoneId": "B02/F4/SPINE",
               "at": {
-                "x": 2.45,
-                "z": -1.4,
-                "yaw": 2.6
+                "x": 2.2,
+                "z": -1.65,
+                "yaw": 3.141592653589793
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -30669,13 +30546,14 @@
             "programme": {
               "roomId": "B02/F4/SOUTH",
               "at": {
-                "x": -3.2,
-                "z": -2.5,
-                "yaw": 1.5707963267948966
+                "x": -3,
+                "z": -7,
+                "yaw": 3.141592653589793
               },
               "focusFixtureIds": [
-                "B02/F4/SOUTH/VIEW",
-                "B02/F4/SOUTH/REQUEST-SCREEN"
+                "B02/F4/SOUTH/VIEW-FOLIO-L",
+                "B02/F4/SOUTH/VIEW-FOLIO-R",
+                "B02/F4/SOUTH/IDENTITY"
               ]
             }
           }
@@ -32662,26 +32540,6 @@
                   "text": "2 · 米饭"
                 },
                 {
-                  "id": "B03/F1/SERVE/C1-SIGN",
-                  "label": "米饭 menu sign",
-                  "prefab": "PF-ROOM-SIGN",
-                  "at": [
-                    -2.57,
-                    2.35,
-                    -6.35
-                  ],
-                  "size": [
-                    1.9,
-                    0.38,
-                    0.05
-                  ],
-                  "material": "M-SCREEN",
-                  "collision": "none",
-                  "purpose": "one concise readable sign per serving bay",
-                  "yaw": -1.5707963267948966,
-                  "text": "2 · 米饭 · RICE"
-                },
-                {
                   "id": "B03/F1/SERVE/C1-PRICE",
                   "label": "guard-mounted dish and price display",
                   "prefab": "PF-SCREEN",
@@ -32691,15 +32549,15 @@
                     -6.47
                   ],
                   "size": [
-                    0.76,
-                    0.31,
+                    0.86,
+                    0.34,
                     0.035
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "dish identity, price, batch and allergen status directly on the queue-side face",
                   "yaw": -1.5707963267948966,
-                  "text": "米饭 · ¥2"
+                  "text": "米饭 ¥2"
                 },
                 {
                   "id": "B03/F1/SERVE/C1-FOOD",
@@ -32711,9 +32569,9 @@
                     -6.35
                   ],
                   "size": [
-                    0.64,
-                    0.3,
-                    0.38
+                    0.84,
+                    0.34,
+                    0.46
                   ],
                   "material": "M-SAFETY-YELLOW",
                   "collision": "none",
@@ -32721,27 +32579,6 @@
                   "yaw": -1.5707963267948966,
                   "dish": "米饭",
                   "serviceState": "ready"
-                },
-                {
-                  "id": "B03/F1/SERVE/C1-WARM",
-                  "label": "warm serving-bay pendant",
-                  "prefab": "PF-PENDANT",
-                  "at": [
-                    -0.82,
-                    4.72,
-                    -6.35
-                  ],
-                  "size": [
-                    0.34,
-                    0.3,
-                    0.34
-                  ],
-                  "material": "M-BRASS",
-                  "collision": "prefab-default",
-                  "purpose": "warm colour-rendering light over the composed food display",
-                  "yaw": 0,
-                  "temperatureK": 3200,
-                  "lumens": 1050
                 },
                 {
                   "id": "B03/F1/SERVE/C1-MARK",
@@ -32826,26 +32663,6 @@
                   "text": "3 · 青菜"
                 },
                 {
-                  "id": "B03/F1/SERVE/C2-SIGN",
-                  "label": "青菜 menu sign",
-                  "prefab": "PF-ROOM-SIGN",
-                  "at": [
-                    -2.57,
-                    2.35,
-                    -4
-                  ],
-                  "size": [
-                    1.9,
-                    0.38,
-                    0.05
-                  ],
-                  "material": "M-SCREEN",
-                  "collision": "none",
-                  "purpose": "one concise readable sign per serving bay",
-                  "yaw": -1.5707963267948966,
-                  "text": "3 · 青菜 · GREENS"
-                },
-                {
                   "id": "B03/F1/SERVE/C2-PRICE",
                   "label": "guard-mounted dish and price display",
                   "prefab": "PF-SCREEN",
@@ -32855,15 +32672,15 @@
                     -4.12
                   ],
                   "size": [
-                    0.76,
-                    0.31,
+                    0.86,
+                    0.34,
                     0.035
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "dish identity, price, batch and allergen status directly on the queue-side face",
                   "yaw": -1.5707963267948966,
-                  "text": "青菜 · ¥3"
+                  "text": "青菜 ¥3"
                 },
                 {
                   "id": "B03/F1/SERVE/C2-FOOD",
@@ -32875,9 +32692,9 @@
                     -4
                   ],
                   "size": [
-                    0.64,
-                    0.3,
-                    0.38
+                    0.84,
+                    0.34,
+                    0.46
                   ],
                   "material": "M-WALL-GREEN",
                   "collision": "none",
@@ -32885,27 +32702,6 @@
                   "yaw": -1.5707963267948966,
                   "dish": "青菜",
                   "serviceState": "ready"
-                },
-                {
-                  "id": "B03/F1/SERVE/C2-WARM",
-                  "label": "warm serving-bay pendant",
-                  "prefab": "PF-PENDANT",
-                  "at": [
-                    -0.82,
-                    4.72,
-                    -4
-                  ],
-                  "size": [
-                    0.34,
-                    0.3,
-                    0.34
-                  ],
-                  "material": "M-BRASS",
-                  "collision": "prefab-default",
-                  "purpose": "warm colour-rendering light over the composed food display",
-                  "yaw": 0,
-                  "temperatureK": 3200,
-                  "lumens": 1050
                 },
                 {
                   "id": "B03/F1/SERVE/C2-MARK",
@@ -32966,21 +32762,21 @@
                 },
                 {
                   "id": "B03/F1/SERVE/C3",
-                  "label": "tall monitored tofu refrigerator",
-                  "prefab": "PF-FRIDGE",
+                  "label": "low monitored tofu cold-well",
+                  "prefab": "PF-SERVING-COUNTER",
                   "at": [
                     -0.82,
                     0,
                     -1.65
                   ],
                   "size": [
-                    0.82,
-                    1.95,
-                    0.82
+                    1.24,
+                    1.08,
+                    0.78
                   ],
-                  "material": "M-STAINLESS",
+                  "material": "M-LAB-BLUE",
                   "collision": "prefab-default",
-                  "purpose": "upright temperature-controlled tofu and garnish display with a live status panel",
+                  "purpose": "queue-facing chilled counter with three visible tofu, garnish and sauce pans beneath a glazed guard",
                   "yaw": -1.5707963267948966,
                   "foodDisplay": {
                     "dish": "豆腐",
@@ -33009,26 +32805,6 @@
                   "text": "4 · 豆腐"
                 },
                 {
-                  "id": "B03/F1/SERVE/C3-SIGN",
-                  "label": "豆腐 menu sign",
-                  "prefab": "PF-ROOM-SIGN",
-                  "at": [
-                    -2.57,
-                    2.35,
-                    -1.65
-                  ],
-                  "size": [
-                    1.9,
-                    0.38,
-                    0.05
-                  ],
-                  "material": "M-SCREEN",
-                  "collision": "none",
-                  "purpose": "one concise readable sign per serving bay",
-                  "yaw": -1.5707963267948966,
-                  "text": "4 · 豆腐 · TOFU"
-                },
-                {
                   "id": "B03/F1/SERVE/C3-PRICE",
                   "label": "guard-mounted dish and price display",
                   "prefab": "PF-SCREEN",
@@ -33038,15 +32814,15 @@
                     -1.77
                   ],
                   "size": [
-                    0.76,
-                    0.31,
+                    0.86,
+                    0.34,
                     0.035
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "dish identity, price, batch and allergen status directly on the queue-side face",
                   "yaw": -1.5707963267948966,
-                  "text": "豆腐 · ¥4"
+                  "text": "豆腐 ¥4"
                 },
                 {
                   "id": "B03/F1/SERVE/C3-FOOD",
@@ -33058,9 +32834,9 @@
                     -0.81
                   ],
                   "size": [
-                    0.64,
-                    0.3,
-                    0.38
+                    0.84,
+                    0.34,
+                    0.46
                   ],
                   "material": "M-WALL-WHITE",
                   "collision": "none",
@@ -33068,27 +32844,6 @@
                   "yaw": -1.5707963267948966,
                   "dish": "豆腐",
                   "serviceState": "ready"
-                },
-                {
-                  "id": "B03/F1/SERVE/C3-WARM",
-                  "label": "warm serving-bay pendant",
-                  "prefab": "PF-PENDANT",
-                  "at": [
-                    -0.82,
-                    4.72,
-                    -1.65
-                  ],
-                  "size": [
-                    0.34,
-                    0.3,
-                    0.34
-                  ],
-                  "material": "M-BRASS",
-                  "collision": "prefab-default",
-                  "purpose": "warm colour-rendering light over the composed food display",
-                  "yaw": 0,
-                  "temperatureK": 3200,
-                  "lumens": 1050
                 },
                 {
                   "id": "B03/F1/SERVE/C3-MARK",
@@ -33111,21 +32866,21 @@
                 },
                 {
                   "id": "B03/F1/SERVE/C3-SIDECAR",
-                  "label": "compact chilled tofu pass",
-                  "prefab": "PF-SERVING-COUNTER",
+                  "label": "tofu bowl and condiment caddy",
+                  "prefab": "PF-TRAY-RACK",
                   "at": [
                     -0.82,
                     0,
-                    -0.81
+                    -0.73
                   ],
                   "size": [
-                    0.72,
-                    1.08,
-                    0.7
+                    0.46,
+                    0.78,
+                    0.38
                   ],
                   "material": "M-TILE-LIGHT",
                   "collision": "prefab-default",
-                  "purpose": "low pale guarded pass for pre-portioned chilled and warm tofu dishes",
+                  "purpose": "open bowl, condiment and allergen-card tiers beside the chilled tofu well",
                   "yaw": -1.5707963267948966
                 },
                 {
@@ -33174,26 +32929,6 @@
                   "text": "5 · 红烧肉"
                 },
                 {
-                  "id": "B03/F1/SERVE/C4-SIGN",
-                  "label": "红烧肉 menu sign",
-                  "prefab": "PF-ROOM-SIGN",
-                  "at": [
-                    -2.57,
-                    2.35,
-                    0.7
-                  ],
-                  "size": [
-                    1.9,
-                    0.38,
-                    0.05
-                  ],
-                  "material": "M-SCREEN",
-                  "collision": "none",
-                  "purpose": "one concise readable sign per serving bay",
-                  "yaw": -1.5707963267948966,
-                  "text": "5 · 红烧肉 · BRAISED PORK"
-                },
-                {
                   "id": "B03/F1/SERVE/C4-PRICE",
                   "label": "guard-mounted dish and price display",
                   "prefab": "PF-SCREEN",
@@ -33203,15 +32938,15 @@
                     0.58
                   ],
                   "size": [
-                    0.76,
-                    0.31,
+                    0.86,
+                    0.34,
                     0.035
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "dish identity, price, batch and allergen status directly on the queue-side face",
                   "yaw": -1.5707963267948966,
-                  "text": "红烧肉 · ¥5"
+                  "text": "红烧肉 ¥5"
                 },
                 {
                   "id": "B03/F1/SERVE/C4-FOOD",
@@ -33223,9 +32958,9 @@
                     0.7
                   ],
                   "size": [
-                    0.64,
-                    0.3,
-                    0.38
+                    0.84,
+                    0.34,
+                    0.46
                   ],
                   "material": "M-FABRIC-RED",
                   "collision": "none",
@@ -33233,27 +32968,6 @@
                   "yaw": -1.5707963267948966,
                   "dish": "红烧肉",
                   "serviceState": "ready"
-                },
-                {
-                  "id": "B03/F1/SERVE/C4-WARM",
-                  "label": "warm serving-bay pendant",
-                  "prefab": "PF-PENDANT",
-                  "at": [
-                    -0.82,
-                    4.72,
-                    0.7
-                  ],
-                  "size": [
-                    0.34,
-                    0.3,
-                    0.34
-                  ],
-                  "material": "M-BRASS",
-                  "collision": "prefab-default",
-                  "purpose": "warm colour-rendering light over the composed food display",
-                  "yaw": 0,
-                  "temperatureK": 3200,
-                  "lumens": 1050
                 },
                 {
                   "id": "B03/F1/SERVE/C4-MARK",
@@ -33311,7 +33025,7 @@
                   "collision": "none",
                   "purpose": "large populated menu board above the rice and live-greens bays",
                   "yaw": -1.5707963267948966,
-                  "text": "2 米饭 ¥2 · 3 青菜 ¥3"
+                  "text": "米饭 ¥2 · 青菜 ¥3"
                 },
                 {
                   "id": "B03/F1/SERVE/MENU-NORTH",
@@ -33331,7 +33045,7 @@
                   "collision": "none",
                   "purpose": "large populated menu board above the tofu and braise bays",
                   "yaw": -1.5707963267948966,
-                  "text": "4 豆腐 ¥4 · 5 红烧肉 ¥5"
+                  "text": "豆腐 ¥4 · 红烧肉 ¥5"
                 },
                 {
                   "id": "B03/F1/SERVE/CASH",
@@ -35310,9 +35024,9 @@
             "programme": {
               "roomId": "B03/F1/DINING",
               "at": {
-                "x": 1.2,
-                "z": -3.8,
-                "yaw": -0.2
+                "x": 2.1,
+                "z": -2,
+                "yaw": -1.5707963267948966
               },
               "focusFixtureIds": [
                 "B03/F1/SERVE/C2",
@@ -35860,21 +35574,21 @@
                 },
                 {
                   "id": "B04/F1/A01/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     0,
-                    -5.75
+                    -5.33
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the warm identity wall",
+                  "purpose": "small personal greenery beside the warm identity wall",
                   "yaw": 0
                 },
                 {
@@ -36876,7 +36590,29 @@
                   "material": "M-WHITEBOARD",
                   "collision": "prefab-default",
                   "purpose": "study plans and tutoring notes",
-                  "yaw": 0
+                  "yaw": 0,
+                  "text": "QUIET STUDY · TUTORING · EXAMS"
+                },
+                {
+                  "id": "B04/F1/LOUNGE-E/BOARD-AGENDA",
+                  "label": "quiet-study agenda header",
+                  "prefab": "PF-ROOM-SIGN",
+                  "at": [
+                    3.65,
+                    2.18,
+                    3.8
+                  ],
+                  "size": [
+                    1.42,
+                    0.25,
+                    0.04
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "populated programme header completing the planning-wall composition",
+                  "yaw": 0,
+                  "text": "自习 · STUDY PLAN",
+                  "hudSafe": true
                 },
                 {
                   "id": "B04/F1/LOUNGE-E/PLANT",
@@ -37815,9 +37551,9 @@
                 0
               ],
               "size": [
-                0.92,
+                0.88,
                 0.008,
-                14.18
+                14.1
               ],
               "material": "M-FABRIC-BLUE",
               "collision": "none",
@@ -38052,16 +37788,16 @@
               "at": [
                 -1.11,
                 1.48,
-                0
+                -3.15
               ],
               "size": [
-                1.24,
-                0.66,
+                0.92,
+                0.52,
                 0.035
               ],
               "material": "M-SCREEN",
               "collision": "none",
-              "purpose": "floor programme, resident events and notices clear of every authored camera",
+              "purpose": "compact floor programme display on a solid wall bay behind the authored arrival lens",
               "yaw": -1.5707963267948966,
               "text": "门厅、邮件与公共客厅 · ARRIVAL & COMMONS",
               "hudSafe": true
@@ -38281,9 +38017,9 @@
                 "focusRoomId": "B04/F1/LOBBY",
                 "cameraZoneId": "B04/F1/ENTRY",
                 "focusAt": {
-                  "x": -3.7,
-                  "z": -2.1,
-                  "yaw": 2.1
+                  "x": -3.55,
+                  "z": -1.9,
+                  "yaw": 3.141592653589793
                 },
                 "body": "hidden",
                 "focusFixtureIds": [
@@ -38293,15 +38029,15 @@
               }
             ],
             "programme": {
-              "roomId": "B04/F1/LOBBY",
+              "roomId": "B04/F1/LOUNGE-E",
               "at": {
-                "x": -3.6,
-                "z": -2.5,
-                "yaw": 1.6
+                "x": 3.65,
+                "z": 1.8,
+                "yaw": 0
               },
               "focusFixtureIds": [
-                "B04/F1/LOBBY/DESK-MAIN",
-                "B04/F1/LOBBY/WELCOME"
+                "B04/F1/LOUNGE-E/BOARD",
+                "B04/F1/LOUNGE-E/BOARD-AGENDA"
               ]
             }
           }
@@ -39012,21 +38748,21 @@
                 },
                 {
                   "id": "B04/F2/201/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     3,
-                    -5.75
+                    -5.33
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -39812,21 +39548,21 @@
                 },
                 {
                   "id": "B04/F2/202/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     3,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -40612,21 +40348,21 @@
                 },
                 {
                   "id": "B04/F2/203/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     3,
-                    2.05
+                    2.47
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -41412,21 +41148,21 @@
                 },
                 {
                   "id": "B04/F2/205/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     5.68,
                     3,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -42212,21 +41948,21 @@
                 },
                 {
                   "id": "B04/F2/206/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     5.68,
                     3,
-                    2.05
+                    2.47
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -43146,18 +42882,38 @@
               "text": "2层 FLOOR 2"
             },
             {
+              "id": "B04/F2/COR/RUNNER-BACK",
+              "label": "opaque acoustic runner underlay",
+              "prefab": "PF-WALL-RUN",
+              "at": [
+                0,
+                3.008,
+                0
+              ],
+              "size": [
+                0.92,
+                0.01,
+                14.18
+              ],
+              "material": "M-RUBBER",
+              "collision": "none",
+              "purpose": "dark matte recessed backing prevents the pale sage weave from visually z-fighting with the tiled base finish",
+              "yaw": 0,
+              "flushWithFinish": true
+            },
+            {
               "id": "B04/F2/COR/RUNNER",
               "label": "matte woven acoustic corridor runner",
               "prefab": "PF-WALL-RUN",
               "at": [
                 0,
-                3.005,
+                3.016,
                 0
               ],
               "size": [
-                0.92,
-                0.008,
-                14.18
+                0.88,
+                0.012,
+                14.1
               ],
               "material": "M-FABRIC-SAGE",
               "collision": "none",
@@ -43392,16 +43148,16 @@
               "at": [
                 -1.11,
                 4.48,
-                0
+                -3.15
               ],
               "size": [
-                1.24,
-                0.66,
+                0.92,
+                0.52,
                 0.035
               ],
               "material": "M-SCREEN",
               "collision": "none",
-              "purpose": "floor programme, resident events and notices clear of every authored camera",
+              "purpose": "compact floor programme display on a solid wall bay behind the authored arrival lens",
               "yaw": -1.5707963267948966,
               "text": "安静学习与新生宿舍 · QUIET STUDY",
               "hudSafe": true
@@ -44345,21 +44101,21 @@
                 },
                 {
                   "id": "B04/F3/301/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     6,
-                    -5.75
+                    -5.33
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -45145,21 +44901,21 @@
                 },
                 {
                   "id": "B04/F3/302/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     6,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -45945,21 +45701,21 @@
                 },
                 {
                   "id": "B04/F3/303/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     6,
-                    2.05
+                    2.47
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -46745,21 +46501,21 @@
                 },
                 {
                   "id": "B04/F3/305/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     5.68,
                     6,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -47545,21 +47301,21 @@
                 },
                 {
                   "id": "B04/F3/306/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     5.68,
                     6,
-                    2.05
+                    2.47
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -48488,9 +48244,9 @@
                 0
               ],
               "size": [
-                0.92,
+                0.88,
                 0.008,
-                14.18
+                14.1
               ],
               "material": "M-FABRIC-RED",
               "collision": "none",
@@ -48725,16 +48481,16 @@
               "at": [
                 -1.11,
                 7.48,
-                0
+                3.15
               ],
               "size": [
-                1.24,
-                0.66,
+                0.92,
+                0.52,
                 0.035
               ],
               "material": "M-SCREEN",
               "collision": "none",
-              "purpose": "floor programme, resident events and notices clear of every authored camera",
+              "purpose": "compact floor programme display on a solid wall bay behind the authored arrival lens",
               "yaw": -1.5707963267948966,
               "text": "社群、音乐与宿舍生活 · COMMUNITY",
               "hudSafe": true
@@ -49678,21 +49434,21 @@
                 },
                 {
                   "id": "B04/F4/401/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     9,
-                    -5.75
+                    -5.33
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -50478,21 +50234,21 @@
                 },
                 {
                   "id": "B04/F4/402/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     9,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -51278,21 +51034,21 @@
                 },
                 {
                   "id": "B04/F4/403/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     9,
-                    2.05
+                    2.47
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -52078,21 +51834,21 @@
                 },
                 {
                   "id": "B04/F4/405/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     5.68,
                     9,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -52878,21 +52634,21 @@
                 },
                 {
                   "id": "B04/F4/406/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     5.68,
                     9,
-                    2.05
+                    2.47
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -53821,9 +53577,9 @@
                 0
               ],
               "size": [
-                0.92,
+                0.88,
                 0.008,
-                14.18
+                14.1
               ],
               "material": "M-FABRIC-SAND",
               "collision": "none",
@@ -54058,16 +53814,16 @@
               "at": [
                 -1.11,
                 10.48,
-                0
+                -3.15
               ],
               "size": [
-                1.24,
-                0.66,
+                0.92,
+                0.52,
                 0.035
               ],
               "material": "M-SCREEN",
               "collision": "none",
-              "purpose": "floor programme, resident events and notices clear of every authored camera",
+              "purpose": "compact floor programme display on a solid wall bay behind the authored arrival lens",
               "yaw": -1.5707963267948966,
               "text": "阅读、植物与宿舍生活 · READING",
               "hudSafe": true
@@ -55011,21 +54767,21 @@
                 },
                 {
                   "id": "B04/F5/501/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     12,
-                    -5.75
+                    -5.33
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -55811,21 +55567,21 @@
                 },
                 {
                   "id": "B04/F5/502/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     12,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -56611,21 +56367,21 @@
                 },
                 {
                   "id": "B04/F5/503/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     12,
-                    2.05
+                    2.47
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -57411,21 +57167,21 @@
                 },
                 {
                   "id": "B04/F5/505/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     5.68,
                     12,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -58211,21 +57967,21 @@
                 },
                 {
                   "id": "B04/F5/506/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     5.68,
                     12,
-                    2.05
+                    2.47
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -59154,9 +58910,9 @@
                 0
               ],
               "size": [
-                0.92,
+                0.88,
                 0.008,
-                14.18
+                14.1
               ],
               "material": "M-FABRIC-BLUE",
               "collision": "none",
@@ -59391,16 +59147,16 @@
               "at": [
                 -1.11,
                 13.48,
-                0
+                3.15
               ],
               "size": [
-                1.24,
-                0.66,
+                0.92,
+                0.52,
                 0.035
               ],
               "material": "M-SCREEN",
               "collision": "none",
-              "purpose": "floor programme, resident events and notices clear of every authored camera",
+              "purpose": "compact floor programme display on a solid wall bay behind the authored arrival lens",
               "yaw": -1.5707963267948966,
               "text": "高年级交流与宿舍生活 · SENIOR COMMONS",
               "hudSafe": true
@@ -60344,21 +60100,21 @@
                 },
                 {
                   "id": "B04/F6/601/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     15,
-                    -5.75
+                    -5.33
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -61144,21 +60900,21 @@
                 },
                 {
                   "id": "B04/F6/602/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     -5.68,
                     15,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -61944,21 +61700,21 @@
                 },
                 {
                   "id": "B04/F6/604/PLANT",
-                  "label": "student room plant",
+                  "label": "compact student room plant",
                   "prefab": "PF-PLANT",
                   "at": [
                     5.68,
                     15,
-                    -1.85
+                    -1.43
                   ],
                   "size": [
-                    0.34,
-                    0.72,
-                    0.34
+                    0.3,
+                    0.5,
+                    0.3
                   ],
                   "material": "M-PLANT",
                   "collision": "prefab-default",
-                  "purpose": "personal greenery beside the daylight bay",
+                  "purpose": "small personal greenery offset from the daylight and life-board sightline",
                   "yaw": 0
                 },
                 {
@@ -63520,18 +63276,38 @@
               "text": "6层 FLOOR 6"
             },
             {
+              "id": "B04/F6/COR/RUNNER-BACK",
+              "label": "opaque acoustic runner underlay",
+              "prefab": "PF-WALL-RUN",
+              "at": [
+                0,
+                15.008,
+                0
+              ],
+              "size": [
+                0.92,
+                0.01,
+                14.18
+              ],
+              "material": "M-RUBBER",
+              "collision": "none",
+              "purpose": "dark matte recessed backing prevents the pale sage weave from visually z-fighting with the tiled base finish",
+              "yaw": 0,
+              "flushWithFinish": true
+            },
+            {
               "id": "B04/F6/COR/RUNNER",
               "label": "matte woven acoustic corridor runner",
               "prefab": "PF-WALL-RUN",
               "at": [
                 0,
-                15.005,
+                15.016,
                 0
               ],
               "size": [
-                0.92,
-                0.008,
-                14.18
+                0.88,
+                0.012,
+                14.1
               ],
               "material": "M-FABRIC-SAGE",
               "collision": "none",
@@ -63766,16 +63542,16 @@
               "at": [
                 -1.11,
                 16.48,
-                0
+                -3.15
               ],
               "size": [
-                1.24,
-                0.66,
+                0.92,
+                0.52,
                 0.035
               ],
               "material": "M-SCREEN",
               "collision": "none",
-              "purpose": "floor programme, resident events and notices clear of every authored camera",
+              "purpose": "compact floor programme display on a solid wall bay behind the authored arrival lens",
               "yaw": -1.5707963267948966,
               "text": "洗衣、自习与顶层宿舍 · LAUNDRY & STUDY",
               "hudSafe": true
@@ -64002,9 +63778,9 @@
             "programme": {
               "roomId": "B04/F6/LAUNDRY",
               "at": {
-                "x": -4.95,
-                "z": 1.95,
-                "yaw": 3.141592653589793
+                "x": -3.2,
+                "z": 2.2,
+                "yaw": -2.05
               },
               "focusFixtureIds": [
                 "B04/F6/LAUNDRY/W2",
@@ -64944,8 +64720,9 @@
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "visible reception triage, appointment numbers and international-student welcome",
-                  "yaw": -1.5707963267948966,
-                  "text": "总服务台 · RECEPTION · 欢迎"
+                  "yaw": 1.5707963267948966,
+                  "text": "A012 · B007 · RECEPTION",
+                  "hudSafe": true
                 },
                 {
                   "id": "B05/F1/B/PLANT",
@@ -64967,23 +64744,62 @@
                   "yaw": 0
                 },
                 {
+                  "id": "B05/F1/B/FLAG-BACKDROP",
+                  "label": "recessed ceremonial-flag niche",
+                  "prefab": "PF-WALL-RUN",
+                  "at": [
+                    0.725,
+                    1.7,
+                    -4.65
+                  ],
+                  "size": [
+                    0.035,
+                    1.55,
+                    1.12
+                  ],
+                  "material": "M-OAK-DARK",
+                  "collision": "none",
+                  "purpose": "shadow-jointed architectural niche grounding the textile and crest on the solid west wall",
+                  "yaw": 0
+                },
+                {
                   "id": "B05/F1/B/FLAG",
                   "label": "university ceremonial flag",
                   "prefab": "PF-FLAG",
                   "at": [
-                    0.755,
-                    1.78,
+                    0.795,
+                    1.82,
                     -4.65
                   ],
                   "size": [
-                    0.68,
-                    0.86,
-                    0.06
+                    0.72,
+                    0.9,
+                    0.1
                   ],
                   "material": "M-SAFETY-RED",
                   "collision": "none",
-                  "purpose": "folded textile university identity on the solid west wall, clear of the glazing",
+                  "purpose": "deep-folded textile university identity in a composed oak niche, clear of the glazing",
                   "yaw": -1.5707963267948966
+                },
+                {
+                  "id": "B05/F1/B/FLAG-CREST",
+                  "label": "university flag-niche crest",
+                  "prefab": "PF-ROOM-SIGN",
+                  "at": [
+                    0.815,
+                    1.13,
+                    -4.65
+                  ],
+                  "size": [
+                    0.64,
+                    0.22,
+                    0.04
+                  ],
+                  "material": "M-BRASS",
+                  "collision": "none",
+                  "purpose": "small institutional plaque completing the ceremonial textile vignette",
+                  "yaw": -1.5707963267948966,
+                  "text": "文华 · WENHUA"
                 },
                 {
                   "id": "B05/F1/B/STAFF-MONITOR1",
@@ -65331,26 +65147,6 @@
                   "collision": "none",
                   "purpose": "speech privacy in a measured ceiling bay rather than one blocky field",
                   "yaw": 0
-                },
-                {
-                  "id": "B05/F1/B/ARCH/DISPLAY",
-                  "label": "department information display",
-                  "prefab": "PF-SCREEN",
-                  "at": [
-                    6.575,
-                    1.52,
-                    -3.45
-                  ],
-                  "size": [
-                    1.18,
-                    0.72,
-                    0.04
-                  ],
-                  "material": "M-SCREEN",
-                  "collision": "none",
-                  "purpose": "appointments, status and civic information",
-                  "yaw": 1.5707963267948966,
-                  "text": "入口门厅与总服务台"
                 }
               ],
               "programme": "lobby",
@@ -66570,25 +66366,6 @@
                   "purpose": "illuminated bilingual marking at this individual protected-stair door",
                   "yaw": 1.5707963267948966,
                   "text": "安全出口 · EXIT"
-                },
-                {
-                  "id": "B05/F1/STAIR-W/FIX/LOCAL-EMERGENCY",
-                  "label": "protected-stair emergency light",
-                  "prefab": "PF-EMERGENCY-LIGHT",
-                  "at": [
-                    -6.93,
-                    2.47,
-                    -2.9
-                  ],
-                  "size": [
-                    0.32,
-                    0.12,
-                    0.1
-                  ],
-                  "material": "M-WALL-WHITE",
-                  "collision": "none",
-                  "purpose": "battery-backed light at this individual protected-stair door",
-                  "yaw": 1.5707963267948966
                 }
               ],
               "programme": "protected stair",
@@ -67050,12 +66827,12 @@
               "at": [
                 -4.15,
                 0.62,
-                -1.045
+                -1.245
               ],
               "size": [
                 0.32,
                 0.76,
-                0.2
+                0.16
               ],
               "material": "M-SAFETY-RED",
               "collision": "none",
@@ -67069,7 +66846,7 @@
               "at": [
                 -3.58,
                 1.25,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.16,
@@ -67108,7 +66885,7 @@
               "at": [
                 -4.15,
                 2.35,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.32,
@@ -67127,7 +66904,7 @@
               "at": [
                 -4.78,
                 1.58,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.46,
@@ -67166,12 +66943,12 @@
               "at": [
                 -4.15,
                 1,
-                -1.078
+                -1.275
               ],
               "size": [
                 0.54,
                 1.02,
-                0.035
+                0.025
               ],
               "material": "M-STEEL-DARK",
               "collision": "none",
@@ -67185,7 +66962,7 @@
               "at": [
                 -4.15,
                 1.58,
-                -1.055
+                -1.235
               ],
               "size": [
                 0.58,
@@ -67197,27 +66974,6 @@
               "purpose": "short identification immediately above the recessed cabinet",
               "yaw": 3.141592653589793,
               "text": "灭火器 · FIRE"
-            },
-            {
-              "id": "B05/F1/COR/RUNNER",
-              "label": "finish-integrated accessible corridor field",
-              "prefab": "PF-WALL-RUN",
-              "at": [
-                0,
-                -0.002,
-                0
-              ],
-              "size": [
-                12.7,
-                0.004,
-                2
-              ],
-              "material": "M-TERRAZZO",
-              "collision": "none",
-              "purpose": "uninterrupted 2.20 m public corridor whose top is exactly flush with the architectural finish",
-              "yaw": 0,
-              "clearWidth": 2.2,
-              "flushWithFinish": true
             },
             {
               "id": "B05/F1/COR/DATUM-S",
@@ -67296,27 +67052,6 @@
               "purpose": "services, meetings and floor-specific public notices",
               "yaw": 0,
               "text": "1F · STUDENT SERVICES"
-            },
-            {
-              "id": "B05/F1/COR/PROGRAMME",
-              "label": "finish-integrated civic floor medallion",
-              "prefab": "PF-WALL-RUN",
-              "at": [
-                0,
-                -0.001,
-                -0.73
-              ],
-              "size": [
-                2.4,
-                0.002,
-                0.28
-              ],
-              "material": "M-FABRIC-BLUE",
-              "collision": "none",
-              "purpose": "broad coherent floor identity field with no rail-like edge or abrupt raised strip",
-              "yaw": 0,
-              "text": "1F · STUDENT SERVICES",
-              "flushWithFinish": true
             },
             {
               "id": "B05/F1/COR/ENTRY-MAT",
@@ -67559,9 +67294,9 @@
             "programme": {
               "roomId": "B05/F1/B",
               "at": {
-                "x": 3.4,
-                "z": -3.8,
-                "yaw": -1.893
+                "x": 2.3,
+                "z": -3.85,
+                "yaw": -1.95
               },
               "focusFixtureIds": [
                 "B05/F1/B/COUNTER-MAIN",
@@ -70219,25 +69954,6 @@
                   "purpose": "illuminated bilingual marking at this individual protected-stair door",
                   "yaw": 1.5707963267948966,
                   "text": "安全出口 · EXIT"
-                },
-                {
-                  "id": "B05/F2/STAIR-W/FIX/LOCAL-EMERGENCY",
-                  "label": "protected-stair emergency light",
-                  "prefab": "PF-EMERGENCY-LIGHT",
-                  "at": [
-                    -6.93,
-                    5.57,
-                    -2.9
-                  ],
-                  "size": [
-                    0.32,
-                    0.12,
-                    0.1
-                  ],
-                  "material": "M-WALL-WHITE",
-                  "collision": "none",
-                  "purpose": "battery-backed light at this individual protected-stair door",
-                  "yaw": 1.5707963267948966
                 }
               ],
               "programme": "protected stair",
@@ -70699,12 +70415,12 @@
               "at": [
                 -4.15,
                 3.72,
-                -1.045
+                -1.245
               ],
               "size": [
                 0.32,
                 0.76,
-                0.2
+                0.16
               ],
               "material": "M-SAFETY-RED",
               "collision": "none",
@@ -70718,7 +70434,7 @@
               "at": [
                 -3.58,
                 4.35,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.16,
@@ -70757,7 +70473,7 @@
               "at": [
                 -4.15,
                 5.45,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.32,
@@ -70776,7 +70492,7 @@
               "at": [
                 -4.78,
                 4.68,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.46,
@@ -70796,12 +70512,12 @@
               "at": [
                 -4.15,
                 4.1,
-                -1.078
+                -1.275
               ],
               "size": [
                 0.54,
                 1.02,
-                0.035
+                0.025
               ],
               "material": "M-STEEL-DARK",
               "collision": "none",
@@ -70815,7 +70531,7 @@
               "at": [
                 -4.15,
                 4.68,
-                -1.055
+                -1.235
               ],
               "size": [
                 0.58,
@@ -70827,27 +70543,6 @@
               "purpose": "short identification immediately above the recessed cabinet",
               "yaw": 3.141592653589793,
               "text": "灭火器 · FIRE"
-            },
-            {
-              "id": "B05/F2/COR/RUNNER",
-              "label": "finish-integrated accessible corridor field",
-              "prefab": "PF-WALL-RUN",
-              "at": [
-                0,
-                3.098,
-                0
-              ],
-              "size": [
-                12.7,
-                0.004,
-                2
-              ],
-              "material": "M-TERRAZZO",
-              "collision": "none",
-              "purpose": "uninterrupted 2.20 m public corridor whose top is exactly flush with the architectural finish",
-              "yaw": 0,
-              "clearWidth": 2.2,
-              "flushWithFinish": true
             },
             {
               "id": "B05/F2/COR/DATUM-S",
@@ -70926,27 +70621,6 @@
               "purpose": "services, meetings and floor-specific public notices",
               "yaw": 0,
               "text": "2F · DEPARTMENTS"
-            },
-            {
-              "id": "B05/F2/COR/PROGRAMME",
-              "label": "finish-integrated civic floor medallion",
-              "prefab": "PF-WALL-RUN",
-              "at": [
-                0,
-                3.099,
-                -0.73
-              ],
-              "size": [
-                2.4,
-                0.002,
-                0.28
-              ],
-              "material": "M-OAK",
-              "collision": "none",
-              "purpose": "broad coherent floor identity field with no rail-like edge or abrupt raised strip",
-              "yaw": 0,
-              "text": "2F · DEPARTMENTS",
-              "flushWithFinish": true
             },
             {
               "id": "B05/F2/COR/ENTRY-MAT",
@@ -71262,13 +70936,13 @@
             "programme": {
               "roomId": "B05/F2/D",
               "at": {
-                "x": 2.9,
-                "z": 3,
-                "yaw": 0
+                "x": 3,
+                "z": 3.6,
+                "yaw": -0.08
               },
               "focusFixtureIds": [
                 "B05/F2/D/SCAN-STATUS",
-                "B05/F2/D/FILE05"
+                "B05/F2/D/FILE04"
               ]
             }
           }
@@ -71698,6 +71372,66 @@
                   "yaw": 3.141592653589793,
                   "text": "培训 · WORKSHOP",
                   "hudSafe": true
+                },
+                {
+                  "id": "B05/F3/A/TRAINING-TASK-A",
+                  "label": "populated workshop task card",
+                  "prefab": "PF-ROOM-SIGN",
+                  "at": [
+                    -2.51,
+                    7.68,
+                    -5.485
+                  ],
+                  "size": [
+                    0.58,
+                    0.22,
+                    0.035
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "individual exercise card layered onto the presentation board instead of an empty white rectangle",
+                  "yaw": 3.141592653589793,
+                  "text": "A · PRACTICE"
+                },
+                {
+                  "id": "B05/F3/A/TRAINING-TASK-B",
+                  "label": "populated workshop task card",
+                  "prefab": "PF-ROOM-SIGN",
+                  "at": [
+                    -1.75,
+                    7.68,
+                    -5.485
+                  ],
+                  "size": [
+                    0.58,
+                    0.22,
+                    0.035
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "individual exercise card layered onto the presentation board instead of an empty white rectangle",
+                  "yaw": 3.141592653589793,
+                  "text": "B · REVIEW"
+                },
+                {
+                  "id": "B05/F3/A/TRAINING-TASK-C",
+                  "label": "populated workshop task card",
+                  "prefab": "PF-ROOM-SIGN",
+                  "at": [
+                    -0.99,
+                    7.68,
+                    -5.485
+                  ],
+                  "size": [
+                    0.58,
+                    0.22,
+                    0.035
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "individual exercise card layered onto the presentation board instead of an empty white rectangle",
+                  "yaw": 3.141592653589793,
+                  "text": "C · NEXT"
                 },
                 {
                   "id": "B05/F3/A/TRAINING-CART",
@@ -73711,25 +73445,6 @@
                   "purpose": "illuminated bilingual marking at this individual protected-stair door",
                   "yaw": 1.5707963267948966,
                   "text": "安全出口 · EXIT"
-                },
-                {
-                  "id": "B05/F3/STAIR-W/FIX/LOCAL-EMERGENCY",
-                  "label": "protected-stair emergency light",
-                  "prefab": "PF-EMERGENCY-LIGHT",
-                  "at": [
-                    -6.93,
-                    8.67,
-                    -2.9
-                  ],
-                  "size": [
-                    0.32,
-                    0.12,
-                    0.1
-                  ],
-                  "material": "M-WALL-WHITE",
-                  "collision": "none",
-                  "purpose": "battery-backed light at this individual protected-stair door",
-                  "yaw": 1.5707963267948966
                 }
               ],
               "programme": "protected stair",
@@ -74191,12 +73906,12 @@
               "at": [
                 -4.15,
                 6.82,
-                -1.045
+                -1.245
               ],
               "size": [
                 0.32,
                 0.76,
-                0.2
+                0.16
               ],
               "material": "M-SAFETY-RED",
               "collision": "none",
@@ -74210,7 +73925,7 @@
               "at": [
                 -3.58,
                 7.45,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.16,
@@ -74249,7 +73964,7 @@
               "at": [
                 -4.15,
                 8.55,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.32,
@@ -74268,7 +73983,7 @@
               "at": [
                 -4.78,
                 7.78,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.46,
@@ -74288,12 +74003,12 @@
               "at": [
                 -4.15,
                 7.2,
-                -1.078
+                -1.275
               ],
               "size": [
                 0.54,
                 1.02,
-                0.035
+                0.025
               ],
               "material": "M-STEEL-DARK",
               "collision": "none",
@@ -74307,7 +74022,7 @@
               "at": [
                 -4.15,
                 7.78,
-                -1.055
+                -1.235
               ],
               "size": [
                 0.58,
@@ -74319,27 +74034,6 @@
               "purpose": "short identification immediately above the recessed cabinet",
               "yaw": 3.141592653589793,
               "text": "灭火器 · FIRE"
-            },
-            {
-              "id": "B05/F3/COR/RUNNER",
-              "label": "finish-integrated accessible corridor field",
-              "prefab": "PF-WALL-RUN",
-              "at": [
-                0,
-                6.198,
-                0
-              ],
-              "size": [
-                12.7,
-                0.004,
-                2
-              ],
-              "material": "M-TERRAZZO",
-              "collision": "none",
-              "purpose": "uninterrupted 2.20 m public corridor whose top is exactly flush with the architectural finish",
-              "yaw": 0,
-              "clearWidth": 2.2,
-              "flushWithFinish": true
             },
             {
               "id": "B05/F3/COR/DATUM-S",
@@ -74418,27 +74112,6 @@
               "purpose": "services, meetings and floor-specific public notices",
               "yaw": 0,
               "text": "3F · WORKSHOP"
-            },
-            {
-              "id": "B05/F3/COR/PROGRAMME",
-              "label": "finish-integrated civic floor medallion",
-              "prefab": "PF-WALL-RUN",
-              "at": [
-                0,
-                6.199,
-                -0.73
-              ],
-              "size": [
-                2.4,
-                0.002,
-                0.28
-              ],
-              "material": "M-FABRIC-BLUE",
-              "collision": "none",
-              "purpose": "broad coherent floor identity field with no rail-like edge or abrupt raised strip",
-              "yaw": 0,
-              "text": "3F · WORKSHOP",
-              "flushWithFinish": true
             },
             {
               "id": "B05/F3/COR/ENTRY-MAT",
@@ -74754,13 +74427,13 @@
             "programme": {
               "roomId": "B05/F3/A",
               "at": {
-                "x": -1.15,
-                "z": -2.95,
-                "yaw": -2.87
+                "x": -1.75,
+                "z": -3.35,
+                "yaw": -3.05
               },
               "focusFixtureIds": [
-                "B05/F3/A/TRAINING-BOARD",
-                "B05/F3/A/TRAINING-SIGN"
+                "B05/F3/A/TRAINING-SIGN",
+                "B05/F3/A/TRAINING-TASK-B"
               ]
             }
           }
@@ -74882,16 +74555,16 @@
                   "at": [
                     -1.75,
                     9.3,
-                    -5.32
+                    -5.17
                   ],
                   "size": [
                     2.2,
                     0.76,
-                    0.34
+                    0.28
                   ],
-                  "material": "M-BRASS",
+                  "material": "M-OAK-DARK",
                   "collision": "prefab-default",
-                  "purpose": "shallow ceremonial agenda bridge completing the U without closing the camera aisle",
+                  "purpose": "connected dark-oak agenda bridge completing the U without reading as a separate gold bench",
                   "yaw": 0
                 },
                 {
@@ -75216,18 +74889,18 @@
                   "label": "council ceremonial flag west",
                   "prefab": "PF-FLAG",
                   "at": [
-                    -3.48,
+                    -3.15,
                     10.88,
                     -5.22
                   ],
                   "size": [
                     0.72,
-                    0.48,
-                    0.04
+                    0.56,
+                    0.1
                   ],
                   "material": "M-SAFETY-RED",
                   "collision": "none",
-                  "purpose": "formal council backdrop clear of the measured table and chair footprints",
+                  "purpose": "deep-folded formal council textile clear of the measured table and chair footprints",
                   "yaw": 3.141592653589793
                 },
                 {
@@ -75235,18 +74908,18 @@
                   "label": "council ceremonial flag east",
                   "prefab": "PF-FLAG",
                   "at": [
-                    -0.02,
+                    -0.35,
                     10.88,
                     -5.22
                   ],
                   "size": [
                     0.72,
-                    0.48,
-                    0.04
+                    0.56,
+                    0.1
                   ],
                   "material": "M-BRASS",
                   "collision": "none",
-                  "purpose": "formal council backdrop clear of the measured table and chair footprints",
+                  "purpose": "deep-folded formal council textile clear of the measured table and chair footprints",
                   "yaw": 3.141592653589793
                 }
               ],
@@ -77092,25 +76765,6 @@
                   "purpose": "illuminated bilingual marking at this individual protected-stair door",
                   "yaw": 1.5707963267948966,
                   "text": "安全出口 · EXIT"
-                },
-                {
-                  "id": "B05/F4/STAIR-W/FIX/LOCAL-EMERGENCY",
-                  "label": "protected-stair emergency light",
-                  "prefab": "PF-EMERGENCY-LIGHT",
-                  "at": [
-                    -6.93,
-                    11.77,
-                    -2.9
-                  ],
-                  "size": [
-                    0.32,
-                    0.12,
-                    0.1
-                  ],
-                  "material": "M-WALL-WHITE",
-                  "collision": "none",
-                  "purpose": "battery-backed light at this individual protected-stair door",
-                  "yaw": 1.5707963267948966
                 }
               ],
               "programme": "protected stair",
@@ -77572,12 +77226,12 @@
               "at": [
                 -4.15,
                 9.92,
-                -1.045
+                -1.245
               ],
               "size": [
                 0.32,
                 0.76,
-                0.2
+                0.16
               ],
               "material": "M-SAFETY-RED",
               "collision": "none",
@@ -77591,7 +77245,7 @@
               "at": [
                 -3.58,
                 10.55,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.16,
@@ -77630,7 +77284,7 @@
               "at": [
                 -4.15,
                 11.65,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.32,
@@ -77649,7 +77303,7 @@
               "at": [
                 -4.78,
                 10.88,
-                -1.065
+                -1.255
               ],
               "size": [
                 0.46,
@@ -77669,12 +77323,12 @@
               "at": [
                 -4.15,
                 10.3,
-                -1.078
+                -1.275
               ],
               "size": [
                 0.54,
                 1.02,
-                0.035
+                0.025
               ],
               "material": "M-STEEL-DARK",
               "collision": "none",
@@ -77688,7 +77342,7 @@
               "at": [
                 -4.15,
                 10.88,
-                -1.055
+                -1.235
               ],
               "size": [
                 0.58,
@@ -77700,27 +77354,6 @@
               "purpose": "short identification immediately above the recessed cabinet",
               "yaw": 3.141592653589793,
               "text": "灭火器 · FIRE"
-            },
-            {
-              "id": "B05/F4/COR/RUNNER",
-              "label": "finish-integrated accessible corridor field",
-              "prefab": "PF-WALL-RUN",
-              "at": [
-                0,
-                9.298,
-                0
-              ],
-              "size": [
-                12.7,
-                0.004,
-                2
-              ],
-              "material": "M-TERRAZZO",
-              "collision": "none",
-              "purpose": "uninterrupted 2.20 m public corridor whose top is exactly flush with the architectural finish",
-              "yaw": 0,
-              "clearWidth": 2.2,
-              "flushWithFinish": true
             },
             {
               "id": "B05/F4/COR/DATUM-S",
@@ -77799,27 +77432,6 @@
               "purpose": "services, meetings and floor-specific public notices",
               "yaw": 0,
               "text": "4F · COUNCIL"
-            },
-            {
-              "id": "B05/F4/COR/PROGRAMME",
-              "label": "finish-integrated civic floor medallion",
-              "prefab": "PF-WALL-RUN",
-              "at": [
-                0,
-                9.299,
-                -0.73
-              ],
-              "size": [
-                2.4,
-                0.002,
-                0.28
-              ],
-              "material": "M-BRASS",
-              "collision": "none",
-              "purpose": "broad coherent floor identity field with no rail-like edge or abrupt raised strip",
-              "yaw": 0,
-              "text": "4F · COUNCIL",
-              "flushWithFinish": true
             },
             {
               "id": "B05/F4/COR/ENTRY-MAT",
@@ -78135,9 +77747,9 @@
             "programme": {
               "roomId": "B05/F4/A",
               "at": {
-                "x": -1.3,
-                "z": -3.05,
-                "yaw": -2.85
+                "x": -1.45,
+                "z": -3.45,
+                "yaw": -2.98
               },
               "focusFixtureIds": [
                 "B05/F4/A/COUNCIL-CREST",
@@ -79096,15 +78708,15 @@
                     10.53
                   ],
                   "size": [
-                    2.7,
-                    0.34,
+                    2.3,
+                    0.32,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "preparation-room workflow",
                   "yaw": 0,
-                  "text": "清洁准备 ←  ·  清洗收货 →"
+                  "text": "清洁 ← · 清洗 →"
                 },
                 {
                   "id": "B06/F1/WN/CLEAN-LABEL",
@@ -79116,7 +78728,7 @@
                     4.2
                   ],
                   "size": [
-                    1.25,
+                    0.92,
                     0.22,
                     0.04
                   ],
@@ -79124,7 +78736,7 @@
                   "collision": "none",
                   "purpose": "labels the clean set-up island in the review composition",
                   "yaw": 0,
-                  "text": "CLEAN PREP · 教学套件"
+                  "text": "清洁准备"
                 },
                 {
                   "id": "B06/F1/WN/RECEIVE-LABEL",
@@ -79136,7 +78748,7 @@
                     8
                   ],
                   "size": [
-                    1.55,
+                    0.92,
                     0.22,
                     0.04
                   ],
@@ -79144,7 +78756,7 @@
                   "collision": "none",
                   "purpose": "labels the dirty receiving stream in the review composition",
                   "yaw": 0,
-                  "text": "RECEIVING · WASH · 收货清洗"
+                  "text": "收货清洗"
                 },
                 {
                   "id": "B06/F1/WN/BATCH-BOARD",
@@ -79164,7 +78776,7 @@
                   "collision": "none",
                   "purpose": "delivery checks, wash status and prepared teaching sets",
                   "yaw": 1.5707963267948966,
-                  "text": "收货批次 · CLEAN SETS"
+                  "text": "收货 · 套件"
                 },
                 {
                   "id": "B06/F1/WN/CEILING/SERVICE01",
@@ -79996,12 +79608,12 @@
                   "label": "compact composed science reception counter",
                   "prefab": "PF-SERVICE-COUNTER",
                   "at": [
-                    5.92,
+                    5.45,
                     0,
                     3.7
                   ],
                   "size": [
-                    1.4,
+                    1.35,
                     1.05,
                     0.58
                   ],
@@ -80028,14 +79640,14 @@
                   "collision": "prefab-default",
                   "purpose": "laboratory wayfinding",
                   "yaw": -1.5707963267948966,
-                  "text": "1 安全 · 2 化学 · 3 生物 · 4 创新"
+                  "text": "安全 · 化学 · 生物 · 创新"
                 },
                 {
                   "id": "B06/F1/EM/DEMO",
                   "label": "student prototype showcase",
                   "prefab": "PF-ROBOTICS",
                   "at": [
-                    2.25,
+                    2.75,
                     0,
                     3.9
                   ],
@@ -80059,15 +79671,15 @@
                     4.41
                   ],
                   "size": [
-                    1.75,
-                    0.78,
+                    1.55,
+                    0.72,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "visitor check-in, floor access and current laboratory availability",
                   "yaw": 0,
-                  "text": "访客登记 · 实验室状态"
+                  "text": "访客 · 楼层"
                 },
                 {
                   "id": "B06/F1/EM/BENCH",
@@ -80156,31 +79768,31 @@
                   "prefab": "PF-ROOM-SIGN",
                   "at": [
                     4.1,
-                    2.35,
+                    2.17,
                     4.42
                   ],
                   "size": [
-                    3.15,
-                    0.42,
+                    2.75,
+                    0.34,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "primary science-building identity",
                   "yaw": 0,
-                  "text": "科学与创新楼"
+                  "text": "科学创新楼"
                 },
                 {
                   "id": "B06/F1/EM/SHOWCASE/GLASS-FRONT",
                   "label": "fixed prototype-showcase glazing wall",
                   "prefab": "PF-WALL-RUN",
                   "at": [
-                    2,
+                    2.75,
                     1.08,
                     3.66
                   ],
                   "size": [
-                    1.52,
+                    1.46,
                     1.42,
                     0.045
                   ],
@@ -80194,7 +79806,7 @@
                   "label": "fixed prototype-showcase glazing jamb",
                   "prefab": "PF-WALL-RUN",
                   "at": [
-                    1.34,
+                    2.08,
                     1.08,
                     4
                   ],
@@ -80213,7 +79825,7 @@
                   "label": "fixed prototype-showcase glazing jamb",
                   "prefab": "PF-WALL-RUN",
                   "at": [
-                    2.66,
+                    3.42,
                     1.08,
                     4
                   ],
@@ -81197,15 +80809,15 @@
                 3.15
               ],
               "size": [
-                2.8,
-                0.38,
+                1.55,
+                0.34,
                 0.05
               ],
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "large floor and programme confirmation",
               "yaw": -1.5707963267948966,
-              "text": "1层 · 科学展示与安全入门"
+              "text": "1层 · 安全"
             },
             {
               "id": "B06/F1/FLOOR-TITLE-SOUTH",
@@ -81217,15 +80829,15 @@
                 -3.15
               ],
               "size": [
-                2.8,
-                0.38,
+                1.55,
+                0.34,
                 0.05
               ],
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "paired programme confirmation for south-facing upper-floor arrivals",
               "yaw": 1.5707963267948966,
-              "text": "1层 · 科学展示与安全入门"
+              "text": "1层 · 安全"
             },
             {
               "id": "B06/F1/COR-GLASS",
@@ -81276,7 +80888,7 @@
                 "cameraZoneId": "B06/F1/EM",
                 "focusAt": {
                   "x": 4.1,
-                  "z": 2,
+                  "z": 2.35,
                   "yaw": 0
                 },
                 "body": "hidden",
@@ -81290,9 +80902,9 @@
             "programme": {
               "roomId": "B06/F1/WN",
               "at": {
-                "x": -5.38,
-                "z": 5.52,
-                "yaw": 0.14
+                "x": -3.27,
+                "z": 5.2,
+                "yaw": -0.515
               },
               "focusFixtureIds": [
                 "B06/F1/WN/CLEAN",
@@ -81590,7 +81202,7 @@
                   "collision": "none",
                   "purpose": "airflow status, emergency purge and isolated service controls",
                   "yaw": 0,
-                  "text": "风速 · AIRFLOW"
+                  "text": "风速"
                 },
                 {
                   "id": "B06/F2/WS/HOOD/SERVICE",
@@ -82182,6 +81794,44 @@
                   "yaw": 0
                 },
                 {
+                  "id": "B06/F2/WN/GLASSWARE-A",
+                  "label": "clamped reaction-glassware staging rack",
+                  "prefab": "PF-TRAY-RACK",
+                  "at": [
+                    -3.5,
+                    4.59,
+                    4.1
+                  ],
+                  "size": [
+                    0.72,
+                    0.48,
+                    0.34
+                  ],
+                  "material": "M-STEEL-DARK",
+                  "collision": "none",
+                  "purpose": "raised multi-tier rack of labelled flasks, clamps and clean reaction vessels on synthesis island A",
+                  "yaw": 0
+                },
+                {
+                  "id": "B06/F2/WN/GLASSWARE-B",
+                  "label": "draining glassware and quench-tool rack",
+                  "prefab": "PF-TRAY-RACK",
+                  "at": [
+                    -3.65,
+                    4.59,
+                    8.15
+                  ],
+                  "size": [
+                    0.64,
+                    0.46,
+                    0.32
+                  ],
+                  "material": "M-STAINLESS",
+                  "collision": "none",
+                  "purpose": "raised draining rack and separated quench tools immediately above the twin-bowl work-up sink",
+                  "yaw": 3.141592653589793
+                },
+                {
                   "id": "B06/F2/WN/HOOD-A/BODY",
                   "label": "solvent dispensing fume hood",
                   "prefab": "PF-FUME-HOOD",
@@ -82332,7 +81982,7 @@
                   "collision": "none",
                   "purpose": "airflow status, emergency purge and isolated service controls",
                   "yaw": -1.5707963267948966,
-                  "text": "风速 · AIRFLOW"
+                  "text": "风速"
                 },
                 {
                   "id": "B06/F2/WN/HOOD-A/SERVICE",
@@ -82504,7 +82154,7 @@
                   "collision": "none",
                   "purpose": "airflow status, emergency purge and isolated service controls",
                   "yaw": -1.5707963267948966,
-                  "text": "风速 · AIRFLOW"
+                  "text": "风速"
                 },
                 {
                   "id": "B06/F2/WN/HOOD-B/SERVICE",
@@ -82676,7 +82326,7 @@
                   "collision": "none",
                   "purpose": "airflow status, emergency purge and isolated service controls",
                   "yaw": -1.5707963267948966,
-                  "text": "风速 · AIRFLOW"
+                  "text": "风速"
                 },
                 {
                   "id": "B06/F2/WN/HOOD-C/SERVICE",
@@ -82784,15 +82434,15 @@
                     5.4
                   ],
                   "size": [
-                    2.35,
-                    0.32,
+                    1.95,
+                    0.3,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "distinguishes the three contained hood operations and work-up island",
                   "yaw": -1.5707963267948966,
-                  "text": "称量 → 合成 → 后处理 · SYNTHESIS"
+                  "text": "称量 → 合成 → 后处理"
                 },
                 {
                   "id": "B06/F2/WN/HOOD-EXTRACT",
@@ -83304,7 +82954,7 @@
                   "collision": "none",
                   "purpose": "airflow status, emergency purge and isolated service controls",
                   "yaw": 1.5707963267948966,
-                  "text": "风速 · AIRFLOW"
+                  "text": "风速"
                 },
                 {
                   "id": "B06/F2/ES/HOOD/SERVICE",
@@ -84828,15 +84478,15 @@
                 3.15
               ],
               "size": [
-                2.8,
-                0.38,
+                1.55,
+                0.34,
                 0.05
               ],
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "large floor and programme confirmation",
               "yaw": -1.5707963267948966,
-              "text": "2层 · 化学分析与合成"
+              "text": "2层 · 化学"
             },
             {
               "id": "B06/F2/FLOOR-TITLE-SOUTH",
@@ -84848,15 +84498,15 @@
                 -3.15
               ],
               "size": [
-                2.8,
-                0.38,
+                1.55,
+                0.34,
                 0.05
               ],
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "paired programme confirmation for south-facing upper-floor arrivals",
               "yaw": 1.5707963267948966,
-              "text": "2层 · 化学分析与合成"
+              "text": "2层 · 化学"
             },
             {
               "id": "B06/F2/ARRIVAL/BACKDROP",
@@ -84895,7 +84545,7 @@
               "collision": "none",
               "purpose": "live fume-hood airflow, room availability and eye-wash readiness",
               "yaw": 0,
-              "text": "2F · 化学通风"
+              "text": "化学通风"
             },
             {
               "id": "B06/F2/ARRIVAL/SASH",
@@ -85036,9 +84686,9 @@
             "entry": {
               "zoneId": "B06/F2/ENTRY",
               "at": {
-                "x": 4.58,
-                "z": -0.84,
-                "yaw": 1.31
+                "x": 2.9,
+                "z": -0.85,
+                "yaw": 1.07
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -85049,9 +84699,9 @@
             "programme": {
               "roomId": "B06/F2/WN",
               "at": {
-                "x": -4,
-                "z": 7.2,
-                "yaw": -1.5707963267948966
+                "x": -4.5,
+                "z": 6.95,
+                "yaw": -1.12
               },
               "focusFixtureIds": [
                 "B06/F2/WN/HOOD-B/BODY",
@@ -85670,7 +85320,7 @@
                   "collision": "none",
                   "purpose": "shared digital specimen view",
                   "yaw": 0,
-                  "text": "细胞成像 · LIVE CELL"
+                  "text": "细胞成像"
                 },
                 {
                   "id": "B06/F3/WN/MODES",
@@ -85682,15 +85332,15 @@
                     10.51
                   ],
                   "size": [
-                    2.75,
-                    0.3,
+                    2.3,
+                    0.28,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "makes the imaging programme readable above the shared image wall",
                   "yaw": 0,
-                  "text": "明场 · 荧光 · 相差 · LIVE CELL"
+                  "text": "明场 · 荧光 · 相差"
                 },
                 {
                   "id": "B06/F3/WN/HANDWASH",
@@ -86454,7 +86104,7 @@
                   "collision": "none",
                   "purpose": "airflow status, emergency purge and isolated service controls",
                   "yaw": 1.5707963267948966,
-                  "text": "风速 · AIRFLOW"
+                  "text": "风速"
                 },
                 {
                   "id": "B06/F3/ES/BSC/SERVICE",
@@ -88036,15 +87686,15 @@
                 3.15
               ],
               "size": [
-                2.8,
-                0.38,
+                1.55,
+                0.34,
                 0.05
               ],
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "large floor and programme confirmation",
               "yaw": -1.5707963267948966,
-              "text": "3层 · 生命科学与显微成像"
+              "text": "3层 · 生物"
             },
             {
               "id": "B06/F3/FLOOR-TITLE-SOUTH",
@@ -88056,15 +87706,15 @@
                 -3.15
               ],
               "size": [
-                2.8,
-                0.38,
+                1.55,
+                0.34,
                 0.05
               ],
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "paired programme confirmation for south-facing upper-floor arrivals",
               "yaw": 1.5707963267948966,
-              "text": "3层 · 生命科学与显微成像"
+              "text": "3层 · 生物"
             },
             {
               "id": "B06/F3/ARRIVAL/BACKDROP",
@@ -88103,7 +87753,7 @@
               "collision": "none",
               "purpose": "live teaching microscope mosaics and laboratory availability",
               "yaw": 3.141592653589793,
-              "text": "3F · 细胞成像"
+              "text": "细胞成像"
             },
             {
               "id": "B06/F3/ARRIVAL/CELL-ATLAS",
@@ -88207,9 +87857,9 @@
             "entry": {
               "zoneId": "B06/F3/ENTRY",
               "at": {
-                "x": 4.3,
-                "z": -1,
-                "yaw": 1.95
+                "x": 5.8,
+                "z": -0.95,
+                "yaw": -2.11
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -88220,13 +87870,14 @@
             "programme": {
               "roomId": "B06/F3/WN",
               "at": {
-                "x": -5.3,
-                "z": 7.2,
-                "yaw": 0.45
+                "x": -4.1,
+                "z": 7,
+                "yaw": 0
               },
               "focusFixtureIds": [
                 "B06/F3/WN/SCREEN",
-                "B06/F3/WN/MIC04"
+                "B06/F3/WN/MIC04",
+                "B06/F3/WN/MIC05"
               ]
             }
           }
@@ -88821,7 +88472,7 @@
                   "collision": "none",
                   "purpose": "large unmistakable robot CAD, ROS telemetry and digital-twin display",
                   "yaw": 0,
-                  "text": "机器人设计 · 数字孪生"
+                  "text": "机器人设计"
                 },
                 {
                   "id": "B06/F4/WN/MAKER",
@@ -88909,15 +88560,15 @@
                     7.8
                   ],
                   "size": [
-                    1.52,
-                    0.24,
+                    1.12,
+                    0.22,
                     0.04
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "distinguishes the guarded arm cell from fabrication furniture",
                   "yaw": 0,
-                  "text": "ROBOT ARM · VISION · CALIBRATION"
+                  "text": "机械臂 · 校准"
                 },
                 {
                   "id": "B06/F4/WN/ROVER",
@@ -88975,7 +88626,7 @@
                   "collision": "none",
                   "purpose": "live robot state, ROS diagnostics, arm limits and test status",
                   "yaw": -1.5707963267948966,
-                  "text": "机器人状态 · 安全测试"
+                  "text": "机器人状态"
                 },
                 {
                   "id": "B06/F4/WN/TOOLS-B",
@@ -89121,15 +88772,15 @@
                     2.15
                   ],
                   "size": [
-                    1.42,
-                    0.24,
+                    1.18,
+                    0.22,
                     0.04
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "marks the clear rover test area and emergency-stop console",
                   "yaw": -1.5707963267948966,
-                  "text": "MOBILE ROBOT TEST FIELD"
+                  "text": "移动机器人测试"
                 },
                 {
                   "id": "B06/F4/WN/CEILING/SERVICE01",
@@ -91191,15 +90842,15 @@
                 3.15
               ],
               "size": [
-                2.8,
-                0.38,
+                1.55,
+                0.34,
                 0.05
               ],
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "large floor and programme confirmation",
               "yaw": -1.5707963267948966,
-              "text": "4层 · 物理、机器人与人工智能"
+              "text": "4层 · 机器人"
             },
             {
               "id": "B06/F4/FLOOR-TITLE-SOUTH",
@@ -91211,15 +90862,15 @@
                 -3.15
               ],
               "size": [
-                2.8,
-                0.38,
+                1.55,
+                0.34,
                 0.05
               ],
               "material": "M-SCREEN",
               "collision": "none",
               "purpose": "paired programme confirmation for south-facing upper-floor arrivals",
               "yaw": 1.5707963267948966,
-              "text": "4层 · 物理、机器人与人工智能"
+              "text": "4层 · 机器人"
             },
             {
               "id": "B06/F4/ARRIVAL/BACKDROP",
@@ -91258,7 +90909,7 @@
               "collision": "none",
               "purpose": "robot-cell state, machine vision and AI laboratory availability",
               "yaw": -1.5707963267948966,
-              "text": "4F · 机器人"
+              "text": "机器人"
             },
             {
               "id": "B06/F4/ARRIVAL/VISION",
@@ -91413,9 +91064,9 @@
             "programme": {
               "roomId": "B06/F4/WN",
               "at": {
-                "x": -4.38,
-                "z": 6.42,
-                "yaw": -0.58
+                "x": -3.1,
+                "z": 8.45,
+                "yaw": -0.55
               },
               "focusFixtureIds": [
                 "B06/F4/WN/ARM-CELL",
@@ -91733,61 +91384,42 @@
                   "yaw": 3.141592653589793
                 },
                 {
-                  "id": "B07/F1/SC-LOBBY/WAIT",
-                  "label": "two-place student waiting bench",
-                  "prefab": "PF-BENCH",
-                  "at": [
-                    -4.65,
-                    0,
-                    -1
-                  ],
-                  "size": [
-                    1.35,
-                    0.84,
-                    0.5
-                  ],
-                  "material": "M-FABRIC-BLUE",
-                  "collision": "prefab-default",
-                  "purpose": "short registration wait facing the staffed counter",
-                  "yaw": 3.141592653589793
-                },
-                {
                   "id": "B07/F1/SC-LOBBY/DIR",
                   "label": "wall-mounted activity directory",
                   "prefab": "PF-SCREEN",
                   "at": [
-                    -4.65,
-                    1.34,
-                    -0.745
+                    -2.035,
+                    1.43,
+                    -2.18
                   ],
                   "size": [
-                    1.1,
-                    0.82,
+                    0.78,
+                    0.72,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "club, rehearsal, media and project wayfinding",
-                  "yaw": 3.141592653589793,
-                  "text": "社团 · 排练 · 媒体"
+                  "yaw": 1.5707963267948966,
+                  "text": "社团 · 排练"
                 },
                 {
                   "id": "B07/F1/SC-LOBBY/FEATURE",
                   "label": "brick student-hub identity wall",
                   "prefab": "PF-WALL-RUN",
                   "at": [
-                    -4.65,
+                    -2.015,
                     1.43,
-                    -0.78
+                    -1.9
                   ],
                   "size": [
-                    2.65,
+                    0.06,
                     2.55,
-                    0.06
+                    1.45
                   ],
                   "material": "M-BRICK",
                   "collision": "none",
-                  "purpose": "durable north-wall arrival backdrop clear of both programme doors",
+                  "purpose": "durable east-wall arrival backdrop centred between the two internal door leaves",
                   "yaw": 0
                 },
                 {
@@ -91795,64 +91427,44 @@
                   "label": "student-centre welcome sign",
                   "prefab": "PF-ROOM-SIGN",
                   "at": [
-                    -4.65,
+                    -2.035,
                     2.18,
-                    -0.745
+                    -1.9
                   ],
                   "size": [
-                    2.35,
-                    0.42,
+                    1.35,
+                    0.38,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "student entrance identity",
-                  "yaw": 3.141592653589793,
+                  "yaw": 1.5707963267948966,
                   "text": "学生活动中心"
-                },
-                {
-                  "id": "B07/F1/SC-LOBBY/CHECKIN",
-                  "label": "club check-in sign",
-                  "prefab": "PF-ROOM-SIGN",
-                  "at": [
-                    -4.5,
-                    2.15,
-                    -2.98
-                  ],
-                  "size": [
-                    1.8,
-                    0.32,
-                    0.05
-                  ],
-                  "material": "M-SCREEN",
-                  "collision": "none",
-                  "purpose": "registration-point identity",
-                  "yaw": 0,
-                  "text": "社团服务 · CLUB CHECK-IN"
                 },
                 {
                   "id": "B07/F1/SC-LOBBY/TODAY",
                   "label": "live club-room schedule",
                   "prefab": "PF-SCREEN",
                   "at": [
-                    -4.85,
-                    1.55,
-                    -3.015
+                    -2.035,
+                    1.43,
+                    -1.62
                   ],
                   "size": [
-                    1.45,
+                    0.78,
                     0.72,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "today’s room bookings, open clubs and event start times",
-                  "yaw": 0,
-                  "text": "今日活动 · 排练 18:00"
+                  "yaw": 1.5707963267948966,
+                  "text": "今日 · 18:00"
                 },
                 {
                   "id": "B07/F1/SC-LOBBY/RUG",
-                  "label": "blue acoustic arrival rug",
+                  "label": "blue acoustic arrival inset",
                   "prefab": "PF-WALL-RUN",
                   "at": [
                     -4.65,
@@ -91866,7 +91478,7 @@
                   ],
                   "material": "M-FABRIC-BLUE",
                   "collision": "none",
-                  "purpose": "quiet architectural floor finish beneath waiting",
+                  "purpose": "quiet flush architectural floor finish along the clear registration approach",
                   "yaw": 0
                 },
                 {
@@ -91925,7 +91537,7 @@
                   ],
                   "material": "M-BRASS",
                   "collision": "prefab-default",
-                  "purpose": "warm domestic-scale light above the short student waiting bench",
+                  "purpose": "warm domestic-scale arrival light balancing the staffed registration counter",
                   "yaw": 0,
                   "temperatureK": 3000,
                   "lumens": 620
@@ -92932,7 +92544,7 @@
                   "collision": "none",
                   "purpose": "registration, examination, treatment and pharmacy wayfinding",
                   "yaw": 0,
-                  "text": "挂号 · 诊室 · 治疗 · 药房"
+                  "text": "挂号 · 诊室 · 药房"
                 },
                 {
                   "id": "B07/F1/CL-WAIT/QUEUE",
@@ -92952,7 +92564,7 @@
                   "collision": "prefab-default",
                   "purpose": "queue number without patient names",
                   "yaw": 1.5707963267948966,
-                  "text": "候诊 A12"
+                  "text": "A12"
                 },
                 {
                   "id": "B07/F1/CL-WAIT/AED",
@@ -93103,15 +92715,15 @@
                     4.98
                   ],
                   "size": [
-                    2.25,
-                    0.4,
+                    1.55,
+                    0.36,
                     0.05
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "clinic arrival identity",
                   "yaw": 0,
-                  "text": "校医院 · 候诊"
+                  "text": "校医院"
                 },
                 {
                   "id": "B07/F1/CL-WAIT/STATUS",
@@ -93131,7 +92743,7 @@
                   "collision": "none",
                   "purpose": "wide queue, triage readiness and estimated-wait overview without patient names",
                   "yaw": 0,
-                  "text": "候诊 A12 · 分诊就绪"
+                  "text": "A12 · 可分诊"
                 },
                 {
                   "id": "B07/F1/CL-WAIT/CLOCK",
@@ -94329,7 +93941,7 @@
                   "collision": "none",
                   "purpose": "activity-centre and clinic wayfinding",
                   "yaw": -1.5707963267948966,
-                  "text": "活动中心 ↓ · 校医院 ↑"
+                  "text": "活动 ↓ · 校医 ↑"
                 },
                 {
                   "id": "B07/F1/LIFT/PORTAL",
@@ -94802,7 +94414,7 @@
               "collision": "none",
               "purpose": "student programme confirmation",
               "yaw": 3.141592653589793,
-              "text": "活动中心 ↓ · STUDENT HUB"
+              "text": "活动 ↓"
             },
             {
               "id": "B07/F1/COR/CL-SIGN",
@@ -94822,7 +94434,7 @@
               "collision": "none",
               "purpose": "clinic programme confirmation",
               "yaw": 0,
-              "text": "校医院 ↑ · CLINIC"
+              "text": "校医 ↑"
             },
             {
               "id": "B07/F1/COR/RAFT-W",
@@ -94954,14 +94566,15 @@
                 "focusRoomId": "B07/F1/SC-LOBBY",
                 "cameraZoneId": "B07/F1/SC-LOBBY",
                 "focusAt": {
-                  "x": -4.38,
-                  "z": -1.63,
-                  "yaw": -1.14
+                  "x": -4.1,
+                  "z": -1.6,
+                  "yaw": 1.745
                 },
                 "body": "hidden",
                 "focusFixtureIds": [
                   "B07/F1/SC-LOBBY/DIR",
-                  "B07/F1/SC-LOBBY/WELCOME"
+                  "B07/F1/SC-LOBBY/WELCOME",
+                  "B07/F1/SC-LOBBY/TODAY"
                 ]
               },
               {
@@ -94970,9 +94583,9 @@
                 "focusRoomId": "B07/F1/CL-WAIT",
                 "cameraZoneId": "B07/F1/CL-WAIT",
                 "focusAt": {
-                  "x": -4,
-                  "z": 3.55,
-                  "yaw": 0.05
+                  "x": -4.44,
+                  "z": 4.02,
+                  "yaw": 0.93
                 },
                 "body": "hidden",
                 "focusFixtureIds": [
@@ -94984,13 +94597,14 @@
             "programme": {
               "roomId": "B07/F1/CL-WAIT",
               "at": {
-                "x": -4.42,
-                "z": 2.43,
-                "yaw": 2.6
+                "x": -3.65,
+                "z": 3.2,
+                "yaw": 0.524
               },
               "focusFixtureIds": [
                 "B07/F1/CL-WAIT/REC",
-                "B07/F1/CL-WAIT/QUEUE"
+                "B07/F1/CL-WAIT/QUEUE",
+                "B07/F1/CL-WAIT/STATUS"
               ]
             }
           }
@@ -95524,7 +95138,7 @@
                   "collision": "none",
                   "purpose": "shoe change, hydration and clear-floor reminder",
                   "yaw": 3.141592653589793,
-                  "text": "换鞋 · 补水 · 清场"
+                  "text": "换鞋 · 补水"
                 },
                 {
                   "id": "B07/F2/DANCE/RAFT-W",
@@ -97214,7 +96828,7 @@
                   "collision": "none",
                   "purpose": "activity-centre and clinic wayfinding",
                   "yaw": -1.5707963267948966,
-                  "text": "活动中心 ↓ · 校医院 ↑"
+                  "text": "活动 ↓ · 校医 ↑"
                 },
                 {
                   "id": "B07/F2/LIFT/PORTAL",
@@ -97745,7 +97359,7 @@
               "collision": "none",
               "purpose": "student programme confirmation",
               "yaw": 3.141592653589793,
-              "text": "舞蹈排练 ↓ · DANCE"
+              "text": "舞蹈 ↓"
             },
             {
               "id": "B07/F2/COR/CL-SIGN",
@@ -97765,7 +97379,7 @@
               "collision": "none",
               "purpose": "clinic programme confirmation",
               "yaw": 0,
-              "text": "心理咨询 ↑ · COUNSELLING"
+              "text": "咨询 ↑"
             },
             {
               "id": "B07/F2/COR/RAFT-W",
@@ -98795,9 +98409,9 @@
                   "label": "health-learning desk pair A",
                   "prefab": "PF-STUDENT-DESK-2",
                   "at": [
-                    -5.25,
+                    -5.15,
                     6,
-                    2.15
+                    4.55
                   ],
                   "size": [
                     1.4,
@@ -98816,7 +98430,7 @@
                   "at": [
                     -3.65,
                     6,
-                    2.15
+                    4.55
                   ],
                   "size": [
                     1.4,
@@ -98829,49 +98443,11 @@
                   "yaw": 0
                 },
                 {
-                  "id": "B07/F3/HEALTH/D3",
-                  "label": "health-learning desk pair C",
-                  "prefab": "PF-STUDENT-DESK-2",
-                  "at": [
-                    -5.25,
-                    6,
-                    4.35
-                  ],
-                  "size": [
-                    1.4,
-                    0.78,
-                    0.82
-                  ],
-                  "material": "M-WOOD-DESK",
-                  "collision": "prefab-default",
-                  "purpose": "health campaign workshop",
-                  "yaw": 0
-                },
-                {
-                  "id": "B07/F3/HEALTH/D4",
-                  "label": "health-learning desk pair D",
-                  "prefab": "PF-STUDENT-DESK-2",
-                  "at": [
-                    -3.65,
-                    6,
-                    4.35
-                  ],
-                  "size": [
-                    1.4,
-                    0.78,
-                    0.82
-                  ],
-                  "material": "M-WOOD-DESK",
-                  "collision": "prefab-default",
-                  "purpose": "health campaign workshop",
-                  "yaw": 0
-                },
-                {
                   "id": "B07/F3/HEALTH/DEMO",
                   "label": "adult CPR manikin practice couch",
                   "prefab": "PF-EXAM-COUCH",
                   "at": [
-                    -2.15,
+                    -2.55,
                     6,
                     3.25
                   ],
@@ -98883,7 +98459,7 @@
                   "material": "M-CLINIC",
                   "collision": "prefab-default",
                   "purpose": "adult airway, chest-compression and recovery-position practice with a dedicated trainer",
-                  "yaw": 0,
+                  "yaw": 1.5707963267948966,
                   "trainingManikin": true
                 },
                 {
@@ -98904,7 +98480,7 @@
                   "collision": "none",
                   "purpose": "step-by-step airway, chest-compression, AED pad and recovery-position teaching",
                   "yaw": 1.5707963267948966,
-                  "text": "心肺复苏 · 除颤训练"
+                  "text": "心肺复苏"
                 },
                 {
                   "id": "B07/F3/HEALTH/AED-TRAINER",
@@ -98963,16 +98539,16 @@
                   "collision": "none",
                   "purpose": "paired airway, heart and recovery-position diagrams above the student workstations",
                   "yaw": 0,
-                  "text": "气道 · 心肺 · RECOVERY"
+                  "text": "气道 · 心肺"
                 },
                 {
                   "id": "B07/F3/HEALTH/DEMO-STOOL",
                   "label": "health educator rolling stool",
                   "prefab": "PF-STOOL",
                   "at": [
-                    -1.25,
+                    -1.35,
                     6,
-                    4.48
+                    4.55
                   ],
                   "size": [
                     0.38,
@@ -100024,7 +99600,7 @@
                   "collision": "none",
                   "purpose": "activity-centre and clinic wayfinding",
                   "yaw": -1.5707963267948966,
-                  "text": "活动中心 ↓ · 校医院 ↑"
+                  "text": "活动 ↓ · 校医 ↑"
                 },
                 {
                   "id": "B07/F3/LIFT/PORTAL",
@@ -100544,7 +100120,7 @@
               "collision": "none",
               "purpose": "student programme confirmation",
               "yaw": 3.141592653589793,
-              "text": "媒体制作 ↓ · MEDIA"
+              "text": "媒体 ↓"
             },
             {
               "id": "B07/F3/COR/CL-SIGN",
@@ -100564,7 +100140,7 @@
               "collision": "none",
               "purpose": "clinic programme confirmation",
               "yaw": 0,
-              "text": "健康培训 ↑ · HEALTH"
+              "text": "健康 ↑"
             },
             {
               "id": "B07/F3/COR/RAFT-W",
@@ -100714,9 +100290,9 @@
             "entry": {
               "zoneId": "B07/F3/DUAL-COR",
               "at": {
-                "x": -0.6,
+                "x": -1.14,
                 "z": 0,
-                "yaw": -1.5707963267948966
+                "yaw": -0.95
               },
               "body": "hidden",
               "focusFixtureIds": [
@@ -100727,9 +100303,9 @@
             "programme": {
               "roomId": "B07/F3/HEALTH",
               "at": {
-                "x": -2.58,
-                "z": 4.12,
-                "yaw": 1.1
+                "x": -3.4,
+                "z": 1.9,
+                "yaw": 1.25
               },
               "focusFixtureIds": [
                 "B07/F3/HEALTH/SCREEN",
@@ -100975,7 +100551,7 @@
                   "collision": "prefab-default",
                   "purpose": "twelve-camera campus overview and incident status on the solid north wall",
                   "yaw": 0,
-                  "text": "校园监控 · 实时"
+                  "text": "校园监控"
                 },
                 {
                   "id": "B08/F1/WORK/ACOUSTIC-L",
@@ -101236,9 +100812,9 @@
                   "label": "guard locker bank",
                   "prefab": "PF-LOCKERS",
                   "at": [
-                    0.9,
+                    -2.57,
                     0,
-                    -1.35
+                    -1
                   ],
                   "size": [
                     0.9,
@@ -101247,8 +100823,8 @@
                   ],
                   "material": "M-STEEL-DARK",
                   "collision": "prefab-default",
-                  "purpose": "guard clothing and cleaning kit on the east service wall clear of south-window daylight",
-                  "yaw": 1.5707963267948966
+                  "purpose": "guard clothing and cleaning kit consolidated in the west service bay between drinking water and the visitor counter",
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B08/F1/WORK/CLOCK",
@@ -101476,7 +101052,7 @@
                   "collision": "prefab-default",
                   "purpose": "identify the compact staff washroom",
                   "yaw": 0,
-                  "text": "卫生间 · WC"
+                  "text": "卫生间"
                 },
                 {
                   "id": "B08/F1/WC/L01",
@@ -101640,7 +101216,7 @@
                   "collision": "prefab-default",
                   "purpose": "staff entrance identity",
                   "yaw": 1.5707963267948966,
-                  "text": "门卫值班"
+                  "text": "值班室"
                 },
                 {
                   "id": "B08/F1/ENTRY/ACCESS",
@@ -101935,7 +101511,7 @@
               "collision": "prefab-default",
               "purpose": "institutional identity at the visitor window",
               "yaw": -1.5707963267948966,
-              "text": "文华大学 · 校园安全"
+              "text": "校园安全"
             }
           ],
           "occupancy": 4,
@@ -101962,9 +101538,9 @@
             "programme": {
               "roomId": "B08/F1/WORK",
               "at": {
-                "x": -0.02,
-                "z": 0.96,
-                "yaw": -0.2
+                "x": 0.33,
+                "z": 0.2,
+                "yaw": -0.131
               },
               "focusFixtureIds": [
                 "B08/F1/WORK/CCTV-WALL",

@@ -165,12 +165,26 @@ const Build = (() => {
       const gap = o.gap === undefined ? size * 0.14 : o.gap;
       const chars = [...Glyphs.need(text)];
       const primarySign = Glyphs.role(text, size, o) === 'primary';
-      const step = size + gap, span = chars.length * step - gap;
+      // Most legacy signs were composed on a square CJK grid, so retain that as the default.
+      // Interior information screens opt into proportional advances: a Latin letter is not a
+      // full-width Han cell and a word space is not an empty square.  The textured quads may
+      // overlap in their transparent margins; only their ink writes colour/depth.
+      const proportional = o.proportional === true;
+      const widthFor = ch => !proportional ? 1 : ch === ' ' ? .34 :
+        /[A-Za-z0-9]/.test(ch) ? .68 : /[.,:;!?'"()\-]/.test(ch) ? .42 : 1;
+      const advances = chars.map(ch => widthFor(ch) * size);
+      const span = advances.reduce((sum, advance) => sum + advance, 0) +
+        Math.max(0, chars.length - 1) * gap;
       const lift = o.lift === undefined ? 0.012 : o.lift;
       const out = [];
+      // Legacy square-grid text historically starts half a gap to the right of the mathematically
+      // centred cursor. Preserve those exact world positions unless proportional layout is the
+      // explicit opt-in; streets and older interiors must not move when university copy improves.
+      let cursor = -span / 2 + (proportional ? 0 : gap / 2);
       chars.forEach((ch, i) => {
+        const advance = advances[i], t = cursor + advance / 2;
+        cursor += advance + (i + 1 < chars.length ? gap : 0);
         if (ch === ' ') return;
-        const t = -span / 2 + step * (i + 0.5);
         const ox = o.vertical ? 0 : t, oy = o.vertical ? -t : 0;
         const m = M.mul(M.trans(x, y, z), M.mul(M.rotY(yaw),
           M.mul(M.trans(ox, oy, lift),
@@ -179,6 +193,7 @@ const Build = (() => {
           // Only the Han cells opt into distance stabilisation. A mixed Chinese/English board
           // therefore keeps its Latin subtitle and punctuation exactly as before.
           glyphPrimary: primarySign && Glyphs.isHan(ch),
+          glyphProportional: proportional, glyphAdvance: advance,
           mode: o.mode === undefined ? 0 : o.mode,
           gloss: o.gloss === undefined ? 0.10 : o.gloss,
           glow: o.glow || 0, alpha: o.alpha === undefined ? 1 : o.alpha, tag: o.tag };

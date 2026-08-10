@@ -528,7 +528,8 @@ const CampusInteriors = (() => {
           size=Math.max(minSize,Math.min(.18,linePitch*.68,(w*.82-gap*(count-1))/count)),
           gy=centreY+(rows.length-1-index*2)*linePitch*.5;
         glyphs(gx,gy,gz,(f.yaw||0)+Math.PI,row,{size,gap:Math.min(gap,size*.06),
-          color:C0('M-WALL-WHITE'),mode:1,tag:f.id,lift:.006,glyphRole:'primary'});
+          color:C0('M-WALL-WHITE'),mode:1,tag:f.id,lift:.006,glyphRole:'primary',
+          proportional:true});
       });
     }
 
