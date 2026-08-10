@@ -14,7 +14,7 @@ const REVIEW_BUILDING=(process.env.UNIVERSITY_REVIEW_BUILDING||'').trim().toUppe
 const MERGE_MODE=process.env.UNIVERSITY_REVIEW_MERGE==='1';
 const EXPECTED_SOURCE=(process.env.GITHUB_SHA||'').trim();
 const BUILDING_IDS=['B01','B02','B03','B04','B05','B06','B07','B08'];
-const CURATED_PROGRAMME_BUILDINGS=new Set(['B02','B03','B04','B06','B07','B08']);
+const CURATED_PROGRAMME_BUILDINGS=new Set(BUILDING_IDS);
 const BUILDING_FLOORS={B01:5,B02:4,B03:1,B04:6,B05:4,B06:4,B07:3,B08:1};
 const OUTPUT_DIR=MERGE_MODE?OUTPUT_ROOT:REVIEW_BUILDING?path.join(OUTPUT_ROOT,REVIEW_BUILDING):OUTPUT_ROOT;
 const VIEWPORT={width:1024,height:640,deviceScaleFactor:1,mobile:false};
@@ -193,9 +193,12 @@ function mergeReviewOutputs(){
         prerequisites[field]!==shard.reviewPrerequisites[field])){
         defects.push(`${building}: row and shard capture prerequisites differ for ${key}`);valid=false;
       }
-      const expectedBodyVisible=suffix!=='programme';
+      const expectedBodyVisible=key==='B07/F2/entry';
       if(row.bodyVisible!==expectedBodyVisible){
         defects.push(`${building}: player-body evidence mode is wrong for ${key}`);valid=false;
+      }
+      if(row.bodyPolicy!==(expectedBodyVisible?'evidence':'hidden')){
+        defects.push(`${building}: player-body policy is wrong for ${key}`);valid=false;
       }
       if(shardKeys.has(key)){defects.push(`${building}: duplicate row ${key}`);valid=false;}else shardKeys.add(key);
       if(typeof row.file!=='string'||path.basename(row.file)!==row.file||row.file!==expectedFile){
@@ -208,10 +211,16 @@ function mergeReviewOutputs(){
         CURATED_PROGRAMME_BUILDINGS.has(building)&&row.reviewAt.authored!==true)){
         defects.push(`${building}: programme camera evidence is incomplete for ${key}`);valid=false;
       }
+      const requiresAuthoredGround=rowLevel===1;
       if((suffix==='clinic-entry'||suffix==='entry')&&
         (!hasFiniteFields(row.entryReviewAt,['x','z','yaw','inward','lateral','cameraBack'])||
           row.entryReviewAt.inward<0||row.entryReviewAt.cameraBack<=0||
-          rowLevel>1&&(!Number.isFinite(row.entryReviewAt.frontDepth)||row.entryReviewAt.frontDepth<.72))){
+          !Number.isFinite(row.entryReviewAt.frontDepth)||row.entryReviewAt.frontDepth<.72||
+          typeof row.entryReviewAt.authored!=='boolean'||
+          (rowLevel>1||requiresAuthoredGround)&&row.entryReviewAt.authored!==true||
+          requiresAuthoredGround&&(
+            typeof row.entryReviewAt.focusRoom!=='string'||!row.entryReviewAt.focusRoom.trim()||
+            typeof row.entryReviewAt.cameraZone!=='string'||!row.entryReviewAt.cameraZone.trim()))){
         defects.push(`${building}: arrival evidence missing entryReviewAt for ${key}`);valid=false;
       }
       const captureFile=path.join(shardDir,row.file);
@@ -371,8 +380,9 @@ async function main(){
     activeView=view;
     console.log(`[${report.length+1}/${views.length}] ${view.building}/F${view.level}/${view.suffix}`);
     const result=await evaluate(`(async()=>{try{
-      const at=${JSON.stringify(view.at)},mode=${JSON.stringify(view.mode)},bodyVisible=mode==='entry';
-      window.__game.showBody(bodyVisible);
+      const at=${JSON.stringify(view.at)},mode=${JSON.stringify(view.mode)},suffix=${JSON.stringify(view.suffix)},
+        portalId=${JSON.stringify(view.portal)};let bodyVisible=false,bodyPolicy='hidden';
+      window.__game.showBody(false);
       window.__game.setPlace(${JSON.stringify(view.place)},at||undefined);
       await new Promise(resolve=>setTimeout(resolve,900));const scene=window.__game.scene(),state=window.__game.state(),
         floor=scene.blueprintFloor,building=CampusInteriors.plan.buildings.find(b=>b.id===scene.buildingId),
@@ -381,12 +391,16 @@ async function main(){
         free=(x,z,pad=radius)=>inside(bounds,x,z,pad)&&
           !scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad),
         doorLeaves=(floor.rooms||[]).flatMap(room=>(room.doors||[]).map(door=>{
-          const vertical=door.side==='west'||door.side==='east',w=door.width||.9,dx=door.at[0],dz=door.at[2];
-          return vertical
-            ?{x0:dx+(door.side==='west'?1:-1)*w*.39-w*.39,x1:dx+(door.side==='west'?1:-1)*w*.39+w*.39,
-              z0:dz-w/2-.06,z1:dz-w/2+.06}
-            :{x0:dx-w/2-.06,x1:dx-w/2+.06,
-              z0:dz+(door.side==='south'?1:-1)*w*.39-w*.39,z1:dz+(door.side==='south'?1:-1)*w*.39+w*.39};
+          const vertical=door.side==='west'||door.side==='east',w=door.width||.9,dx=door.at[0],dz=door.at[2],
+            a=50*Math.PI/180,hx=vertical?dx:dx-w/2,hz=vertical?dz-w/2:dz;
+          let vx,vz;
+          if(door.side==='west'){vx=Math.sin(a);vz=Math.cos(a);}
+          else if(door.side==='east'){vx=-Math.sin(a);vz=Math.cos(a);}
+          else if(door.side==='south'){vx=Math.cos(a);vz=Math.sin(a);}
+          else{vx=Math.cos(a);vz=-Math.sin(a);}
+          const cx=hx+vx*w*.39,cz=hz+vz*w*.39,yaw=Math.atan2(-vz,vx),c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw)),
+            ex=c*w*.39+s*.04,ez=s*w*.39+c*.04;
+          return{x0:cx-ex,x1:cx+ex,z0:cz-ez,z1:cz+ez};
         })),
         sightBlocked=(x,z,pad=.055)=>scene.blockers.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
           scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
@@ -397,7 +411,6 @@ async function main(){
         frontDepth=(x,z,yaw,roomBounds)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw);let depth=0;
           for(let q=.16;q<=6;q+=.12){const px=x+fx*q,pz=z+fz*q;
             if(!inside(roomBounds,px,pz,.10)||sightBlocked(px,pz,.025))break;depth=q;}return depth;},
-        cameraBack=(x,z,yaw)=>backOptions.find(back=>rearClear(x,z,yaw,back))||0,
         applyReviewCamera=(x,z,yaw,back)=>{const cam=window.__game.CAM,pitch=.28;
           window.__game.P.x=x;window.__game.P.z=z;window.__game.P.yaw=yaw;
           cam.fx=x;cam.fz=z;cam.yaw=cam.tYaw=yaw;cam.pitch=cam.tPitch=pitch;
@@ -406,11 +419,38 @@ async function main(){
       if(mode==='entry'&&at){
         const yaw=at.yaw,fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw),
           ox=window.__game.P.x,oz=window.__game.P.z,zones=[...(floor.rooms||[]),...(floor.circulation||[])],
+          authoredEntries=floor.visualReview&&Array.isArray(floor.visualReview.entries)?floor.visualReview.entries:[],
+          authored=authoredEntries.find(q=>q&&q.suffix===suffix&&q.portalId===portalId),
           entryZone=zones.filter(q=>inside(q.bounds,ox,oz,-.08))
             .sort((a,b)=>(a.bounds[1]-a.bounds[0])*(a.bounds[3]-a.bounds[2])-
               (b.bounds[1]-b.bounds[0])*(b.bounds[3]-b.bounds[2]))[0];
+        if(authored){
+          const focusRoom=(floor.rooms||[]).find(q=>q.id===authored.focusRoomId),
+            cameraZone=zones.find(q=>q.id===authored.cameraZoneId),pose=authored.focusAt||{},
+            x=pose.x,z=pose.z,reviewYaw=pose.yaw;
+          if(!focusRoom)throw new Error('authored ground arrival focus room does not exist: '+authored.focusRoomId);
+          if(!cameraZone)throw new Error('authored ground arrival camera zone does not exist: '+authored.cameraZoneId);
+          if(![x,z,reviewYaw].every(Number.isFinite)||!inside(focusRoom.bounds,x,z,radius)||!free(x,z))
+            throw new Error('authored ground arrival focus is not body-clear inside '+focusRoom.id);
+          const back=backOptions.find(q=>inside(cameraZone.bounds,x-Math.sin(reviewYaw)*q,z-Math.cos(reviewYaw)*q,.18)&&
+              rearClear(x,z,reviewYaw,q))||0,front=frontDepth(x,z,reviewYaw,focusRoom.bounds);
+          if(!back)throw new Error('authored ground arrival has no clear camera in '+cameraZone.id);
+          if(front<.72)throw new Error('authored ground arrival faces less than 0.72m of '+focusRoom.id);
+          if(authored.body!=='hidden'&&authored.body!=='evidence')
+            throw new Error('authored ground arrival requires explicit hidden/evidence body policy');
+          bodyVisible=authored.body==='evidence';bodyPolicy=authored.body;
+          applyReviewCamera(x,z,reviewYaw,back);
+          entryReviewAt={x:+x.toFixed(2),z:+z.toFixed(2),yaw:reviewYaw,inward:0,lateral:0,
+            cameraBack:+back.toFixed(2),frontDepth:+front.toFixed(2),entryZone:cameraZone.id,
+            focusRoom:focusRoom.id,cameraZone:cameraZone.id,authored:true};
+          await new Promise(resolve=>setTimeout(resolve,800));
+        }else{
         if(!entryZone)throw new Error('portal threshold has no authored entry zone for '+scene.buildingId);
         const staysInZone=(x,z,pad=.04)=>inside(entryZone.bounds,x,z,pad),
+          entryCameraBack=(x,z,yaw)=>backOptions.find(back=>{
+            const cx=x-Math.sin(yaw)*back,cz=z-Math.cos(yaw)*back;
+            return staysInZone(cx,cz,.18)&&rearClear(x,z,yaw,back);
+          })||0,
           pathFree=(lateral,d)=>{const sign=Math.sign(lateral),span=Math.abs(lateral);
             for(let q=.12;q<=span;q+=.10){const x=ox+rx*sign*q,z=oz+rz*sign*q;if(!staysInZone(x,z)||!free(x,z))return false;}
             const lx=ox+rx*lateral,lz=oz+rz*lateral;
@@ -418,30 +458,45 @@ async function main(){
         const candidates=[],limit=Math.hypot(entryZone.bounds[1]-entryZone.bounds[0],entryZone.bounds[3]-entryZone.bounds[2]),
           lanes=[0,-.36,.36,-.72,.72,-1.08,1.08,-1.44,1.44];
         for(const lateral of lanes){const lx=ox+rx*lateral,lz=oz+rz*lateral;
-          for(let d=.24;d<=limit;d+=.12){const x=lx+fx*d,z=lz+fz*d,back=cameraBack(x,z,yaw);
-            if(pathFree(lateral,d)&&free(x,z)&&staysInZone(x,z,radius)&&back)
-              candidates.push({x,z,d,lateral,back,score:Math.abs(d-2.4)+Math.abs(lateral)*.55-back*.12});}}
+          for(let d=.24;d<=limit;d+=.12){const x=lx+fx*d,z=lz+fz*d,back=entryCameraBack(x,z,yaw);
+            const front=frontDepth(x,z,yaw,entryZone.bounds);
+            if(pathFree(lateral,d)&&free(x,z)&&staysInZone(x,z,radius)&&back&&front>=.72)
+              candidates.push({x,z,d,lateral,back,front,score:Math.abs(d-1.2)+Math.abs(lateral)*.55-back*.12});}}
         candidates.sort((a,b)=>a.score-b.score);const chosen=candidates[0];
         if(!chosen)throw new Error('entry camera could not find a clear frame inside '+entryZone.id);
         applyReviewCamera(chosen.x,chosen.z,yaw,chosen.back);
         entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw,inward:+chosen.d.toFixed(2),
-          lateral:+chosen.lateral.toFixed(2),cameraBack:+chosen.back.toFixed(2),entryZone:entryZone.id};
+          lateral:+chosen.lateral.toFixed(2),cameraBack:+chosen.back.toFixed(2),frontDepth:+chosen.front.toFixed(2),
+          entryZone:entryZone.id,authored:false};
         await new Promise(resolve=>setTimeout(resolve,800));
+        }
       }
       if(mode==='entry'&&!at){
         const ox=window.__game.P.x,oz=window.__game.P.z,zones=[...(floor.circulation||[]),...(floor.rooms||[])],
-          entryZone=zones.filter(q=>inside(q.bounds,ox,oz,-.08))
+          authored=floor.visualReview&&floor.visualReview.entry,
+          spawnZone=zones.filter(q=>inside(q.bounds,ox,oz,-.08))
             .sort((a,b)=>(a.bounds[1]-a.bounds[0])*(a.bounds[3]-a.bounds[2])-
-              (b.bounds[1]-b.bounds[0])*(b.bounds[3]-b.bounds[2]))[0];
+              (b.bounds[1]-b.bounds[0])*(b.bounds[3]-b.bounds[2]))[0],
+          entryZone=authored?zones.find(q=>q.id===authored.zoneId):spawnZone;
         if(!entryZone)throw new Error('upper-floor arrival has no authored zone for '+scene.buildingId+'/F'+floor.level);
         const candidates=[],offsets=[[0,0],[.3,0],[-.3,0],[0,.3],[0,-.3],[.6,0],[-.6,0],[0,.6],[0,-.6]],
           yaws=[window.__game.P.yaw,0,Math.PI/2,Math.PI,-Math.PI/2],moveClear=(x,z)=>{
             const distance=Math.hypot(x-ox,z-oz),steps=Math.max(1,Math.ceil(distance/.10));
             for(let i=1;i<=steps;i++){const q=i/steps,px=ox+(x-ox)*q,pz=oz+(z-oz)*q;
               if(!inside(entryZone.bounds,px,pz,.04)||!free(px,pz))return false;}return true;};
-        for(const [dx,dz] of offsets){const x=ox+dx,z=oz+dz;
+        const zoneCameraBack=(x,z,yaw)=>backOptions.find(back=>{
+          const cx=x-Math.sin(yaw)*back,cz=z-Math.cos(yaw)*back;
+          return inside(entryZone.bounds,cx,cz,.18)&&rearClear(x,z,yaw,back);
+        })||0;
+        if(authored){
+          const pose=authored.at||{},x=pose.x,z=pose.z,yaw=pose.yaw,back=zoneCameraBack(x,z,yaw),
+            front=frontDepth(x,z,yaw,entryZone.bounds);
+          if(![x,z,yaw].every(Number.isFinite)||!inside(entryZone.bounds,x,z,radius)||!free(x,z)||
+            !moveClear(x,z)||!back||front<.72)throw new Error('authored upper-floor arrival is not clear in '+entryZone.id);
+          candidates.push({x,z,yaw,back,front,move:Math.hypot(x-ox,z-oz),score:1e6});
+        }else for(const [dx,dz] of offsets){const x=ox+dx,z=oz+dz;
           if(!inside(entryZone.bounds,x,z,radius)||!free(x,z)||!moveClear(x,z))continue;
-          for(const yaw of yaws){const back=cameraBack(x,z,yaw),front=frontDepth(x,z,yaw,bounds);
+          for(const yaw of yaws){const back=zoneCameraBack(x,z,yaw),front=frontDepth(x,z,yaw,entryZone.bounds);
             if(back&&front>=.72)candidates.push({x,z,yaw,back,front,move:Math.hypot(dx,dz),
               score:front*2.2+back*.35-Math.hypot(dx,dz)*.40});}}
         candidates.sort((a,b)=>b.score-a.score);const chosen=candidates[0];
@@ -449,7 +504,12 @@ async function main(){
         applyReviewCamera(chosen.x,chosen.z,chosen.yaw,chosen.back);
         entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,inward:0,
           lateral:+chosen.move.toFixed(2),cameraBack:+chosen.back.toFixed(2),entryZone:entryZone.id,
-          frontDepth:+chosen.front.toFixed(2)};
+          frontDepth:+chosen.front.toFixed(2),authored:!!authored};
+        if(authored){
+          if(authored.body!==undefined&&authored.body!=='hidden'&&authored.body!=='evidence')
+            throw new Error('authored upper-floor arrival has invalid body policy');
+          bodyVisible=authored.body==='evidence';bodyPolicy=bodyVisible?'evidence':'hidden';
+        }
         await new Promise(resolve=>setTimeout(resolve,800));
       }
       if(mode==='programme'){
@@ -463,7 +523,8 @@ async function main(){
           const pose=authored.at||{},x=pose.x,z=pose.z,yaw=pose.yaw;
           if(!Number.isFinite(x)||!Number.isFinite(z)||!Number.isFinite(yaw)||!inside(room.bounds,x,z,radius)||!free(x,z))
             throw new Error('authored programme pose is not body-clear inside '+room.id);
-          const back=cameraBack(x,z,yaw),front=frontDepth(x,z,yaw,room.bounds);
+          const back=backOptions.find(q=>inside(room.bounds,x-Math.sin(yaw)*q,z-Math.cos(yaw)*q,.18)&&
+            rearClear(x,z,yaw,q))||0,front=frontDepth(x,z,yaw,room.bounds);
           if(!back)throw new Error('authored programme pose has no clear rear-camera sightline in '+room.id);
           if(front<.72)throw new Error('authored programme pose faces less than 0.72m of '+room.id);
           chosen={x,z,yaw,back,front,authored:true};
@@ -472,7 +533,8 @@ async function main(){
           const b=room.bounds,candidates=[],yaws=[0,Math.PI/2,Math.PI,-Math.PI/2];
           for(let z=b[2]+.40;z<=b[3]-.40;z+=.20)for(let x=b[0]+.40;x<=b[1]-.40;x+=.20){
             if(!free(x,z)||!inside(b,x,z,radius))continue;
-            for(const yaw of yaws){const back=cameraBack(x,z,yaw),front=frontDepth(x,z,yaw,b);
+            for(const yaw of yaws){const back=backOptions.find(q=>inside(b,x-Math.sin(yaw)*q,z-Math.cos(yaw)*q,.18)&&
+                rearClear(x,z,yaw,q))||0,front=frontDepth(x,z,yaw,b);
               if(back&&front>=.72)candidates.push({x,z,yaw,back,front,authored:false,
                 score:front*2.2+back*.35-Math.hypot(x-(b[0]+b[1])/2,z-(b[2]+b[3])/2)*.08});}}
           candidates.sort((a,b)=>b.score-a.score);chosen=candidates[0];
@@ -483,9 +545,12 @@ async function main(){
           cameraBack:+chosen.back.toFixed(2),frontDepth:+chosen.front.toFixed(2),authored:chosen.authored};
         await new Promise(resolve=>setTimeout(resolve,800));
       }
+      window.__game.showBody(bodyVisible);
+      await new Promise(resolve=>setTimeout(resolve,350));
       return{ok:true,place:state.place,buildingId:scene.buildingId,level:scene.blueprintFloor&&scene.blueprintFloor.level,
         props:scene.props.length,solids:scene.solids.length,blockers:scene.blockers.length,things:scene.things.length,
-        lights:scene.lights.length,zones:scene.zones.length,spawn:scene.spawn,bodyVisible,reviewRoom,reviewAt,entryReviewAt};
+        lights:scene.lights.length,zones:scene.zones.length,spawn:scene.spawn,bodyVisible,bodyPolicy,
+        reviewRoom,reviewAt,entryReviewAt};
     }catch(error){return{ok:false,error:error.stack||error.message};}})()`,45000);
     if(!result.ok||result.buildingId!==view.building||result.level!==view.level||
       (view.mode==='programme'&&(!result.reviewRoom||!result.reviewAt))||

@@ -197,11 +197,19 @@ const CampusInteriors = (() => {
       }
       // An open leaf and a labelled lintel show where the omitted wall segment is.
       for(const door of (room.doors||[]).filter(q=>q.side===side)){
-        const [dx,,dz]=door.at,yaw=vertical?Math.PI/2:0;
-        let leafX=dx,leafZ=dz;
-        if(vertical){leafZ=dz-door.width/2;leafX=dx+(side==='west'?1:-1)*door.width*.39;}
-        else{leafX=dx-door.width/2;leafZ=dz+(side==='south'?1:-1)*door.width*.39;}
-        prop(door.id,leafX,1.05,leafZ,door.width*.78,2.10,.07,'M-OAK-DARK',{ry:yaw+Math.PI/2,round:.012,bevel:.006});
+        const [dx,,dz]=door.at,wallYaw=vertical?Math.PI/2:0,openAngle=50*Math.PI/180,
+          hingeX=vertical?dx:dx-door.width/2,hingeZ=vertical?dz-door.width/2:dz;
+        let vx,vz;
+        if(side==='west'){vx=Math.sin(openAngle);vz=Math.cos(openAngle);}
+        else if(side==='east'){vx=-Math.sin(openAngle);vz=Math.cos(openAngle);}
+        else if(side==='south'){vx=Math.cos(openAngle);vz=Math.sin(openAngle);}
+        else{vx=Math.cos(openAngle);vz=-Math.sin(openAngle);}
+        const leafX=hingeX+vx*door.width*.39,leafZ=hingeZ+vz*door.width*.39,
+          leafYaw=Math.atan2(-vz,vx);
+        // A half-open closer-controlled leaf reads as a usable door without projecting a full
+        // opaque slab across compact rooms and their sightlines. The authored opening remains
+        // collision-clear; this is the honest resting pose of the visible leaf.
+        prop(door.id,leafX,1.05,leafZ,door.width*.78,2.10,.07,'M-OAK-DARK',{ry:leafYaw,round:.012,bevel:.006});
         const frameMat=finish.trim||accent,post=.075;
         if(vertical){
           prop(`${door.id}/FRAME-A`,dx,1.08,dz-door.width/2-post/2,.13,2.16,post,frameMat);
@@ -213,16 +221,16 @@ const CampusInteriors = (() => {
           prop(`${door.id}/FRAME-T`,dx,2.13,dz,door.width+post*2,.10,.13,frameMat);
         }
         // Lever and vision strip stay attached to the open leaf, making the swing legible.
-        prop(`${door.id}/VISION`,leafX,1.48,leafZ,door.width*.20,.54,.078,'M-GLASS',{ry:yaw+Math.PI/2,alpha:.42});
-        const [hx,hz]=rotated(leafX,leafZ,door.width*.27,-.055,yaw+Math.PI/2);
-        prop(`${door.id}/HANDLE`,hx,1.00,hz,.20,.035,.035,'M-STAINLESS',{ry:yaw+Math.PI/2});
-        const [kx,kz]=rotated(leafX,leafZ,0,-.039,yaw+Math.PI/2);
-        prop(`${door.id}/KICK`,kx,.19,kz,door.width*.62,.28,.012,'M-STAINLESS',{ry:yaw+Math.PI/2,round:.006});
-        const [cx,cz]=rotated(leafX,leafZ,door.width*.13,-.045,yaw+Math.PI/2);
-        prop(`${door.id}/CLOSER`,cx,1.94,cz,door.width*.28,.055,.035,'M-STEEL-DARK',{ry:yaw+Math.PI/2,round:.010});
+        prop(`${door.id}/VISION`,leafX,1.48,leafZ,door.width*.20,.54,.078,'M-GLASS',{ry:leafYaw,alpha:.42});
+        const [hx,hz]=rotated(leafX,leafZ,door.width*.27,-.055,leafYaw);
+        prop(`${door.id}/HANDLE`,hx,1.00,hz,.20,.035,.035,'M-STAINLESS',{ry:leafYaw});
+        const [kx,kz]=rotated(leafX,leafZ,0,-.039,leafYaw);
+        prop(`${door.id}/KICK`,kx,.19,kz,door.width*.62,.28,.012,'M-STAINLESS',{ry:leafYaw,round:.006});
+        const [cx,cz]=rotated(leafX,leafZ,door.width*.13,-.045,leafYaw);
+        prop(`${door.id}/CLOSER`,cx,1.94,cz,door.width*.28,.055,.035,'M-STEEL-DARK',{ry:leafYaw,round:.010});
         prop(`${door.id}/THRESHOLD`,dx,.018,dz,vertical?.16:door.width+.12,.035,vertical?door.width+.12:.16,'M-BRASS',{round:.006});
         const label=room.label.length>12?room.label.slice(0,12):room.label;
-        glyphs(dx,2.28,dz,yaw+(side==='south'||side==='west'?0:Math.PI),label,
+        glyphs(dx,2.28,dz,wallYaw+(side==='south'||side==='west'?0:Math.PI),label,
           {size:.105,gap:.022,color:C0('M-SCREEN'),mode:1,tag:door.id,lift:.014});
       }
     }
@@ -299,7 +307,13 @@ const CampusInteriors = (() => {
         [desk.at[0],desk.at[2]]=rotated(f.at[0],f.at[2],0,d*.14,f.yaw||0);
         renderTable(desk,w,h,d*.58,f.material);
         localBox(f,0,y+h+.27,d*.23,Math.min(.50,w*.45),.34,.055,'M-STEEL-DARK',{round:.025,gloss:.22});
-        localBox(f,0,y+h+.27,d*.198,Math.min(.43,w*.39),.27,.025,'M-SCREEN',{round:.012,glow:.10});
+        const screenW=Math.min(.43,w*.39);
+        localBox(f,0,y+h+.27,d*.198,screenW,.27,.025,'M-SCREEN',{round:.012,glow:.10});
+        // Small asymmetric UI regions make a powered workstation legible at room scale instead
+        // of reading as a blank white or blue slab when exposure compresses the screen palette.
+        localBox(f,-screenW*.25,y+h+.31,d*.181,screenW*.34,.035,.010,'M-WALL-WHITE',{round:.006,glow:.13});
+        localBox(f,-screenW*.18,y+h+.24,d*.180,screenW*.48,.028,.010,'M-LAB-BLUE',{round:.005,glow:.10});
+        localBox(f,screenW*.29,y+h+.25,d*.179,screenW*.18,.11,.010,'M-WALL-GREEN',{round:.008,glow:.09});
         localBox(f,0,y+h+.09,d*.02,Math.min(.48,w*.48),.025,d*.20,'M-WALL-WHITE',{round:.012});
         localBox(f,w*.30,y+h+.075,d*.02,.08,.035,.12,'M-STEEL-DARK',{round:.020});
         const chair={...f,id:`${f.id}/TASK-CHAIR`,at:[...f.at]};
@@ -337,7 +351,18 @@ const CampusInteriors = (() => {
         } else if(f.prefab==='PF-ROBOTICS'){
           localBox(f,0,y+h+.42,d*.38,w*.78,.52,.045,'M-STEEL-DARK',{round:.018});
           for(const dx of [-w*.22,0,w*.22])localBox(f,dx,y+h+.42,d*.345,.08,.08,.025,'M-SAFETY-YELLOW',{round:.018,glow:.06});
-          localBox(f,0,y+h+.16,-d*.06,.34,.22,.28,'M-LAB-BLUE',{round:.035});
+          const variant=[...f.id].reduce((n,ch)=>n+ch.charCodeAt(0),0)%3,
+            armX=(variant-1)*w*.09,lowerAngle=[-.48,.12,.42][variant],upperAngle=[.62,-.55,.28][variant];
+          localCyl(f,armX,y+h+.12,-d*.07,.13,.10,'M-STEEL-DARK',{gloss:.28});
+          localBall(f,armX,y+h+.22,-d*.07,.12,.10,.12,'M-LAB-BLUE',{gloss:.24});
+          localBox(f,armX+(variant-1)*.035,y+h+.39,-d*.07,.09,.36,.10,'M-SAFETY-YELLOW',
+            {round:.028,rz:lowerAngle});
+          localBall(f,armX+(variant-1)*.075,y+h+.56,-d*.07,.105,.095,.105,'M-STEEL-DARK',{gloss:.30});
+          localBox(f,armX-(variant-1)*.045,y+h+.70,-d*.07,.085,.31,.09,'M-LAB-BLUE',
+            {round:.025,rz:upperAngle});
+          localBall(f,armX-(variant-1)*.09,y+h+.84,-d*.07,.075,.070,.075,'M-SAFETY-RED',{gloss:.24});
+          for(const dx of [-.045,.045])localBox(f,armX-(variant-1)*.09+dx,y+h+.91,-d*.07,.025,.14,.035,
+            'M-STEEL-DARK',{round:.010,rz:dx<0?-.28:.28});
         }
       }
     }
@@ -738,27 +763,43 @@ const CampusInteriors = (() => {
             const frame=f.prefab==='PF-DANCE-MIRROR'?'M-BRASS':f.prefab==='PF-SCREEN'?'M-STEEL-DARK':'M-OAK-DARK';
             localBox(f,0,y,0,w,h,d,frame,{round:.018,bevel:.012});
             localBox(f,0,y,-d*.16,w*.94,h*.90,d*.72,f.material,{round:.014,
-              alpha:f.prefab==='PF-DANCE-MIRROR'?.52:undefined,glow:f.prefab==='PF-SCREEN'?.09:undefined});
+              alpha:f.prefab==='PF-DANCE-MIRROR'?.82:undefined,glow:f.prefab==='PF-SCREEN'?.09:undefined,
+              gloss:f.prefab==='PF-DANCE-MIRROR'?.48:undefined});
             localBox(f,0,y-h*.48,-d*.42,w*.90,.035,d*.32,frame,{round:.010});
-            if(f.prefab==='PF-DANCE-MIRROR')localBox(f,0,y-h*.25,-d*.57,w*.92,.045,.045,'M-OAK',{round:.014});
+            if(f.prefab==='PF-DANCE-MIRROR'){
+              localBox(f,0,y-h*.25,-d*.57,w*.92,.045,.045,'M-OAK',{round:.014});
+              localBox(f,-w*.31,y+h*.08,-d*.555,w*.025,h*.68,.012,'M-WALL-WHITE',{round:.006,alpha:.55,glow:.05});
+              localBox(f,w*.18,y+h*.30,-d*.557,w*.42,.025,.012,'M-WALL-WHITE',{round:.006,alpha:.38,glow:.04});
+            }
+            if(f.prefab==='PF-SCREEN'){
+              localBox(f,-w*.31,y+h*.23,-d*.535,w*.22,h*.09,.012,'M-WALL-WHITE',{round:.008,glow:.14});
+              localBox(f,-w*.18,y+h*.04,-d*.537,w*.48,h*.055,.012,'M-LAB-BLUE',{round:.007,glow:.12});
+              localBox(f,w*.29,y-h*.12,-d*.539,w*.18,h*.34,.012,'M-WALL-GREEN',{round:.010,glow:.10});
+              localBox(f,-w*.11,y-h*.25,-d*.541,w*.60,h*.045,.012,'M-SAFETY-YELLOW',{round:.006,glow:.10});
+            }
             if(f.prefab==='PF-CHALKBOARD'||f.prefab==='PF-WHITEBOARD')for(const dx of [-w*.22,0,w*.22])
               localBox(f,dx,y-h*.52,-d*.52,w*.10,.035,.035,dx?'M-FABRIC-BLUE':'M-SAFETY-RED',{round:.008});
-            if(f.text&&f.prefab==='PF-SCREEN')glyphs(f.at[0],y,f.at[2],(f.yaw||0)+Math.PI,f.text,
-              {size:Math.min(.105,w/Math.max(5,[...f.text].length)),gap:.016,color:C0('M-WALL-WHITE'),mode:1,tag:f.id,lift:.012});
+            if(f.text&&f.prefab==='PF-SCREEN'){
+              const [gx,gz]=rotated(f.at[0],f.at[2],0,-d*.56,f.yaw||0);
+              glyphs(gx,y,gz,(f.yaw||0)+Math.PI,f.text,
+                {size:Math.min(.105,w/Math.max(5,[...f.text].length)),gap:.016,color:C0('M-WALL-WHITE'),mode:1,tag:f.id,lift:.006});
+            }
           } break;
         case 'PF-DIRECTORY':
           localBox(f,0,y+h*.48,0,w,h*.90,d,'M-STEEL-DARK');
           localBox(f,0,y+h*.62,-d*.55,w*.84,h*.58,.035,'M-SCREEN',{glow:.15});
           localBox(f,0,y+.045,0,w*.98,.09,d*.98,'M-STEEL-DARK',{round:.018});
-          if(f.text)glyphs(f.at[0],y+h*.66,f.at[2],(f.yaw||0)+Math.PI,f.text,
-            {size:Math.min(.10,w/Math.max(4,[...f.text].length)),gap:.016,color:C0('M-WALL-WHITE'),mode:1,tag:f.id}); break;
+          if(f.text){const faceZ=-(d*.55+.035/2+.010),[gx,gz]=rotated(f.at[0],f.at[2],0,faceZ,f.yaw||0);glyphs(gx,y+h*.66,gz,(f.yaw||0)+Math.PI,f.text,
+            {size:Math.min(.10,w/Math.max(4,[...f.text].length)),gap:.016,color:C0('M-WALL-WHITE'),mode:1,tag:f.id,lift:.006});} break;
         case 'PF-ROOM-SIGN': case 'PF-EXIT-SIGN':
           {
           const cy=p.anchor==='floor'?y+h/2:y;
           localBox(f,0,cy,0,w,h,d,'M-STEEL-DARK',{round:.018,bevel:.010});
           localBox(f,0,cy,-d*.28,w*.90,h*.78,d*.55,f.material,{round:.012,glow:f.prefab==='PF-EXIT-SIGN'?.15:undefined});
-          if(f.text)glyphs(f.at[0],p.anchor==='floor'?y+h*.62:y,f.at[2],(f.yaw||0)+Math.PI,f.text,
-            {size:Math.min(.11,w/Math.max(4,[...f.text].length)),gap:.018,color:C0('M-WALL-WHITE'),mode:1,tag:f.id}); break;
+          if(f.text){const [gx,gz]=rotated(f.at[0],f.at[2],0,-d*.58,f.yaw||0);glyphs(gx,
+            p.anchor==='floor'?y+h*.62:y,gz,(f.yaw||0)+Math.PI,f.text,
+            {size:Math.min(.11,w/Math.max(4,[...f.text].length)),gap:.018,color:C0('M-WALL-WHITE'),mode:1,
+              tag:f.id,lift:.006});} break;
           }
         case 'PF-CLOCK':
           localCyl(f,0,y,d*.10,w*.50,d,'M-OAK-DARK',{rx:Math.PI/2,gloss:.24});

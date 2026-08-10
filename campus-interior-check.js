@@ -42,6 +42,8 @@ check('indoor figures use compact contact shadows rather than corridor-length su
   /alpha:indoorContact \? \.16 :/.test(gameJs));
 check('shared chair and bench geometry follows the authored +z facing convention',
   /ground\+\.70,-d\*\.38/.test(coreJs)&&/y\+h\*\.74,-d\*\.35/.test(coreJs));
+check('university door leaves use a closer-controlled half-open resting pose',
+  /openAngle=50\*Math\.PI\/180/.test(coreJs)&&/leafYaw=Math\.atan2\(-vz,vx\)/.test(coreJs));
 const renderedPrefabCases=new Set([...coreJs.matchAll(/case\s+'(PF-[A-Z0-9-]+)'/g)].map(m=>m[1]));
 const primitiveFallbacks=plan.prefabCatalog.map(p=>p.id).filter(id=>id!=='PF-WALL-RUN'&&!renderedPrefabCases.has(id));
 check('every furniture prefab has a composed renderer',primitiveFallbacks.length===0,primitiveFallbacks.join(','));
@@ -52,8 +54,9 @@ const minimumDetailedParts=new Map([
   ['PF-WALL-RUN',3],
   ['PF-BIN',4],['PF-TOILET',6],['PF-BASIN',7],['PF-HANDWASH',7],
   ['PF-LAB-SINK',8],['PF-EYEWASH',11],['PF-STOOL',13],['PF-SHOWER',9],
+  ['PF-COMPUTER-DESK',15],['PF-ROBOTICS',16],['PF-SCREEN',7],['PF-DANCE-MIRROR',6],
 ]);
-const architecturalSlabLanguage=/wall|panel|datum|raft|ceiling|floor|rug|mat|runner|line|route|field|inset|marker|curtain|blind|window|glass|glazed|glazing|mirror|sill|headboard|pinboard|rail|divider|partition|curb|drain|grille|threshold|jamb|portal|reveal|canopy|inlay|turning|approach|privacy|identity|feature|acoustic|tactile|welcome|backdrop|circuit|calibration|alignment|work grid|aisle|wheelchair|dining bay/i;
+const architecturalSlabLanguage=/wall|panel|datum|raft|ceiling|floor|rug|mat|runner|line|route|field|inset|marker|curtain|blind|window|glass|glazed|glazing|mirror|sill|headboard|pinboard|rail|divider|partition|curb|drain|grille|threshold|jamb|portal|reveal|canopy|inlay|turning|approach|privacy|identity|feature|acoustic|tactile|welcome|backdrop|circuit|calibration|alignment|work grid|aisle|wheelchair|dining bay|sash|plenum|duct|fixed services|service strip|service identification/i;
 const furnitureOrEquipmentLanguage=/speaker|side table|tea table|medicine stock|electrical cabinet|coat-hook|\bdesk\b|\bchair\b|\bbench\b|\bcounter\b|\bshelf\b|\blocker\b|\bbed\b|\bsofa\b|\bstool\b|\bkiosk\b|\bappliance\b/i;
 const slabMisuse=allFixtures.filter(o=>o.prefab==='PF-WALL-RUN'&&(
   (furnitureOrEquipmentLanguage.test(o.label)&&!/headboard|pinboard/i.test(o.label))||
@@ -219,7 +222,46 @@ function walkMap(scene,b,step=.20,radius=.30){
     x>room.bounds[0]+radius&&x<room.bounds[1]-radius&&z>room.bounds[2]+radius&&z<room.bounds[3]-radius))};
 }
 
-const scenes=[],visualReviewDefects=[],authoredVisualReviewFloors=new Set();
+const scenes=[],visualReviewDefects=[],entryReviewDefects=[],authoredVisualReviewFloors=new Set(),
+  authoredEntryReviewFloors=new Set(),authoredGroundEntryReviews=new Set(),bodyEvidenceRows=new Set(),
+  reviewBackOptions=[3.6,3.2,2.8,2.4,2.0,1.7,1.4],reviewDoorCache=new WeakMap();
+const reviewInside=(bounds,x,z,pad=0)=>x>=bounds[0]+pad&&x<=bounds[1]-pad&&z>=bounds[2]+pad&&z<=bounds[3]-pad;
+function reviewDoorLeaves(floor){
+  if(reviewDoorCache.has(floor))return reviewDoorCache.get(floor);
+  const leaves=floor.rooms.flatMap(room=>(room.doors||[]).map(door=>{
+    const vertical=door.side==='west'||door.side==='east',w=door.width||.9,dx=door.at[0],dz=door.at[2],
+      a=50*Math.PI/180,hx=vertical?dx:dx-w/2,hz=vertical?dz-w/2:dz;
+    let vx,vz;
+    if(door.side==='west'){vx=Math.sin(a);vz=Math.cos(a);}
+    else if(door.side==='east'){vx=-Math.sin(a);vz=Math.cos(a);}
+    else if(door.side==='south'){vx=Math.cos(a);vz=Math.sin(a);}
+    else{vx=Math.cos(a);vz=-Math.sin(a);}
+    const cx=hx+vx*w*.39,cz=hz+vz*w*.39,yaw=Math.atan2(-vz,vx),c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw)),
+      ex=c*w*.39+s*.04,ez=s*w*.39+c*.04;
+    return{x0:cx-ex,x1:cx+ex,z0:cz-ez,z1:cz+ez};
+  }));
+  reviewDoorCache.set(floor,leaves);return leaves;
+}
+function reviewSightBlocked(scene,floor,x,z,pad=.055){
+  return scene.blockers.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
+    scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
+    reviewDoorLeaves(floor).some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad);
+}
+function reviewBack(scene,floor,envelope,pose){
+  const fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw);
+  return reviewBackOptions.find(distance=>{
+    const cx=pose.x-fx*distance,cz=pose.z-fz*distance;
+    if(!reviewInside(envelope,cx,cz,.18))return false;
+    for(let q=.12;q<=distance;q+=.10)if(reviewSightBlocked(scene,floor,pose.x-fx*q,pose.z-fz*q))return false;
+    return true;
+  })||0;
+}
+function reviewFront(scene,floor,envelope,pose){
+  const fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw);let front=0;
+  for(let q=.16;q<=6;q+=.12){const x=pose.x+fx*q,z=pose.z+fz*q;
+    if(!reviewInside(envelope,x,z,.10)||reviewSightBlocked(scene,floor,x,z,.025))break;front=q;}
+  return front;
+}
 function renderedPartOutsideFixture(part,fixture,tolerance=.09){
   const m=part.m;if(!m)return false;
   const yaw=fixture.yaw||0,c=Math.cos(yaw),s=Math.sin(yaw),u=[c,-s],v=[s,c];
@@ -277,38 +319,82 @@ for(const [name,build] of builders){
   const programmeReview=f.visualReview&&f.visualReview.programme;
   if(programmeReview){
     authoredVisualReviewFloors.add(`${b.id}/F${f.level}`);
-    const room=f.rooms.find(q=>q.id===programmeReview.roomId),pose=programmeReview.at||{},radius=.32,
-      inside=(bounds,x,z,pad=0)=>x>=bounds[0]+pad&&x<=bounds[1]-pad&&z>=bounds[2]+pad&&z<=bounds[3]-pad;
+    const room=f.rooms.find(q=>q.id===programmeReview.roomId),pose=programmeReview.at||{},radius=.32;
     if(!room)visualReviewDefects.push(`${b.id}/F${f.level}:missing-room:${programmeReview.roomId}`);
     else if(![pose.x,pose.z,pose.yaw].every(Number.isFinite))visualReviewDefects.push(`${b.id}/F${f.level}:non-finite-pose`);
-    else if(!inside(room.bounds,pose.x,pose.z,radius))visualReviewDefects.push(`${b.id}/F${f.level}:pose-outside-${room.id}`);
+    else if(!reviewInside(room.bounds,pose.x,pose.z,radius))visualReviewDefects.push(`${b.id}/F${f.level}:pose-outside-${room.id}`);
     else if(scene.solids.some(s=>!s.open&&pose.x>s.x0-radius&&pose.x<s.x1+radius&&pose.z>s.z0-radius&&pose.z<s.z1+radius))
       visualReviewDefects.push(`${b.id}/F${f.level}:pose-body-blocked`);
     else {
-      const doorLeaves=f.rooms.flatMap(q=>(q.doors||[]).map(door=>{
-        const vertical=door.side==='west'||door.side==='east',w=door.width||.9,dx=door.at[0],dz=door.at[2];
-        return vertical
-          ?{x0:dx+(door.side==='west'?1:-1)*w*.39-w*.39,x1:dx+(door.side==='west'?1:-1)*w*.39+w*.39,
-            z0:dz-w/2-.06,z1:dz-w/2+.06}
-          :{x0:dx-w/2-.06,x1:dx-w/2+.06,
-            z0:dz+(door.side==='south'?1:-1)*w*.39-w*.39,z1:dz+(door.side==='south'?1:-1)*w*.39+w*.39};
-      })),sightBlocked=(x,z,pad=.055)=>scene.blockers.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
-        scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
-        doorLeaves.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad),
-        fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw),back=[3.6,3.2,2.8,2.4,2.0,1.7,1.4].find(distance=>{
-          const cx=pose.x-fx*distance,cz=pose.z-fz*distance;
-          if(!inside(b.localBounds,cx,cz,.18))return false;
-          for(let q=.12;q<=distance;q+=.10)if(sightBlocked(pose.x-fx*q,pose.z-fz*q))return false;
-          return true;
-        });
-      let front=0;
-      for(let q=.16;q<=6;q+=.12){const x=pose.x+fx*q,z=pose.z+fz*q;
-        if(!inside(room.bounds,x,z,.10)||sightBlocked(x,z,.025))break;front=q;}
+      const back=reviewBack(scene,f,room.bounds,pose),front=reviewFront(scene,f,room.bounds,pose);
       if(!back)visualReviewDefects.push(`${b.id}/F${f.level}:rear-camera-blocked`);
       if(front<.72)visualReviewDefects.push(`${b.id}/F${f.level}:front-depth-${front.toFixed(2)}m`);
     }
   }
+  const entryReview=f.visualReview&&f.visualReview.entry;
+  if(entryReview){
+    authoredEntryReviewFloors.add(`${b.id}/F${f.level}`);
+    if(entryReview.body==='evidence')bodyEvidenceRows.add(`${b.id}/F${f.level}/entry`);
+    if(entryReview.body!==undefined&&entryReview.body!=='hidden'&&entryReview.body!=='evidence')
+      entryReviewDefects.push(`${b.id}/F${f.level}:invalid-entry-body-policy`);
+    const zones=[...(f.circulation||[]),...f.rooms],zone=zones.find(q=>q.id===entryReview.zoneId),pose=entryReview.at||{},radius=.32;
+    if(!zone)entryReviewDefects.push(`${b.id}/F${f.level}:missing-entry-zone:${entryReview.zoneId}`);
+    else if(![pose.x,pose.z,pose.yaw].every(Number.isFinite))entryReviewDefects.push(`${b.id}/F${f.level}:non-finite-entry-pose`);
+    else if(!reviewInside(zone.bounds,pose.x,pose.z,radius))entryReviewDefects.push(`${b.id}/F${f.level}:entry-pose-outside-${zone.id}`);
+    else if(scene.solids.some(s=>!s.open&&pose.x>s.x0-radius&&pose.x<s.x1+radius&&pose.z>s.z0-radius&&pose.z<s.z1+radius))
+      entryReviewDefects.push(`${b.id}/F${f.level}:entry-pose-body-blocked`);
+    else {
+      const distance=Math.hypot(pose.x-scene.spawn.x,pose.z-scene.spawn.z),steps=Math.max(1,Math.ceil(distance/.10));
+      for(let i=1;i<=steps;i++){
+        const q=i/steps,x=scene.spawn.x+(pose.x-scene.spawn.x)*q,z=scene.spawn.z+(pose.z-scene.spawn.z)*q;
+        if(!reviewInside(zone.bounds,x,z,.04)||scene.solids.some(s=>!s.open&&x>s.x0-radius&&x<s.x1+radius&&z>s.z0-radius&&z<s.z1+radius)){
+          entryReviewDefects.push(`${b.id}/F${f.level}:entry-path-blocked-${zone.id}`);break;
+        }
+      }
+      const back=reviewBack(scene,f,zone.bounds,pose),front=reviewFront(scene,f,zone.bounds,pose);
+      if(!back)entryReviewDefects.push(`${b.id}/F${f.level}:entry-rear-camera-blocked`);
+      if(front<.72)entryReviewDefects.push(`${b.id}/F${f.level}:entry-front-depth-${front.toFixed(2)}m`);
+    }
+  }
+  const groundEntries=f.visualReview&&f.visualReview.entries;
+  if(groundEntries!==undefined){
+    if(f.level!==1||!Array.isArray(groundEntries)||!groundEntries.length)
+      entryReviewDefects.push(`${b.id}/F${f.level}:invalid-ground-entry-list`);
+    else for(const entry of groundEntries){
+      const key=`${b.id}/F${f.level}/${entry&&entry.suffix}`,portal=entry&&b.portals.find(q=>q.id===entry.portalId),
+        zones=[...(f.circulation||[]),...f.rooms],focusRoom=entry&&f.rooms.find(q=>q.id===entry.focusRoomId),
+        cameraZone=entry&&zones.find(q=>q.id===entry.cameraZoneId),pose=entry&&entry.focusAt||{},radius=.32;
+      if(authoredGroundEntryReviews.has(key))entryReviewDefects.push(`${key}:duplicate-ground-entry-review`);
+      else authoredGroundEntryReviews.add(key);
+      if(!entry||!['entry','clinic-entry'].includes(entry.suffix))entryReviewDefects.push(`${key}:invalid-ground-entry-suffix`);
+      if(!portal||!portal.localSpawn)entryReviewDefects.push(`${key}:missing-ground-entry-portal:${entry&&entry.portalId}`);
+      if(!focusRoom)entryReviewDefects.push(`${key}:missing-ground-focus-room:${entry&&entry.focusRoomId}`);
+      if(!cameraZone)entryReviewDefects.push(`${key}:missing-ground-camera-zone:${entry&&entry.cameraZoneId}`);
+      if(entry&&entry.body!=='hidden')entryReviewDefects.push(`${key}:ground-entry-body-must-be-hidden`);
+      if(!focusRoom||!cameraZone)continue;
+      if(![pose.x,pose.z,pose.yaw].every(Number.isFinite))entryReviewDefects.push(`${key}:non-finite-ground-entry-pose`);
+      else if(!reviewInside(focusRoom.bounds,pose.x,pose.z,radius))
+        entryReviewDefects.push(`${key}:ground-focus-outside-${focusRoom.id}`);
+      else if(scene.solids.some(s=>!s.open&&pose.x>s.x0-radius&&pose.x<s.x1+radius&&pose.z>s.z0-radius&&pose.z<s.z1+radius))
+        entryReviewDefects.push(`${key}:ground-focus-body-blocked`);
+      else {
+        const back=reviewBack(scene,f,cameraZone.bounds,pose),front=reviewFront(scene,f,focusRoom.bounds,pose);
+        if(!back)entryReviewDefects.push(`${key}:ground-rear-camera-blocked-${cameraZone.id}`);
+        if(front<.72)entryReviewDefects.push(`${key}:ground-front-depth-${front.toFixed(2)}m`);
+      }
+    }
+  }
   const fixtureRows=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects);
+  const directoryGlyphDefects=[];
+  for(const fixture of fixtureRows.filter(o=>o.prefab==='PF-DIRECTORY'&&o.text)){
+    const yaw=fixture.yaw||0,v=[Math.sin(yaw),Math.cos(yaw)],front=-(fixture.size[2]*.55+.035/2),
+      glyphRows=scene.props.filter(p=>p.mesh==='quad'&&p.tag===fixture.id&&p.ch);
+    if(!glyphRows.length)directoryGlyphDefects.push(`${fixture.id}:missing`);
+    else for(const glyph of glyphRows){const rel=[glyph.m[12]-fixture.at[0],glyph.m[14]-fixture.at[2]],localZ=rel[0]*v[0]+rel[1]*v[1];
+      if(localZ>front-.004)directoryGlyphDefects.push(`${fixture.id}:${localZ.toFixed(3)}/${front.toFixed(3)}`);}
+  }
+  check(`${name} directory glyphs sit in front of their display glass`,directoryGlyphDefects.length===0,
+    directoryGlyphDefects.slice(0,8).join(','));
   const materialDiversity=new Set(fixtureRows.map(o=>o.material)).size;
   check(`${name} uses a coherent multi-material palette`,materialDiversity>=10,materialDiversity);
   const authoredRoomLights=fixtureRows.filter(o=>o.prefab==='PF-CEILING-LIGHT'||o.prefab==='PF-PENDANT').length;
@@ -357,13 +443,26 @@ for(const [name,build] of builders){
   check(`${name} interactions have a reachable approach`,unreachableThings.length===0,unreachableThings.map(t=>t.hz).join(','));
 }
 
-const requiredVisualReviewFloors=plan.buildings.filter(b=>['B02','B03','B04','B06','B07','B08'].includes(b.id))
-  .flatMap(b=>b.floorsPlan.map(f=>`${b.id}/F${f.level}`)),missingVisualReviewFloors=requiredVisualReviewFloors
+const requiredVisualReviewFloors=plan.buildings.flatMap(b=>b.floorsPlan.map(f=>`${b.id}/F${f.level}`)),
+  missingVisualReviewFloors=requiredVisualReviewFloors
   .filter(key=>!authoredVisualReviewFloors.has(key));
-check('visually weak buildings have curated programme review poses',missingVisualReviewFloors.length===0,
+check('every university floor has a curated programme review pose',missingVisualReviewFloors.length===0,
   missingVisualReviewFloors.join(','));
 check('curated programme review poses are body-clear with open front and rear sightlines',
   visualReviewDefects.length===0,visualReviewDefects.slice(0,16).join(','));
+const requiredEntryReviewFloors=plan.buildings.flatMap(b=>b.floorsPlan.filter(f=>f.level>1).map(f=>`${b.id}/F${f.level}`)),
+  missingEntryReviewFloors=requiredEntryReviewFloors.filter(key=>!authoredEntryReviewFloors.has(key));
+check('every occupied upper floor has a curated arrival review pose',missingEntryReviewFloors.length===0,
+  missingEntryReviewFloors.join(','));
+check('curated upper-floor arrival poses stay within their zones with clear paths and sightlines',
+  entryReviewDefects.length===0,entryReviewDefects.slice(0,16).join(','));
+const requiredGroundEntryReviews=['B01/F1/entry','B02/F1/entry','B03/F1/entry','B04/F1/entry','B05/F1/entry',
+    'B06/F1/entry','B07/F1/entry','B07/F1/clinic-entry','B08/F1/entry'],
+  missingGroundEntryReviews=requiredGroundEntryReviews.filter(key=>!authoredGroundEntryReviews.has(key));
+check('complex ground-floor arrivals have authored architectural review poses',missingGroundEntryReviews.length===0,
+  missingGroundEntryReviews.join(','));
+check('visual review exposes the player body and shadow in exactly one dedicated evidence frame',
+  bodyEvidenceRows.size===1&&bodyEvidenceRows.has('B07/F2/entry'),[...bodyEvidenceRows].join(','));
 
 const byBuilding=new Map();
 for(const [,scene] of scenes){const row=byBuilding.get(scene.buildingId)||[];row.push(scene);byBuilding.set(scene.buildingId,row);}
