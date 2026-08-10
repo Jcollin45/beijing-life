@@ -760,16 +760,17 @@ const CampusInteriors = (() => {
           localBox(f,0,y+h*.58,0,w*1.12,.035,d*1.2,'M-BRASS'); break;
         case 'PF-CHALKBOARD': case 'PF-WHITEBOARD': case 'PF-SCREEN': case 'PF-DANCE-MIRROR':
           {
-            const frame=f.prefab==='PF-DANCE-MIRROR'?'M-BRASS':f.prefab==='PF-SCREEN'?'M-STEEL-DARK':'M-OAK-DARK';
+            const frame=f.prefab==='PF-DANCE-MIRROR'?'M-STAINLESS':f.prefab==='PF-SCREEN'?'M-STEEL-DARK':'M-OAK-DARK';
             localBox(f,0,y,0,w,h,d,frame,{round:.018,bevel:.012});
             localBox(f,0,y,-d*.16,w*.94,h*.90,d*.72,f.material,{round:.014,
-              alpha:f.prefab==='PF-DANCE-MIRROR'?.82:undefined,glow:f.prefab==='PF-SCREEN'?.09:undefined,
-              gloss:f.prefab==='PF-DANCE-MIRROR'?.48:undefined});
+              alpha:f.prefab==='PF-DANCE-MIRROR'?.34:undefined,glow:f.prefab==='PF-SCREEN'?.09:undefined,
+              gloss:f.prefab==='PF-DANCE-MIRROR'?.62:undefined});
             localBox(f,0,y-h*.48,-d*.42,w*.90,.035,d*.32,frame,{round:.010});
             if(f.prefab==='PF-DANCE-MIRROR'){
               localBox(f,0,y-h*.25,-d*.57,w*.92,.045,.045,'M-OAK',{round:.014});
-              localBox(f,-w*.31,y+h*.08,-d*.555,w*.025,h*.68,.012,'M-WALL-WHITE',{round:.006,alpha:.55,glow:.05});
-              localBox(f,w*.18,y+h*.30,-d*.557,w*.42,.025,.012,'M-WALL-WHITE',{round:.006,alpha:.38,glow:.04});
+              localBox(f,-w*.31,y+h*.08,-d*.555,w*.025,h*.68,.012,'M-WALL-WHITE',{round:.006,alpha:.72,glow:.07});
+              localBox(f,w*.18,y+h*.30,-d*.557,w*.42,.025,.012,'M-LAB-BLUE',{round:.006,alpha:.42,glow:.06});
+              localBox(f,w*.28,y-h*.06,-d*.559,w*.18,h*.40,.010,'M-WALL-WHITE',{round:.006,alpha:.24,glow:.03});
             }
             if(f.prefab==='PF-SCREEN'){
               localBox(f,-w*.31,y+h*.23,-d*.535,w*.22,h*.09,.012,'M-WALL-WHITE',{round:.008,glow:.14});
@@ -821,11 +822,17 @@ const CampusInteriors = (() => {
           localBox(f,0,y+.025,0,w*.70,.05,d*.70,'M-STEEL-DARK',{round:.025}); break;
         case 'PF-CCTV-DESK':
           renderTable(f,w,h,d,'M-OAK-DARK');
-          for(const dx of [-w*.39,-w*.13,w*.13,w*.39]){
+          [-w*.39,-w*.13,w*.13,w*.39].forEach((dx,index)=>{
             localBox(f,dx,y+h+.27,d*.08,w*.21,.30,.045,'M-STEEL-DARK',{round:.020,bevel:.008});
             localBox(f,dx,y+h+.27,d*.052,w*.18,.25,.025,'M-SCREEN',{round:.012,glow:.14});
+            const accent=['M-LAB-BLUE','M-WALL-GREEN','M-SAFETY-YELLOW','M-FABRIC-RED'][index];
+            localBox(f,dx-w*.040,y+h+.335,d*.034,w*.080,.035,.010,'M-WALL-WHITE',{round:.005,glow:.16});
+            localBox(f,dx+w*.045,y+h+.330,d*.033,w*.055,.045,.011,accent,{round:.006,glow:.18});
+            localBox(f,dx-w*.038,y+h+.260,d*.032,w*(index%2?.070:.045),.085,.012,accent,{round:.006,glow:.12});
+            localBox(f,dx+w*.035,y+h+.275,d*.031,w*(index%2?.045:.075),.024,.013,'M-WALL-WHITE',{round:.004,glow:.13});
+            localBox(f,dx+w*.030,y+h+.235,d*.030,w*.082,.018,.014,index===2?'M-SAFETY-RED':'M-LAB-BLUE',{round:.004,glow:.12});
             localBox(f,dx,y+h+.09,d*.08,.035,.16,.035,'M-STEEL-DARK',{round:.010});
-          }
+          });
           localBox(f,-w*.18,y+h+.035,-d*.18,w*.34,.025,d*.18,'M-WALL-WHITE',{round:.010});
           localBox(f,w*.20,y+h+.045,-d*.17,w*.18,.045,d*.20,'M-STEEL-DARK',{round:.018});
           localBox(f,w*.37,y+h+.13,-d*.13,w*.08,.18,d*.10,'M-SAFETY-RED',{round:.025});

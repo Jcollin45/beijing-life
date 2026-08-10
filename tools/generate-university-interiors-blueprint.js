@@ -656,6 +656,12 @@ function buildB01() {
       ...plannedDoorSideRoute(id,e,b,false),
       fixture(`${id}/TABLE`,'seminar table','PF-MEETING-TABLE',[cx,e,cz],
         'M-OAK','nine-seat seminar work surface',{size:[4.0,.76,1.10]}),
+      fixture(`${id}/REFERENCE-CADDY-L`,'shared seminar reference caddy','PF-TRAY-RACK',[cx-.72,e+.76,cz],
+        'M-FABRIC-RED','multi-tier course readings and annotated handouts staged on the shared table',
+        {size:[.48,.30,.28],collision:'none'}),
+      fixture(`${id}/REFERENCE-CADDY-R`,'shared seminar reference caddy','PF-TRAY-RACK',[cx+.72,e+.76,cz],
+        'M-LAB-BLUE','multi-tier group materials staged on the shared table',
+        {size:[.48,.30,.28],collision:'none'}),
       fixture(`${id}/BOARD`,'seminar whiteboard','PF-WHITEBOARD',[cx,e+1.58,z1-.085],
         'M-WHITEBOARD','shared seminar notes',{yaw:0,size:[4.1,1.18,.06]}),
       fixture(`${id}/SCREEN`,'video seminar display','PF-SCREEN',[x0+.055,e+1.56,.75],
@@ -728,11 +734,20 @@ function buildB01() {
         'M-OAK','teaching material preparation',{yaw:PI/2,size:[1.8,.84,.75]}),
       fixture(`${id}/TABLE-R`,'east preparation table','PF-PREP-TABLE',[2.35,e,-.70],
         'M-OAK','teaching material preparation',{yaw:-PI/2,size:[1.8,.84,.75]}),
+      fixture(`${id}/KIT-CADDY-L`,'west course-kit sorting caddy','PF-TRAY-RACK',[-2.35,e+.84,-.70],
+        'M-LAB-BLUE','labelled handout, cable and demonstration-kit trays staged on the worktop',
+        {yaw:PI/2,size:[.56,.38,.34],collision:'none'}),
+      fixture(`${id}/KIT-CADDY-R`,'east course-kit sorting caddy','PF-TRAY-RACK',[2.35,e+.84,-.70],
+        'M-FABRIC-RED','colour-coded assessment and classroom-equipment trays staged on the worktop',
+        {yaw:-PI/2,size:[.56,.38,.34],collision:'none'}),
       ...[[-2.95,-PI/2],[2.95,PI/2]].flatMap(([x,yaw],side)=>[-3.10,1.55].map((z,i)=>
         fixture(`${id}/SHELF-${side+1}-${i+1}`,'labelled preparation shelf','PF-SHELF',[x,e,z],
           'M-STEEL','course materials and equipment',{yaw,size:[.90,1.80,.42]}))),
       fixture(`${id}/BOARD`,'preparation schedule','PF-WHITEBOARD',[-1.90,e+1.55,b[3]-.08],
         'M-WHITEBOARD','room bookings and preparation status',{yaw:0,size:[2.05,1.0,.06]}),
+      fixture(`${id}/KIT-STATUS`,'course-kit preparation status','PF-SCREEN',[1.90,e+1.55,b[3]-.08],
+        'M-SCREEN','labelled teaching sets, collection times and readiness checks',
+        {yaw:0,size:[2.05,1.0,.05],text:'课程材料 · 待领 / 已备  COURSE KITS',collision:'none'}),
       ...plannedCeiling(id,e,b,[-1.65,1.65],3700),
     ];
     return out;
@@ -986,22 +1001,27 @@ function buildB01() {
       fixture(`${prefix}/WATER`,'north-wall drinking-water station','PF-WATER',[12.4,e,5.25],'M-STEEL','student hydration in a recess beyond the 1.85 m corridor'),
       ...plannedCorridor(prefix,e,spec.level,spec.labels,floorAccents[spec.level-1]),
     ];
-    const programmeReview=spec.level===1?{roomId:`${prefix}/WEST`,at:{x:-9.01,z:-.20,yaw:0}}:
-      spec.level===2?{roomId:`${prefix}/WEST`,at:{x:-9.85,z:-.18,yaw:0}}:
-      spec.level===3?{roomId:`${prefix}/EAST`,at:{x:8.30,z:-.24,yaw:0}}:
-      spec.level===4?{roomId:`${prefix}/CENTRE`,at:{x:0,z:-.42,yaw:0}}:
-      {roomId:`${prefix}/WEST`,at:{x:-10.88,z:-.18,yaw:PI/2}};
-    const entryReview=spec.level===1?null:spec.level===3?
-      {zoneId:`${prefix}/CORRIDOR`,at:{x:10.60,z:3.78,yaw:2.15}}:
-      spec.level===5?{zoneId:`${prefix}/CORRIDOR`,at:{x:-.80,z:3.78,yaw:2.15}}:
-      {zoneId:`${prefix}/CORRIDOR`,at:{x:-5.40,z:3.78,yaw:2.15}};
+    const programmeReview=spec.level===1?{roomId:`${prefix}/WEST`,at:{x:-9.01,z:-.20,yaw:0},
+      focusFixtureIds:[`${prefix}/WEST/TEACHING/DISPLAY`,`${prefix}/WEST/TEACHING/BOARD`]}:
+      spec.level===2?{roomId:`${prefix}/WEST`,at:{x:-9.85,z:-.18,yaw:0},
+        focusFixtureIds:[`${prefix}/WEST/TEACHING/BOARD`,`${prefix}/WEST/TEACHING/PODIUM`]}:
+      spec.level===3?{roomId:`${prefix}/EAST`,at:{x:8.30,z:-.24,yaw:0},
+        focusFixtureIds:[`${prefix}/EAST/TEACHING/INSTRUCTOR`,`${prefix}/EAST/WS05`,`${prefix}/EAST/TEACHING/BOARD`]}:
+      spec.level===4?{roomId:`${prefix}/CENTRE`,at:{x:0,z:-.80,yaw:.55},
+        focusFixtureIds:[`${prefix}/CENTRE/TABLE-R`,`${prefix}/CENTRE/KIT-CADDY-R`,`${prefix}/CENTRE/KIT-STATUS`]}:
+      {roomId:`${prefix}/WEST`,at:{x:-10.88,z:-.18,yaw:1.40},
+        focusFixtureIds:[`${prefix}/WEST/TABLE`,`${prefix}/WEST/BOARD`]};
+    const entryReview=spec.level===1?null:{zoneId:`${prefix}/CORRIDOR`,
+      at:{x:-5.40,z:4.02,yaw:PI/2},body:'hidden',
+      focusFixtureIds:[`${prefix}/COR/SIGN1`,`${prefix}/COR/FLOOR`]};
     floors.push(floor(spec.level,e,3.3,rooms,[
       {id:`${prefix}/CORRIDOR`,bounds:[-12.8,12.8,3.1,4.95],clearWidth:1.85,surface:'M-TERRAZZO'},
       ...(spec.level===1?[{id:`${prefix}/ENTRY`,bounds:[-1.65,1.65,-5.5,3.1],clearWidth:3.3,surface:'M-TERRAZZO'}]:[]),
     ],shared,{occupancy:spec.level===5?45:spec.level===1?72:60,
       visualReview:{
         ...(spec.level===1?{entries:[{suffix:'entry',portalId:'B01/PUBLIC',focusRoomId:`${prefix}/CENTRE`,
-          cameraZoneId:`${prefix}/CENTRE`,focusAt:{x:.20,z:-1.20,yaw:.6981317007977318},body:'hidden'}]}:{}),
+          cameraZoneId:`${prefix}/CENTRE`,focusAt:{x:0,z:-.50,yaw:0},body:'hidden',
+          focusFixtureIds:[`${prefix}/CENTRE/WELCOME-L`,`${prefix}/CENTRE/WELCOME-R`]}]}:{}),
         programme:programmeReview,...(entryReview?{entry:entryReview}:{}),
       }}));
   }
@@ -1297,9 +1317,11 @@ function buildB02() {
       b02WallSign(`${p}/HALL/SIGN`,e,3.36,1.7,'新书 · 阅览 · 借还书',-PI/2,1.8),
       ...b02Ceiling(`${p}/SPINE/CEILING`,e,[[2.25,-3.1,1.1,.22],[2.25,1.0,1.1,.22]],3400,false),
     ],{occupancy:92,visualReview:{
-      entries:[{suffix:'entry',portalId:'B02/PUBLIC',focusRoomId:`${p}/LOBBY`,cameraZoneId:`${p}/HALL`,
-        focusAt:{x:-2.90,z:.50,yaw:-1.7453292519943295},body:'hidden'}],
-      programme:{roomId:`${p}/NEW`,at:{x:-1.80,z:8.00,yaw:2.80}},
+      entries:[{suffix:'entry',portalId:'B02/PUBLIC',focusRoomId:`${p}/LOBBY`,cameraZoneId:`${p}/LOBBY`,
+        focusAt:{x:-5.50,z:1.20,yaw:-.475},body:'hidden',
+        focusFixtureIds:[`${p}/LOBBY/G1`,`${p}/LOBBY/G2`]}],
+      programme:{roomId:`${p}/NEW`,at:{x:-1.80,z:8.00,yaw:2.80},
+        focusFixtureIds:[`${p}/NEW/STACK02`,`${p}/NEW/READ/TABLE01`]},
     }}));
   }
 
@@ -1413,9 +1435,15 @@ function buildB02() {
       ],eastContents),
       ...coreRooms(spec.level,e,p),
     ];
-    const entryReview=spec.level===2?{zoneId:`${p}/SPINE`,at:{x:2.62,z:7.60,yaw:1.10}}:
-      spec.level===3?{zoneId:`${p}/SPINE`,at:{x:2.62,z:8.35,yaw:2.04}}:
-      {zoneId:`${p}/SPINE`,at:{x:2.62,z:8.80,yaw:2.04}};
+    const entryReview={zoneId:`${p}/SPINE`,at:{x:2.25,z:7.20,yaw:0},body:'hidden',
+      focusFixtureIds:[`${p}/SPINE/IDENTITY`]};
+    const programmeReview=spec.kind==='humanities'?
+      {roomId:`${p}/NORTH`,at:{x:-2.65,z:3.80,yaw:0},
+        focusFixtureIds:[`${p}/NORTH/TABLE03`,`${p}/NORTH/TABLE04`]}:
+      spec.kind==='science'?{roomId:`${p}/NORTH`,at:{x:-1.45,z:3.40,yaw:0},
+        focusFixtureIds:[`${p}/NORTH/PC05`,`${p}/NORTH/PC06`,`${p}/NORTH/SCREEN`]}:
+      {roomId:`${p}/EAST`,at:{x:4.85,z:5.00,yaw:0},
+        focusFixtureIds:[`${p}/EAST/MEET`,`${p}/EAST/FILES`,`${p}/EAST/CASE`]};
     floors.push(floor(spec.level,e,3.2,rooms,[
       {id:`${p}/SPINE`,bounds:[1.1,3.4,-5.2,11.6],clearWidth:1.5,surface:'M-OAK'},
       {id:`${p}/EGRESS-NW`,bounds:[-3.15,3.4,7.05,8.55],clearWidth:1.5,surface:'M-TERRAZZO'},
@@ -1435,7 +1463,7 @@ function buildB02() {
       ...b02Ceiling(`${p}/SPINE/CEILING`,e,[[2.25,-2.8,1.05,.22],[2.25,3.2,1.05,.22],[2.25,9.0,1.05,.22]],3400,false),
     ],{occupancy:spec.level===4?48:72,visualReview:{
       entry:entryReview,
-      programme:{roomId:`${p}/SOUTH`,at:{x:-.35,z:-7.10,yaw:0}},
+      programme:programmeReview,
     }}));
   }
   return {
@@ -1567,18 +1595,23 @@ function buildB03() {
         'open-leg dark-oak portioning table with stainless undershelf and a separate red board'],
       primaryExtra:{boardColor:'red'}},
   ];
+  const bayAccents=['M-OAK-DARK','M-WALL-GREEN','M-LAB-BLUE','M-FABRIC-RED'];
   dishes.forEach(({zh,en,operation,z,primary,primaryExtra={},sidecar,hood},i)=>{
     const [primaryPrefab,primaryLabel,primaryMaterial,primarySize,primaryPurpose]=primary;
     serving.push(
       fixture(`${p}/SERVE/C${i+1}`,primaryLabel,primaryPrefab,[-.82,e,z],
         primaryMaterial,primaryPurpose,{yaw:PI/2,size:primarySize,
           foodDisplay:{dish:zh,allergenCard:true,batchLabel:true},...primaryExtra}),
-      plate(`${p}/SERVE/C${i+1}-SIGN`,`${zh} menu sign`,[-2.57,e+2.25,z],
+      fixture(`${p}/SERVE/C${i+1}-BAY-PLATE`,`${zh} queue-side serving-bay plate`,'PF-ROOM-SIGN',
+        [-.36,e+.64,z],bayAccents[i],
+        'colour-coded dish and bay number mounted directly on the working fixture',
+        {yaw:PI/2,size:[.72,.28,.04],text:`${i+2} · ${zh}`,collision:'none'}),
+      plate(`${p}/SERVE/C${i+1}-SIGN`,`${zh} menu sign`,[-2.57,e+2.35,z],
         `${i+2} · ${zh} · ${en} · ${operation}`,'one readable sign per serving bay',
-        {yaw:PI/2,size:[1.70,.31,.05]}),
+        {yaw:PI/2,size:[1.90,.38,.05]}),
       fixture(`${p}/SERVE/C${i+1}-PRICE`,'guard-mounted dish and price display','PF-SCREEN',
-        [-.34,e+1.55,z-.12],'M-SCREEN','dish identity, price, batch and allergen status directly on the sneeze guard',
-        {yaw:PI/2,size:[.56,.25,.035],text:`${zh} · ¥${i+2} · ${i===1?'素':'当日'}`,collision:'none'}),
+        [-.32,e+1.55,z-.12],'M-SCREEN','dish identity, price, batch and allergen status directly on the queue-side face',
+        {yaw:PI/2,size:[.76,.31,.035],text:`${i+2} · ${zh} · ¥${i+2} · ${i===1?'素':'当日'}`,collision:'none'}),
       fixture(`${p}/SERVE/C${i+1}-WARM`,'warm serving-bay pendant','PF-PENDANT',[-.82,e+4.72,z],
         'M-BRASS','warm colour-rendering light over the composed food display',
         {temperatureK:3200,lumens:1050,size:[.34,.30,.34]}),
@@ -1841,8 +1874,10 @@ function buildB03() {
       {id:`${p}/WC-TURN`,bounds:[-6.20,-4.70,-3.45,-1.95],clearWidth:1.50,surface:'M-TILE-DARK'},
     ],shared,{occupancy:52,visualReview:{
       entries:[{suffix:'entry',portalId:'B03/PUBLIC',focusRoomId:`${p}/DINING`,cameraZoneId:`${p}/ENTRY`,
-        focusAt:{x:3.80,z:-2.00,yaw:2.9670597283903604},body:'hidden'}],
-      programme:{roomId:`${p}/DINING`,at:{x:3.75,z:-5.10,yaw:-PI/2}},
+        focusAt:{x:3.80,z:-2.00,yaw:2.9670597283903604},body:'hidden',
+        focusFixtureIds:[`${p}/DINING/T03/TABLE`]}],
+      programme:{roomId:`${p}/DINING`,at:{x:1.30,z:-2.00,yaw:-PI/2},
+        focusFixtureIds:[`${p}/SERVE/C3`,`${p}/SERVE/C4`]},
     }})],
   };
 }
@@ -1885,7 +1920,16 @@ function dormCorridorSet(prefix,e,level) {
     '阅读、植物与宿舍生活 · READING',
     '高年级交流与宿舍生活 · SENIOR COMMONS',
     '洗衣、自习与顶层宿舍 · LAUNDRY & STUDY',
-  ][level-1];
+  ][level-1],arrivalCopy=[
+    '值班台 · 邮件 · 公共客厅',
+    '安静时段 · 学习预约',
+    '社群活动 · 音乐预约',
+    '读书会 · 植物养护',
+    '实习信息 · 毕业事务',
+    '洗衣状态 · 顶层自习',
+  ][level-1],arrivalNorth=level===1||level===2||level===4||level===6,
+    arrivalZ=arrivalNorth?7.535:-7.535,arrivalYaw=arrivalNorth?PI:0,
+    arrivalFaceZ=arrivalZ+(arrivalNorth?-.026:.026);
   return [
     fixture(`${prefix}/COR/RUNNER`,'acoustic corridor runner','PF-WALL-RUN',[0,e+.018,0],'M-RUBBER','quiet residential circulation',{size:[1.12,.025,14.35],collision:'none'}),
     fixture(`${prefix}/COR/BAND-W`,'west wayfinding band','PF-WALL-RUN',[-1.105,e+1.18,0],identity,'continuous floor identity',{size:[.035,.18,14.45],collision:'none'}),
@@ -1893,9 +1937,18 @@ function dormCorridorSet(prefix,e,level) {
     fixture(`${prefix}/COR/FLOOR-SIGN`,'large floor marker','PF-ROOM-SIGN',[1.11,e+1.72,6.72],'M-SCREEN','floor identity',{yaw:-PI/2,text:`${level}层 · FLOOR ${level}`,size:[.72,.34,.04]}),
     fixture(`${prefix}/COR/NOTICE`,'floor-specific resident notice board','PF-SCREEN',[-1.11,e+1.55,2.9],'M-SCREEN','floor programme, resident events and notices',{yaw:PI/2,text:floorStory,size:[1.55,.82,.045]}),
     fixture(`${prefix}/COR/ART`,'corridor-end floor artwork','PF-SCREEN',[.965,e+1.45,6.72],'M-SCREEN','floor identity without narrowing the corridor',{yaw:-PI/2,text:`宿舍 · ${level}层`,size:[.88,.62,.035],collision:'none'}),
-    fixture(`${prefix}/COR/SOUTH-IDENTITY`,'south corridor floor identity','PF-ROOM-SIGN',[0,e+1.70,-7.54],
-      'M-SCREEN','floor-specific identity visible on south-facing upper-floor arrivals',
-      {yaw:0,text:`${level}层 · ${floorStory}`,size:[1.78,.38,.04],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-BACKDROP`,'floor-specific residential arrival backdrop','PF-WALL-RUN',
+      [0,e+1.48,arrivalZ],identity,'panelized end-wall identity composed for the authored arrival direction',
+      {size:[1.78,1.42,.035],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-SCREEN`,'floor-specific resident programme display','PF-SCREEN',
+      [0,e+1.62,arrivalFaceZ],'M-SCREEN','a populated focal display visible from the authored upper-floor arrival',
+      {yaw:arrivalYaw,text:arrivalCopy,size:[1.36,.58,.04],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-FLOOR`,'arrival floor-number plate','PF-ROOM-SIGN',
+      [-.50,e+2.18,arrivalFaceZ],'M-SCREEN','large floor number within the composed end-wall vignette',
+      {yaw:arrivalYaw,text:`${level}F`,size:[.48,.26,.04],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-DATUM`,'lower arrival display datum','PF-WALL-RUN',
+      [0,e+.78,arrivalFaceZ],dormTextile(level),'wall-mounted lower edge completing the arrival vignette',
+      {size:[1.18,.07,.10],collision:'none'}),
     ...lightGrid(`${prefix}/COR`,e,[[0,-5.8],[0,-2.0],[0,2.0],[0,5.8]],3400),
   ];
 }
@@ -1961,10 +2014,18 @@ function buildB04() {
         doorway(`${p}/LOBBY/TO-COR`,'east',[-1.2,e,-1.85],1.2,`${p}/CORRIDOR`),
       ],[
         fixture(`${p}/LOBBY/MAT`,'deep entrance mat','PF-WALL-RUN',[-5.25,e+.018,-1],'M-RUBBER','weather-protected arrival',{size:[1.35,.025,1.8],collision:'none'}),
-        fixture(`${p}/LOBBY/FEATURE`,'timber welcome wall','PF-WALL-RUN',[-2.65,e+1.35,-3.655],'M-OAK-DARK','warm residence identity',{size:[2.75,2.38,.035],collision:'none'}),
-        fixture(`${p}/LOBBY/WELCOME`,'welcome-home sign','PF-ROOM-SIGN',[-2.65,e+1.76,-3.63],'M-SCREEN','residence welcome',{text:'欢迎回家 · WELCOME HOME',size:[1.9,.34,.04]}),
-        fixture(`${p}/LOBBY/DESK`,'accessible residence duty desk','PF-SERVICE-COUNTER',[-2.65,e,-3.15],'M-OAK','resident assistance',{size:[2.0,1.05,.72]}),
-        fixture(`${p}/LOBBY/DIR`,'wall-mounted residence directory','PF-SCREEN',[-5.45,e+1.55,-3.655],'M-SCREEN','rooms and accessible route',{text:'学生宿舍 1—6层',size:[1.25,.82,.035],collision:'none'}),
+        fixture(`${p}/LOBBY/FEATURE`,'ribbed timber welcome wall','PF-WALL-RUN',[-2.65,e+1.35,-3.655],'M-OAK-DARK','warm residence identity in a lighter panelized bay',{size:[2.38,2.18,.035],collision:'none'}),
+        fixture(`${p}/LOBBY/WELCOME`,'welcome-home sign','PF-ROOM-SIGN',[-2.65,e+1.82,-3.63],'M-SCREEN','residence welcome',{text:'欢迎回家 · WELCOME HOME',size:[1.72,.34,.04]}),
+        fixture(`${p}/LOBBY/DESK-MAIN`,'compact two-position residence duty desk','PF-SERVICE-COUNTER',[-2.80,e,-3.12],
+          'M-OAK','resident assistance with rounded worktop, terminals and storage',{size:[1.35,.96,.62],text:'值班台 · DUTY DESK'}),
+        fixture(`${p}/LOBBY/DESK-ACCESS`,'lower accessible duty-desk return','PF-SIDE-TABLE',[-1.66,e,-3.12],
+          'M-OAK','seated visitor writing and transaction surface beside the staffed desk',{size:[.68,.74,.54]}),
+        fixture(`${p}/LOBBY/DESK-PRIVACY`,'laminated service privacy fin','PF-WALL-RUN',[-2.07,e+.64,-3.12],
+          'M-GLASS','transparent privacy division between standing and accessible service modules',
+          {size:[.035,.42,.48],collision:'none'}),
+        fixture(`${p}/LOBBY/TIMETABLE`,'populated residence duty timetable','PF-SCREEN',[-5.34,e+1.55,-3.655],
+          'M-SCREEN','today duty hours, parcel collection, repairs and quiet-hours guidance',
+          {text:'今日值班 14:00—22:00 · 邮件 18:00 · 报修 / QUIET 22:30',size:[1.48,.86,.035],collision:'none'}),
         fixture(`${p}/LOBBY/BENCH`,'upholstered visitor bench','PF-BENCH',[-4.55,e,-3.10],'M-FABRIC-BLUE','resident and visitor waiting',
           {yaw:0,facing:'north',size:[1.50,.84,.58]}),
         fixture(`${p}/LOBBY/PLANT1`,'waiting-area plant','PF-PLANT',[-5.75,e,-3.35],'M-PLANT','arrival greenery'),
@@ -2016,8 +2077,10 @@ function buildB04() {
     floors.push(floor(level,e,3.0,rooms,[{id:`${p}/CORRIDOR`,bounds:[-1.0,1.0,-7.6,7.6],clearWidth:2.0,surface:'M-VINYL'},{id:`${p}/ENTRY`,bounds:[-6.5,-1.0,-2.15,.15],clearWidth:2.3,surface:'M-TERRAZZO'}],[...safetySet(p,e,[-3.15,4.4],[-5.8,-1],level,true),...dormCorridorSet(p,e,level)],{occupancy:22,
       visualReview:{
         entries:[{suffix:'entry',portalId:'B04/PUBLIC',focusRoomId:`${p}/LOBBY`,cameraZoneId:`${p}/ENTRY`,
-          focusAt:{x:-2.40,z:-2.45,yaw:2.2689280275926285},body:'hidden'}],
-        programme:{roomId:`${p}/LOBBY`,at:{x:-4.62,z:-2.22,yaw:-2.094}},
+          focusAt:{x:-3.20,z:-2.00,yaw:2.80},body:'hidden',
+          focusFixtureIds:[`${p}/LOBBY/DESK-MAIN`,`${p}/LOBBY/DESK-ACCESS`]}],
+        programme:{roomId:`${p}/LOBBY`,at:{x:-3.20,z:-1.82,yaw:PI},
+          focusFixtureIds:[`${p}/LOBBY/DESK-MAIN`,`${p}/LOBBY/DESK-ACCESS`]},
       }}));
   }
   // Floors 2–5: six twin rooms each.
@@ -2030,16 +2093,20 @@ function buildB04() {
     });
     rooms.push(...coreRooms(level,e,p),dormRemoteStair(level,e,p));
     const programmeReview={
-      2:{roomId:`${p}/201`,at:{x:-4.98,z:-6.30,yaw:-PI/2}},
-      3:{roomId:`${p}/305`,at:{x:5.02,z:-2.40,yaw:PI/2}},
-      4:{roomId:`${p}/402`,at:{x:-4.98,z:-2.40,yaw:-PI/2}},
-      5:{roomId:`${p}/506`,at:{x:5.02,z:1.50,yaw:PI/2}},
+      2:{roomId:`${p}/201`,at:{x:-5.20,z:-6.30,yaw:-PI/2},
+        focusFixtureIds:[`${p}/201/BED1`,`${p}/201/DESK1`]},
+      3:{roomId:`${p}/305`,at:{x:5.20,z:-2.40,yaw:PI/2},
+        focusFixtureIds:[`${p}/305/BED1`,`${p}/305/DESK1`]},
+      4:{roomId:`${p}/402`,at:{x:-5.20,z:-2.40,yaw:-PI/2},
+        focusFixtureIds:[`${p}/402/BED1`,`${p}/402/DESK1`]},
+      5:{roomId:`${p}/506`,at:{x:5.20,z:1.50,yaw:PI/2},
+        focusFixtureIds:[`${p}/506/BED1`,`${p}/506/DESK1`]},
     }[level];
     const entryReview={
-      2:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:2.60,yaw:0}},
-      3:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:-2.60,yaw:PI}},
-      4:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:1.80,yaw:0}},
-      5:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:-1.80,yaw:PI}},
+      2:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:2.60,yaw:0},focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
+      3:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:-2.60,yaw:PI},focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
+      4:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:1.80,yaw:0},focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
+      5:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:-1.80,yaw:PI},focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
     }[level];
     floors.push(floor(level,e,3.0,rooms,[{id:`${p}/CORRIDOR`,bounds:[-1.0,1.0,-7.6,7.6],clearWidth:2.0,surface:'M-VINYL'}],[...safetySet(p,e,[-3.15,4.4],[0,3.8],level,false),...dormCorridorSet(p,e,level)],{occupancy:26,
       visualReview:{entry:entryReview,programme:programmeReview}}));
@@ -2057,14 +2124,17 @@ function buildB04() {
         doorway(`${p}/LAUNDRY/TO-COR`,'east',[-1.2,e,2.05],1.2,`${p}/CORRIDOR`),
       ],[
         fixture(`${p}/LAUNDRY/MAT`,'laundry anti-slip floor','PF-WALL-RUN',[-3.65,e+.018,2.05],'M-RUBBER','safe laundry work zone',{size:[4.35,.025,3.15],collision:'none'}),
-        fixture(`${p}/LAUNDRY/W1`,'washer/dryer A','PF-LAUNDRY',[-5.4,e,.8],'M-STEEL','resident laundry'),
-        fixture(`${p}/LAUNDRY/W2`,'washer/dryer B','PF-LAUNDRY',[-4.5,e,.8],'M-STEEL','resident laundry'),
-        fixture(`${p}/LAUNDRY/W3`,'washer/dryer C','PF-LAUNDRY',[-3.6,e,.8],'M-STEEL','resident laundry'),
+        fixture(`${p}/LAUNDRY/W1`,'washer/dryer A','PF-LAUNDRY',[-5.4,e,.8],'M-STEEL','resident laundry',{yaw:PI}),
+        fixture(`${p}/LAUNDRY/W2`,'washer/dryer B','PF-LAUNDRY',[-4.5,e,.8],'M-STEEL','resident laundry',{yaw:PI}),
+        fixture(`${p}/LAUNDRY/W3`,'washer/dryer C','PF-LAUNDRY',[-3.6,e,.8],'M-STEEL','resident laundry',{yaw:PI}),
         fixture(`${p}/LAUNDRY/SINK`,'laundry sink','PF-SINK-DOUBLE',[-2.1,e,.65],'M-STAINLESS','hand washing laundry',{size:[.9,.92,.65]}),
-        fixture(`${p}/LAUNDRY/TABLE`,'folding table','PF-PREP-TABLE',[-3.8,e,2.8],'M-STAINLESS','folding clothes'),
+        fixture(`${p}/LAUNDRY/TABLE`,'north-wall folding table','PF-PREP-TABLE',[-3.75,e,3.35],'M-STAINLESS','folding clothes clear of both the entrance and machine-view aisle',{size:[1.10,.90,.65]}),
         fixture(`${p}/LAUNDRY/LOCK`,'laundry basket lockers','PF-LOCKERS',[-5.55,e,3.3],'M-FABRIC-BLUE','short-term laundry storage',{yaw:PI/2,size:[1.0,1.75,.45]}),
-        fixture(`${p}/LAUNDRY/BENCH`,'laundry waiting bench','PF-BENCH',[-2.0,e,3.15],'M-OAK','wait and fold clothes',
+        fixture(`${p}/LAUNDRY/BENCH`,'laundry waiting bench','PF-BENCH',[-2.15,e,3.35],'M-OAK','wait while preserving the entrance and central machine-view aisle',
           {yaw:PI,facing:'south',size:[1.5,.84,.58]}),
+        fixture(`${p}/LAUNDRY/STATUS`,'live laundry status display','PF-SCREEN',[-4.50,e+2.25,.255],
+          'M-SCREEN','machine availability, cycle time and quiet-hours reminders',
+          {yaw:0,text:'洗衣 1 可用 · 2 18 MIN · 3 可用',size:[2.05,.56,.04],collision:'none'}),
         ...lightGrid(`${p}/LAUNDRY`,e,[[-4.8,2.0],[-2.6,2.0]],3800),
       ]),
       room(`${p}/STUDY`,'顶层自习室',east[2],'dorm',[
@@ -2082,8 +2152,10 @@ function buildB04() {
     );
     floors.push(floor(level,e,3.0,rooms,[{id:`${p}/CORRIDOR`,bounds:[-1.0,1.0,-7.6,7.6],clearWidth:2.0,surface:'M-VINYL'}],[...safetySet(p,e,[-3.15,4.4],[0,3.8],level,false),...dormCorridorSet(p,e,level)],{occupancy:22,
       visualReview:{
-        entry:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:2.30,yaw:0}},
-        programme:{roomId:`${p}/LAUNDRY`,at:{x:-4.98,z:2.22,yaw:-PI/2}},
+        entry:{zoneId:`${p}/CORRIDOR`,at:{x:0,z:2.30,yaw:0},
+          focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
+        programme:{roomId:`${p}/LAUNDRY`,at:{x:-4.50,z:1.92,yaw:PI},
+          focusFixtureIds:[`${p}/LAUNDRY/W1`,`${p}/LAUNDRY/W2`]},
       }}));
   }
   return {
@@ -2364,18 +2436,20 @@ function plannedB05Envelope(prefix,e,b,label,{accent='M-FABRIC-BLUE',temperature
 
 function plannedB05Route(id,e,bounds,material='M-TERRAZZO',purpose='clear accessible route',width) {
   const [x0,x1,z0,z1]=bounds;
-  return fixture(id,'flush circulation floor inset','PF-WALL-RUN',[(x0+x1)/2,e+.012,(z0+z1)/2],material,purpose,
-    {size:[x1-x0,.02,z1-z0],collision:'none',clearWidth:width||x1-x0});
+  return fixture(id,'concealed accessibility route datum','PF-WALL-RUN',[(x0+x1)/2,e-.032,(z0+z1)/2],material,
+    `${purpose}; survey datum concealed below the continuous room finish so it cannot create decorative outline clutter`,
+    {size:[x1-x0,.004,z1-z0],collision:'none',clearWidth:width||x1-x0,concealedBelowFinish:true});
 }
 
 function plannedB05Turn(id,e,centre,material='M-TERRAZZO') {
-  return fixture(id,'1.50 m accessible turning-zone inset','PF-WALL-RUN',[centre[0],e+.014,centre[1]],material,
-    'unobstructed 1.50 m public turning circle',{size:[1.50,.022,1.50],collision:'none',turningDiameter:1.50});
+  return fixture(id,'concealed 1.50 m accessible turning datum','PF-WALL-RUN',[centre[0],e-.031,centre[1]],material,
+    'unobstructed 1.50 m public turning circle recorded below the continuous finish, not drawn as a floor outline',
+    {size:[1.50,.004,1.50],collision:'none',turningDiameter:1.50,concealedBelowFinish:true});
 }
 
-function plannedB05Monitor(id,e,at,yaw) {
+function plannedB05Monitor(id,e,at,yaw,text='SERVICE READY') {
   return fixture(id,'slim workstation monitor','PF-SCREEN',[at[0],e+.98,at[1]],'M-SCREEN',
-    'digital university administration workflow',{yaw,size:[.38,.25,.035],collision:'none'});
+    'populated digital university administration workflow',{yaw,size:[.38,.25,.035],collision:'none',text});
 }
 
 function plannedB05LobbyFacade(prefix,e,b) {
@@ -2440,16 +2514,23 @@ function plannedB05Lobby(prefix,e,b) {
   const route=[3.05,4.25,-3.15,-1.30],turn=[3.65,-3.15],out=[
     plannedB05Route(`${prefix}/ROUTE`,e,route,'M-TERRAZZO','1.20 m route from corridor arrival to reception turn',1.20),
     plannedB05Turn(`${prefix}/TURN`,e,turn,'M-TERRAZZO'),
-    fixture(`${prefix}/ENTRY-FLOOR`,'recessed civic lobby floor field','PF-WALL-RUN',[3.65,e+.010,-4.45],
-      'M-TERRAZZO','durable ceremonial lobby floor',{size:[5.45,.018,1.80],collision:'none'}),
-    fixture(`${prefix}/COUNTER`,'main accessible reception counter','PF-SERVICE-COUNTER',[1.90,e,-4.70],
-      'M-OAK','visitor triage and accessible assistance',{yaw:PI,size:[2.0,1.05,.72],text:'总服务台 · RECEPTION'}),
-    fixture(`${prefix}/STAFF1`,'reception officer chair 1','PF-CHAIR',[1.40,e,-5.30],
+    fixture(`${prefix}/WAITING-RUG`,'single inset reception waiting rug','PF-WALL-RUN',[6.05,e+.012,-4.05],
+      'M-FABRIC-BLUE','one coherent acoustic field beneath the linked waiting bank, outside the arrival route',
+      {size:[1.0,.022,2.25],collision:'none'}),
+    fixture(`${prefix}/COUNTER-MAIN`,'compact staffed reception module','PF-SERVICE-COUNTER',[1.75,e,-4.70],
+      'M-OAK','rounded two-terminal visitor-triage module with storage',{yaw:PI,size:[1.38,1.02,.64],text:'总服务台 · RECEPTION'}),
+    fixture(`${prefix}/COUNTER-ACCESS`,'lower accessible reception return','PF-SIDE-TABLE',[2.92,e,-4.70],
+      'M-OAK','seated transaction and document-writing surface beside the staffed module',{size:[.72,.74,.58]}),
+    fixture(`${prefix}/COUNTER-PRIVACY`,'laminated reception privacy fin','PF-WALL-RUN',[2.50,e+.64,-4.70],
+      'M-GLASS','transparent privacy separation between standing and accessible service positions',
+      {size:[.035,.44,.52],collision:'none'}),
+    fixture(`${prefix}/STAFF1`,'reception officer chair 1','PF-CHAIR',[1.65,e,-5.25],
       'M-FABRIC-BLUE','staff seated facing arriving visitors',{yaw:0,facing:'north'}),
-    fixture(`${prefix}/STAFF2`,'reception officer chair 2','PF-CHAIR',[2.40,e,-5.30],
+    fixture(`${prefix}/STAFF2`,'reception officer chair 2','PF-CHAIR',[2.87,e,-5.25],
       'M-FABRIC-BLUE','staff seated facing arriving visitors',{yaw:0,facing:'north'}),
-    ...[-4.55,-3.75,-2.95].map((z,i)=>fixture(`${prefix}/WAIT${i+1}`,'individual reception waiting chair','PF-CHAIR',[6.25,e,z],
-      'M-FABRIC-BLUE','west-facing waiting along the daylight edge, outside arrival routes',{yaw:-PI/2,facing:'west'})),
+    fixture(`${prefix}/WAIT-BANK`,'linked three-place reception waiting bank','PF-WAIT-CHAIRS',[6.12,e,-4.05],
+      'M-FABRIC-BLUE','one composed west-facing waiting group along the daylight edge, outside arrival routes',
+      {yaw:-PI/2,facing:'west'}),
     fixture(`${prefix}/DIRECTORY`,'four-floor administration directory','PF-DIRECTORY',[.79,e,-2.15],
       'M-SCREEN','east-facing accessible building wayfinding',{yaw:-PI/2,size:[.90,1.55,.10],text:'行政楼 · 1—4层'}),
     fixture(`${prefix}/KIOSK`,'visitor appointment kiosk','PF-SELF-CHECK',[6.12,e,-2.22],
@@ -2457,12 +2538,12 @@ function plannedB05Lobby(prefix,e,b) {
     fixture(`${prefix}/QUEUE`,'reception queue and appointment display','PF-SCREEN',[6.555,e+1.55,-3.55],
       'M-SCREEN','visible reception triage, appointment numbers and international-student welcome',
       {yaw:-PI/2,size:[1.55,.88,.04],collision:'none',text:'总服务台 · RECEPTION · 欢迎'}),
-    fixture(`${prefix}/PLANT`,'single lobby specimen plant','PF-PLANT',[6.20,e,-5.22],
+    fixture(`${prefix}/PLANT`,'single lobby specimen plant','PF-PLANT',[5.42,e,-5.18],
       'M-PLANT','one deliberate biophilic arrival element'),
     fixture(`${prefix}/FLAG`,'university ceremonial flag','PF-FLAG',[.755,e+2.08,-4.65],
       'M-SAFETY-RED','formal university identity on the solid west wall, clear of the glazing',{yaw:-PI/2}),
-    plannedB05Monitor(`${prefix}/STAFF-MONITOR1`,e,[1.40,-4.70],0),
-    plannedB05Monitor(`${prefix}/STAFF-MONITOR2`,e,[2.40,-4.70],0),
+    plannedB05Monitor(`${prefix}/STAFF-MONITOR1`,e,[1.65,-4.70],0,'VISITOR CHECK-IN'),
+    plannedB05Monitor(`${prefix}/STAFF-MONITOR2`,e,[2.87,-4.70],0,'ACCESSIBLE SERVICE'),
     ...plannedB05LobbyFacade(prefix,e,b),
     ...plannedB05Envelope(prefix,e,b,'入口门厅与总服务台',{accent:'M-OAK-DARK',temperature:3100,pendant:true,display:true,daylight:false}),
   ];
@@ -2726,7 +2807,8 @@ function plannedB05Corridor(prefix,e,level,labels) {
     '财务、人事、教务与档案 · DEPARTMENTS',
     '培训、联络与国际项目 · COLLABORATION',
     '校务会议与校级领导 · UNIVERSITY COUNCIL',
-  ][level-1];
+  ][level-1],arrivalEast=level===2||level===4,arrivalX=arrivalEast?6.555:-6.555,
+    arrivalFaceX=arrivalX+(arrivalEast?-.026:.026),arrivalYaw=arrivalEast?PI/2:-PI/2;
   const out=[
     fixture(`${prefix}/COR/RUNNER`,'flush accessible corridor guidance field','PF-WALL-RUN',[0,e+.012,0],
       'M-TERRAZZO','uninterrupted 2.20 m public corridor',{size:[12.70,.02,2.0],collision:'none',clearWidth:2.20}),
@@ -2748,6 +2830,20 @@ function plannedB05Corridor(prefix,e,level,labels) {
       'M-WALL-WHITE','even public circulation lighting',{temperatureK:3500,size:[1.25,.06,.28]})),
     ...[-3.8,.6,4.9].map((x,i)=>fixture(`${prefix}/COR/RAFT${i+1}`,'aligned corridor acoustic raft','PF-WALL-RUN',[x,e+2.86,0],
       'M-ACOUSTIC','speech privacy along the public route',{size:[3.55,.045,1.48],collision:'none'})),
+    ...(level>1?[
+      fixture(`${prefix}/COR/ARRIVAL-BACKDROP`,'floor-specific civic arrival backdrop','PF-WALL-RUN',
+        [arrivalX,e+1.48,0],accent,'panelized corridor-end composition aligned to the authored arrival direction',
+        {size:[.035,1.42,1.72],collision:'none'}),
+      fixture(`${prefix}/COR/ARRIVAL-SCREEN`,'floor-specific civic programme display','PF-SCREEN',
+        [arrivalFaceX,e+1.62,0],'M-SCREEN','populated department, collaboration or council focal display',
+        {yaw:arrivalYaw,size:[1.34,.58,.04],collision:'none',text:floorProgramme}),
+      fixture(`${prefix}/COR/ARRIVAL-FLOOR`,'civic arrival floor-number plate','PF-ROOM-SIGN',
+        [arrivalFaceX,e+2.18,-.50],'M-SCREEN','large floor number within the composed corridor-end vignette',
+        {yaw:arrivalYaw,size:[.48,.26,.04],collision:'none',text:`${level}F`}),
+      fixture(`${prefix}/COR/ARRIVAL-DATUM`,'civic lower arrival datum','PF-WALL-RUN',
+        [arrivalFaceX,e+.78,0],level===4?'M-BRASS':'M-OAK',
+        'wall-mounted lower edge completing the civic arrival composition',{size:[.10,.07,1.16],collision:'none'}),
+    ]:[]),
   ];
   signs.forEach(([x,z,yaw,text],i)=>out.push(fixture(`${prefix}/COR/SIGN${i+1}`,'bilingual room sign','PF-ROOM-SIGN',
     [x+.64,e+1.60,z],'M-SCREEN','room identity at the real doorway',{yaw,size:[.84,.30,.04],text})));
@@ -2849,21 +2945,29 @@ function buildB05() {
   ];
   const reviewByLevel={
     1:{
-      entries:[{suffix:'entry',portalId:'B05/PUBLIC',focusRoomId:'B05/F1/B',cameraZoneId:'B05/F1/CORRIDOR',
-        focusAt:{x:3.50,z:-2.95,yaw:-2.8797932657906435},body:'hidden'}],
-      programme:{roomId:'B05/F1/B',at:{x:4.16,z:-3.76,yaw:2.094}},
+      entries:[{suffix:'entry',portalId:'B05/PUBLIC',focusRoomId:'B05/F1/B',cameraZoneId:'B05/F1/B',
+        focusAt:{x:4.00,z:-4.00,yaw:2.10},body:'hidden',
+        focusFixtureIds:['B05/F1/B/KIOSK','B05/F1/B/WAIT-BANK']}],
+      programme:{roomId:'B05/F1/B',at:{x:3.40,z:-3.80,yaw:-1.893},
+        focusFixtureIds:['B05/F1/B/COUNTER-MAIN','B05/F1/B/COUNTER-ACCESS']},
     },
     2:{
-      entry:{zoneId:'B05/F2/CORRIDOR',at:{x:1.00,z:0,yaw:PI/2}},
-      programme:{roomId:'B05/F2/D',at:{x:1.46,z:4.76,yaw:-.524}},
+      entry:{zoneId:'B05/F2/CORRIDOR',at:{x:1.00,z:0,yaw:PI/2},
+        focusFixtureIds:['B05/F2/COR/ARRIVAL-SCREEN']},
+      programme:{roomId:'B05/F2/D',at:{x:2.25,z:3.35,yaw:0},
+        focusFixtureIds:['B05/F2/D/FILE03','B05/F2/D/FILE06']},
     },
     3:{
-      entry:{zoneId:'B05/F3/CORRIDOR',at:{x:-.40,z:0,yaw:-PI/2}},
-      programme:{roomId:'B05/F3/A',at:{x:-1.26,z:-3.58,yaw:2.356}},
+      entry:{zoneId:'B05/F3/CORRIDOR',at:{x:-.40,z:0,yaw:-PI/2},
+        focusFixtureIds:['B05/F3/COR/ARRIVAL-SCREEN']},
+      programme:{roomId:'B05/F3/A',at:{x:-1.25,z:-2.95,yaw:PI},
+        focusFixtureIds:['B05/F3/A/TRAINING-BOARD','B05/F3/A/TRAINING-SIGN']},
     },
     4:{
-      entry:{zoneId:'B05/F4/CORRIDOR',at:{x:1.00,z:0,yaw:PI/2}},
-      programme:{roomId:'B05/F4/A',at:{x:-3.24,z:-3.40,yaw:-2.094}},
+      entry:{zoneId:'B05/F4/CORRIDOR',at:{x:1.00,z:0,yaw:PI/2},
+        focusFixtureIds:['B05/F4/COR/ARRIVAL-SCREEN']},
+      programme:{roomId:'B05/F4/A',at:{x:-1.25,z:-2.95,yaw:PI},
+        focusFixtureIds:['B05/F4/A/COUNCIL-CREST','B05/F4/A/COUNCIL-FLAG-E']},
     },
   };
   for(const spec of specs) {
@@ -3612,9 +3716,14 @@ function buildB06() {
       b06Sign(`${p}/FLOOR-TITLE-SOUTH`,'paired science floor programme sign',[-.84,e+2.15,-3.15],
         `${spec.level}层 · ${spec.title}`,'paired programme confirmation for south-facing upper-floor arrivals',
         {yaw:PI/2,size:[2.8,.38,.05]}),
-      ...(spec.level>1?[b06Sign(`${p}/ENTRY-FLOOR-ID`,'upper-floor arrival programme marker',[.94,e+1.92,-1.0],
-        `${spec.level}层 · ${spec.title}`,'floor-specific identity facing the lift-arrival route inside its clear envelope',
-        {yaw:PI/2,size:[2.15,.40,.05]})]:[]),
+      ...(spec.level>1?[fixture(`${p}/ENTRY-DISPLAY`,'upper-floor live laboratory arrival display',
+        'PF-SCREEN',spec.level===3?[7.42,e+1.55,-.65]:[1.02,e+1.55,spec.level===2?-1.25:-1.55],
+        'M-SCREEN','floor-specific laboratory status, destination and safety briefing composed for the authored arrival',
+        {yaw:spec.level===3?PI/2:-PI/2,size:[1.35,.86,.05],collision:'none',text:{
+          2:'2F · CHEMISTRY · HOODS',
+          3:'3F · CELL IMAGING',
+          4:'4F · ROBOTICS · AI',
+        }[spec.level]})]:[]),
       b06Decor(`${p}/COR-GLASS`,'glazed science display ribbon',[.86,e+1.45,6.0],
         'M-GLASS',[.045,2.45,2.5],'corridor views to active science and the glass stair tower'),
       ...(spec.level===1?[
@@ -3627,20 +3736,28 @@ function buildB06() {
     const reviewByLevel={
       1:{
         entries:[{suffix:'entry',portalId:'B06/PUBLIC',focusRoomId:`${p}/EM`,cameraZoneId:`${p}/EM`,
-          focusAt:{x:4.70,z:2.80,yaw:.9599310885968813},body:'hidden'}],
-        programme:{roomId:`${p}/WN`,at:{x:-2.45,z:2.75,yaw:-.38}},
+          focusAt:{x:3.45,z:2.55,yaw:-.93},body:'hidden',
+          focusFixtureIds:[`${p}/EM/DEMO`]}],
+        programme:{roomId:`${p}/WN`,at:{x:-2.45,z:2.75,yaw:-.38},
+          focusFixtureIds:[`${p}/WN/CLEAN`,`${p}/WN/DIRTY`]},
       },
       2:{
-        entry:{zoneId:`${p}/ENTRY`,at:{x:4.80,z:-1.0,yaw:-PI/2}},
-        programme:{roomId:`${p}/WN`,at:{x:-2.45,z:2.80,yaw:-.48}},
+        entry:{zoneId:`${p}/ENTRY`,at:{x:4.80,z:-1.25,yaw:-PI/2},body:'hidden',
+          focusFixtureIds:[`${p}/ENTRY-DISPLAY`]},
+        programme:{roomId:`${p}/WN`,at:{x:-4.00,z:6.55,yaw:-1.30},
+          focusFixtureIds:[`${p}/WN/HOOD-B/BODY`,`${p}/WN/HOOD-C/BODY`,`${p}/WN/ISLAND-B`]},
       },
       3:{
-        entry:{zoneId:`${p}/ENTRY`,at:{x:4.65,z:-1.0,yaw:-PI/2}},
-        programme:{roomId:`${p}/WN`,at:{x:-2.35,z:2.65,yaw:-.35}},
+        entry:{zoneId:`${p}/ENTRY`,at:{x:3.60,z:-.65,yaw:PI/2},body:'hidden',
+          focusFixtureIds:[`${p}/ENTRY-DISPLAY`]},
+        programme:{roomId:`${p}/WN`,at:{x:-4.10,z:6.20,yaw:0},
+          focusFixtureIds:[`${p}/WN/SCREEN`,`${p}/WN/MIC03`,`${p}/WN/MIC05`]},
       },
       4:{
-        entry:{zoneId:`${p}/ENTRY`,at:{x:4.90,z:-1.0,yaw:-PI/2}},
-        programme:{roomId:`${p}/WN`,at:{x:-6.10,z:4.40,yaw:0}},
+        entry:{zoneId:`${p}/ENTRY`,at:{x:4.90,z:-1.55,yaw:-PI/2},body:'hidden',
+          focusFixtureIds:[`${p}/ENTRY-DISPLAY`]},
+        programme:{roomId:`${p}/WN`,at:{x:-2.97,z:4.94,yaw:-.45},
+          focusFixtureIds:[`${p}/WN/MAKER`,`${p}/WN/ARM-CELL`,`${p}/WN/CAD-WALL`]},
       },
     }[spec.level];
     floors.push(floor(spec.level,e,3.65,rooms,[{id:`${p}/CORRIDOR`,bounds:[-.9,.9,-10.6,10.6],clearWidth:1.8,surface:'M-EPOXY'},{id:`${p}/ENTRY`,bounds:[.9,7.5,-2.0,.1],clearWidth:2.1,surface:'M-TERRAZZO'}],shared,{occupancy:spec.level===1?65:55,
@@ -4052,11 +4169,14 @@ function buildB07() {
     ],{occupancy:54,visualReview:{
       entries:[
         {suffix:'entry',portalId:'B07/STUDENT',focusRoomId:`${p}/SC-LOBBY`,cameraZoneId:`${p}/SC-LOBBY`,
-          focusAt:{x:-3.00,z:-2.10,yaw:1.90},body:'hidden'},
+          focusAt:{x:-3.35,z:-1.50,yaw:1.70},body:'hidden',
+          focusFixtureIds:[`${p}/SC-LOBBY/DIR`]},
         {suffix:'clinic-entry',portalId:'B07/CLINIC',focusRoomId:`${p}/CL-WAIT`,cameraZoneId:`${p}/CL-WAIT`,
-          focusAt:{x:-3.55,z:3.80,yaw:1.10},body:'hidden'},
+          focusAt:{x:-4.25,z:2.10,yaw:2.60},body:'hidden',
+          focusFixtureIds:[`${p}/CL-WAIT/REC`,`${p}/CL-WAIT/QUEUE`]},
       ],
-      programme:{roomId:`${p}/CL-WAIT`,at:{x:-4.00,z:4.15,yaw:0}},
+      programme:{roomId:`${p}/CL-WAIT`,at:{x:-3.36,z:3.97,yaw:.50},
+        focusFixtureIds:[`${p}/CL-WAIT/REC`,`${p}/CL-WAIT/W-N`]},
     }}));
   }
 
@@ -4246,8 +4366,10 @@ function buildB07() {
         'M-STEEL','protected separation before the shared lift lobby',{yaw:0,selfClosing:true}),
       ...corridorLayer(p,e,'舞蹈排练 ↓ · DANCE','心理咨询 ↑ · COUNSELLING'),
     ],{occupancy:36,visualReview:{
-      entry:{zoneId:`${p}/DUAL-COR`,at:{x:0,z:0,yaw:-PI/2},body:'evidence'},
-      programme:{roomId:`${p}/DANCE`,at:{x:-.50,z:-3.10,yaw:1.80}},
+      entry:{zoneId:`${p}/DUAL-COR`,at:{x:-1.50,z:-.50,yaw:-PI/2},body:'evidence',
+        focusFixtureIds:[`${p}/COR/SC-SIGN`,`${p}/COR/CL-SIGN`]},
+      programme:{roomId:`${p}/DANCE`,at:{x:-.30,z:-3.45,yaw:1.67},
+        focusFixtureIds:[`${p}/DANCE/M1`,`${p}/DANCE/M2`,`${p}/DANCE/BENCH`]},
     }}));
   }
 
@@ -4348,9 +4470,9 @@ function buildB07() {
         fixture(`${p}/HEALTH/DEMO`,'health-demonstration cabinet','PF-FIRST-AID',[-.88,e+1.05,4.10],
           'M-CLINIC','CPR mask, first-aid dressings and prevention teaching aids on the demonstration wall',
           {yaw:-PI/2,size:[.62,.78,.20],collision:'none'}),
-        fixture(`${p}/HEALTH/SCREEN`,'health education display','PF-SCREEN',[-.86,e+2.10,3.20],
-          'M-SCREEN','wide health-teaching display visually grouping the CPR and AED equipment',
-          {yaw:-PI/2,size:[3.30,.72,.05],text:'健康教育 · CPR · AED · HEALTH EDUCATION',collision:'none'}),
+        fixture(`${p}/HEALTH/SCREEN`,'health education display','PF-SCREEN',[-.86,e+1.78,3.20],
+          'M-SCREEN','proportioned health-teaching display grouping the CPR and AED equipment',
+          {yaw:-PI/2,size:[2.65,1.05,.05],text:'CPR · AED · WELLBEING',collision:'none'}),
         fixture(`${p}/HEALTH/AED-TRAINER`,'CPR and AED training cabinet','PF-AED',[-.88,e+1.05,2.20],
           'M-CLINIC','clearly marked non-emergency trainer for practical health education',
           {yaw:-PI/2,size:[.58,.68,.18],trainingUnit:true,collision:'none'}),
@@ -4431,8 +4553,10 @@ function buildB07() {
       ...corridorLayer(p,e,'媒体 · 项目 ↓ · MEDIA + PROJECT','健康教育 ↑ · HEALTH'),
       ...b07FacadeWindow(`${p}/COR/WINDOW-W`,e,'west',.30,'shared upper-floor landing'),
     ],{occupancy:36,visualReview:{
-      entry:{zoneId:`${p}/DUAL-COR`,at:{x:0,z:0,yaw:PI/2}},
-      programme:{roomId:`${p}/HEALTH`,at:{x:-2.00,z:2.30,yaw:PI/2}},
+      entry:{zoneId:`${p}/DUAL-COR`,at:{x:.80,z:0,yaw:PI/2},body:'hidden',
+        focusFixtureIds:[`${p}/COR/SC-SIGN`,`${p}/COR/CL-SIGN`]},
+      programme:{roomId:`${p}/HEALTH`,at:{x:-2.20,z:3.20,yaw:PI/2},
+        focusFixtureIds:[`${p}/HEALTH/SCREEN`,`${p}/HEALTH/AED-TRAINER`,`${p}/HEALTH/DEMO`]},
     }}));
   }
   return {
@@ -4480,7 +4604,7 @@ function buildB08() {
         {operation:'hinged',swing:'into-work',hinge:'south',swingArcClear:true}),
     ],[
       fixture(`${p}/WORK/FEATURE`,'north timber command-wall datum','PF-WALL-RUN',[-.55,e+1.45,2.33],'M-OAK-DARK','architectural wall datum on the solid north wall behind the surveillance display',{size:[2.75,2.78,.06],collision:'none'}),
-      fixture(`${p}/WORK/CCTV-WALL`,'north live campus surveillance wall','PF-SCREEN',[-.55,e+1.78,2.285],'M-SCREEN','twelve-camera campus overview and incident status on the solid north wall',{yaw:0,size:[2.35,1.18,.035],text:'校园安全 · CAMPUS SECURITY'}),
+      fixture(`${p}/WORK/CCTV-WALL`,'north live campus surveillance wall','PF-SCREEN',[-.55,e+1.78,2.285],'M-SCREEN','twelve-camera campus overview and incident status on the solid north wall',{yaw:0,size:[2.35,1.18,.035],text:'校安 · SECURITY · LIVE 12'}),
       fixture(`${p}/WORK/ACOUSTIC-L`,'left woven acoustic reveal','PF-WALL-RUN',[-2.08,e+1.72,2.29],'M-FABRIC-SAND','softens radio and intercom reflections beside the north surveillance wall',{size:[.24,1.58,.035],collision:'none'}),
       fixture(`${p}/WORK/ACOUSTIC-R`,'right woven acoustic reveal','PF-WALL-RUN',[.98,e+1.72,2.29],'M-FABRIC-SAGE','softens radio and intercom reflections beside the north surveillance wall',{size:[.24,1.58,.035],collision:'none'}),
       fixture(`${p}/WORK/CONSOLE`,'four-monitor security console','PF-CCTV-DESK',[-.60,e,.30],'M-OAK-DARK','north-facing CCTV, radio, intercom and barrier controls',{yaw:0,size:[1.68,.82,.72],preserveExteriorSilhouetteAtCampus:[8.8,-9.4]}),
@@ -4572,8 +4696,10 @@ function buildB08() {
       fixture(`${p}/BRAND`,'university security crest wall','PF-ROOM-SIGN',[-2.63,e+2.38,1.72],'M-BRASS','institutional identity at the visitor window',{yaw:-PI/2,size:[1.30,.30,.04],text:'北京文华大学 · 校园安全'}),
     ],{occupancy:4,visualReview:{
       entries:[{suffix:'entry',portalId:'B08/STAFF',focusRoomId:`${p}/WORK`,cameraZoneId:`${p}/ENTRY`,
-        focusAt:{x:-1.12,z:1.50,yaw:-1.75},body:'hidden'}],
-      programme:{roomId:`${p}/WORK`,at:{x:-1.55,z:1.20,yaw:.20}},
+        focusAt:{x:-1.41,z:-.63,yaw:-1.945},body:'hidden',
+        focusFixtureIds:[`${p}/WORK/CONSOLE`,`${p}/WORK/KEYS`]}],
+      programme:{roomId:`${p}/WORK`,at:{x:-1.55,z:1.20,yaw:.20},
+        focusFixtureIds:[`${p}/WORK/CCTV-WALL`,`${p}/WORK/CONSOLE`,`${p}/WORK/COUNTER`]},
     }})],
   };
 }
@@ -4954,6 +5080,7 @@ function furnishDormRoom(prefix,e,b,side='west',accessible=false) {
   const level=Number((prefix.match(/\/F(\d+)\//)||[])[1])||1,identity=dormTextile(level),
     secondary=['M-FABRIC-SAND','M-FABRIC-BLUE','M-FABRIC-RED','M-WALL-GREEN','M-BRASS','M-LAB-BLUE'][level-1],
     roomStory=['无障碍生活','安静学习','社群与音乐','阅读与植物','高年级交流','顶层学习'][level-1],
+    lifeBoard=['入住支援 · 报修','安静时段 · STUDY PLAN','社群活动 · MUSIC','读书会 · PLANT CARE','实习 · GRADUATION','顶层自习 · LAUNDRY'][level-1],
     rugMaterial=['M-RUBBER','M-FABRIC-BLUE','M-FABRIC-RED','M-WALL-GREEN','M-OAK','M-LAB-BLUE'][level-1];
   // Beds run from the external wall toward the room, with a desk beyond each foot and a built-in
   // wardrobe beside the corridor wall.  This leaves a genuine 1.2 m centre entry lane instead of
@@ -4972,7 +5099,10 @@ function furnishDormRoom(prefix,e,b,side='west',accessible=false) {
   const windowZ=usableBays.sort((a,b)=>Math.abs(a-cz)-Math.abs(b-cz))[0];
   const hasFacadeWindow=level>1&&Number.isFinite(windowZ);
   const windowSpan=hasFacadeWindow?Math.max(.72,Math.min(1.24,2*Math.min(windowZ-z0,z1-windowZ)-.10)):0;
-  const curtainOffset=windowSpan*.36,curtainSpan=Math.min(.20,windowSpan*.18);
+  const curtainOffset=windowSpan*.36,curtainSpan=Math.min(.20,windowSpan*.18),
+    focalBase=hasFacadeWindow?windowZ:cz,
+    focalDirection=focalBase>cz+.15?-1:focalBase<cz-.15?1:(level%2?1:-1),
+    focalZ=Math.max(z0+.50,Math.min(z1-.50,focalBase+focalDirection*1.18));
   for(const [i,z] of [[1,zRows[0]],[2,zRows[1]]]) {
     out.push(
       fixture(`${prefix}/BED${i}`,'single bed','PF-BED',[bedX,e,z],i===1?identity:secondary,'student sleeping',{yaw:bedYaw,size:accessible?[2.0,.58,1.02]:undefined}),
@@ -5006,9 +5136,17 @@ function furnishDormRoom(prefix,e,b,side='west',accessible=false) {
   out.push(
     fixture(`${prefix}/BEDSIDE`,'shared bedside table','PF-SIDE-TABLE',[bedX,e,cz],'M-OAK','shared lamp, book and charging drawer',{size:[.52,.48,.52]}),
     fixture(`${prefix}/RUG`,'floor-specific woven room rug','PF-WALL-RUN',[(x0+x1)/2,e+.018,cz],rugMaterial,'quiet shared centre zone and distinct residential identity',{size:[1.25,.025,1.35],collision:'none'}),
+    fixture(`${prefix}/LIFE-BACKDROP`,'resident life-board textile backing','PF-WALL-RUN',
+      [outerWall+(side==='west'?.028:-.028),e+1.55,focalZ],rugMaterial,
+      'panelized floor-specific backing beside rather than over the facade window',
+      {size:[.035,1.08,.92],collision:'none'}),
+    fixture(`${prefix}/LIFE-BOARD`,'populated floor-specific resident life board','PF-SCREEN',
+      [outerWall+(side==='west'?.060:-.060),e+1.58,focalZ],'M-SCREEN',
+      'visible study, community, reading, senior or top-floor programme from the authored room camera',
+      {yaw:side==='west'?PI/2:-PI/2,text:lifeBoard,size:[.72,.52,.04],collision:'none'}),
     fixture(`${prefix}/STORY`,'resident room identity plate','PF-ROOM-SIGN',
-      [outerWall+(side==='west'?.055:-.055),e+2.50,cz],'M-SCREEN','a deliberate floor-specific focal detail rather than repeated wall grime',
-      {yaw:side==='west'?PI/2:-PI/2,text:`${level}层 · ${roomStory}`,size:[1.10,.24,.035],collision:'none'}),
+      [outerWall+(side==='west'?.062:-.062),e+2.22,focalZ],'M-SCREEN','floor identity completing the multi-part resident life board',
+      {yaw:side==='west'?PI/2:-PI/2,text:`${level}F · ${roomStory}`,size:[.72,.24,.035],collision:'none'}),
     fixture(`${prefix}/PLANT`,'student room plant','PF-PLANT',[side==='west'?x0+.42:x1-.42,e,cz],'M-PLANT',
       hasFacadeWindow?'personal greenery beside the daylight bay':'personal greenery beside the warm identity wall',{size:[.34,.72,.34]}),
     fixture(`${prefix}/AC`,'wall air conditioner','PF-AC',[innerWall,e+2.35,cz],'M-WALL-WHITE','room cooling above the entrance',{yaw:side==='west'?-PI/2:PI/2}),

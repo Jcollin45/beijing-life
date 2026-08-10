@@ -262,6 +262,51 @@ function reviewFront(scene,floor,envelope,pose){
     if(!reviewInside(envelope,x,z,.10)||reviewSightBlocked(scene,floor,x,z,.025))break;front=q;}
   return front;
 }
+function reviewForegroundDoor(floor,pose,back){
+  const fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw),rx=Math.cos(pose.yaw),rz=-Math.sin(pose.yaw),
+    cameraX=pose.x-fx*back,cameraZ=pose.z-fz*back;
+  return reviewDoorLeaves(floor).find(leaf=>{
+    const cx=(leaf.x0+leaf.x1)/2,cz=(leaf.z0+leaf.z1)/2,dx=cx-cameraX,dz=cz-cameraZ,
+      forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz),
+      radius=Math.hypot(leaf.x1-leaf.x0,leaf.z1-leaf.z0)/2;
+    // A 50-degree door leaf inside the first two metres of the camera cone can consume a
+    // quarter of a 1024x640 frame even when the exact centre ray is clear. Reject that framing.
+    return forward>.08&&forward<2.10&&lateral-radius<.18+forward*.52;
+  })||null;
+}
+function reviewFocusEvidence(scene,floor,pose,back,ids,minimum){
+  if(!Array.isArray(ids)||ids.length<minimum)return{error:`focus-fixtures-${Array.isArray(ids)?ids.length:0}/${minimum}`};
+  if(new Set(ids).size!==ids.length)return{error:'duplicate-focus-fixtures'};
+  const fixtures=new Map(floor.rooms.flatMap(room=>room.contents||[]).concat(floor.sharedObjects||[])
+    .map(fixture=>[fixture.id,fixture])),prefabs=new Map(plan.prefabCatalog.map(spec=>[spec.id,spec])),
+    anchorOf=fixture=>(prefabs.get(fixture.prefab)||{}).anchor||'floor',
+    topOf=fixture=>fixture.at[1]+fixture.size[1]*(/centre/.test(anchorOf(fixture))?.5:1),
+    sightY=fixture=>/centre/.test(anchorOf(fixture))?fixture.at[1]:
+      fixture.at[1]+Math.min(fixture.size[1]*.65,1.35),fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw),
+    rx=Math.cos(pose.yaw),rz=-Math.sin(pose.yaw),cameraX=pose.x-fx*back,cameraZ=pose.z-fz*back,
+    cameraY=floor.elevation+1.15,evidence=[];
+  for(const id of ids){
+    const fixture=fixtures.get(id);
+    if(!fixture||!fixture.at)return{error:`missing-focus-fixture:${id}`};
+    const dx=fixture.at[0]-cameraX,dz=fixture.at[2]-cameraZ,distance=Math.hypot(dx,dz),
+      forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz);
+    if(forward<=.35||lateral>forward*.58+.12)return{error:`focus-outside-camera-cone:${id}`};
+    let occluded=false;
+    for(let q=.18;q<distance-.28;q+=.12){
+      const progress=q/distance,x=cameraX+dx*progress,z=cameraZ+dz*progress,
+        rayY=cameraY+(sightY(fixture)-cameraY)*progress;
+      if(scene.blockers.some(s=>s.top>=rayY-.06&&x>s.x0-.025&&x<s.x1+.025&&z>s.z0-.025&&z<s.z1+.025)||
+        scene.solids.some(s=>{if(s.fixtureId===id||s.open||!(x>s.x0-.025&&x<s.x1+.025&&z>s.z0-.025&&z<s.z1+.025))return false;
+          const obstacle=fixtures.get(s.fixtureId);return !obstacle||topOf(obstacle)>=rayY-.06;})||
+        reviewDoorLeaves(floor).some(s=>x>s.x0-.025&&x<s.x1+.025&&z>s.z0-.025&&z<s.z1+.025)){
+        occluded=true;break;
+      }
+    }
+    if(occluded)return{error:`focus-occluded:${id}`};
+    evidence.push({id,forward:+forward.toFixed(2),lateral:+lateral.toFixed(2)});
+  }
+  return{evidence};
+}
 function renderedPartOutsideFixture(part,fixture,tolerance=.09){
   const m=part.m;if(!m)return false;
   const yaw=fixture.yaw||0,c=Math.cos(yaw),s=Math.sin(yaw),u=[c,-s],v=[s,c];
@@ -329,6 +374,11 @@ for(const [name,build] of builders){
       const back=reviewBack(scene,f,room.bounds,pose),front=reviewFront(scene,f,room.bounds,pose);
       if(!back)visualReviewDefects.push(`${b.id}/F${f.level}:rear-camera-blocked`);
       if(front<.72)visualReviewDefects.push(`${b.id}/F${f.level}:front-depth-${front.toFixed(2)}m`);
+      if(back){
+        const focus=reviewFocusEvidence(scene,f,pose,back,programmeReview.focusFixtureIds,2),door=reviewForegroundDoor(f,pose,back);
+        if(focus.error)visualReviewDefects.push(`${b.id}/F${f.level}:${focus.error}`);
+        if(door)visualReviewDefects.push(`${b.id}/F${f.level}:foreground-door-leaf`);
+      }
     }
   }
   const entryReview=f.visualReview&&f.visualReview.entry;
@@ -354,6 +404,11 @@ for(const [name,build] of builders){
       const back=reviewBack(scene,f,zone.bounds,pose),front=reviewFront(scene,f,zone.bounds,pose);
       if(!back)entryReviewDefects.push(`${b.id}/F${f.level}:entry-rear-camera-blocked`);
       if(front<.72)entryReviewDefects.push(`${b.id}/F${f.level}:entry-front-depth-${front.toFixed(2)}m`);
+      if(back){
+        const focus=reviewFocusEvidence(scene,f,pose,back,entryReview.focusFixtureIds,1),door=reviewForegroundDoor(f,pose,back);
+        if(focus.error)entryReviewDefects.push(`${b.id}/F${f.level}:entry-${focus.error}`);
+        if(door)entryReviewDefects.push(`${b.id}/F${f.level}:entry-foreground-door-leaf`);
+      }
     }
   }
   const groundEntries=f.visualReview&&f.visualReview.entries;
@@ -381,6 +436,11 @@ for(const [name,build] of builders){
         const back=reviewBack(scene,f,cameraZone.bounds,pose),front=reviewFront(scene,f,focusRoom.bounds,pose);
         if(!back)entryReviewDefects.push(`${key}:ground-rear-camera-blocked-${cameraZone.id}`);
         if(front<.72)entryReviewDefects.push(`${key}:ground-front-depth-${front.toFixed(2)}m`);
+        if(back){
+          const focus=reviewFocusEvidence(scene,f,pose,back,entry.focusFixtureIds,1),door=reviewForegroundDoor(f,pose,back);
+          if(focus.error)entryReviewDefects.push(`${key}:ground-${focus.error}`);
+          if(door)entryReviewDefects.push(`${key}:ground-foreground-door-leaf`);
+        }
       }
     }
   }

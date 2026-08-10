@@ -116,6 +116,13 @@ function validReviewPrerequisites(value){
     Number.isInteger(value.glyphCount)&&value.glyphCount>=8&&
     Number.isFinite(value.minGlyphInk)&&value.minGlyphInk>=40;
 }
+function validFocusEvidence(value,minimum){
+  if(!value||!Array.isArray(value.focusFixtureIds)||value.focusFixtureIds.length<minimum||
+    new Set(value.focusFixtureIds).size!==value.focusFixtureIds.length||!Array.isArray(value.focusEvidence)||
+    value.focusEvidence.length!==value.focusFixtureIds.length)return false;
+  return value.focusEvidence.every((e,index)=>e&&e.id===value.focusFixtureIds[index]&&
+    Number.isFinite(e.forward)&&e.forward>.35&&Number.isFinite(e.lateral)&&e.lateral>=0);
+}
 
 function mergeReviewOutputs(){
   if(REVIEW_BUILDING)throw new Error('UNIVERSITY_REVIEW_MERGE cannot be combined with UNIVERSITY_REVIEW_BUILDING');
@@ -208,7 +215,7 @@ function mergeReviewOutputs(){
         typeof row.reviewRoom!=='string'||!row.reviewRoom.trim()||
         !hasFiniteFields(row.reviewAt,['x','z','yaw','cameraBack','frontDepth'])||
         row.reviewAt.cameraBack<=0||row.reviewAt.frontDepth<.72||typeof row.reviewAt.authored!=='boolean'||
-        CURATED_PROGRAMME_BUILDINGS.has(building)&&row.reviewAt.authored!==true)){
+        CURATED_PROGRAMME_BUILDINGS.has(building)&&row.reviewAt.authored!==true||!validFocusEvidence(row.reviewAt,2))){
         defects.push(`${building}: programme camera evidence is incomplete for ${key}`);valid=false;
       }
       const requiresAuthoredGround=rowLevel===1;
@@ -218,6 +225,7 @@ function mergeReviewOutputs(){
           !Number.isFinite(row.entryReviewAt.frontDepth)||row.entryReviewAt.frontDepth<.72||
           typeof row.entryReviewAt.authored!=='boolean'||
           (rowLevel>1||requiresAuthoredGround)&&row.entryReviewAt.authored!==true||
+          !validFocusEvidence(row.entryReviewAt,1)||
           requiresAuthoredGround&&(
             typeof row.entryReviewAt.focusRoom!=='string'||!row.entryReviewAt.focusRoom.trim()||
             typeof row.entryReviewAt.cameraZone!=='string'||!row.entryReviewAt.cameraZone.trim()))){
@@ -402,8 +410,8 @@ async function main(){
             ex=c*w*.39+s*.04,ez=s*w*.39+c*.04;
           return{x0:cx-ex,x1:cx+ex,z0:cz-ez,z1:cz+ez};
         })),
-        sightBlocked=(x,z,pad=.055)=>scene.blockers.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
-          scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
+        sightBlocked=(x,z,pad=.055,excludeFixtureId=null)=>scene.blockers.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
+          scene.solids.some(s=>s.fixtureId!==excludeFixtureId&&!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
           doorLeaves.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad),
         rearClear=(x,z,yaw,back)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw),cx=x-fx*back,cz=z-fz*back;
           if(!inside(bounds,cx,cz,.18))return false;
@@ -411,6 +419,36 @@ async function main(){
         frontDepth=(x,z,yaw,roomBounds)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw);let depth=0;
           for(let q=.16;q<=6;q+=.12){const px=x+fx*q,pz=z+fz*q;
             if(!inside(roomBounds,px,pz,.10)||sightBlocked(px,pz,.025))break;depth=q;}return depth;},
+        foregroundDoor=(x,z,yaw,back)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw),
+          cameraX=x-fx*back,cameraZ=z-fz*back;
+          return doorLeaves.find(leaf=>{const cx=(leaf.x0+leaf.x1)/2,cz=(leaf.z0+leaf.z1)/2,dx=cx-cameraX,dz=cz-cameraZ,
+            forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz),radius=Math.hypot(leaf.x1-leaf.x0,leaf.z1-leaf.z0)/2;
+            return forward>.08&&forward<2.10&&lateral-radius<.18+forward*.52;})||null;},
+        focusEvidence=(ids,x,z,yaw,back,minimum)=>{if(!Array.isArray(ids)||ids.length<minimum)
+            throw new Error('review requires '+minimum+' explicit focus fixture(s)');
+          if(new Set(ids).size!==ids.length)throw new Error('review focus fixtures contain duplicate ids');
+          const fixtures=new Map((floor.rooms||[]).flatMap(room=>room.contents||[]).concat(floor.sharedObjects||[])
+              .map(fixture=>[fixture.id,fixture])),prefabs=new Map(CampusInteriors.plan.prefabCatalog.map(spec=>[spec.id,spec])),
+            anchorOf=fixture=>(prefabs.get(fixture.prefab)||{}).anchor||'floor',
+            topOf=fixture=>fixture.at[1]+fixture.size[1]*(/centre/.test(anchorOf(fixture))?.5:1),
+            sightY=fixture=>/centre/.test(anchorOf(fixture))?fixture.at[1]:
+              fixture.at[1]+Math.min(fixture.size[1]*.65,1.35),fx=Math.sin(yaw),fz=Math.cos(yaw),
+            rx=Math.cos(yaw),rz=-Math.sin(yaw),cameraX=x-fx*back,cameraZ=z-fz*back,cameraY=floor.elevation+1.15,evidence=[];
+          for(const id of ids){const fixture=fixtures.get(id);if(!fixture||!fixture.at)
+              throw new Error('review focus fixture does not exist: '+id);
+            const dx=fixture.at[0]-cameraX,dz=fixture.at[2]-cameraZ,distance=Math.hypot(dx,dz),
+              forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz);
+            if(forward<=.35||lateral>forward*.58+.12)throw new Error('review focus fixture is outside camera cone: '+id);
+            for(let q=.18;q<distance-.28;q+=.12){const progress=q/distance,px=cameraX+dx*progress,pz=cameraZ+dz*progress,
+                rayY=cameraY+(sightY(fixture)-cameraY)*progress;
+              if(scene.blockers.some(s=>s.top>=rayY-.06&&px>s.x0-.025&&px<s.x1+.025&&pz>s.z0-.025&&pz<s.z1+.025)||
+                scene.solids.some(s=>{if(s.fixtureId===id||s.open||!(px>s.x0-.025&&px<s.x1+.025&&pz>s.z0-.025&&pz<s.z1+.025))return false;
+                  const obstacle=fixtures.get(s.fixtureId);return !obstacle||topOf(obstacle)>=rayY-.06;})||
+                doorLeaves.some(s=>px>s.x0-.025&&px<s.x1+.025&&pz>s.z0-.025&&pz<s.z1+.025))
+                throw new Error('review focus fixture is occluded: '+id);}
+            evidence.push({id,forward:+forward.toFixed(2),lateral:+lateral.toFixed(2)});
+          }
+          return evidence;},
         applyReviewCamera=(x,z,yaw,back)=>{const cam=window.__game.CAM,pitch=.28;
           window.__game.P.x=x;window.__game.P.z=z;window.__game.P.yaw=yaw;
           cam.fx=x;cam.fz=z;cam.yaw=cam.tYaw=yaw;cam.pitch=cam.tPitch=pitch;
@@ -436,13 +474,16 @@ async function main(){
               rearClear(x,z,reviewYaw,q))||0,front=frontDepth(x,z,reviewYaw,focusRoom.bounds);
           if(!back)throw new Error('authored ground arrival has no clear camera in '+cameraZone.id);
           if(front<.72)throw new Error('authored ground arrival faces less than 0.72m of '+focusRoom.id);
+          if(foregroundDoor(x,z,reviewYaw,back))throw new Error('authored ground arrival has a foreground door leaf');
+          const focus=focusEvidence(authored.focusFixtureIds,x,z,reviewYaw,back,1);
           if(authored.body!=='hidden'&&authored.body!=='evidence')
             throw new Error('authored ground arrival requires explicit hidden/evidence body policy');
           bodyVisible=authored.body==='evidence';bodyPolicy=authored.body;
           applyReviewCamera(x,z,reviewYaw,back);
           entryReviewAt={x:+x.toFixed(2),z:+z.toFixed(2),yaw:reviewYaw,inward:0,lateral:0,
             cameraBack:+back.toFixed(2),frontDepth:+front.toFixed(2),entryZone:cameraZone.id,
-            focusRoom:focusRoom.id,cameraZone:cameraZone.id,authored:true};
+            focusRoom:focusRoom.id,cameraZone:cameraZone.id,authored:true,
+            focusFixtureIds:[...authored.focusFixtureIds],focusEvidence:focus};
           await new Promise(resolve=>setTimeout(resolve,800));
         }else{
         if(!entryZone)throw new Error('portal threshold has no authored entry zone for '+scene.buildingId);
@@ -493,7 +534,9 @@ async function main(){
             front=frontDepth(x,z,yaw,entryZone.bounds);
           if(![x,z,yaw].every(Number.isFinite)||!inside(entryZone.bounds,x,z,radius)||!free(x,z)||
             !moveClear(x,z)||!back||front<.72)throw new Error('authored upper-floor arrival is not clear in '+entryZone.id);
-          candidates.push({x,z,yaw,back,front,move:Math.hypot(x-ox,z-oz),score:1e6});
+          if(foregroundDoor(x,z,yaw,back))throw new Error('authored upper-floor arrival has a foreground door leaf');
+          candidates.push({x,z,yaw,back,front,move:Math.hypot(x-ox,z-oz),score:1e6,
+            focus:focusEvidence(authored.focusFixtureIds,x,z,yaw,back,1)});
         }else for(const [dx,dz] of offsets){const x=ox+dx,z=oz+dz;
           if(!inside(entryZone.bounds,x,z,radius)||!free(x,z)||!moveClear(x,z))continue;
           for(const yaw of yaws){const back=zoneCameraBack(x,z,yaw),front=frontDepth(x,z,yaw,entryZone.bounds);
@@ -504,7 +547,8 @@ async function main(){
         applyReviewCamera(chosen.x,chosen.z,chosen.yaw,chosen.back);
         entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,inward:0,
           lateral:+chosen.move.toFixed(2),cameraBack:+chosen.back.toFixed(2),entryZone:entryZone.id,
-          frontDepth:+chosen.front.toFixed(2),authored:!!authored};
+          frontDepth:+chosen.front.toFixed(2),authored:!!authored,
+          focusFixtureIds:authored?[...authored.focusFixtureIds]:[],focusEvidence:chosen.focus||[]};
         if(authored){
           if(authored.body!==undefined&&authored.body!=='hidden'&&authored.body!=='evidence')
             throw new Error('authored upper-floor arrival has invalid body policy');
@@ -527,7 +571,9 @@ async function main(){
             rearClear(x,z,yaw,q))||0,front=frontDepth(x,z,yaw,room.bounds);
           if(!back)throw new Error('authored programme pose has no clear rear-camera sightline in '+room.id);
           if(front<.72)throw new Error('authored programme pose faces less than 0.72m of '+room.id);
-          chosen={x,z,yaw,back,front,authored:true};
+          if(foregroundDoor(x,z,yaw,back))throw new Error('authored programme pose has a foreground door leaf in '+room.id);
+          chosen={x,z,yaw,back,front,authored:true,focusFixtureIds:[...authored.focusFixtureIds],
+            focusEvidence:focusEvidence(authored.focusFixtureIds,x,z,yaw,back,2)};
         }else{
           room=rooms[0]||floor.rooms[0];if(!room)throw new Error('floor has no programme room');
           const b=room.bounds,candidates=[],yaws=[0,Math.PI/2,Math.PI,-Math.PI/2];
@@ -542,7 +588,8 @@ async function main(){
         }
         applyReviewCamera(chosen.x,chosen.z,chosen.yaw,chosen.back);reviewRoom=room.id;
         reviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,
-          cameraBack:+chosen.back.toFixed(2),frontDepth:+chosen.front.toFixed(2),authored:chosen.authored};
+          cameraBack:+chosen.back.toFixed(2),frontDepth:+chosen.front.toFixed(2),authored:chosen.authored,
+          focusFixtureIds:chosen.focusFixtureIds||[],focusEvidence:chosen.focusEvidence||[]};
         await new Promise(resolve=>setTimeout(resolve,800));
       }
       window.__game.showBody(bodyVisible);

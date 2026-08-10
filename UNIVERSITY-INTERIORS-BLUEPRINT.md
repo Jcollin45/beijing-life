@@ -4,7 +4,7 @@ This is the implemented, construction-grade interior companion to `UNIVERSITY-BL
 
 The machine-readable source of truth is [`UNIVERSITY-INTERIORS-BLUEPRINT.json`](UNIVERSITY-INTERIORS-BLUEPRINT.json). Re-run `node tools/generate-university-interiors-blueprint.js` after any authored change. If prose and JSON disagree, use the JSON and regenerate this file.
 
-Blueprint version **2** · exterior layout **2** · canonical hash `9baef15ee80d8645c135706d13495f6356a2ac5703b2cec3568d2c7b58569d14`.
+Blueprint version **2** · exterior layout **2** · canonical hash `bdf1092b63d88da2adeb376aeeb0513e38cb1142f8dbc431ea63e9a3243f6829`.
 
 ## 1. Audit result
 
@@ -48,7 +48,7 @@ Before this construction pass, only two university interiors existed, and both w
 | buildings | 8 |
 | floors | 28 |
 | rooms | 205 |
-| fixtureInstances | 4041 |
+| fixtureInstances | 4131 |
 | beds | 48 |
 | studentSeatPairs | 4 |
 | labBenches | 22 |
@@ -126,12 +126,12 @@ Circulation: `B01/F2/CORRIDOR` x[-12.8, 12.8] z[3.1, 4.95], clear 1.85 m.
 
 Circulation: `B01/F3/CORRIDOR` x[-12.8, 12.8] z[3.1, 4.95], clear 1.85 m.
 
-#### Floor 4 · elevation 9.9 m · 182 fixture instances
+#### Floor 4 · elevation 9.9 m · 185 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
 | B01/F4/WEST | 401教室 | x[-12.6, -3.4] z[-5, 3] | classroom | 53 | north [-4.6,9.9,3] w1.05 → B01/F4/CORRIDOR<br>west [-12.6,9.9,-2.1] w1.2 → B01/F4/STAIR-W |
-| B01/F4/CENTRE | 教学准备室 | x[-3.2, 3.2] z[-5, 3] | office | 23 | north [0,9.9,3] w1.05 → B01/F4/CORRIDOR |
+| B01/F4/CENTRE | 教学准备室 | x[-3.2, 3.2] z[-5, 3] | office | 26 | north [0,9.9,3] w1.05 → B01/F4/CORRIDOR |
 | B01/F4/EAST | 402教室 | x[3.4, 12.6] z[-5, 3] | classroom | 56 | north [11.4,9.9,3] w1.05 → B01/F4/CORRIDOR<br>east [12.6,9.9,-2.1] w1.2 → B01/F4/STAIR-E |
 | B01/F4/STAIR-W | 西安全楼梯 | x[-15.5, -12.8] z[-5, 0.8] | service | 7 | east [-12.8,9.9,-2.1] w1.2 → B01/F4/WEST |
 | B01/F4/WC-W | 西侧卫生间 | x[-15.5, -12.8] z[1, 5] | service | 6 | east [-12.8,9.9,4.025] w1.2 → B01/F4/CORRIDOR |
@@ -140,11 +140,11 @@ Circulation: `B01/F3/CORRIDOR` x[-12.8, 12.8] z[3.1, 4.95], clear 1.85 m.
 
 Circulation: `B01/F4/CORRIDOR` x[-12.8, 12.8] z[3.1, 4.95], clear 1.85 m.
 
-#### Floor 5 · elevation 13.2 m · 149 fixture instances
+#### Floor 5 · elevation 13.2 m · 151 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
-| B01/F5/WEST | 501研讨室 | x[-12.6, -3.4] z[-5, 3] | classroom | 32 | north [-4.6,13.2,3] w1.05 → B01/F5/CORRIDOR<br>west [-12.6,13.2,-2.1] w1.2 → B01/F5/STAIR-W |
+| B01/F5/WEST | 501研讨室 | x[-12.6, -3.4] z[-5, 3] | classroom | 34 | north [-4.6,13.2,3] w1.05 → B01/F5/CORRIDOR<br>west [-12.6,13.2,-2.1] w1.2 → B01/F5/STAIR-W |
 | B01/F5/CENTRE | 教师办公室 | x[-3.2, 3.2] z[-5, 3] | office | 27 | north [0,13.2,3] w1.05 → B01/F5/CORRIDOR |
 | B01/F5/EAST | 502计算机教室 | x[3.4, 12.6] z[-5, 3] | classroom | 40 | north [11.4,13.2,3] w1.05 → B01/F5/CORRIDOR<br>east [12.6,13.2,-2.1] w1.2 → B01/F5/STAIR-E |
 | B01/F5/STAIR-W | 西安全楼梯 | x[-15.5, -12.8] z[-5, 0.8] | service | 7 | east [-12.8,13.2,-2.1] w1.2 → B01/F5/WEST |
@@ -245,12 +245,12 @@ Exterior footprint: `x[-43,-29] z[-7,12]`. Local envelope: `x[-7, 7] z[-9.5, 9.5
 
 ### Floor and room schedule
 
-#### Floor 1 · elevation 0 m · 186 fixture instances
+#### Floor 1 · elevation 0 m · 190 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
 | B03/F1/DINING | 学生餐厅 | x[0.2, 6.6] z[-8.9, 8.9] | canteen | 86 | south [0.35,0,-9.5] w1.5 → campus<br>west [0.2,0,-7.85] w1.2 → B03/F1/QUEUE-SPINE |
-| B03/F1/SERVE | 售饭区 | x[-2.65, 0] z[-8.9, 5.9] | kitchen | 35 | west [-2.65,0,-8.2] w0.9 → B03/F1/SERVICE-ENTRY<br>west [-2.65,0,3.725] w0.95 → B03/F1/CLEAN-PASS |
+| B03/F1/SERVE | 售饭区 | x[-2.65, 0] z[-8.9, 5.9] | kitchen | 39 | west [-2.65,0,-8.2] w0.9 → B03/F1/SERVICE-ENTRY<br>west [-2.65,0,3.725] w0.95 → B03/F1/CLEAN-PASS |
 | B03/F1/RETURN | 餐具回收 | x[-2.65, 1.15] z[6.1, 8.9] | kitchen | 8 | west [-2.65,0,8.45] w0.8 → B03/F1/DISH-STAFF |
 | B03/F1/KITCHEN | 净菜与热厨 | x[-6.6, -2.65] z[-1.5, 4.7] | kitchen | 18 | west [-7,0,3] w1.2 → campus-service<br>east [-2.65,0,3.725] w0.95 → B03/F1/CLEAN-PASS<br>south [-3.55,0,-1.5] w1.2 → B03/F1/BOH-CLEAN<br>north [-5.4,0,4.7] w1.2 → B03/F1/DIRTY |
 | B03/F1/DIRTY | 餐具洗消间 | x[-6.6, -2.65] z[4.7, 8.9] | kitchen | 10 | south [-5.4,0,4.7] w1.2 → B03/F1/KITCHEN<br>east [-2.65,0,8.45] w0.8 → B03/F1/DISH-STAFF |
@@ -276,12 +276,12 @@ Exterior footprint: `x[30,43] z[-9,7]`. Local envelope: `x[-6.5, 6.5] z[-8, 8]`.
 
 ### Floor and room schedule
 
-#### Floor 1 · elevation 0 m · 107 fixture instances
+#### Floor 1 · elevation 0 m · 114 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
-| B04/F1/A01 | 101无障碍宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 21 | east [-1.2,0,-5.75] w1 → B04/F1/CORRIDOR |
-| B04/F1/LOBBY | 门厅与值班台 | x[-6.1, -1.2] z[-3.7, 0] | public | 11 | west [-6.5,0,-1] w2.6 → campus<br>east [-1.2,0,-1.85] w1.2 → B04/F1/CORRIDOR |
+| B04/F1/A01 | 101无障碍宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 23 | east [-1.2,0,-5.75] w1 → B04/F1/CORRIDOR |
+| B04/F1/LOBBY | 门厅与值班台 | x[-6.1, -1.2] z[-3.7, 0] | public | 13 | west [-6.5,0,-1] w2.6 → campus<br>east [-1.2,0,-1.85] w1.2 → B04/F1/CORRIDOR |
 | B04/F1/MAIL | 邮件与管理员室 | x[1.2, 6.1] z[-3.7, 0] | office | 10 | west [1.2,0,-1.85] w1.2 → B04/F1/CORRIDOR |
 | B04/F1/LOUNGE-W | 公共客厅 | x[-6.1, -1.2] z[0.2, 3.9] | dorm | 8 | east [-1.2,0,2.05] w1.2 → B04/F1/CORRIDOR |
 | B04/F1/LOUNGE-E | 自习室 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 10 | west [1.2,0,2.05] w1.2 → B04/F1/CORRIDOR |
@@ -292,15 +292,15 @@ Exterior footprint: `x[30,43] z[-9,7]`. Local envelope: `x[-6.5, 6.5] z[-8, 8]`.
 
 Circulation: `B04/F1/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m; `B04/F1/ENTRY` x[-6.5, -1] z[-2.15, 0.15], clear 2.3 m.
 
-#### Floor 2 · elevation 3 m · 166 fixture instances
+#### Floor 2 · elevation 3 m · 179 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
-| B04/F2/201 | 201双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 24 | east [-1.2,3,-5.75] w0.92 → B04/F2/CORRIDOR |
-| B04/F2/202 | 202双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 24 | east [-1.2,3,-1.85] w0.92 → B04/F2/CORRIDOR |
-| B04/F2/203 | 203双人宿舍 | x[-6.1, -1.2] z[0.2, 3.9] | dorm | 24 | east [-1.2,3,2.05] w0.92 → B04/F2/CORRIDOR |
-| B04/F2/205 | 205双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 24 | west [1.2,3,-1.85] w0.92 → B04/F2/CORRIDOR |
-| B04/F2/206 | 206双人宿舍 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 24 | west [1.2,3,2.05] w0.92 → B04/F2/CORRIDOR |
+| B04/F2/201 | 201双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 26 | east [-1.2,3,-5.75] w0.92 → B04/F2/CORRIDOR |
+| B04/F2/202 | 202双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 26 | east [-1.2,3,-1.85] w0.92 → B04/F2/CORRIDOR |
+| B04/F2/203 | 203双人宿舍 | x[-6.1, -1.2] z[0.2, 3.9] | dorm | 26 | east [-1.2,3,2.05] w0.92 → B04/F2/CORRIDOR |
+| B04/F2/205 | 205双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 26 | west [1.2,3,-1.85] w0.92 → B04/F2/CORRIDOR |
+| B04/F2/206 | 206双人宿舍 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 26 | west [1.2,3,2.05] w0.92 → B04/F2/CORRIDOR |
 | B04/F2/STAIR | 楼梯 | x[-6.1, -3.25] z[4.2, 7.6] | service | 5 | east [-3.25,3,4.75] w1 → B04/F2/LIFT |
 | B04/F2/LIFT | 电梯 | x[-3.05, -1.2] z[4.2, 7.6] | service | 4 | west [-3.05,3,4.75] w1 → B04/F2/STAIR<br>east [-1.2,3,4.75] w1 → B04/F2/CORRIDOR |
 | B04/F2/WASH | 公共盥洗室 | x[1.2, 6.1] z[4.2, 7.6] | service | 15 | west [1.2,3,5] w1 → B04/F2/CORRIDOR |
@@ -308,15 +308,15 @@ Circulation: `B04/F1/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m; `B04/F1/ENTRY` 
 
 Circulation: `B04/F2/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
-#### Floor 3 · elevation 6 m · 166 fixture instances
+#### Floor 3 · elevation 6 m · 179 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
-| B04/F3/301 | 301双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 24 | east [-1.2,6,-5.75] w0.92 → B04/F3/CORRIDOR |
-| B04/F3/302 | 302双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 24 | east [-1.2,6,-1.85] w0.92 → B04/F3/CORRIDOR |
-| B04/F3/303 | 303双人宿舍 | x[-6.1, -1.2] z[0.2, 3.9] | dorm | 24 | east [-1.2,6,2.05] w0.92 → B04/F3/CORRIDOR |
-| B04/F3/305 | 305双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 24 | west [1.2,6,-1.85] w0.92 → B04/F3/CORRIDOR |
-| B04/F3/306 | 306双人宿舍 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 24 | west [1.2,6,2.05] w0.92 → B04/F3/CORRIDOR |
+| B04/F3/301 | 301双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 26 | east [-1.2,6,-5.75] w0.92 → B04/F3/CORRIDOR |
+| B04/F3/302 | 302双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 26 | east [-1.2,6,-1.85] w0.92 → B04/F3/CORRIDOR |
+| B04/F3/303 | 303双人宿舍 | x[-6.1, -1.2] z[0.2, 3.9] | dorm | 26 | east [-1.2,6,2.05] w0.92 → B04/F3/CORRIDOR |
+| B04/F3/305 | 305双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 26 | west [1.2,6,-1.85] w0.92 → B04/F3/CORRIDOR |
+| B04/F3/306 | 306双人宿舍 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 26 | west [1.2,6,2.05] w0.92 → B04/F3/CORRIDOR |
 | B04/F3/STAIR | 楼梯 | x[-6.1, -3.25] z[4.2, 7.6] | service | 5 | east [-3.25,6,4.75] w1 → B04/F3/LIFT |
 | B04/F3/LIFT | 电梯 | x[-3.05, -1.2] z[4.2, 7.6] | service | 4 | west [-3.05,6,4.75] w1 → B04/F3/STAIR<br>east [-1.2,6,4.75] w1 → B04/F3/CORRIDOR |
 | B04/F3/WASH | 公共盥洗室 | x[1.2, 6.1] z[4.2, 7.6] | service | 15 | west [1.2,6,5] w1 → B04/F3/CORRIDOR |
@@ -324,15 +324,15 @@ Circulation: `B04/F2/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
 Circulation: `B04/F3/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
-#### Floor 4 · elevation 9 m · 166 fixture instances
+#### Floor 4 · elevation 9 m · 179 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
-| B04/F4/401 | 401双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 24 | east [-1.2,9,-5.75] w0.92 → B04/F4/CORRIDOR |
-| B04/F4/402 | 402双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 24 | east [-1.2,9,-1.85] w0.92 → B04/F4/CORRIDOR |
-| B04/F4/403 | 403双人宿舍 | x[-6.1, -1.2] z[0.2, 3.9] | dorm | 24 | east [-1.2,9,2.05] w0.92 → B04/F4/CORRIDOR |
-| B04/F4/405 | 405双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 24 | west [1.2,9,-1.85] w0.92 → B04/F4/CORRIDOR |
-| B04/F4/406 | 406双人宿舍 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 24 | west [1.2,9,2.05] w0.92 → B04/F4/CORRIDOR |
+| B04/F4/401 | 401双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 26 | east [-1.2,9,-5.75] w0.92 → B04/F4/CORRIDOR |
+| B04/F4/402 | 402双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 26 | east [-1.2,9,-1.85] w0.92 → B04/F4/CORRIDOR |
+| B04/F4/403 | 403双人宿舍 | x[-6.1, -1.2] z[0.2, 3.9] | dorm | 26 | east [-1.2,9,2.05] w0.92 → B04/F4/CORRIDOR |
+| B04/F4/405 | 405双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 26 | west [1.2,9,-1.85] w0.92 → B04/F4/CORRIDOR |
+| B04/F4/406 | 406双人宿舍 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 26 | west [1.2,9,2.05] w0.92 → B04/F4/CORRIDOR |
 | B04/F4/STAIR | 楼梯 | x[-6.1, -3.25] z[4.2, 7.6] | service | 5 | east [-3.25,9,4.75] w1 → B04/F4/LIFT |
 | B04/F4/LIFT | 电梯 | x[-3.05, -1.2] z[4.2, 7.6] | service | 4 | west [-3.05,9,4.75] w1 → B04/F4/STAIR<br>east [-1.2,9,4.75] w1 → B04/F4/CORRIDOR |
 | B04/F4/WASH | 公共盥洗室 | x[1.2, 6.1] z[4.2, 7.6] | service | 15 | west [1.2,9,5] w1 → B04/F4/CORRIDOR |
@@ -340,15 +340,15 @@ Circulation: `B04/F3/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
 Circulation: `B04/F4/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
-#### Floor 5 · elevation 12 m · 166 fixture instances
+#### Floor 5 · elevation 12 m · 179 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
-| B04/F5/501 | 501双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 24 | east [-1.2,12,-5.75] w0.92 → B04/F5/CORRIDOR |
-| B04/F5/502 | 502双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 24 | east [-1.2,12,-1.85] w0.92 → B04/F5/CORRIDOR |
-| B04/F5/503 | 503双人宿舍 | x[-6.1, -1.2] z[0.2, 3.9] | dorm | 24 | east [-1.2,12,2.05] w0.92 → B04/F5/CORRIDOR |
-| B04/F5/505 | 505双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 24 | west [1.2,12,-1.85] w0.92 → B04/F5/CORRIDOR |
-| B04/F5/506 | 506双人宿舍 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 24 | west [1.2,12,2.05] w0.92 → B04/F5/CORRIDOR |
+| B04/F5/501 | 501双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 26 | east [-1.2,12,-5.75] w0.92 → B04/F5/CORRIDOR |
+| B04/F5/502 | 502双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 26 | east [-1.2,12,-1.85] w0.92 → B04/F5/CORRIDOR |
+| B04/F5/503 | 503双人宿舍 | x[-6.1, -1.2] z[0.2, 3.9] | dorm | 26 | east [-1.2,12,2.05] w0.92 → B04/F5/CORRIDOR |
+| B04/F5/505 | 505双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 26 | west [1.2,12,-1.85] w0.92 → B04/F5/CORRIDOR |
+| B04/F5/506 | 506双人宿舍 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 26 | west [1.2,12,2.05] w0.92 → B04/F5/CORRIDOR |
 | B04/F5/STAIR | 楼梯 | x[-6.1, -3.25] z[4.2, 7.6] | service | 5 | east [-3.25,12,4.75] w1 → B04/F5/LIFT |
 | B04/F5/LIFT | 电梯 | x[-3.05, -1.2] z[4.2, 7.6] | service | 4 | west [-3.05,12,4.75] w1 → B04/F5/STAIR<br>east [-1.2,12,4.75] w1 → B04/F5/CORRIDOR |
 | B04/F5/WASH | 公共盥洗室 | x[1.2, 6.1] z[4.2, 7.6] | service | 15 | west [1.2,12,5] w1 → B04/F5/CORRIDOR |
@@ -356,14 +356,14 @@ Circulation: `B04/F4/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
 Circulation: `B04/F5/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
-#### Floor 6 · elevation 15 m · 140 fixture instances
+#### Floor 6 · elevation 15 m · 150 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
-| B04/F6/601 | 601双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 24 | east [-1.2,15,-5.75] w0.92 → B04/F6/CORRIDOR |
-| B04/F6/602 | 602双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 24 | east [-1.2,15,-1.85] w0.92 → B04/F6/CORRIDOR |
-| B04/F6/604 | 604双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 24 | west [1.2,15,-1.85] w0.92 → B04/F6/CORRIDOR |
-| B04/F6/LAUNDRY | 洗衣房 | x[-6.1, -1.2] z[0.2, 3.9] | service | 10 | east [-1.2,15,2.05] w1.2 → B04/F6/CORRIDOR |
+| B04/F6/601 | 601双人宿舍 | x[-6.1, -1.2] z[-7.6, -3.9] | dorm | 26 | east [-1.2,15,-5.75] w0.92 → B04/F6/CORRIDOR |
+| B04/F6/602 | 602双人宿舍 | x[-6.1, -1.2] z[-3.7, 0] | dorm | 26 | east [-1.2,15,-1.85] w0.92 → B04/F6/CORRIDOR |
+| B04/F6/604 | 604双人宿舍 | x[1.2, 6.1] z[-3.7, 0] | dorm | 26 | west [1.2,15,-1.85] w0.92 → B04/F6/CORRIDOR |
+| B04/F6/LAUNDRY | 洗衣房 | x[-6.1, -1.2] z[0.2, 3.9] | service | 11 | east [-1.2,15,2.05] w1.2 → B04/F6/CORRIDOR |
 | B04/F6/STUDY | 顶层自习室 | x[1.2, 6.1] z[0.2, 3.9] | dorm | 12 | west [1.2,15,2.05] w1.2 → B04/F6/CORRIDOR |
 | B04/F6/STAIR | 楼梯 | x[-6.1, -3.25] z[4.2, 7.6] | service | 5 | east [-3.25,15,4.75] w1 → B04/F6/LIFT |
 | B04/F6/LIFT | 电梯 | x[-3.05, -1.2] z[4.2, 7.6] | service | 4 | west [-3.05,15,4.75] w1 → B04/F6/STAIR<br>east [-1.2,15,4.75] w1 → B04/F6/CORRIDOR |
@@ -407,7 +407,7 @@ Exterior footprint: `x[-43,-29] z[24,36]`. Local envelope: `x[-7, 7] z[-6, 6]`. 
 
 Circulation: `B05/F1/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
-#### Floor 2 · elevation 3.1 m · 158 fixture instances
+#### Floor 2 · elevation 3.1 m · 162 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -421,7 +421,7 @@ Circulation: `B05/F1/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
 Circulation: `B05/F2/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
-#### Floor 3 · elevation 6.2 m · 153 fixture instances
+#### Floor 3 · elevation 6.2 m · 157 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -435,7 +435,7 @@ Circulation: `B05/F2/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
 Circulation: `B05/F3/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
-#### Floor 4 · elevation 9.3 m · 145 fixture instances
+#### Floor 4 · elevation 9.3 m · 149 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
