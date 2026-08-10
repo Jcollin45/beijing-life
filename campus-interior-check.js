@@ -214,7 +214,14 @@ function walkMap(scene,b,step=.20,radius=.30){
   for(let q=0;q<queue.length;q++){
     const [ix,iz]=queue[q];for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){
       const nx=ix+dx,nz=iz+dz;if(nx<0||nz<0||nx>=w||nz>=h)continue;const k=index(nx,nz);
-      if(!blocked[k]&&!seen[k]){seen[k]=1;queue.push([nx,nz]);}
+      if(blocked[k]||seen[k])continue;
+      const px=x0+ix*step,pz=z0+iz*step,tx=x0+nx*step,tz=z0+nz*step,
+        moved=scene.clampMove(px,pz,tx,tz,radius);
+      // Solids are not the whole movement contract: Build also clamps against authored zones.
+      // Requiring each lattice edge to survive the real runtime clamp catches disconnected zone
+      // islands such as the former B06 entrance, which a solids-only flood incorrectly approved.
+      if(Math.abs(moved[0]-tx)>.011||Math.abs(moved[1]-tz)>.011)continue;
+      seen[k]=1;queue.push([nx,nz]);
     }
   }
   const points=queue.map(([ix,iz])=>[x0+ix*step,z0+iz*step]);

@@ -1030,6 +1030,14 @@ const CampusInteriors = (() => {
       light:[(r.bounds[0]+r.bounds[1])/2,H-.35,(r.bounds[2]+r.bounds[3])/2]}));
     zones.push(...(floor.circulation||[]).map(r=>({id:r.id,label:'走廊',x0:r.bounds[0],x1:r.bounds[1],z0:r.bounds[2],z1:r.bounds[3],
       light:[(r.bounds[0]+r.bounds[1])/2,H-.35,(r.bounds[2]+r.bounds[3])/2]})));
+    // Build.clampMove subtracts the player's radius from every movement zone. Adjacent room and
+    // circulation rectangles then acquire artificial 0.60 m gaps even where their shared wall has
+    // a real open door; B06's entry strip consequently became an island. Give movement the whole
+    // floor plate and let the already-authored shell, partitions and fixture solids define every
+    // actual obstruction. Keep `zones` itself semantic so lighting/cutaway room selection remains
+    // tied to the authored rooms and corridors.
+    const movementZones=[...zones,{id:`${building.id}/F${floor.level}/MOVEMENT`,label:'movement plate',
+      x0,x1,z0,z1,movementOnly:true}];
     const setNight = night => {
       for(const p of lit)p.glow=night?.30:.14;
       for(const l of lights)l.on=true;
@@ -1038,7 +1046,7 @@ const CampusInteriors = (() => {
       RX,RZ,H,OUT:publicPortal?{x:publicPortal.campusReturn[0],z:publicPortal.campusReturn[1],yaw:publicPortal.campusReturn[2]}:null,
       setNight,tick(){},label:`${building.label} · ${floor.level}层`,labelK:`${building.id} · floor ${floor.level}`,
       indoor:true,cutaway:true,near:.05,far:Math.max(42,Math.hypot(x1-x0,z1-z0)*2.1),expose:1,
-      spawn,zones,level:()=>floor.level,buildingId:building.id,blueprintFloor:floor,
+      spawn,zones:movementZones,level:()=>floor.level,buildingId:building.id,blueprintFloor:floor,
       roomAt(x,z){return zones.find(q=>x>=q.x0&&x<=q.x1&&z>=q.z0&&z<=q.z1)||zones[0];},
     });
   }
