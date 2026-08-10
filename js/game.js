@@ -16178,13 +16178,17 @@ function frame(now) {
   R.beginCollect();
   if (fakeShadows) for (const s of scene.shadows)
     R.draw('quad', s.m, BLACK, { mode: 2, alpha: s.a * (0.62 + 0.38 * dl.day) });
-  // The player's shadow leans away from the sun and stretches as the light gets lower.
+  // Outdoors a body casts a directional sun shadow. Indoors this quad is only a soft contact
+  // patch: stretching the outdoor 1.1–1.4 m ellipse down a bright corridor made it read as a
+  // tall dark slab in third-person view, obscuring the person and the room beyond them.
   const lean = dl.day * (0.62 - Math.min(0.5, Math.abs(dl.dir[1]) * 0.45));
-  const bodyShadow = (bx, bz, k, floorY = 0) =>
-    R.draw('quad', M.trs(bx - dl.dir[0] * lean * 0.55, floorY + 0.024,
-      bz - dl.dir[2] * lean * 0.55,
-      0, (1.05 + lean * 0.55) * k, 1, (1.05 + lean * 0.75) * k), BLACK,
-      { mode: 2, alpha: 0.30 + 0.16 * dl.day });
+  const bodyShadow = (bx, bz, k, floorY = 0) => {
+    const indoorContact=!!scene.indoor,cast=indoorContact?0:lean,
+      width=(indoorContact ? .48 : 1.05+lean*.55)*k,
+      depth=(indoorContact ? .34 : 1.05+lean*.75)*k;
+    R.draw('quad', M.trs(bx-dl.dir[0]*cast*.55,floorY+.024,bz-dl.dir[2]*cast*.55,
+      0,width,1,depth),BLACK,{mode:2,alpha:indoorContact ? .16 : .30+.16*dl.day});
+  };
   if (fakeShadows) {
     // Only if there is a body to cast it. With the figure hidden for a screenshot its shadow
     // stayed behind as a dark smudge in the middle of an empty floor.

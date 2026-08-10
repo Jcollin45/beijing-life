@@ -37,6 +37,9 @@ check('interior consumer loads before game',manifestFiles.indexOf('campus-interi
   manifestFiles.indexOf('campus-interior-core')<manifestFiles.indexOf('game'));
 check('runtime contract requires CampusInteriors',/\['CampusInteriors',\s*'places placeKey buildFloor validate'\]/.test(entryHtml));
 check('game registers blueprint places',/Object\.assign\(PLACES,\s*CampusInteriors\.places\)/.test(gameJs));
+check('indoor figures use compact contact shadows rather than corridor-length sun shadows',
+  /width=\(indoorContact \? \.48 :/.test(gameJs)&&/depth=\(indoorContact \? \.34 :/.test(gameJs)&&
+  /alpha:indoorContact \? \.16 :/.test(gameJs));
 check('shared chair and bench geometry follows the authored +z facing convention',
   /ground\+\.70,-d\*\.38/.test(coreJs)&&/y\+h\*\.74,-d\*\.35/.test(coreJs));
 const renderedPrefabCases=new Set([...coreJs.matchAll(/case\s+'(PF-[A-Z0-9-]+)'/g)].map(m=>m[1]));
@@ -216,7 +219,7 @@ function walkMap(scene,b,step=.20,radius=.30){
     x>room.bounds[0]+radius&&x<room.bounds[1]-radius&&z>room.bounds[2]+radius&&z<room.bounds[3]-radius))};
 }
 
-const scenes=[];
+const scenes=[],visualReviewDefects=[],authoredVisualReviewFloors=new Set();
 function renderedPartOutsideFixture(part,fixture,tolerance=.09){
   const m=part.m;if(!m)return false;
   const yaw=fixture.yaw||0,c=Math.cos(yaw),s=Math.sin(yaw),u=[c,-s],v=[s,c];
@@ -271,6 +274,40 @@ for(const [name,build] of builders){
     scene&&scene.things.filter(t=>t.exit&&!['campus','classroom','library'].includes(t.exit.place)&&!keys.includes(t.exit.place)).map(t=>t.exit.place).join(','));
 
   const b=plan.buildings.find(q=>q.id===scene.buildingId),f=scene.blueprintFloor;
+  const programmeReview=f.visualReview&&f.visualReview.programme;
+  if(programmeReview){
+    authoredVisualReviewFloors.add(`${b.id}/F${f.level}`);
+    const room=f.rooms.find(q=>q.id===programmeReview.roomId),pose=programmeReview.at||{},radius=.32,
+      inside=(bounds,x,z,pad=0)=>x>=bounds[0]+pad&&x<=bounds[1]-pad&&z>=bounds[2]+pad&&z<=bounds[3]-pad;
+    if(!room)visualReviewDefects.push(`${b.id}/F${f.level}:missing-room:${programmeReview.roomId}`);
+    else if(![pose.x,pose.z,pose.yaw].every(Number.isFinite))visualReviewDefects.push(`${b.id}/F${f.level}:non-finite-pose`);
+    else if(!inside(room.bounds,pose.x,pose.z,radius))visualReviewDefects.push(`${b.id}/F${f.level}:pose-outside-${room.id}`);
+    else if(scene.solids.some(s=>!s.open&&pose.x>s.x0-radius&&pose.x<s.x1+radius&&pose.z>s.z0-radius&&pose.z<s.z1+radius))
+      visualReviewDefects.push(`${b.id}/F${f.level}:pose-body-blocked`);
+    else {
+      const doorLeaves=f.rooms.flatMap(q=>(q.doors||[]).map(door=>{
+        const vertical=door.side==='west'||door.side==='east',w=door.width||.9,dx=door.at[0],dz=door.at[2];
+        return vertical
+          ?{x0:dx+(door.side==='west'?1:-1)*w*.39-w*.39,x1:dx+(door.side==='west'?1:-1)*w*.39+w*.39,
+            z0:dz-w/2-.06,z1:dz-w/2+.06}
+          :{x0:dx-w/2-.06,x1:dx-w/2+.06,
+            z0:dz+(door.side==='south'?1:-1)*w*.39-w*.39,z1:dz+(door.side==='south'?1:-1)*w*.39+w*.39};
+      })),sightBlocked=(x,z,pad=.055)=>scene.blockers.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
+        scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
+        doorLeaves.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad),
+        fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw),back=[3.6,3.2,2.8,2.4,2.0,1.7,1.4].find(distance=>{
+          const cx=pose.x-fx*distance,cz=pose.z-fz*distance;
+          if(!inside(b.localBounds,cx,cz,.18))return false;
+          for(let q=.12;q<=distance;q+=.10)if(sightBlocked(pose.x-fx*q,pose.z-fz*q))return false;
+          return true;
+        });
+      let front=0;
+      for(let q=.16;q<=6;q+=.12){const x=pose.x+fx*q,z=pose.z+fz*q;
+        if(!inside(room.bounds,x,z,.10)||sightBlocked(x,z,.025))break;front=q;}
+      if(!back)visualReviewDefects.push(`${b.id}/F${f.level}:rear-camera-blocked`);
+      if(front<.72)visualReviewDefects.push(`${b.id}/F${f.level}:front-depth-${front.toFixed(2)}m`);
+    }
+  }
   const fixtureRows=f.rooms.flatMap(r=>r.contents).concat(f.sharedObjects);
   const materialDiversity=new Set(fixtureRows.map(o=>o.material)).size;
   check(`${name} uses a coherent multi-material palette`,materialDiversity>=10,materialDiversity);
@@ -319,6 +356,14 @@ for(const [name,build] of builders){
   const unreachableThings=scene.things.filter(t=>!walk.points.some(([x,z])=>Math.hypot(x-t.focus[0],z-t.focus[1])<=(t.reach||1.5)));
   check(`${name} interactions have a reachable approach`,unreachableThings.length===0,unreachableThings.map(t=>t.hz).join(','));
 }
+
+const requiredVisualReviewFloors=plan.buildings.filter(b=>['B02','B03','B04','B06','B07','B08'].includes(b.id))
+  .flatMap(b=>b.floorsPlan.map(f=>`${b.id}/F${f.level}`)),missingVisualReviewFloors=requiredVisualReviewFloors
+  .filter(key=>!authoredVisualReviewFloors.has(key));
+check('visually weak buildings have curated programme review poses',missingVisualReviewFloors.length===0,
+  missingVisualReviewFloors.join(','));
+check('curated programme review poses are body-clear with open front and rear sightlines',
+  visualReviewDefects.length===0,visualReviewDefects.slice(0,16).join(','));
 
 const byBuilding=new Map();
 for(const [,scene] of scenes){const row=byBuilding.get(scene.buildingId)||[];row.push(scene);byBuilding.set(scene.buildingId,row);}

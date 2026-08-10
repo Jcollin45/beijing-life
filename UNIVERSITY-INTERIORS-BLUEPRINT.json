@@ -8,7 +8,7 @@
     "units": "metres",
     "generatedFrom": "tools/generate-university-interiors-blueprint.js",
     "sourceOfTruth": "JSON",
-    "canonicalGeometryHash": "40a769d092a49e1e85428ea2d5dfe37b91eb1bd67a1769877b3566f5856c4896"
+    "canonicalGeometryHash": "6476f8767bed71a00b8020016a0762915379cd0c6ded7950395f1c588886497b"
   },
   "coordinateContract": {
     "axis": {
@@ -381,7 +381,7 @@
     "buildings": 8,
     "floors": 28,
     "rooms": 205,
-    "fixtureInstances": 3893,
+    "fixtureInstances": 3914,
     "beds": 48,
     "studentSeatPairs": 4,
     "labBenches": 21,
@@ -20629,7 +20629,7 @@
                   "material": "M-OAK-DARK",
                   "collision": "prefab-default",
                   "purpose": "classified collection with accessible parallel and cross aisles",
-                  "yaw": 0,
+                  "yaw": 3.141592653589793,
                   "classification": "新书与期刊 1",
                   "minimumFaceAisle": 1.2,
                   "minimumCrossAisle": 1.2
@@ -20641,7 +20641,7 @@
                   "at": [
                     -4.45,
                     1.43,
-                    3.875
+                    6.325
                   ],
                   "size": [
                     0.58,
@@ -20650,8 +20650,8 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
-                  "yaw": 0,
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
+                  "yaw": 3.141592653589793,
                   "text": "新书与期刊 · 1"
                 },
                 {
@@ -20671,7 +20671,7 @@
                   "material": "M-OAK-DARK",
                   "collision": "prefab-default",
                   "purpose": "classified collection with accessible parallel and cross aisles",
-                  "yaw": 0,
+                  "yaw": 3.141592653589793,
                   "classification": "新书与期刊 2",
                   "minimumFaceAisle": 1.2,
                   "minimumCrossAisle": 1.2
@@ -20683,7 +20683,7 @@
                   "at": [
                     -1.95,
                     1.43,
-                    3.875
+                    6.325
                   ],
                   "size": [
                     0.58,
@@ -20692,8 +20692,8 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
-                  "yaw": 0,
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
+                  "yaw": 3.141592653589793,
                   "text": "新书与期刊 · 2"
                 },
                 {
@@ -22681,7 +22681,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 92
+          "occupancy": 92,
+          "visualReview": {
+            "programme": {
+              "roomId": "B02/F1/NEW",
+              "at": {
+                "x": -2.75,
+                "z": 7.7,
+                "yaw": 3.141592653589793
+              }
+            }
+          }
         },
         {
           "level": 2,
@@ -22753,7 +22763,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "人文社科书库 · 1"
                 },
@@ -22795,7 +22805,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "人文社科书库 · 2"
                 },
@@ -22837,7 +22847,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "人文社科书库 · 3"
                 },
@@ -22879,7 +22889,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "人文社科书库 · 4"
                 },
@@ -24993,6 +25003,45 @@
               "text": "人文社科书库 · 大阅览室 · 小组学习室"
             },
             {
+              "id": "B02/F2/SPINE/IDENTITY-WALL",
+              "label": "floor-specific quiet-spine identity lining",
+              "prefab": "PF-WALL-RUN",
+              "at": [
+                3.36,
+                4.62,
+                8.35
+              ],
+              "size": [
+                0.055,
+                2.48,
+                2.45
+              ],
+              "material": "M-FABRIC-SAND",
+              "collision": "none",
+              "purpose": "genuine acoustic wall finish making each upper library floor legible from its arrival spine",
+              "yaw": 0
+            },
+            {
+              "id": "B02/F2/SPINE/IDENTITY",
+              "label": "wall-mounted bilingual library sign",
+              "prefab": "PF-ROOM-SIGN",
+              "at": [
+                3.32,
+                4.82,
+                8.35
+              ],
+              "size": [
+                1.95,
+                0.3,
+                0.045
+              ],
+              "material": "M-SCREEN",
+              "collision": "none",
+              "purpose": "room identity and collection wayfinding",
+              "yaw": -1.5707963267948966,
+              "text": "人文学科 · HUMANITIES"
+            },
+            {
               "id": "B02/F2/SPINE/CEILING/LIGHT01",
               "label": "warm linear library light",
               "prefab": "PF-CEILING-LIGHT",
@@ -25056,7 +25105,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 72
+          "occupancy": 72,
+          "visualReview": {
+            "programme": {
+              "roomId": "B02/F2/SOUTH",
+              "at": {
+                "x": -2.9,
+                "z": -7.2,
+                "yaw": 0
+              }
+            }
+          }
         },
         {
           "level": 3,
@@ -25128,7 +25187,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "科学期刊书库 · 1"
                 },
@@ -25170,7 +25229,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "科学期刊书库 · 2"
                 },
@@ -25212,7 +25271,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "科学期刊书库 · 3"
                 },
@@ -25254,7 +25313,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "科学期刊书库 · 4"
                 },
@@ -25860,7 +25919,8 @@
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "research support and digital collections",
-                  "yaw": 3.141592653589793
+                  "yaw": 3.141592653589793,
+                  "text": "数字学术 · 数据库 · 电子期刊"
                 },
                 {
                   "id": "B02/F3/NORTH/WINDOWS/BAY01/GLASS",
@@ -27329,6 +27389,45 @@
               "text": "科学期刊书库 · 电子阅览室 · 小组学习室"
             },
             {
+              "id": "B02/F3/SPINE/IDENTITY-WALL",
+              "label": "floor-specific quiet-spine identity lining",
+              "prefab": "PF-WALL-RUN",
+              "at": [
+                3.36,
+                7.82,
+                8.35
+              ],
+              "size": [
+                0.055,
+                2.48,
+                2.45
+              ],
+              "material": "M-LAB-BLUE",
+              "collision": "none",
+              "purpose": "genuine acoustic wall finish making each upper library floor legible from its arrival spine",
+              "yaw": 0
+            },
+            {
+              "id": "B02/F3/SPINE/IDENTITY",
+              "label": "wall-mounted bilingual library sign",
+              "prefab": "PF-ROOM-SIGN",
+              "at": [
+                3.32,
+                8.02,
+                8.35
+              ],
+              "size": [
+                1.95,
+                0.3,
+                0.045
+              ],
+              "material": "M-SCREEN",
+              "collision": "none",
+              "purpose": "room identity and collection wayfinding",
+              "yaw": -1.5707963267948966,
+              "text": "科学期刊 · DIGITAL JOURNALS"
+            },
+            {
               "id": "B02/F3/SPINE/CEILING/LIGHT01",
               "label": "warm linear library light",
               "prefab": "PF-CEILING-LIGHT",
@@ -27392,7 +27491,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 72
+          "occupancy": 72,
+          "visualReview": {
+            "programme": {
+              "roomId": "B02/F3/SOUTH",
+              "at": {
+                "x": -2.9,
+                "z": -7.2,
+                "yaw": 0
+              }
+            }
+          }
         },
         {
           "level": 4,
@@ -27464,7 +27573,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "特藏与档案 · 1"
                 },
@@ -27506,7 +27615,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "特藏与档案 · 2"
                 },
@@ -27548,7 +27657,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "特藏与档案 · 3"
                 },
@@ -27590,7 +27699,7 @@
                   ],
                   "material": "M-SCREEN",
                   "collision": "none",
-                  "purpose": "eye-level shelf range and collection marker",
+                  "purpose": "eye-level shelf range and collection marker on the presented stack face",
                   "yaw": 0,
                   "text": "特藏与档案 · 4"
                 },
@@ -29459,6 +29568,45 @@
               "text": "特藏与档案 · 安静阅览室 · 馆员办公室"
             },
             {
+              "id": "B02/F4/SPINE/IDENTITY-WALL",
+              "label": "floor-specific quiet-spine identity lining",
+              "prefab": "PF-WALL-RUN",
+              "at": [
+                3.36,
+                11.02,
+                8.35
+              ],
+              "size": [
+                0.055,
+                2.48,
+                2.45
+              ],
+              "material": "M-OAK-DARK",
+              "collision": "none",
+              "purpose": "genuine acoustic wall finish making each upper library floor legible from its arrival spine",
+              "yaw": 0
+            },
+            {
+              "id": "B02/F4/SPINE/IDENTITY",
+              "label": "wall-mounted bilingual library sign",
+              "prefab": "PF-ROOM-SIGN",
+              "at": [
+                3.32,
+                11.22,
+                8.35
+              ],
+              "size": [
+                1.95,
+                0.3,
+                0.045
+              ],
+              "material": "M-SCREEN",
+              "collision": "none",
+              "purpose": "room identity and collection wayfinding",
+              "yaw": -1.5707963267948966,
+              "text": "特藏阅览 · SPECIAL COLLECTIONS"
+            },
+            {
               "id": "B02/F4/SPINE/CEILING/LIGHT01",
               "label": "warm linear library light",
               "prefab": "PF-CEILING-LIGHT",
@@ -29522,7 +29670,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 48
+          "occupancy": 48,
+          "visualReview": {
+            "programme": {
+              "roomId": "B02/F4/SOUTH",
+              "at": {
+                "x": -2.9,
+                "z": -7.2,
+                "yaw": 0
+              }
+            }
+          }
         }
       ]
     },
@@ -29599,7 +29757,7 @@
           "width": 2.1
         }
       },
-      "design": "A working 32-place campus canteen with a recognisable daily rhythm: eight correctly oriented four-place tables sit on a measured 1.20 m aisle grid beneath warm pendants and washable acoustic rafts; two tables reserve wheelchair bays; deep composed window bays follow the east facade; and restrained brick, oak, blue textile and bilingual daily-service graphics give the hall an authentic student identity. A numbered 1.50 m south-to-north queue progresses from trays through four visibly stocked staffed food bays to payment and pickup, while the north return feeds a physically separate dirty wash room. The west back-of-house maintains continuous storage, changing, clean-prep, hot-line and wash-up routes under colour-accurate task lighting, hygiene signage and live production/temperature boards.",
+      "design": "A working 32-place campus canteen with a recognisable daily rhythm: eight correctly oriented four-place tables sit on a measured 1.20 m aisle grid beneath warm pendants and washable acoustic rafts; two tables reserve wheelchair bays; deep composed window bays follow the east facade; and restrained brick, oak, blue textile and bilingual daily-service graphics give the hall an authentic student identity. A numbered 1.50 m south-to-north queue progresses from trays through four visibly different rice, wok-greens, tofu and braise bays—each with a composed service counter, its own operational sidecar, durable category front, guard price display and batch/allergen message—to payment and pickup, while the north return feeds a physically separate dirty wash room. The west back-of-house maintains continuous storage, changing, clean-prep, hot-line and wash-up routes under colour-accurate task lighting, hygiene signage and live production/temperature boards.",
       "interiorCharacter": {
         "publicPalette": [
           "sealed oak tables",
@@ -29624,6 +29782,7 @@
         "serviceGraphics": [
           "daily menu and hours",
           "numbered food-bay sequence",
+          "guard-mounted dish/price/batch labels",
           "allergen legend",
           "clean-plate campaign",
           "waste-sorting guide"
@@ -31477,19 +31636,38 @@
                     -6.35
                   ],
                   "size": [
-                    2,
+                    1.2,
                     1.15,
                     0.86
                   ],
-                  "material": "M-STAINLESS",
+                  "material": "M-OAK",
                   "collision": "prefab-default",
-                  "purpose": "rice service bay with integral pans, utensils and sneeze guard",
+                  "purpose": "rice service bay with integral pans, utensils, sneeze guard and a durable category-colour front",
                   "yaw": 1.5707963267948966,
                   "foodDisplay": {
                     "dish": "米饭",
                     "allergenCard": true,
                     "batchLabel": true
                   }
+                },
+                {
+                  "id": "B03/F1/SERVE/C1-SIDECAR",
+                  "label": "stacked-bowl and rice-lid rack",
+                  "prefab": "PF-TRAY-RACK",
+                  "at": [
+                    -0.82,
+                    0,
+                    -5.45
+                  ],
+                  "size": [
+                    0.56,
+                    1.28,
+                    0.5
+                  ],
+                  "material": "M-OAK",
+                  "collision": "prefab-default",
+                  "purpose": "bowls, rice lids and clean serving paddles staged at the steam-rice bay",
+                  "yaw": 1.5707963267948966
                 },
                 {
                   "id": "B03/F1/SERVE/C1-SIGN",
@@ -31501,7 +31679,7 @@
                     -6.35
                   ],
                   "size": [
-                    1.55,
+                    1.7,
                     0.31,
                     0.05
                   ],
@@ -31509,7 +31687,27 @@
                   "collision": "none",
                   "purpose": "one readable sign per serving bay",
                   "yaw": 1.5707963267948966,
-                  "text": "2 · 米饭 · RICE"
+                  "text": "2 · 米饭 · RICE · 蒸饭 · STEAM"
+                },
+                {
+                  "id": "B03/F1/SERVE/C1-PRICE",
+                  "label": "guard-mounted dish and price display",
+                  "prefab": "PF-SCREEN",
+                  "at": [
+                    -0.34,
+                    1.55,
+                    -6.47
+                  ],
+                  "size": [
+                    0.56,
+                    0.25,
+                    0.035
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "dish identity, price, batch and allergen status directly on the sneeze guard",
+                  "yaw": 1.5707963267948966,
+                  "text": "米饭 · ¥2 · 当日"
                 },
                 {
                   "id": "B03/F1/SERVE/C1-WARM",
@@ -31561,19 +31759,38 @@
                     -4
                   ],
                   "size": [
-                    2,
+                    1.2,
                     1.15,
                     0.86
                   ],
-                  "material": "M-STAINLESS",
+                  "material": "M-WALL-GREEN",
                   "collision": "prefab-default",
-                  "purpose": "greens service bay with integral pans, utensils and sneeze guard",
+                  "purpose": "greens service bay with integral pans, utensils, sneeze guard and a durable category-colour front",
                   "yaw": 1.5707963267948966,
                   "foodDisplay": {
                     "dish": "青菜",
                     "allergenCard": true,
                     "batchLabel": true
                   }
+                },
+                {
+                  "id": "B03/F1/SERVE/C2-SIDECAR",
+                  "label": "compact induction wok sidecar",
+                  "prefab": "PF-KITCHEN-RANGE",
+                  "at": [
+                    -0.82,
+                    0,
+                    -3.1
+                  ],
+                  "size": [
+                    0.62,
+                    0.92,
+                    0.78
+                  ],
+                  "material": "M-STAINLESS",
+                  "collision": "prefab-default",
+                  "purpose": "staff-controlled final toss and hot holding for the vegetable bay",
+                  "yaw": 1.5707963267948966
                 },
                 {
                   "id": "B03/F1/SERVE/C2-SIGN",
@@ -31585,7 +31802,7 @@
                     -4
                   ],
                   "size": [
-                    1.55,
+                    1.7,
                     0.31,
                     0.05
                   ],
@@ -31593,7 +31810,27 @@
                   "collision": "none",
                   "purpose": "one readable sign per serving bay",
                   "yaw": 1.5707963267948966,
-                  "text": "3 · 青菜 · GREENS"
+                  "text": "3 · 青菜 · GREENS · 现炒 · WOK"
+                },
+                {
+                  "id": "B03/F1/SERVE/C2-PRICE",
+                  "label": "guard-mounted dish and price display",
+                  "prefab": "PF-SCREEN",
+                  "at": [
+                    -0.34,
+                    1.55,
+                    -4.12
+                  ],
+                  "size": [
+                    0.56,
+                    0.25,
+                    0.035
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "dish identity, price, batch and allergen status directly on the sneeze guard",
+                  "yaw": 1.5707963267948966,
+                  "text": "青菜 · ¥3 · 素"
                 },
                 {
                   "id": "B03/F1/SERVE/C2-WARM",
@@ -31636,6 +31873,25 @@
                   "yaw": 0
                 },
                 {
+                  "id": "B03/F1/SERVE/C2-HOOD",
+                  "label": "compact vegetable-bay extraction canopy",
+                  "prefab": "PF-HOOD",
+                  "at": [
+                    -0.82,
+                    4.42,
+                    -3.1
+                  ],
+                  "size": [
+                    0.9,
+                    0.52,
+                    0.86
+                  ],
+                  "material": "M-STAINLESS",
+                  "collision": "none",
+                  "purpose": "localized extraction over the staff-controlled induction wok sidecar",
+                  "yaw": 1.5707963267948966
+                },
+                {
                   "id": "B03/F1/SERVE/C3",
                   "label": "豆腐 serving counter",
                   "prefab": "PF-SERVING-COUNTER",
@@ -31645,19 +31901,38 @@
                     -1.65
                   ],
                   "size": [
-                    2,
+                    1.2,
                     1.15,
                     0.86
                   ],
-                  "material": "M-STAINLESS",
+                  "material": "M-TILE-LIGHT",
                   "collision": "prefab-default",
-                  "purpose": "tofu service bay with integral pans, utensils and sneeze guard",
+                  "purpose": "tofu service bay with integral pans, utensils, sneeze guard and a durable category-colour front",
                   "yaw": 1.5707963267948966,
                   "foodDisplay": {
                     "dish": "豆腐",
                     "allergenCard": true,
                     "batchLabel": true
                   }
+                },
+                {
+                  "id": "B03/F1/SERVE/C3-SIDECAR",
+                  "label": "monitored tofu holding cabinet",
+                  "prefab": "PF-FRIDGE",
+                  "at": [
+                    -0.82,
+                    0,
+                    -0.75
+                  ],
+                  "size": [
+                    0.58,
+                    1.3,
+                    0.66
+                  ],
+                  "material": "M-STAINLESS",
+                  "collision": "prefab-default",
+                  "purpose": "separate temperature-controlled tofu and garnish holding",
+                  "yaw": 1.5707963267948966
                 },
                 {
                   "id": "B03/F1/SERVE/C3-SIGN",
@@ -31669,7 +31944,7 @@
                     -1.65
                   ],
                   "size": [
-                    1.55,
+                    1.7,
                     0.31,
                     0.05
                   ],
@@ -31677,7 +31952,27 @@
                   "collision": "none",
                   "purpose": "one readable sign per serving bay",
                   "yaw": 1.5707963267948966,
-                  "text": "4 · 豆腐 · TOFU"
+                  "text": "4 · 豆腐 · TOFU · 温控 · HOLD"
+                },
+                {
+                  "id": "B03/F1/SERVE/C3-PRICE",
+                  "label": "guard-mounted dish and price display",
+                  "prefab": "PF-SCREEN",
+                  "at": [
+                    -0.34,
+                    1.55,
+                    -1.77
+                  ],
+                  "size": [
+                    0.56,
+                    0.25,
+                    0.035
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "dish identity, price, batch and allergen status directly on the sneeze guard",
+                  "yaw": 1.5707963267948966,
+                  "text": "豆腐 · ¥4 · 当日"
                 },
                 {
                   "id": "B03/F1/SERVE/C3-WARM",
@@ -31729,19 +32024,39 @@
                     0.7
                   ],
                   "size": [
-                    2,
+                    1.2,
                     1.15,
                     0.86
                   ],
-                  "material": "M-STAINLESS",
+                  "material": "M-OAK-DARK",
                   "collision": "prefab-default",
-                  "purpose": "braised pork service bay with integral pans, utensils and sneeze guard",
+                  "purpose": "braised pork service bay with integral pans, utensils, sneeze guard and a durable category-colour front",
                   "yaw": 1.5707963267948966,
                   "foodDisplay": {
                     "dish": "红烧肉",
                     "allergenCard": true,
                     "batchLabel": true
                   }
+                },
+                {
+                  "id": "B03/F1/SERVE/C4-SIDECAR",
+                  "label": "braise portioning sidecar",
+                  "prefab": "PF-PREP-TABLE",
+                  "at": [
+                    -0.82,
+                    0,
+                    1.6
+                  ],
+                  "size": [
+                    0.62,
+                    0.9,
+                    0.62
+                  ],
+                  "material": "M-STAINLESS",
+                  "collision": "prefab-default",
+                  "purpose": "staff-side final portioning with a separate red board",
+                  "yaw": 1.5707963267948966,
+                  "boardColor": "red"
                 },
                 {
                   "id": "B03/F1/SERVE/C4-SIGN",
@@ -31753,7 +32068,7 @@
                     0.7
                   ],
                   "size": [
-                    1.55,
+                    1.7,
                     0.31,
                     0.05
                   ],
@@ -31761,7 +32076,27 @@
                   "collision": "none",
                   "purpose": "one readable sign per serving bay",
                   "yaw": 1.5707963267948966,
-                  "text": "5 · 红烧肉 · BRAISED PORK"
+                  "text": "5 · 红烧肉 · BRAISED PORK · 分切 · PORTION"
+                },
+                {
+                  "id": "B03/F1/SERVE/C4-PRICE",
+                  "label": "guard-mounted dish and price display",
+                  "prefab": "PF-SCREEN",
+                  "at": [
+                    -0.34,
+                    1.55,
+                    0.58
+                  ],
+                  "size": [
+                    0.56,
+                    0.25,
+                    0.035
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "dish identity, price, batch and allergen status directly on the sneeze guard",
+                  "yaw": 1.5707963267948966,
+                  "text": "红烧肉 · ¥5 · 当日"
                 },
                 {
                   "id": "B03/F1/SERVE/C4-WARM",
@@ -33739,7 +34074,17 @@
               "text": "安全出口"
             }
           ],
-          "occupancy": 52
+          "occupancy": 52,
+          "visualReview": {
+            "programme": {
+              "roomId": "B03/F1/DINING",
+              "at": {
+                "x": 3.42,
+                "z": -3.88,
+                "yaw": 0
+              }
+            }
+          }
         }
       ]
     },
@@ -36207,7 +36552,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 22
+          "occupancy": 22,
+          "visualReview": {
+            "programme": {
+              "roomId": "B04/F1/LOBBY",
+              "at": {
+                "x": -1.7,
+                "z": -1.9,
+                "yaw": -1.5707963267948966
+              }
+            }
+          }
         },
         {
           "level": 2,
@@ -39605,7 +39960,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 26
+          "occupancy": 26,
+          "visualReview": {
+            "programme": {
+              "roomId": "B04/F2/201",
+              "at": {
+                "x": -1.7,
+                "z": -6,
+                "yaw": -1.5707963267948966
+              }
+            }
+          }
         },
         {
           "level": 3,
@@ -43003,7 +43368,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 26
+          "occupancy": 26,
+          "visualReview": {
+            "programme": {
+              "roomId": "B04/F3/301",
+              "at": {
+                "x": -1.7,
+                "z": -6,
+                "yaw": -1.5707963267948966
+              }
+            }
+          }
         },
         {
           "level": 4,
@@ -46401,7 +46776,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 26
+          "occupancy": 26,
+          "visualReview": {
+            "programme": {
+              "roomId": "B04/F4/401",
+              "at": {
+                "x": -1.7,
+                "z": -6,
+                "yaw": -1.5707963267948966
+              }
+            }
+          }
         },
         {
           "level": 5,
@@ -49799,7 +50184,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 26
+          "occupancy": 26,
+          "visualReview": {
+            "programme": {
+              "roomId": "B04/F5/501",
+              "at": {
+                "x": -1.7,
+                "z": -6,
+                "yaw": -1.5707963267948966
+              }
+            }
+          }
         },
         {
           "level": 6,
@@ -52736,7 +53131,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 22
+          "occupancy": 22,
+          "visualReview": {
+            "programme": {
+              "roomId": "B04/F6/601",
+              "at": {
+                "x": -1.7,
+                "z": -6,
+                "yaw": -1.5707963267948966
+              }
+            }
+          }
         }
       ]
     },
@@ -66642,40 +67047,40 @@
                 },
                 {
                   "id": "B06/F1/WN/CLEAN",
-                  "label": "clean preparation island",
-                  "prefab": "PF-PREP-TABLE",
+                  "label": "serviced clean preparation island",
+                  "prefab": "PF-LAB-BENCH",
                   "at": [
-                    -4.1,
+                    -4.05,
                     0,
-                    3
+                    4.2
                   ],
                   "size": [
-                    2.6,
-                    0.9,
-                    0.8
+                    2.5,
+                    0.92,
+                    0.82
                   ],
                   "material": "M-STAINLESS",
                   "collision": "prefab-default",
-                  "purpose": "clean glassware and teaching-set preparation",
+                  "purpose": "clean glassware and teaching-set preparation with drawers, service rail and task fittings",
                   "yaw": 0
                 },
                 {
                   "id": "B06/F1/WN/DIRTY",
-                  "label": "receiving and breakdown island",
-                  "prefab": "PF-PREP-TABLE",
+                  "label": "receiving wash-and-breakdown island",
+                  "prefab": "PF-SINK-DOUBLE",
                   "at": [
-                    -4.1,
+                    -4.05,
                     0,
                     8
                   ],
                   "size": [
-                    2.6,
-                    0.9,
-                    0.8
+                    2.4,
+                    0.92,
+                    0.82
                   ],
                   "material": "M-STAINLESS",
                   "collision": "prefab-default",
-                  "purpose": "incoming equipment inspection and breakdown",
+                  "purpose": "recognizable twin-bowl equipment wash, incoming inspection and breakdown station",
                   "yaw": 0
                 },
                 {
@@ -66695,7 +67100,7 @@
                   "material": "M-STAINLESS",
                   "collision": "prefab-default",
                   "purpose": "equipment washing",
-                  "yaw": 1.5707963267948966
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B06/F1/WN/FRIDGE",
@@ -66721,38 +67126,38 @@
                   "label": "receiving cart",
                   "prefab": "PF-SHELF",
                   "at": [
-                    -3.8,
+                    -6.82,
                     0,
-                    1
+                    2.8
                   ],
                   "size": [
-                    0.75,
+                    0.65,
                     1.15,
-                    0.5
+                    0.42
                   ],
                   "material": "M-STEEL",
                   "collision": "prefab-default",
                   "purpose": "incoming consumables and teaching sets",
-                  "yaw": 0
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B06/F1/WN/STORE",
-                  "label": "contained preparation shelving",
-                  "prefab": "PF-SHELF",
+                  "label": "glazed clean-equipment cabinet",
+                  "prefab": "PF-CLINIC-CABINET",
                   "at": [
-                    -4.1,
+                    -6.82,
                     0,
-                    10.25
+                    7.15
                   ],
                   "size": [
-                    2.2,
+                    2.1,
                     2,
-                    0.48
+                    0.45
                   ],
-                  "material": "M-STEEL",
+                  "material": "M-CLINIC",
                   "collision": "prefab-default",
-                  "purpose": "sealed clean glassware and consumables",
-                  "yaw": 0
+                  "purpose": "sealed clean glassware, drying trays and consumables in a composed storage cabinet",
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B06/F1/WN/PPE",
@@ -66771,7 +67176,7 @@
                   "material": "M-LAB-BLUE",
                   "collision": "prefab-default",
                   "purpose": "coats, gloves and receiving PPE",
-                  "yaw": 1.5707963267948966
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B06/F1/WN/EYE",
@@ -66817,9 +67222,9 @@
                   "label": "clean preparation floor field",
                   "prefab": "PF-WALL-RUN",
                   "at": [
-                    -4.1,
+                    -4.05,
                     0.016,
-                    3
+                    4.2
                   ],
                   "size": [
                     3,
@@ -66877,9 +67282,9 @@
                   "label": "slender laboratory service rail",
                   "prefab": "PF-WALL-RUN",
                   "at": [
-                    -4.1,
+                    -4.05,
                     3.31,
-                    3
+                    4.2
                   ],
                   "size": [
                     2.65,
@@ -66896,9 +67301,9 @@
                   "label": "sealed high-CRI laboratory light",
                   "prefab": "PF-CEILING-LIGHT",
                   "at": [
-                    -4.1,
+                    -4.05,
                     3.22,
-                    3
+                    4.2
                   ],
                   "size": [
                     1.908,
@@ -66917,7 +67322,7 @@
                   "label": "slender laboratory service rail",
                   "prefab": "PF-WALL-RUN",
                   "at": [
-                    -4.1,
+                    -4.05,
                     3.31,
                     8
                   ],
@@ -66936,7 +67341,7 @@
                   "label": "sealed high-CRI laboratory light",
                   "prefab": "PF-CEILING-LIGHT",
                   "at": [
-                    -4.1,
+                    -4.05,
                     3.22,
                     8
                   ],
@@ -68952,7 +69357,17 @@
               "yaw": 0
             }
           ],
-          "occupancy": 65
+          "occupancy": 65,
+          "visualReview": {
+            "programme": {
+              "roomId": "B06/F1/WN",
+              "at": {
+                "x": -4,
+                "z": 6.6,
+                "yaw": -1.18
+              }
+            }
+          }
         },
         {
           "level": 2,
@@ -69650,7 +70065,7 @@
                   "at": [
                     -3.5,
                     3.65,
-                    2.65
+                    4.1
                   ],
                   "size": [
                     2.4,
@@ -69664,21 +70079,21 @@
                 },
                 {
                   "id": "B06/F2/WN/ISLAND-B",
-                  "label": "organic synthesis island B",
-                  "prefab": "PF-LAB-BENCH",
+                  "label": "organic work-up and glassware-wash island",
+                  "prefab": "PF-SINK-DOUBLE",
                   "at": [
-                    -3.5,
+                    -3.65,
                     3.65,
                     8.15
                   ],
                   "size": [
-                    2.4,
+                    2.3,
                     0.92,
-                    0.9
+                    0.78
                   ],
-                  "material": "M-LAB-BLUE",
+                  "material": "M-STAINLESS",
                   "collision": "prefab-default",
-                  "purpose": "assembly and observation with a 1.48 m hood-side aisle",
+                  "purpose": "recognizable twin-bowl work-up, quench and glassware-wash station with a clear opposing-bench aisle",
                   "yaw": 0
                 },
                 {
@@ -69698,7 +70113,7 @@
                   "material": "M-STAINLESS",
                   "collision": "prefab-default",
                   "purpose": "contained solvent work",
-                  "yaw": 1.5707963267948966
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B06/F2/WN/HOOD-B",
@@ -69717,7 +70132,7 @@
                   "material": "M-STAINLESS",
                   "collision": "prefab-default",
                   "purpose": "contained synthesis work",
-                  "yaw": 1.5707963267948966
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B06/F2/WN/HOOD-C",
@@ -69736,7 +70151,7 @@
                   "material": "M-STAINLESS",
                   "collision": "prefab-default",
                   "purpose": "contained work-up and evaporation",
-                  "yaw": 1.5707963267948966
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B06/F2/WN/FLAMMABLE",
@@ -69755,7 +70170,7 @@
                   "material": "M-SAFETY-YELLOW",
                   "collision": "prefab-default",
                   "purpose": "compatible solvent storage",
-                  "yaw": 0
+                  "yaw": 1.5707963267948966
                 },
                 {
                   "id": "B06/F2/WN/PPE",
@@ -69793,7 +70208,7 @@
                   "material": "M-SAFETY-YELLOW",
                   "collision": "prefab-default",
                   "purpose": "emergency decontamination",
-                  "yaw": -1.5707963267948966
+                  "yaw": 1.5707963267948966
                 },
                 {
                   "id": "B06/F2/WN/EYE-CLEAR",
@@ -69841,7 +70256,7 @@
                   "at": [
                     -3.5,
                     6.96,
-                    2.65
+                    4.1
                   ],
                   "size": [
                     2.45,
@@ -69860,7 +70275,7 @@
                   "at": [
                     -3.5,
                     6.87,
-                    2.65
+                    4.1
                   ],
                   "size": [
                     1.764,
@@ -69879,7 +70294,7 @@
                   "label": "slender laboratory service rail",
                   "prefab": "PF-WALL-RUN",
                   "at": [
-                    -3.5,
+                    -3.65,
                     6.96,
                     8.15
                   ],
@@ -69898,7 +70313,7 @@
                   "label": "sealed high-CRI laboratory light",
                   "prefab": "PF-CEILING-LIGHT",
                   "at": [
-                    -3.5,
+                    -3.65,
                     6.87,
                     8.15
                   ],
@@ -71726,7 +72141,17 @@
               "yaw": 0
             }
           ],
-          "occupancy": 55
+          "occupancy": 55,
+          "visualReview": {
+            "programme": {
+              "roomId": "B06/F2/WN",
+              "at": {
+                "x": -3.8,
+                "z": 5.4,
+                "yaw": -1.5707963267948966
+              }
+            }
+          }
         },
         {
           "level": 3,
@@ -74459,7 +74884,17 @@
               "yaw": 0
             }
           ],
-          "occupancy": 55
+          "occupancy": 55,
+          "visualReview": {
+            "programme": {
+              "roomId": "B06/F3/WN",
+              "at": {
+                "x": -4.1,
+                "z": 4,
+                "yaw": 0
+              }
+            }
+          }
         },
         {
           "level": 4,
@@ -75059,16 +75494,16 @@
                   "at": [
                     -4.1,
                     10.95,
-                    2
+                    4.2
                   ],
                   "size": [
                     2.4,
                     0.92,
                     0.9
                   ],
-                  "material": "M-STEEL-DARK",
+                  "material": "M-OAK",
                   "collision": "prefab-default",
-                  "purpose": "electronics, soldering and assembly",
+                  "purpose": "recognizable electronics, soldering and assembly station with toolboard and prototype",
                   "yaw": 0
                 },
                 {
@@ -75092,41 +75527,42 @@
                 },
                 {
                   "id": "B06/F4/WN/TOOLS-A",
-                  "label": "maker tool rack A",
-                  "prefab": "PF-SHELF",
+                  "label": "robot telemetry and machine-status wall",
+                  "prefab": "PF-SCREEN",
                   "at": [
-                    -6.8,
-                    10.95,
-                    2.2
+                    -1.135,
+                    12.63,
+                    3.85
                   ],
                   "size": [
-                    1.35,
-                    2,
-                    0.48
+                    1.65,
+                    1,
+                    0.05
                   ],
-                  "material": "M-STEEL",
-                  "collision": "prefab-default",
-                  "purpose": "organized hand tools and electronics",
-                  "yaw": 1.5707963267948966
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "live robot state, ROS diagnostics, arm limits and test status",
+                  "yaw": 1.5707963267948966,
+                  "text": "机器人状态 · ROS · ARM · TEST"
                 },
                 {
                   "id": "B06/F4/WN/TOOLS-B",
-                  "label": "maker material rack B",
-                  "prefab": "PF-SHELF",
+                  "label": "glazed maker materials cabinet",
+                  "prefab": "PF-CLINIC-CABINET",
                   "at": [
-                    -6.8,
+                    -6.82,
                     10.95,
                     8.2
                   ],
                   "size": [
                     1.35,
-                    2,
-                    0.48
+                    1.9,
+                    0.45
                   ],
-                  "material": "M-STEEL",
+                  "material": "M-LAB-BLUE",
                   "collision": "prefab-default",
-                  "purpose": "filament, stock and robot components",
-                  "yaw": 1.5707963267948966
+                  "purpose": "organized filament, electronics stock, robot components and battery-safe trays",
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B06/F4/WN/CAD-A",
@@ -75192,12 +75628,12 @@
                   "at": [
                     -4,
                     10.966,
-                    5.2
+                    1.4
                   ],
                   "size": [
                     3,
                     0.022,
-                    2.2
+                    2
                   ],
                   "material": "M-RUBBER",
                   "collision": "none",
@@ -75212,7 +75648,7 @@
                   "at": [
                     -4.1,
                     14.26,
-                    2
+                    4.2
                   ],
                   "size": [
                     2.45,
@@ -75231,7 +75667,7 @@
                   "at": [
                     -4.1,
                     14.17,
-                    2
+                    4.2
                   ],
                   "size": [
                     1.764,
@@ -77295,7 +77731,17 @@
               "yaw": 0
             }
           ],
-          "occupancy": 55
+          "occupancy": 55,
+          "visualReview": {
+            "programme": {
+              "roomId": "B06/F4/WN",
+              "at": {
+                "x": -4,
+                "z": 6.6,
+                "yaw": -1.18
+              }
+            }
+          }
         }
       ]
     },
@@ -77423,7 +77869,7 @@
           "ratingMinutes": 60
         }
       },
-      "design": "A measured split-use student and health hub with two unmistakable but compatible identities. Warm 3000–3400 K pendants, oak, brick, blue textile, live club schedules, visible project work, studio-care details and composed media/rehearsal equipment animate the south student-centre rooms. North of the protected threshold, pale green ceilings, clinical laminate, hand-hygiene stations, privacy glazing, sound masking, acoustic confidentiality layers, dimmable counselling light and calm bilingual wayfinding create a quieter health setting. Interior glazing now follows the exact ground and upper exterior window rhythm, with frosted lower layers only where privacy requires them. Both identities meet only at a protected, self-closing core threshold; the two external arrivals, north and south stairs, accessible lift and colour-coded routes remain legible on every floor.",
+      "design": "A measured split-use student and health hub with two unmistakable but compatible identities. Warm 3000–3400 K pendants, oak, brick, blue textile, live club schedules, visible project work, correctly segmented safety mirrors and barres, floor formation marks, studio-care details and composed media/rehearsal equipment animate the south student-centre rooms. North of the protected threshold, pale green ceilings, clinical laminate, hand-hygiene stations, privacy glazing, sound masking, acoustic confidentiality layers, dimmable counselling light, a grouped health-demonstration screen/CPR/AED wall and calm bilingual wayfinding create a quieter health setting. Interior glazing now follows the exact ground and upper exterior window rhythm, with frosted lower layers only where privacy requires them. Both identities meet only at a protected, self-closing core threshold; the two external arrivals, north and south stairs, accessible lift and colour-coded routes remain legible on every floor.",
       "interiorCharacter": {
         "student": {
           "palette": [
@@ -77436,7 +77882,8 @@
           "details": [
             "live club schedule",
             "project display and lockers",
-            "studio-care rail and etiquette",
+            "segmented safety-mirror/barre wall",
+            "studio formation marks and care rail",
             "near-field media review speakers",
             "maker-table pendants"
           ]
@@ -77455,6 +77902,11 @@
             "acoustic wall and ceiling fields",
             "anonymous queue/status displays",
             "locked records and medicine storage"
+          ],
+          "education": [
+            "grouped health-teaching display",
+            "CPR and first-aid cabinet",
+            "clearly marked AED trainer"
           ]
         },
         "sharedCore": {
@@ -78879,6 +79331,44 @@
                   "yaw": 0
                 },
                 {
+                  "id": "B07/F1/CL-WAIT/DASHBOARD-S",
+                  "label": "pale-green clinic dashboard wall",
+                  "prefab": "PF-WALL-RUN",
+                  "at": [
+                    -2.235,
+                    1.43,
+                    2
+                  ],
+                  "size": [
+                    0.05,
+                    2.52,
+                    2.4
+                  ],
+                  "material": "M-WALL-GREEN",
+                  "collision": "none",
+                  "purpose": "washable architectural identity layer behind registration, anonymous queue status and public AED",
+                  "yaw": 0
+                },
+                {
+                  "id": "B07/F1/CL-WAIT/DASHBOARD-N",
+                  "label": "pale-green clinic clock wall",
+                  "prefab": "PF-WALL-RUN",
+                  "at": [
+                    -2.235,
+                    1.43,
+                    4.7
+                  ],
+                  "size": [
+                    0.05,
+                    2.52,
+                    0.65
+                  ],
+                  "material": "M-WALL-GREEN",
+                  "collision": "none",
+                  "purpose": "washable architectural identity layer north of the treatment-room doorway",
+                  "yaw": 0
+                },
+                {
                   "id": "B07/F1/CL-WAIT/WINDOW-W/GLAZING",
                   "label": "clinic waiting facade-aligned window glazing",
                   "prefab": "PF-WALL-RUN",
@@ -78960,6 +79450,26 @@
                   "collision": "none",
                   "purpose": "reassuring appointment and waiting-time reference",
                   "yaw": -1.5707963267948966
+                },
+                {
+                  "id": "B07/F1/CL-WAIT/TRIAGE-SIGN",
+                  "label": "registration and triage wall marker",
+                  "prefab": "PF-ROOM-SIGN",
+                  "at": [
+                    -2.27,
+                    2.36,
+                    1.55
+                  ],
+                  "size": [
+                    1.35,
+                    0.29,
+                    0.04
+                  ],
+                  "material": "M-SCREEN",
+                  "collision": "none",
+                  "purpose": "make the first clinical action unmistakable from the waiting room",
+                  "yaw": -1.5707963267948966,
+                  "text": "挂号 / 分诊 · REGISTER / TRIAGE"
                 },
                 {
                   "id": "B07/F1/CL-WAIT/RAFT-S",
@@ -80696,7 +81206,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 54
+          "occupancy": 54,
+          "visualReview": {
+            "programme": {
+              "roomId": "B07/F1/CL-WAIT",
+              "at": {
+                "x": -2.7,
+                "z": 3.5,
+                "yaw": -1.5707963267948966
+              }
+            }
+          }
         },
         {
           "level": 2,
@@ -80747,16 +81267,16 @@
                   "at": [
                     3.52,
                     4.45,
-                    -3.75
+                    -4.12
                   ],
                   "size": [
-                    3.2,
+                    1.55,
                     2,
                     0.04
                   ],
                   "material": "M-GLASS",
-                  "collision": "prefab-default",
-                  "purpose": "continuous rehearsal mirror",
+                  "collision": "none",
+                  "purpose": "south safety-backed rehearsal mirror and continuous timber barre",
                   "yaw": -1.5707963267948966
                 },
                 {
@@ -80766,16 +81286,16 @@
                   "at": [
                     3.52,
                     4.45,
-                    -1.85
+                    -2.43
                   ],
                   "size": [
-                    3.2,
+                    1.55,
                     2,
                     0.04
                   ],
                   "material": "M-GLASS",
-                  "collision": "prefab-default",
-                  "purpose": "continuous rehearsal mirror",
+                  "collision": "none",
+                  "purpose": "north safety-backed rehearsal mirror and continuous timber barre",
                   "yaw": -1.5707963267948966
                 },
                 {
@@ -80864,12 +81384,12 @@
                     -2.35
                   ],
                   "size": [
-                    0.42,
-                    0.72,
-                    0.28
+                    0.5,
+                    0.82,
+                    0.32
                   ],
                   "material": "M-STEEL-DARK",
-                  "collision": "prefab-default",
+                  "collision": "none",
                   "purpose": "distributed rehearsal audio",
                   "yaw": 1.5707963267948966
                 },
@@ -80883,12 +81403,12 @@
                     -4.55
                   ],
                   "size": [
-                    0.42,
-                    0.72,
-                    0.28
+                    0.5,
+                    0.82,
+                    0.32
                   ],
                   "material": "M-STEEL-DARK",
-                  "collision": "prefab-default",
+                  "collision": "none",
                   "purpose": "distributed rehearsal audio",
                   "yaw": -1.5707963267948966
                 },
@@ -80947,6 +81467,44 @@
                   "material": "M-OAK",
                   "collision": "none",
                   "purpose": "resilient architectural rehearsal floor with clear movement perimeter",
+                  "yaw": 0
+                },
+                {
+                  "id": "B07/F2/DANCE/CENTRE-LINE",
+                  "label": "rehearsal centre-line floor tape",
+                  "prefab": "PF-WALL-RUN",
+                  "at": [
+                    -1.05,
+                    3.034,
+                    -3.25
+                  ],
+                  "size": [
+                    6.4,
+                    0.018,
+                    0.035
+                  ],
+                  "material": "M-SAFETY-YELLOW",
+                  "collision": "none",
+                  "purpose": "flush architectural alignment line for formations, spacing and camera rehearsal",
+                  "yaw": 0
+                },
+                {
+                  "id": "B07/F2/DANCE/CROSS-MARK",
+                  "label": "rehearsal centre cross floor tape",
+                  "prefab": "PF-WALL-RUN",
+                  "at": [
+                    -1.05,
+                    3.035,
+                    -3.25
+                  ],
+                  "size": [
+                    0.035,
+                    0.019,
+                    1.65
+                  ],
+                  "material": "M-SAFETY-YELLOW",
+                  "collision": "none",
+                  "purpose": "flush architectural centre mark for dancers and accessibility-safe formation setup",
                   "yaw": 0
                 },
                 {
@@ -83496,7 +84054,17 @@
               "lumens": 2600
             }
           ],
-          "occupancy": 36
+          "occupancy": 36,
+          "visualReview": {
+            "programme": {
+              "roomId": "B07/F2/DANCE",
+              "at": {
+                "x": 0.2,
+                "z": -3.25,
+                "yaw": 1.5707963267948966
+              }
+            }
+          }
         },
         {
           "level": 3,
@@ -84470,39 +85038,39 @@
                   "label": "health-demonstration cabinet",
                   "prefab": "PF-FIRST-AID",
                   "at": [
-                    -5.98,
-                    7.15,
-                    4.55
+                    -0.88,
+                    7.05,
+                    4.1
                   ],
                   "size": [
-                    0.52,
-                    0.68,
+                    0.62,
+                    0.78,
                     0.2
                   ],
                   "material": "M-CLINIC",
-                  "collision": "prefab-default",
-                  "purpose": "CPR, first-aid and prevention teaching aids",
-                  "yaw": 1.5707963267948966
+                  "collision": "none",
+                  "purpose": "CPR mask, first-aid dressings and prevention teaching aids on the demonstration wall",
+                  "yaw": -1.5707963267948966
                 },
                 {
                   "id": "B07/F3/HEALTH/SCREEN",
                   "label": "health education display",
                   "prefab": "PF-SCREEN",
                   "at": [
-                    -3.45,
-                    8.47,
-                    5.02
+                    -0.86,
+                    8.1,
+                    3.2
                   ],
                   "size": [
-                    3.2,
-                    0.55,
+                    3.3,
+                    0.72,
                     0.05
                   ],
                   "material": "M-SCREEN",
-                  "collision": "prefab-default",
-                  "purpose": "wide health-teaching ribbon above the facade daylight bays",
-                  "yaw": 3.141592653589793,
-                  "text": "健康教育 · HEALTH EDUCATION"
+                  "collision": "none",
+                  "purpose": "wide health-teaching display visually grouping the CPR and AED equipment",
+                  "yaw": -1.5707963267948966,
+                  "text": "健康教育 · CPR · AED · HEALTH EDUCATION"
                 },
                 {
                   "id": "B07/F3/HEALTH/AED-TRAINER",
@@ -84510,12 +85078,12 @@
                   "prefab": "PF-AED",
                   "at": [
                     -0.88,
-                    7.2,
-                    4.45
+                    7.05,
+                    2.2
                   ],
                   "size": [
-                    0.52,
                     0.58,
+                    0.68,
                     0.18
                   ],
                   "material": "M-CLINIC",
@@ -84523,6 +85091,25 @@
                   "purpose": "clearly marked non-emergency trainer for practical health education",
                   "yaw": -1.5707963267948966,
                   "trainingUnit": true
+                },
+                {
+                  "id": "B07/F3/HEALTH/TEACHING-WALL",
+                  "label": "pale-green health-demonstration wall",
+                  "prefab": "PF-WALL-RUN",
+                  "at": [
+                    -0.835,
+                    7.43,
+                    3.2
+                  ],
+                  "size": [
+                    0.05,
+                    2.5,
+                    3.6
+                  ],
+                  "material": "M-WALL-GREEN",
+                  "collision": "none",
+                  "purpose": "washable architectural teaching datum tying together the screen, CPR kit and AED trainer",
+                  "yaw": 0
                 },
                 {
                   "id": "B07/F3/HEALTH/ACCESS",
@@ -86230,7 +86817,17 @@
               "daylight": true
             }
           ],
-          "occupancy": 36
+          "occupancy": 36,
+          "visualReview": {
+            "programme": {
+              "roomId": "B07/F3/HEALTH",
+              "at": {
+                "x": -2,
+                "z": 1.5,
+                "yaw": 0
+              }
+            }
+          }
         }
       ]
     },
@@ -87398,16 +87995,16 @@
               "at": [
                 -0.6,
                 2.93,
-                0.72
+                1.15
               ],
               "size": [
-                2.4,
+                2.1,
                 0.045,
-                2.55
+                1.55
               ],
               "material": "M-ACOUSTIC",
               "collision": "none",
-              "purpose": "genuine speech-absorbing ceiling field above the staffed command zone",
+              "purpose": "genuine speech-absorbing ceiling field aligned over the staffed command zone",
               "yaw": 0
             },
             {
@@ -87431,7 +88028,17 @@
               "text": "北京文华大学 · 校园安全"
             }
           ],
-          "occupancy": 4
+          "occupancy": 4,
+          "visualReview": {
+            "programme": {
+              "roomId": "B08/F1/WORK",
+              "at": {
+                "x": -1.55,
+                "z": 1.2,
+                "yaw": 0.2
+              }
+            }
+          }
         }
       ]
     }

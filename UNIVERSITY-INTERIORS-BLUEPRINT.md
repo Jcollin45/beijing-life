@@ -4,7 +4,7 @@ This is the implemented, construction-grade interior companion to `UNIVERSITY-BL
 
 The machine-readable source of truth is [`UNIVERSITY-INTERIORS-BLUEPRINT.json`](UNIVERSITY-INTERIORS-BLUEPRINT.json). Re-run `node tools/generate-university-interiors-blueprint.js` after any authored change. If prose and JSON disagree, use the JSON and regenerate this file.
 
-Blueprint version **2** · exterior layout **2** · canonical hash `40a769d092a49e1e85428ea2d5dfe37b91eb1bd67a1769877b3566f5856c4896`.
+Blueprint version **2** · exterior layout **2** · canonical hash `6476f8767bed71a00b8020016a0762915379cd0c6ded7950395f1c588886497b`.
 
 ## 1. Audit result
 
@@ -48,7 +48,7 @@ Before this construction pass, only two university interiors existed, and both w
 | buildings | 8 |
 | floors | 28 |
 | rooms | 205 |
-| fixtureInstances | 3893 |
+| fixtureInstances | 3914 |
 | beds | 48 |
 | studentSeatPairs | 4 |
 | labBenches | 21 |
@@ -186,7 +186,7 @@ Exterior footprint: `x[30,43] z[38,62]`. Local envelope: `x[-6.5, 6.5] z[-12, 12
 
 Circulation: `B02/F1/HALL` x[-2.25, 3.4] z[-0.8, 2.55], clear 2 m; `B02/F1/SERVICE-SPINE` x[1.1, 3.4] z[-6, -0.8], clear 1.5 m; `B02/F1/NORTH-SPINE` x[1.7, 3.4] z[2.4, 8.55], clear 1.7 m; `B02/F1/EGRESS-NW` x[-3.15, 3.4] z[7.05, 8.55], clear 1.5 m.
 
-#### Floor 2 · elevation 3.2 m · 108 fixture instances
+#### Floor 2 · elevation 3.2 m · 110 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -199,7 +199,7 @@ Circulation: `B02/F1/HALL` x[-2.25, 3.4] z[-0.8, 2.55], clear 2 m; `B02/F1/SERVI
 
 Circulation: `B02/F2/SPINE` x[1.1, 3.4] z[-5.2, 11.6], clear 1.5 m; `B02/F2/EGRESS-NW` x[-3.15, 3.4] z[7.05, 8.55], clear 1.5 m.
 
-#### Floor 3 · elevation 6.4 m · 107 fixture instances
+#### Floor 3 · elevation 6.4 m · 109 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -212,7 +212,7 @@ Circulation: `B02/F2/SPINE` x[1.1, 3.4] z[-5.2, 11.6], clear 1.5 m; `B02/F2/EGRE
 
 Circulation: `B02/F3/SPINE` x[1.1, 3.4] z[-5.2, 11.6], clear 1.5 m; `B02/F3/EGRESS-NW` x[-3.15, 3.4] z[7.05, 8.55], clear 1.5 m.
 
-#### Floor 4 · elevation 9.6 m · 97 fixture instances
+#### Floor 4 · elevation 9.6 m · 99 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -229,7 +229,7 @@ The exact coordinate, size, yaw, material, collision, purpose and prefab ID for 
 
 ## B03 · 学生食堂
 
-A working 32-place campus canteen with a recognisable daily rhythm: eight correctly oriented four-place tables sit on a measured 1.20 m aisle grid beneath warm pendants and washable acoustic rafts; two tables reserve wheelchair bays; deep composed window bays follow the east facade; and restrained brick, oak, blue textile and bilingual daily-service graphics give the hall an authentic student identity. A numbered 1.50 m south-to-north queue progresses from trays through four visibly stocked staffed food bays to payment and pickup, while the north return feeds a physically separate dirty wash room. The west back-of-house maintains continuous storage, changing, clean-prep, hot-line and wash-up routes under colour-accurate task lighting, hygiene signage and live production/temperature boards.
+A working 32-place campus canteen with a recognisable daily rhythm: eight correctly oriented four-place tables sit on a measured 1.20 m aisle grid beneath warm pendants and washable acoustic rafts; two tables reserve wheelchair bays; deep composed window bays follow the east facade; and restrained brick, oak, blue textile and bilingual daily-service graphics give the hall an authentic student identity. A numbered 1.50 m south-to-north queue progresses from trays through four visibly different rice, wok-greens, tofu and braise bays—each with a composed service counter, its own operational sidecar, durable category front, guard price display and batch/allergen message—to payment and pickup, while the north return feeds a physically separate dirty wash room. The west back-of-house maintains continuous storage, changing, clean-prep, hot-line and wash-up routes under colour-accurate task lighting, hygiene signage and live production/temperature boards.
 
 Exterior footprint: `x[-43,-29] z[-7,12]`. Local envelope: `x[-7, 7] z[-9.5, 9.5]`. Transform: `-36 + localX`, `2.5 + localZ`.
 
@@ -245,12 +245,12 @@ Exterior footprint: `x[-43,-29] z[-7,12]`. Local envelope: `x[-7, 7] z[-9.5, 9.5
 
 ### Floor and room schedule
 
-#### Floor 1 · elevation 0 m · 178 fixture instances
+#### Floor 1 · elevation 0 m · 187 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
 | B03/F1/DINING | 学生餐厅 | x[0.2, 6.6] z[-8.9, 8.9] | canteen | 86 | east [7,0,0] w4.2 → campus<br>south [0.35,0,-9.5] w1.5 → campus<br>west [0.2,0,-7.85] w1.2 → B03/F1/QUEUE-SPINE |
-| B03/F1/SERVE | 售饭区 | x[-2.65, 0] z[-8.9, 5.9] | kitchen | 27 | west [-2.65,0,-8.2] w0.9 → B03/F1/SERVICE-ENTRY<br>west [-2.65,0,3.725] w0.95 → B03/F1/CLEAN-PASS |
+| B03/F1/SERVE | 售饭区 | x[-2.65, 0] z[-8.9, 5.9] | kitchen | 36 | west [-2.65,0,-8.2] w0.9 → B03/F1/SERVICE-ENTRY<br>west [-2.65,0,3.725] w0.95 → B03/F1/CLEAN-PASS |
 | B03/F1/RETURN | 餐具回收 | x[-2.65, 1.15] z[6.1, 8.9] | kitchen | 8 | west [-2.65,0,8.45] w0.8 → B03/F1/DISH-STAFF |
 | B03/F1/KITCHEN | 净菜与热厨 | x[-6.6, -2.65] z[-1.5, 4.7] | kitchen | 18 | west [-7,0,3] w1.2 → campus-service<br>east [-2.65,0,3.725] w0.95 → B03/F1/CLEAN-PASS<br>south [-3.55,0,-1.5] w1.2 → B03/F1/BOH-CLEAN<br>north [-5.4,0,4.7] w1.2 → B03/F1/DIRTY |
 | B03/F1/DIRTY | 餐具洗消间 | x[-6.6, -2.65] z[4.7, 8.9] | kitchen | 10 | south [-5.4,0,4.7] w1.2 → B03/F1/KITCHEN<br>east [-2.65,0,8.45] w0.8 → B03/F1/DISH-STAFF |
@@ -525,7 +525,7 @@ The exact coordinate, size, yaw, material, collision, purpose and prefab ID for 
 
 ## B07 · 学生活动中心 · 校医院
 
-A measured split-use student and health hub with two unmistakable but compatible identities. Warm 3000–3400 K pendants, oak, brick, blue textile, live club schedules, visible project work, studio-care details and composed media/rehearsal equipment animate the south student-centre rooms. North of the protected threshold, pale green ceilings, clinical laminate, hand-hygiene stations, privacy glazing, sound masking, acoustic confidentiality layers, dimmable counselling light and calm bilingual wayfinding create a quieter health setting. Interior glazing now follows the exact ground and upper exterior window rhythm, with frosted lower layers only where privacy requires them. Both identities meet only at a protected, self-closing core threshold; the two external arrivals, north and south stairs, accessible lift and colour-coded routes remain legible on every floor.
+A measured split-use student and health hub with two unmistakable but compatible identities. Warm 3000–3400 K pendants, oak, brick, blue textile, live club schedules, visible project work, correctly segmented safety mirrors and barres, floor formation marks, studio-care details and composed media/rehearsal equipment animate the south student-centre rooms. North of the protected threshold, pale green ceilings, clinical laminate, hand-hygiene stations, privacy glazing, sound masking, acoustic confidentiality layers, dimmable counselling light, a grouped health-demonstration screen/CPR/AED wall and calm bilingual wayfinding create a quieter health setting. Interior glazing now follows the exact ground and upper exterior window rhythm, with frosted lower layers only where privacy requires them. Both identities meet only at a protected, self-closing core threshold; the two external arrivals, north and south stairs, accessible lift and colour-coded routes remain legible on every floor.
 
 Exterior footprint: `x[30,43] z[23,34]`. Local envelope: `x[-6.5, 6.5] z[-5.5, 5.5]`. Transform: `36.5 + localX`, `28.5 + localZ`.
 
@@ -538,7 +538,7 @@ Exterior footprint: `x[30,43] z[23,34]`. Local envelope: `x[-6.5, 6.5] z[-5.5, 5
 
 ### Floor and room schedule
 
-#### Floor 1 · elevation 0 m · 140 fixture instances
+#### Floor 1 · elevation 0 m · 143 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -546,7 +546,7 @@ Exterior footprint: `x[30,43] z[23,34]`. Local envelope: `x[-6.5, 6.5] z[-5.5, 5
 | B07/F1/SC-COMMONS | 社团公共区 | x[-6.1, -0.8] z[-5.1, -3.25] | activity | 14 | north [-2.65,0,-3.25] w1 → B07/F1/SC-LOBBY |
 | B07/F1/SC-OFFICE | 学生会办公室 | x[-1.8, 1.6] z[-3.05, -0.75] | office | 10 | north [0.7,0,-0.75] w1 → B07/F1/DUAL-COR |
 | B07/F1/SC-MULTI | 多功能活动室 | x[1.8, 3.6] z[-5.1, -0.75] | activity | 14 | north [2.7,0,-0.75] w1.2 → B07/F1/DUAL-COR |
-| B07/F1/CL-WAIT | 校医院候诊 | x[-6.1, -2.2] z[0.75, 5.1] | clinic | 19 | west [-6.5,0,2.5] w2.2 → campus<br>south [-2.8,0,0.75] w1.2 → B07/F1/DUAL-COR<br>east [-2.2,0,3.8] w1.1 → B07/F1/CL-TREAT |
+| B07/F1/CL-WAIT | 校医院候诊 | x[-6.1, -2.2] z[0.75, 5.1] | clinic | 22 | west [-6.5,0,2.5] w2.2 → campus<br>south [-2.8,0,0.75] w1.2 → B07/F1/DUAL-COR<br>east [-2.2,0,3.8] w1.1 → B07/F1/CL-TREAT |
 | B07/F1/CL-EXAM | 校医诊室 | x[-2, 1.55] z[0.75, 2.55] | clinic | 11 | south [-0.3,0,0.75] w1 → B07/F1/DUAL-COR |
 | B07/F1/CL-TREAT | 治疗与观察 | x[-2, 1.55] z[2.75, 5.1] | clinic | 11 | west [-2,0,3.8] w1.1 → B07/F1/CL-WAIT |
 | B07/F1/CL-PHARM | 校内药房 | x[1.75, 3.6] z[0.75, 5.1] | clinic | 12 | south [2.65,0,0.75] w1.2 → B07/F1/DUAL-COR |
@@ -556,11 +556,11 @@ Exterior footprint: `x[30,43] z[23,34]`. Local envelope: `x[-6.5, 6.5] z[-5.5, 5
 
 Circulation: `B07/F1/DUAL-COR` x[-6.1, 3.8] z[-0.65, 0.65], clear 1.3 m.
 
-#### Floor 2 · elevation 3 m · 125 fixture instances
+#### Floor 2 · elevation 3 m · 127 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
-| B07/F2/DANCE | 舞蹈与排练室 | x[-6.1, 3.6] z[-5.1, -1.1] | activity | 28 | north [-3.2,3,-1.1] w1.2 → B07/F2/DUAL-COR<br>north [2.7,3,-1.1] w1.2 → B07/F2/DUAL-COR |
+| B07/F2/DANCE | 舞蹈与排练室 | x[-6.1, 3.6] z[-5.1, -1.1] | activity | 30 | north [-3.2,3,-1.1] w1.2 → B07/F2/DUAL-COR<br>north [2.7,3,-1.1] w1.2 → B07/F2/DUAL-COR |
 | B07/F2/SC-WC | 活动中心无障碍卫生间 | x[-6.1, -3.8] z[-0.9, 0.8] | service | 9 | east [-3.8,3,0] w1 → B07/F2/DUAL-COR |
 | B07/F2/COUNSEL1 | 心理咨询一 | x[-6.1, -3.2] z[1.1, 5.1] | clinic | 16 | east [-3.2,3,1.72] w1 → B07/F2/COUNSEL-SUITE |
 | B07/F2/COUNSEL2 | 心理咨询二与私密前室 | x[-3, -0.1] z[1.1, 5.1] | clinic | 16 | south [-0.7,3,1.1] w1 → B07/F2/COUNSEL-SUITE<br>west [-3,3,1.72] w1 → B07/F2/COUNSEL1 |
@@ -571,13 +571,13 @@ Circulation: `B07/F1/DUAL-COR` x[-6.1, 3.8] z[-0.65, 0.65], clear 1.3 m.
 
 Circulation: `B07/F2/DUAL-COR` x[-3.8, 3.8] z[-1, 1], clear 2 m; `B07/F2/COUNSEL-SUITE` x[-3, -0.1] z[1.1, 2.3], clear 1.2 m.
 
-#### Floor 3 · elevation 6 m · 124 fixture instances
+#### Floor 3 · elevation 6 m · 125 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
 | B07/F3/MEDIA | 学生媒体室 | x[-6.1, -1.4] z[-5.1, -1.1] | activity | 21 | north [-2.1,6,-1.1] w1.2 → B07/F3/DUAL-COR |
 | B07/F3/PROJECT | 社团项目室 | x[-1.2, 3.6] z[-5.1, -1.1] | activity | 19 | north [2.7,6,-1.1] w1.2 → B07/F3/DUAL-COR |
-| B07/F3/HEALTH | 健康教育室 | x[-6.1, -0.8] z[1.1, 5.1] | clinic | 19 | south [-1.55,6,1.1] w1.2 → B07/F3/DUAL-COR |
+| B07/F3/HEALTH | 健康教育室 | x[-6.1, -0.8] z[1.1, 5.1] | clinic | 20 | south [-1.55,6,1.1] w1.2 → B07/F3/DUAL-COR |
 | B07/F3/ADMIN | 校医院办公室 | x[-0.6, 1.7] z[1.1, 5.1] | office | 12 | south [0.55,6,1.1] w1 → B07/F3/DUAL-COR |
 | B07/F3/STAFF | 医务人员休息与储藏 | x[1.9, 3.6] z[1.1, 5.1] | clinic | 11 | south [2.75,6,1.1] w1 → B07/F3/DUAL-COR |
 | B07/F3/STAIR-S | 南安全楼梯 | x[3.8, 6.1] z[-5.1, -2.6] | service | 8 | north [4.95,6,-2.6] w1.2 → B07/F3/LIFT |

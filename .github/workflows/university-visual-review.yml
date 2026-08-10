@@ -10,6 +10,9 @@ on:
       - campus-static-check.js
       - index.html
       - js/game.js
+      - js/glyphs.js
+      - js/gl.js
+      - js/build.js
       - js/campus-interior-core.js
       - js/campus-academic.js
       - js/campus-west.js
@@ -78,6 +81,16 @@ jobs:
         with:
           node-version: 24
           package-manager-cache: false
+
+      - name: Install and verify deterministic Chinese glyphs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$SHARD_DIR"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          fc-match 'Noto Sans CJK SC' | tee "$SHARD_DIR/cjk-font.txt"
+          grep -qi 'NotoSansCJK' "$SHARD_DIR/cjk-font.txt"
 
       - name: Start the no-cache game server
         shell: bash
@@ -255,7 +268,8 @@ jobs:
             echo
             echo "[Workflow run]($SOURCE_RUN) · [Machine-readable scene report](report.json) · [Shard report](shards.json)"
             echo
-            echo 'All 57 entry/programme views passed structural, runtime, uniqueness, and image-output validation.'
+            echo 'All 57 entry/programme views passed structural, runtime, curated-camera, Chinese-glyph, uniqueness, and image-output validation.'
+            echo 'Entry captures keep the player visible to prove the real gameplay view; programme captures hide the player so architecture and furniture remain unobstructed.'
             echo
             for building in B01 B02 B03 B04 B05 B06 B07 B08; do
               echo "## $building"

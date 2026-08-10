@@ -4,6 +4,7 @@
 // dot-file harness and live-game-boot-check.js: a disposable CI Chrome enters every authored
 // university floor, captures a stable frame, and writes machine-readable scene metrics.
 const {spawn}=require('child_process');
+const crypto=require('crypto');
 const fs=require('fs'),os=require('os'),path=require('path'),zlib=require('zlib');
 
 const CHROME=process.env.CHROME||'/usr/bin/google-chrome';
@@ -13,6 +14,7 @@ const REVIEW_BUILDING=(process.env.UNIVERSITY_REVIEW_BUILDING||'').trim().toUppe
 const MERGE_MODE=process.env.UNIVERSITY_REVIEW_MERGE==='1';
 const EXPECTED_SOURCE=(process.env.GITHUB_SHA||'').trim();
 const BUILDING_IDS=['B01','B02','B03','B04','B05','B06','B07','B08'];
+const CURATED_PROGRAMME_BUILDINGS=new Set(['B02','B03','B04','B06','B07','B08']);
 const BUILDING_FLOORS={B01:5,B02:4,B03:1,B04:6,B05:4,B06:4,B07:3,B08:1};
 const OUTPUT_DIR=MERGE_MODE?OUTPUT_ROOT:REVIEW_BUILDING?path.join(OUTPUT_ROOT,REVIEW_BUILDING):OUTPUT_ROOT;
 const VIEWPORT={width:1024,height:640,deviceScaleFactor:1,mobile:false};
@@ -108,6 +110,12 @@ function reviewRowKey(row){
 function hasFiniteFields(value,fields){
   return !!value&&typeof value==='object'&&!Array.isArray(value)&&fields.every(field=>Number.isFinite(value[field]));
 }
+function validReviewPrerequisites(value){
+  return !!value&&value.bodyControl===true&&value.fontReady===true&&value.fontCheck===true&&
+    Number.isInteger(value.glyphVariants)&&value.glyphVariants>=6&&
+    Number.isInteger(value.glyphCount)&&value.glyphCount>=8&&
+    Number.isFinite(value.minGlyphInk)&&value.minGlyphInk>=40;
+}
 
 function mergeReviewOutputs(){
   if(REVIEW_BUILDING)throw new Error('UNIVERSITY_REVIEW_MERGE cannot be combined with UNIVERSITY_REVIEW_BUILDING');
@@ -116,7 +124,7 @@ function mergeReviewOutputs(){
     source:'merge-pending',complete:false,views:0,report:[],errors:[],shards:[],
   });
   const defects=[],fatalErrors=[],shards=[],rows=[],captures=[],sources=new Set(),
-    validatedKeys=new Set(),validatedFiles=new Set();
+    validatedKeys=new Set(),validatedFiles=new Set(),validatedDigests=new Map();
   for(const building of BUILDING_IDS){
     const shardDir=path.join(OUTPUT_ROOT,building),fatalFile=path.join(shardDir,'fatal-error.json');
     if(fs.existsSync(fatalFile)){
@@ -144,6 +152,8 @@ function mergeReviewOutputs(){
     else if(shard.errors.length)defects.push(`${building}: ${shard.errors.length} runtime error(s)`);
     if(shard.views!==shardRows.length)defects.push(`${building}: views ${shard.views}/${shardRows.length}`);
     if(shard.expectedViews!==shardRows.length)defects.push(`${building}: expectedViews ${shard.expectedViews}/${shardRows.length}`);
+    if(!validReviewPrerequisites(shard.reviewPrerequisites))
+      defects.push(`${building}: shard capture prerequisites are not proven`);
     const requiredViews=BUILDING_FLOORS[building]*2+(building==='B07'?1:0);
     if(shardRows.length!==requiredViews)defects.push(`${building}: shard views ${shardRows.length}/${requiredViews}`);
     if(shard.source){
@@ -174,28 +184,48 @@ function mergeReviewOutputs(){
       if(!validSuffix)defects.push(`${building}: invalid suffix ${JSON.stringify(suffix)} for ${key}`);
       if(row.mode!==expectedMode)defects.push(`${building}: mode ${JSON.stringify(row.mode)} does not match suffix ${JSON.stringify(suffix)} for ${key}`);
       if(invalidMetrics.length)defects.push(`${building}: row ${key} has invalid ${invalidMetrics.join(', ')} count(s)`);
+      const prerequisites=row.reviewPrerequisites,prerequisiteFields=[
+        'bodyControl','fontReady','fontCheck','glyphVariants','glyphCount','minGlyphInk'];
+      if(!validReviewPrerequisites(prerequisites)){
+        defects.push(`${building}: capture prerequisites are not proven for ${key}`);valid=false;
+      }
+      if(validReviewPrerequisites(shard.reviewPrerequisites)&&prerequisiteFields.some(field=>
+        prerequisites[field]!==shard.reviewPrerequisites[field])){
+        defects.push(`${building}: row and shard capture prerequisites differ for ${key}`);valid=false;
+      }
+      const expectedBodyVisible=suffix!=='programme';
+      if(row.bodyVisible!==expectedBodyVisible){
+        defects.push(`${building}: player-body evidence mode is wrong for ${key}`);valid=false;
+      }
       if(shardKeys.has(key)){defects.push(`${building}: duplicate row ${key}`);valid=false;}else shardKeys.add(key);
       if(typeof row.file!=='string'||path.basename(row.file)!==row.file||row.file!==expectedFile){
         defects.push(`${building}: capture filename ${JSON.stringify(row.file)} does not match ${expectedFile}`);continue;
       }
-      if(suffix==='programme'&&
-        (typeof row.reviewRoom!=='string'||!row.reviewRoom.trim()||!hasFiniteFields(row.reviewAt,['x','z','yaw']))){
-        defects.push(`${building}: programme evidence missing reviewRoom or reviewAt for ${key}`);valid=false;
+      if(suffix==='programme'&&(
+        typeof row.reviewRoom!=='string'||!row.reviewRoom.trim()||
+        !hasFiniteFields(row.reviewAt,['x','z','yaw','cameraBack','frontDepth'])||
+        row.reviewAt.cameraBack<=0||row.reviewAt.frontDepth<.72||typeof row.reviewAt.authored!=='boolean'||
+        CURATED_PROGRAMME_BUILDINGS.has(building)&&row.reviewAt.authored!==true)){
+        defects.push(`${building}: programme camera evidence is incomplete for ${key}`);valid=false;
       }
-      if((suffix==='clinic-entry'||suffix==='entry'&&rowLevel===1)&&
+      if((suffix==='clinic-entry'||suffix==='entry')&&
         (!hasFiniteFields(row.entryReviewAt,['x','z','yaw','inward','lateral','cameraBack'])||
-          row.entryReviewAt.inward<0||row.entryReviewAt.cameraBack<=0)){
-        defects.push(`${building}: portal entry evidence missing entryReviewAt for ${key}`);valid=false;
+          row.entryReviewAt.inward<0||row.entryReviewAt.cameraBack<=0||
+          rowLevel>1&&(!Number.isFinite(row.entryReviewAt.frontDepth)||row.entryReviewAt.frontDepth<.72))){
+        defects.push(`${building}: arrival evidence missing entryReviewAt for ${key}`);valid=false;
       }
       const captureFile=path.join(shardDir,row.file);
       if(!fs.existsSync(captureFile)){defects.push(`${building}: missing ${row.file}`);continue;}
       try{
-        const stats=pngStats(captureFile);
+        const png=fs.readFileSync(captureFile),stats=pngStats(png,captureFile),
+          digest=crypto.createHash('sha256').update(png).digest('hex'),duplicate=validatedDigests.get(digest);
         if(!stats.healthy){defects.push(`${building}: unhealthy ${row.file}`);valid=false;}
         if(stats.width!==VIEWPORT.width||stats.height!==VIEWPORT.height){
           defects.push(`${building}: ${row.file} is ${stats.width}x${stats.height}, expected ${VIEWPORT.width}x${VIEWPORT.height}`);
           valid=false;
         }
+        if(duplicate){defects.push(`${building}: ${row.file} duplicates PNG bytes from ${duplicate}`);valid=false;}
+        else if(valid){row.captureSha256=digest;validatedDigests.set(digest,row.file);}
       }catch(error){defects.push(`${building}: invalid ${row.file}: ${error.message}`);valid=false;}
       if(validatedKeys.has(key)){defects.push(`${building}: duplicate merged row ${key}`);valid=false;}
       if(validatedFiles.has(row.file)){defects.push(`${building}: duplicate capture filename ${row.file}`);valid=false;}
@@ -213,6 +243,7 @@ function mergeReviewOutputs(){
   if(buildings.size!==8||BUILDING_IDS.some(id=>!buildings.has(id)))defects.push(`merged buildings ${[...buildings].sort().join(',')||'none'}`);
   if(floors.size!==28)defects.push(`merged floors ${floors.size}/28`);
   if(files.size!==57)defects.push(`capture filenames ${files.size}/57 unique`);
+  if(validatedDigests.size!==57)defects.push(`capture PNG digests ${validatedDigests.size}/57 unique`);
   if(sources.size!==1)defects.push(`source SHAs ${[...sources].join(',')||'none'}`);
   if(EXPECTED_SOURCE&&(sources.size!==1||[...sources][0]!==EXPECTED_SOURCE))
     defects.push(`merged source SHA ${sources.size===1?[...sources][0]:'not unique'} does not match ${EXPECTED_SOURCE}`);
@@ -290,6 +321,29 @@ async function main(){
   if(!ready||!ready.game||ready.bootOn||ready.startDisabled)
     throw new Error(`game did not become playable: ${JSON.stringify(ready)}\n${chromeError.slice(-1600)}`);
   await evaluate(`(()=>{document.getElementById('start').click();return true;})()`);await sleep(1600);
+  const reviewPrerequisites=await evaluate(`(async()=>{
+    if(!window.__game||typeof window.__game.showBody!=='function')
+      throw new Error('screenshot harness cannot hide the player body');
+    window.__game.showBody(false);
+    if(!document.fonts)throw new Error('FontFaceSet API is unavailable');
+    const probe='大学食堂医院图书馆校';
+    await document.fonts.load('36px "Noto Sans CJK SC"',probe);
+    await document.fonts.ready;
+    const fontCheck=document.fonts.check('36px "Noto Sans CJK SC"',probe),canvas=document.createElement('canvas');
+    canvas.width=64;canvas.height=64;const ctx=canvas.getContext('2d',{willReadFrequently:true}),signatures=[],inks=[];
+    ctx.font='36px "Noto Sans CJK SC"';ctx.textBaseline='top';ctx.fillStyle='#000';
+    for(const glyph of probe){
+      ctx.clearRect(0,0,64,64);ctx.fillText(glyph,8,6);const data=ctx.getImageData(0,0,64,64).data;
+      let hash=2166136261,ink=0;
+      for(let i=3;i<data.length;i+=4)if(data[i]){ink++;hash=Math.imul(hash^data[i],16777619);}
+      signatures.push((hash>>>0).toString(16));inks.push(ink);
+    }
+    return{bodyControl:true,fontReady:document.fonts.status==='loaded',fontCheck,
+      glyphCount:probe.length,glyphVariants:new Set(signatures).size,minGlyphInk:Math.min(...inks)};
+  })()`);
+  if(!reviewPrerequisites.bodyControl||!reviewPrerequisites.fontReady||!reviewPrerequisites.fontCheck||
+    reviewPrerequisites.glyphCount<8||reviewPrerequisites.glyphVariants<6||reviewPrerequisites.minGlyphInk<40)
+    throw new Error(`university capture prerequisites failed: ${JSON.stringify(reviewPrerequisites)}`);
 
   const views=await evaluate(`(()=>{
     const out=[],selected=${JSON.stringify(REVIEW_BUILDING||null)};
@@ -317,80 +371,139 @@ async function main(){
     activeView=view;
     console.log(`[${report.length+1}/${views.length}] ${view.building}/F${view.level}/${view.suffix}`);
     const result=await evaluate(`(async()=>{try{
-      const at=${JSON.stringify(view.at)},mode=${JSON.stringify(view.mode)};
+      const at=${JSON.stringify(view.at)},mode=${JSON.stringify(view.mode)},bodyVisible=mode==='entry';
+      window.__game.showBody(bodyVisible);
       window.__game.setPlace(${JSON.stringify(view.place)},at||undefined);
-      await new Promise(resolve=>setTimeout(resolve,900));const scene=window.__game.scene(),state=window.__game.state();
+      await new Promise(resolve=>setTimeout(resolve,900));const scene=window.__game.scene(),state=window.__game.state(),
+        floor=scene.blueprintFloor,building=CampusInteriors.plan.buildings.find(b=>b.id===scene.buildingId),
+        bounds=building.localBounds,radius=.32,backOptions=[3.6,3.2,2.8,2.4,2.0,1.7,1.4];
+      const inside=(b,x,z,pad=0)=>x>=b[0]+pad&&x<=b[1]-pad&&z>=b[2]+pad&&z<=b[3]-pad,
+        free=(x,z,pad=radius)=>inside(bounds,x,z,pad)&&
+          !scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad),
+        doorLeaves=(floor.rooms||[]).flatMap(room=>(room.doors||[]).map(door=>{
+          const vertical=door.side==='west'||door.side==='east',w=door.width||.9,dx=door.at[0],dz=door.at[2];
+          return vertical
+            ?{x0:dx+(door.side==='west'?1:-1)*w*.39-w*.39,x1:dx+(door.side==='west'?1:-1)*w*.39+w*.39,
+              z0:dz-w/2-.06,z1:dz-w/2+.06}
+            :{x0:dx-w/2-.06,x1:dx-w/2+.06,
+              z0:dz+(door.side==='south'?1:-1)*w*.39-w*.39,z1:dz+(door.side==='south'?1:-1)*w*.39+w*.39};
+        })),
+        sightBlocked=(x,z,pad=.055)=>scene.blockers.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
+          scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
+          doorLeaves.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad),
+        rearClear=(x,z,yaw,back)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw),cx=x-fx*back,cz=z-fz*back;
+          if(!inside(bounds,cx,cz,.18))return false;
+          for(let q=.12;q<=back;q+=.10)if(sightBlocked(x-fx*q,z-fz*q))return false;return true;},
+        frontDepth=(x,z,yaw,roomBounds)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw);let depth=0;
+          for(let q=.16;q<=6;q+=.12){const px=x+fx*q,pz=z+fz*q;
+            if(!inside(roomBounds,px,pz,.10)||sightBlocked(px,pz,.025))break;depth=q;}return depth;},
+        cameraBack=(x,z,yaw)=>backOptions.find(back=>rearClear(x,z,yaw,back))||0,
+        applyReviewCamera=(x,z,yaw,back)=>{const cam=window.__game.CAM,pitch=.28;
+          window.__game.P.x=x;window.__game.P.z=z;window.__game.P.yaw=yaw;
+          cam.fx=x;cam.fz=z;cam.yaw=cam.tYaw=yaw;cam.pitch=cam.tPitch=pitch;
+          cam.dist=cam.tDist=back/Math.cos(pitch);cam.lookY=1.15;cam.slide=cam.rise=0;};
       let reviewRoom=null,reviewAt=null,entryReviewAt=null;
       if(mode==='entry'&&at){
-        const building=CampusInteriors.plan.buildings.find(b=>b.id===scene.buildingId),bounds=building.localBounds,
-          yaw=at.yaw,fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw),
-          radius=.32,ox=window.__game.P.x,oz=window.__game.P.z,
-          back=Math.min(3.60,((scene.camera&&scene.camera.dist)||window.__game.CAM.dist||4.4)*
-            Math.cos((scene.camera&&scene.camera.pitch)??window.__game.CAM.pitch??.34)-.20),
-          free=(x,z)=>x>=bounds[0]+radius&&x<=bounds[1]-radius&&z>=bounds[2]+radius&&z<=bounds[3]-radius&&
-            !scene.solids.some(s=>!s.open&&x>s.x0-radius&&x<s.x1+radius&&z>s.z0-radius&&z<s.z1+radius),
+        const yaw=at.yaw,fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw),
+          ox=window.__game.P.x,oz=window.__game.P.z,zones=[...(floor.rooms||[]),...(floor.circulation||[])],
+          entryZone=zones.filter(q=>inside(q.bounds,ox,oz,-.08))
+            .sort((a,b)=>(a.bounds[1]-a.bounds[0])*(a.bounds[3]-a.bounds[2])-
+              (b.bounds[1]-b.bounds[0])*(b.bounds[3]-b.bounds[2]))[0];
+        if(!entryZone)throw new Error('portal threshold has no authored entry zone for '+scene.buildingId);
+        const staysInZone=(x,z,pad=.04)=>inside(entryZone.bounds,x,z,pad),
           pathFree=(lateral,d)=>{const sign=Math.sign(lateral),span=Math.abs(lateral);
-            for(let q=0;q<=span;q+=.12)if(!free(ox+rx*sign*q,oz+rz*sign*q))return false;
+            for(let q=.12;q<=span;q+=.10){const x=ox+rx*sign*q,z=oz+rz*sign*q;if(!staysInZone(x,z)||!free(x,z))return false;}
             const lx=ox+rx*lateral,lz=oz+rz*lateral;
-            for(let q=0;q<=d;q+=.12)if(!free(lx+fx*q,lz+fz*q))return false;return true;},
-          cameraFree=(x,z)=>{const rx=x-fx*back,rz=z-fz*back;
-            if(rx<bounds[0]+.18||rx>bounds[1]-.18||rz<bounds[2]+.18||rz>bounds[3]-.18)return false;
-            const blocked=(px,pz)=>scene.blockers.some(s=>px>s.x0-.08&&px<s.x1+.08&&pz>s.z0-.08&&pz<s.z1+.08);
-            for(let q=0;q<=back;q+=.12)if(blocked(x-fx*q,z-fz*q))return false;return true;};
-        let chosen=null;const limit=Math.hypot(bounds[1]-bounds[0],bounds[3]-bounds[2]),
+            for(let q=.12;q<=d;q+=.10){const x=lx+fx*q,z=lz+fz*q;if(!staysInZone(x,z)||!free(x,z))return false;}return true;};
+        const candidates=[],limit=Math.hypot(entryZone.bounds[1]-entryZone.bounds[0],entryZone.bounds[3]-entryZone.bounds[2]),
           lanes=[0,-.36,.36,-.72,.72,-1.08,1.08,-1.44,1.44];
-        for(const lateral of lanes){
-          const lx=ox+rx*lateral,lz=oz+rz*lateral;
-          for(let d=0;d<=limit;d+=.12){const x=lx+fx*d,z=lz+fz*d;
-            if(pathFree(lateral,d)&&free(x,z)&&cameraFree(x,z)){chosen=[x,z,d,lateral];break;}}
-          if(chosen)break;
-        }
-        if(!chosen)throw new Error('entry camera could not find clear inward framing for '+scene.buildingId);
-        const [x,z,d,lateral]=chosen;window.__game.P.x=x;window.__game.P.z=z;window.__game.P.yaw=yaw;
-        window.__game.CAM.fx=x;window.__game.CAM.fz=z;window.__game.CAM.yaw=window.__game.CAM.tYaw=yaw;
-        window.__game.CAM.slide=window.__game.CAM.rise=0;
-        entryReviewAt={x:+x.toFixed(2),z:+z.toFixed(2),yaw,inward:+d.toFixed(2),
-          lateral:+lateral.toFixed(2),cameraBack:+back.toFixed(2)};
-        await new Promise(resolve=>setTimeout(resolve,650));
+        for(const lateral of lanes){const lx=ox+rx*lateral,lz=oz+rz*lateral;
+          for(let d=.24;d<=limit;d+=.12){const x=lx+fx*d,z=lz+fz*d,back=cameraBack(x,z,yaw);
+            if(pathFree(lateral,d)&&free(x,z)&&staysInZone(x,z,radius)&&back)
+              candidates.push({x,z,d,lateral,back,score:Math.abs(d-2.4)+Math.abs(lateral)*.55-back*.12});}}
+        candidates.sort((a,b)=>a.score-b.score);const chosen=candidates[0];
+        if(!chosen)throw new Error('entry camera could not find a clear frame inside '+entryZone.id);
+        applyReviewCamera(chosen.x,chosen.z,yaw,chosen.back);
+        entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw,inward:+chosen.d.toFixed(2),
+          lateral:+chosen.lateral.toFixed(2),cameraBack:+chosen.back.toFixed(2),entryZone:entryZone.id};
+        await new Promise(resolve=>setTimeout(resolve,800));
+      }
+      if(mode==='entry'&&!at){
+        const ox=window.__game.P.x,oz=window.__game.P.z,zones=[...(floor.circulation||[]),...(floor.rooms||[])],
+          entryZone=zones.filter(q=>inside(q.bounds,ox,oz,-.08))
+            .sort((a,b)=>(a.bounds[1]-a.bounds[0])*(a.bounds[3]-a.bounds[2])-
+              (b.bounds[1]-b.bounds[0])*(b.bounds[3]-b.bounds[2]))[0];
+        if(!entryZone)throw new Error('upper-floor arrival has no authored zone for '+scene.buildingId+'/F'+floor.level);
+        const candidates=[],offsets=[[0,0],[.3,0],[-.3,0],[0,.3],[0,-.3],[.6,0],[-.6,0],[0,.6],[0,-.6]],
+          yaws=[window.__game.P.yaw,0,Math.PI/2,Math.PI,-Math.PI/2],moveClear=(x,z)=>{
+            const distance=Math.hypot(x-ox,z-oz),steps=Math.max(1,Math.ceil(distance/.10));
+            for(let i=1;i<=steps;i++){const q=i/steps,px=ox+(x-ox)*q,pz=oz+(z-oz)*q;
+              if(!inside(entryZone.bounds,px,pz,.04)||!free(px,pz))return false;}return true;};
+        for(const [dx,dz] of offsets){const x=ox+dx,z=oz+dz;
+          if(!inside(entryZone.bounds,x,z,radius)||!free(x,z)||!moveClear(x,z))continue;
+          for(const yaw of yaws){const back=cameraBack(x,z,yaw),front=frontDepth(x,z,yaw,bounds);
+            if(back&&front>=.72)candidates.push({x,z,yaw,back,front,move:Math.hypot(dx,dz),
+              score:front*2.2+back*.35-Math.hypot(dx,dz)*.40});}}
+        candidates.sort((a,b)=>b.score-a.score);const chosen=candidates[0];
+        if(!chosen)throw new Error('upper-floor arrival camera could not frame '+entryZone.id);
+        applyReviewCamera(chosen.x,chosen.z,chosen.yaw,chosen.back);
+        entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,inward:0,
+          lateral:+chosen.move.toFixed(2),cameraBack:+chosen.back.toFixed(2),entryZone:entryZone.id,
+          frontDepth:+chosen.front.toFixed(2)};
+        await new Promise(resolve=>setTimeout(resolve,800));
       }
       if(mode==='programme'){
-        const rooms=[...(scene.blueprintFloor.rooms||[])].filter(r=>r.finish!=='service')
+        const authored=floor.visualReview&&floor.visualReview.programme,rooms=[...(floor.rooms||[])].filter(r=>r.finish!=='service')
           .sort((a,b)=>(b.bounds[1]-b.bounds[0])*(b.bounds[3]-b.bounds[2])-
             (a.bounds[1]-a.bounds[0])*(a.bounds[3]-a.bounds[2]));
-        const room=rooms[0]||scene.blueprintFloor.rooms[0],b=room.bounds,
-          wide=b[1]-b[0]>=b[3]-b[2],ideal=wide?[b[0]+(b[1]-b[0])*.28,(b[2]+b[3])/2]:[(b[0]+b[1])/2,b[2]+(b[3]-b[2])*.28],
-          yaw=wide?Math.PI/2:0,free=(x,z)=>!scene.solids.some(s=>!s.open&&x>s.x0-.30&&x<s.x1+.30&&z>s.z0-.30&&z<s.z1+.30);
-        const candidates=[];
-        for(let z=b[2]+.42;z<=b[3]-.42;z+=.20)for(let x=b[0]+.42;x<=b[1]-.42;x+=.20)
-          if(free(x,z))candidates.push([x,z,(x-ideal[0])**2+(z-ideal[1])**2]);
-        candidates.sort((a,b)=>a[2]-b[2]);
-        if(candidates.length){
-          const [x,z]=candidates[0];window.__game.P.x=x;window.__game.P.z=z;window.__game.P.yaw=yaw;
-          window.__game.CAM.yaw=yaw;reviewRoom=room.id;reviewAt={x:+x.toFixed(2),z:+z.toFixed(2),yaw};
-          await new Promise(resolve=>setTimeout(resolve,650));
+        let chosen=null,room=null;
+        if(authored){
+          room=(floor.rooms||[]).find(r=>r.id===authored.roomId);
+          if(!room)throw new Error('authored programme room does not exist: '+authored.roomId);
+          const pose=authored.at||{},x=pose.x,z=pose.z,yaw=pose.yaw;
+          if(!Number.isFinite(x)||!Number.isFinite(z)||!Number.isFinite(yaw)||!inside(room.bounds,x,z,radius)||!free(x,z))
+            throw new Error('authored programme pose is not body-clear inside '+room.id);
+          const back=cameraBack(x,z,yaw),front=frontDepth(x,z,yaw,room.bounds);
+          if(!back)throw new Error('authored programme pose has no clear rear-camera sightline in '+room.id);
+          if(front<.72)throw new Error('authored programme pose faces less than 0.72m of '+room.id);
+          chosen={x,z,yaw,back,front,authored:true};
+        }else{
+          room=rooms[0]||floor.rooms[0];if(!room)throw new Error('floor has no programme room');
+          const b=room.bounds,candidates=[],yaws=[0,Math.PI/2,Math.PI,-Math.PI/2];
+          for(let z=b[2]+.40;z<=b[3]-.40;z+=.20)for(let x=b[0]+.40;x<=b[1]-.40;x+=.20){
+            if(!free(x,z)||!inside(b,x,z,radius))continue;
+            for(const yaw of yaws){const back=cameraBack(x,z,yaw),front=frontDepth(x,z,yaw,b);
+              if(back&&front>=.72)candidates.push({x,z,yaw,back,front,authored:false,
+                score:front*2.2+back*.35-Math.hypot(x-(b[0]+b[1])/2,z-(b[2]+b[3])/2)*.08});}}
+          candidates.sort((a,b)=>b.score-a.score);chosen=candidates[0];
+          if(!chosen)throw new Error('programme camera could not frame '+room.id);
         }
+        applyReviewCamera(chosen.x,chosen.z,chosen.yaw,chosen.back);reviewRoom=room.id;
+        reviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,
+          cameraBack:+chosen.back.toFixed(2),frontDepth:+chosen.front.toFixed(2),authored:chosen.authored};
+        await new Promise(resolve=>setTimeout(resolve,800));
       }
       return{ok:true,place:state.place,buildingId:scene.buildingId,level:scene.blueprintFloor&&scene.blueprintFloor.level,
         props:scene.props.length,solids:scene.solids.length,blockers:scene.blockers.length,things:scene.things.length,
-        lights:scene.lights.length,zones:scene.zones.length,spawn:scene.spawn,reviewRoom,reviewAt,entryReviewAt};
+        lights:scene.lights.length,zones:scene.zones.length,spawn:scene.spawn,bodyVisible,reviewRoom,reviewAt,entryReviewAt};
     }catch(error){return{ok:false,error:error.stack||error.message};}})()`,45000);
     if(!result.ok||result.buildingId!==view.building||result.level!==view.level||
       (view.mode==='programme'&&(!result.reviewRoom||!result.reviewAt))||
-      (view.mode==='entry'&&view.at&&!result.entryReviewAt))
+      (view.mode==='entry'&&!result.entryReviewAt))
       throw new Error(`university view failed: ${JSON.stringify({view,result})}`);
     const suffix=view.suffix?`-${view.suffix}`:'',file=`${view.building}-F${view.level}${suffix}.png`;
     const image=await capture(file);
     if(!image.healthy)throw new Error(`${file}: screenshot is blank or visually degenerate: ${JSON.stringify(image)}`);
-    report.push({...view,...result,file,image});
+    report.push({...view,...result,reviewPrerequisites,file,image});
     writeJson(path.join(OUTPUT_DIR,'report.json'),{
       source:process.env.GITHUB_SHA||'local',building:REVIEW_BUILDING||null,expectedViews:views.length,
-      complete:false,views:report.length,report,
+      complete:false,views:report.length,reviewPrerequisites,report,
       errors:runtimeErrors.slice(0,20),
     });
   }
   const errors=runtimeErrors.filter(text=>!/favicon|autoplay|Download the React/i.test(text));
   const output={source:process.env.GITHUB_SHA||'local',building:REVIEW_BUILDING||null,expectedViews:views.length,
-    complete:true,views:report.length,report,errors:errors.slice(0,20)};
+    complete:true,views:report.length,reviewPrerequisites,report,errors:errors.slice(0,20)};
   writeJson(path.join(OUTPUT_DIR,'report.json'),output);
   const priorFatal=path.join(OUTPUT_DIR,'fatal-error.json');if(fs.existsSync(priorFatal))fs.rmSync(priorFatal,{force:true});
   console.log(JSON.stringify({views:report.length,buildings:[...new Set(report.map(r=>r.buildingId))],
