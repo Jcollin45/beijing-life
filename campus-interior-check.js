@@ -60,6 +60,7 @@ const minimumDetailedParts=new Map([
   ['PF-WALL-RUN',3],
   ['PF-BIN',4],['PF-TOILET',6],['PF-BASIN',7],['PF-HANDWASH',7],
   ['PF-LAB-SINK',8],['PF-EYEWASH',11],['PF-STOOL',13],['PF-SHOWER',9],
+  ['PF-FLAG',9],
   ['PF-COMPUTER-DESK',15],['PF-ROBOTICS',16],['PF-SCREEN',7],['PF-DANCE-MIRROR',6],
 ]);
 const architecturalSlabLanguage=/wall|panel|datum|raft|ceiling|floor|rug|mat|runner|line|route|field|inset|marker|curtain|blind|window|glass|glazed|glazing|mirror|sill|headboard|pinboard|rail|divider|partition|curb|drain|grille|threshold|jamb|portal|reveal|canopy|inlay|turning|approach|privacy|identity|feature|acoustic|tactile|welcome|backdrop|circuit|calibration|alignment|work grid|aisle|wheelchair|dining bay|sash|plenum|duct|fixed services|service strip|service identification/i;

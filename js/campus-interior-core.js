@@ -70,11 +70,16 @@ const CampusInteriors = (() => {
       const m=mat(materialId),o={hard:extra.round===undefined,gloss:m.gloss===undefined?.12:m.gloss,...extra};
       if (m.texture && m.texture !== 'none' && m.texture !== 'glass') {
         o.mat=m.texture === 'terrazzo' ? 'tile' : m.texture === 'steel' ? 'metal' : m.texture;
-        o.matScale=m.texture === 'wood' ? .62 : m.texture === 'brick' ? .9 : .38;
-        // A full-strength plaster normal reads as dirty clouding on large white university walls,
-        // especially under the close review cameras. Keep a restrained tooth while leaving wood,
-        // brick, tile and terrazzo materially legible.
-        o.matAmt=m.texture === 'wood' ? .42 : m.texture === 'plaster' ? .12 : .30;
+        // These are real metres per source-map repeat, not an arbitrary visual-frequency knob.
+        // The asset manifest documents .60-.65 m for painted-plaster trowel work and .78 m for
+        // the six-tile sheet.  The former .38 m catch-all made both surfaces repeat as dirty,
+        // cloudy patches in every close university capture.
+        o.matScale=m.texture === 'wood' ? .62 : m.texture === 'brick' ? .90 :
+          m.texture === 'plaster' ? .62 : m.texture === 'tile' ? .78 :
+          m.texture === 'steel' ? .44 : .38;
+        // Keep plaster variation as a restrained painted tooth; wood, brick, tile and terrazzo
+        // retain enough contrast to read as their actual material under interior lighting.
+        o.matAmt=m.texture === 'wood' ? .42 : m.texture === 'plaster' ? .06 : .30;
       }
       if (o.mode === undefined && m.renderMode !== undefined) o.mode=m.renderMode;
       return o;
@@ -531,7 +536,8 @@ const CampusInteriors = (() => {
       const y=f.at[1]-base,isGlass=f.material==='M-GLASS';
       const floorLayer=h<=.08&&y<.20,ceilingLayer=h<=.10&&y>H-.62;
       const faceAlongX=d<=w,span=faceAlongX?w:d,thin=faceAlongX?d:w;
-      const soft=/curtain|blind/i.test(`${f.label||''} ${f.purpose||''}`);
+      const description=`${f.label||''} ${f.purpose||''}`,curtain=/curtain/i.test(description),
+        soft=curtain||/blind/i.test(description);
       const textile=mat(f.material).texture==='fabric';
       const trim=soft||textile?f.material:f.material==='M-RUBBER'?'M-STEEL-DARK':
         f.material==='M-ACOUSTIC'?accent:f.material==='M-GLASS'?'M-STEEL-DARK':'M-OAK-DARK';
@@ -567,6 +573,27 @@ const CampusInteriors = (() => {
         } else {
           for(const dz of [-d*.47,0,d*.47])localBox(f,0,y,dz,thin*1.04,h*.98,bar,trim,{round:.008});
           for(const dy of [-h*.47,h*.47])localBox(f,0,y+dy,0,thin*1.04,bar,d*.96,trim,{round:.008});
+        }
+        return;
+      }
+      if(curtain){
+        // A curtain is a run of overlapping woven folds, not one thin wall with decorative
+        // scratches. Alternate each fold toward/away from the glazing and keep a continuous
+        // concealed head plus weighted hem; the authored wall-run footprint remains unchanged.
+        const folds=7,foldSpan=span/folds;
+        for(let i=0;i<folds;i++){
+          const u=-span/2+foldSpan*(i+.5),relief=(i%2?1:-1)*thin*.16;
+          if(faceAlongX)localBox(f,u,y,relief,foldSpan*1.05,h*.96,thin*.72,f.material,
+            {round:Math.min(.018,foldSpan*.18),bevel:.006,gloss:.025});
+          else localBox(f,relief,y,u,thin*.72,h*.96,foldSpan*1.05,f.material,
+            {round:Math.min(.018,foldSpan*.18),bevel:.006,gloss:.025});
+        }
+        if(faceAlongX){
+          localBox(f,0,y+h*.48,0,w*.98,.035,thin*.92,trim,{round:.009});
+          localBox(f,0,y-h*.48,0,w*.96,.025,thin*.76,'M-OAK-DARK',{round:.007});
+        }else{
+          localBox(f,0,y+h*.48,0,thin*.92,.035,d*.98,trim,{round:.009});
+          localBox(f,0,y-h*.48,0,thin*.76,.025,d*.96,'M-OAK-DARK',{round:.007});
         }
         return;
       }
@@ -886,28 +913,93 @@ const CampusInteriors = (() => {
           localBox(f,0,y+.22,0,.035,.44,.035,'M-STEEL-DARK');
           localBox(f,0,y,0,w,h,d,'M-WALL-WHITE');
           localBox(f,0,y,-d*.53,w*.23,h*.46,.04,'M-SCREEN',{glow:.20}); break;
-        case 'PF-FLAG':
-          localBox(f,0,y,0,w,h,d,f.material);
-          localBox(f,0,y+h*.58,0,w*1.12,.035,d*1.2,'M-BRASS'); break;
+        case 'PF-FLAG': {
+          // Five shallow textile folds, a weighted hem and real hanging hardware keep the flag
+          // from reading as one rigid coloured board.  The relief stays inside the existing
+          // face-centred footprint and remains decorative/non-colliding exactly as authored.
+          for(let i=-2;i<=2;i++)localBox(f,i*w*.19,y+(Math.abs(i)===1?.008:0),
+            (i%2?d*.14:-d*.08),w*.215,h*.94,d*.58,f.material,{round:.018,bevel:.006,gloss:.035});
+          localBox(f,0,y-h*.47,0,w*.96,.028,d*.72,'M-OAK-DARK',{round:.008});
+          localBox(f,0,y+h*.53,0,w*1.12,.035,d*1.2,'M-BRASS',{round:.012,gloss:.48});
+          for(const dx of [-w*.55,w*.55])localBall(f,dx,y+h*.53,0,w*.035,w*.035,d*.75,
+            'M-BRASS',{gloss:.52});
+          localBall(f,0,y,-d*.36,w*.075,h*.11,d*.16,f.material==='M-BRASS'?'M-SAFETY-RED':'M-BRASS',
+            {gloss:.28});
+          break;
+        }
         case 'PF-CHALKBOARD': case 'PF-WHITEBOARD': case 'PF-SCREEN': case 'PF-DANCE-MIRROR':
           {
-            const frame=f.prefab==='PF-DANCE-MIRROR'?'M-STAINLESS':f.prefab==='PF-SCREEN'?'M-STEEL-DARK':'M-OAK-DARK';
+            const daylightScreen=f.prefab==='PF-SCREEN'&&
+              /daylight|window|outlook/i.test(`${f.label||''} ${f.purpose||''}`),
+              studioMirror=f.prefab==='PF-DANCE-MIRROR'&&
+                /dance|studio|barre/i.test(`${f.id||''} ${f.label||''} ${f.purpose||''}`),
+              frame=f.prefab==='PF-DANCE-MIRROR'?'M-STAINLESS':
+                daylightScreen?'M-OAK-DARK':f.prefab==='PF-SCREEN'?'M-STEEL-DARK':'M-OAK-DARK';
             localBox(f,0,y,0,w,h,d,frame,{round:.018,bevel:.012});
-            localBox(f,0,y,-d*.16,w*.94,h*.90,d*.72,f.material,{round:.014,
-              alpha:f.prefab==='PF-DANCE-MIRROR'?.34:undefined,glow:f.prefab==='PF-SCREEN'?.09:undefined,
-              gloss:f.prefab==='PF-DANCE-MIRROR'?.62:undefined});
+            localBox(f,0,y,-d*.16,w*.94,h*.90,d*.72,daylightScreen?'M-SCREEN':f.material,{round:.014,
+              alpha:f.prefab==='PF-DANCE-MIRROR'?.22:undefined,
+              glow:f.prefab==='PF-SCREEN'?(daylightScreen ? .04 : .09):undefined,
+              gloss:f.prefab==='PF-DANCE-MIRROR' ? .78 : (daylightScreen ? .32 : undefined)});
             localBox(f,0,y-h*.48,-d*.42,w*.90,.035,d*.32,frame,{round:.010});
             if(f.prefab==='PF-DANCE-MIRROR'){
-              localBox(f,0,y-h*.25,-d*.57,w*.92,.045,.045,'M-OAK',{round:.014});
+              if(studioMirror){
+                // Layer a restrained reflected studio into the safety glass: cool upper-wall,
+                // warm sprung floor and softened opposite opening stay translucent and shallow.
+                localBox(f,0,y+h*.24,-d*.548,w*.88,h*.38,.010,'M-FABRIC-BLUE',
+                  {round:.010,alpha:.11,gloss:.76});
+                localBox(f,0,y-h*.28,-d*.550,w*.88,h*.28,.010,'M-OAK',
+                  {round:.010,alpha:.13,gloss:.72});
+                localBox(f,-w*.15,y+h*.03,-d*.552,w*.22,h*.62,.009,'M-WALL-WHITE',
+                  {round:.009,alpha:.10,gloss:.78});
+                localBox(f,w*.25,y+h*.01,-d*.554,w*.20,h*.54,.008,'M-STEEL-DARK',
+                  {round:.008,alpha:.07,gloss:.70});
+                // A quieter reflected barre sits behind the physical oak barre.
+                localBox(f,0,y-h*.17,-d*.558,w*.84,.025,.010,'M-OAK-DARK',
+                  {round:.008,alpha:.24,gloss:.44});
+                for(const dx of [-w*.31,w*.31])localBox(f,dx,y-h*.31,-d*.559,.018,h*.28,.009,
+                  'M-OAK-DARK',{round:.006,alpha:.18,gloss:.40});
+                localBox(f,0,y-h*.25,-d*.57,w*.92,.045,.045,'M-OAK',{round:.014});
+              }else{
+                // WC, lift and washroom mirrors share the prefab but not the dance barre.
+                localBox(f,0,y+h*.20,-d*.548,w*.88,h*.32,.010,'M-WALL-WHITE',
+                  {round:.010,alpha:.10,gloss:.78});
+                localBox(f,0,y-h*.26,-d*.550,w*.88,h*.24,.010,'M-LAB-BLUE',
+                  {round:.010,alpha:.07,gloss:.74});
+              }
               localBox(f,-w*.31,y+h*.08,-d*.555,w*.025,h*.68,.012,'M-WALL-WHITE',{round:.006,alpha:.72,glow:.07});
               localBox(f,w*.18,y+h*.30,-d*.557,w*.42,.025,.012,'M-LAB-BLUE',{round:.006,alpha:.42,glow:.06});
               localBox(f,w*.28,y-h*.06,-d*.559,w*.18,h*.40,.010,'M-WALL-WHITE',{round:.006,alpha:.24,glow:.03});
+              // Short edge catches mark separate safety-backed mirror leaves without drawing a
+              // full opaque grid across the reflected surface.
+              for(const sy of [-1,1])for(const sx of [-1,1]){
+                localBox(f,sx*w*.445,y+sy*h*.40,-d*.571,w*.055,.018,.010,'M-STAINLESS',
+                  {round:.005,gloss:.84});
+                localBox(f,sx*w*.445,y+sy*h*.35,-d*.571,.016,h*.10,.010,'M-STAINLESS',
+                  {round:.005,gloss:.84});
+              }
             }
             if(f.prefab==='PF-SCREEN'){
-              localBox(f,-w*.31,y+h*.23,-d*.535,w*.22,h*.09,.012,'M-WALL-WHITE',{round:.008,glow:.14});
-              localBox(f,-w*.18,y+h*.04,-d*.537,w*.48,h*.055,.012,'M-LAB-BLUE',{round:.007,glow:.12});
-              localBox(f,w*.29,y-h*.12,-d*.539,w*.18,h*.34,.012,'M-WALL-GREEN',{round:.010,glow:.10});
-              localBox(f,-w*.11,y-h*.25,-d*.541,w*.60,h*.045,.012,'M-SAFETY-YELLOW',{round:.006,glow:.10});
+              if(daylightScreen){
+                // These sit behind real interior glazing and represent the campus outlook. A
+                // layered sky/horizon/landscape plus mullions reads as daylight depth, unlike the
+                // former flat cyan display card. No false screen UI or text is drawn on a window.
+                localBox(f,0,y+h*.19,-d*.538,w*.88,h*.40,.012,'M-LAB-BLUE',
+                  {round:.008,alpha:.34,glow:.055,gloss:.30});
+                localBox(f,0,y-h*.04,-d*.541,w*.88,h*.08,.012,'M-WALL-WHITE',
+                  {round:.006,alpha:.42,glow:.045,gloss:.26});
+                localBox(f,0,y-h*.25,-d*.540,w*.88,h*.28,.012,'M-WALL-GREEN',
+                  {round:.008,alpha:.30,glow:.025,gloss:.24});
+                for(const [dx,bw,bh] of [[-.31,.16,.16],[-.10,.22,.22],[.15,.18,.13],[.34,.12,.19]])
+                  localBox(f,dx*w,y-h*.16+bh*h*.18,-d*.548,bw*w,bh*h,.010,'M-STEEL-DARK',
+                    {round:.004,alpha:.26,gloss:.18});
+                for(const dx of [-w*.30,w*.30])localBox(f,dx,y,-d*.555,.024,h*.84,.014,
+                  'M-STAINLESS',{round:.006,gloss:.58});
+              }else{
+                localBox(f,-w*.31,y+h*.23,-d*.535,w*.22,h*.09,.012,'M-WALL-WHITE',{round:.008,glow:.14});
+                localBox(f,-w*.18,y+h*.04,-d*.537,w*.48,h*.055,.012,'M-LAB-BLUE',{round:.007,glow:.12});
+                localBox(f,w*.29,y-h*.12,-d*.539,w*.18,h*.34,.012,'M-WALL-GREEN',{round:.010,glow:.10});
+                localBox(f,-w*.11,y-h*.25,-d*.541,w*.60,h*.045,.012,'M-SAFETY-YELLOW',{round:.006,glow:.10});
+              }
             }
             if(f.prefab==='PF-CHALKBOARD'||f.prefab==='PF-WHITEBOARD')for(const dx of [-w*.22,0,w*.22])
               localBox(f,dx,y-h*.52,-d*.52,w*.10,.035,.035,dx?'M-FABRIC-BLUE':'M-SAFETY-RED',{round:.008});
