@@ -551,7 +551,10 @@ async function main(){
         props:scene.props.length,solids:scene.solids.length,blockers:scene.blockers.length,things:scene.things.length,
         lights:scene.lights.length,zones:scene.zones.length,spawn:scene.spawn,bodyVisible,bodyPolicy,
         reviewRoom,reviewAt,entryReviewAt};
-    }catch(error){return{ok:false,error:error.stack||error.message};}})()`,45000);
+    // Dense upper floors can spend more than 45 seconds constructing under GitHub's software
+    // WebGL runner. Keep the same bounded three-minute DevTools allowance used by other calls so
+    // a slow, valid scene reaches the visual gates instead of being misreported as a design fault.
+    }catch(error){return{ok:false,error:error.stack||error.message};}})()`,180000);
     if(!result.ok||result.buildingId!==view.building||result.level!==view.level||
       (view.mode==='programme'&&(!result.reviewRoom||!result.reviewAt))||
       (view.mode==='entry'&&!result.entryReviewAt))
