@@ -124,6 +124,7 @@ jobs:
           'use strict';
           const fs=require('fs'),path=require('path');
           const payload={
+            schema:'chinesegame.university-visual-review-shard/v1',
             building:process.env.UNIVERSITY_REVIEW_BUILDING,
             source:process.env.GITHUB_SHA,
             workflowRun:process.env.SOURCE_RUN,
@@ -141,15 +142,105 @@ jobs:
         if: ${{ always() }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: university-visual-review-shard-${{ matrix.building }}
+          name: university-visual-review-shard-${{ github.run_attempt }}-${{ matrix.building }}
           path: test-results/university-visuals/${{ matrix.building }}/
+          if-no-files-found: error
+          retention-days: 14
+
+  verify:
+    name: Independently recapture ${{ matrix.building }}
+    needs: validate
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    strategy:
+      fail-fast: false
+      max-parallel: 8
+      matrix:
+        building: [B01, B02, B03, B04, B05, B06, B07, B08]
+    env:
+      UNIVERSITY_REVIEW_BUILDING: ${{ matrix.building }}
+      UNIVERSITY_REVIEW_DIR: test-results/university-verification
+      SHARD_DIR: test-results/university-verification/${{ matrix.building }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          fetch-depth: 1
+          persist-credentials: false
+
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 24
+          package-manager-cache: false
+
+      - name: Install and verify deterministic Chinese glyphs
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$SHARD_DIR"
+          sudo apt-get update -qq
+          sudo apt-get install -y --no-install-recommends fonts-noto-cjk
+          fc-match 'Noto Sans CJK SC' | tee "$SHARD_DIR/cjk-font.txt"
+          grep -qi 'NotoSansCJK' "$SHARD_DIR/cjk-font.txt"
+
+      - name: Start an independent no-cache game server
+        shell: bash
+        run: |
+          set -euo pipefail
+          mkdir -p "$SHARD_DIR"
+          python3 serve.py 8000 > "$SHARD_DIR/server.log" 2>&1 &
+          for attempt in {1..30}; do
+            curl --fail --silent http://127.0.0.1:8000/index.html >/dev/null && exit 0
+            sleep 1
+          done
+          tail -200 "$SHARD_DIR/server.log"
+          exit 1
+
+      - name: Independently capture ${{ matrix.building }} university floors
+        id: capture
+        env:
+          CHROME: /usr/bin/google-chrome
+          GAME_TEST_SOFTWARE_WEBGL: '1'
+        run: node university-visual-review.js
+
+      - name: Record independent shard outcome
+        if: ${{ always() }}
+        env:
+          CAPTURE_OUTCOME: ${{ steps.capture.outcome }}
+          SOURCE_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        shell: bash
+        run: |
+          mkdir -p "$SHARD_DIR"
+          node - <<'NODE'
+          'use strict';
+          const fs=require('fs'),path=require('path');
+          const payload={
+            schema:'chinesegame.university-visual-review-shard/v1',
+            building:process.env.UNIVERSITY_REVIEW_BUILDING,
+            source:process.env.GITHUB_SHA,
+            workflowRun:process.env.SOURCE_RUN,
+            attempt:Number(process.env.GITHUB_RUN_ATTEMPT),
+            captureOutcome:process.env.CAPTURE_OUTCOME,
+          };
+          fs.writeFileSync(path.join(process.env.SHARD_DIR,'shard.json'),JSON.stringify(payload,null,2)+'\n');
+          NODE
+
+      - name: Print independent ${{ matrix.building }} server failures
+        if: ${{ failure() }}
+        run: tail -200 "$SHARD_DIR/server.log" || true
+
+      - name: Upload independent ${{ matrix.building }} shard
+        if: ${{ always() }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: university-visual-verification-shard-${{ github.run_attempt }}-${{ matrix.building }}
+          path: test-results/university-verification/${{ matrix.building }}/
           if-no-files-found: error
           retention-days: 14
 
   aggregate:
     name: Aggregate and publish university review
     if: ${{ always() && needs.validate.result == 'success' }}
-    needs: [validate, capture]
+    needs: [validate, capture, verify]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -171,8 +262,17 @@ jobs:
         continue-on-error: true
         uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
         with:
-          pattern: university-visual-review-shard-*
+          pattern: university-visual-review-shard-${{ github.run_attempt }}-*
           path: test-results/university-downloads
+          merge-multiple: false
+
+      - name: Download every independent verification shard
+        id: verification-download
+        continue-on-error: true
+        uses: actions/download-artifact@3e5f45b2cfb9172054b4087a40e8e0b5a5461e7c # v8.0.1
+        with:
+          pattern: university-visual-verification-shard-${{ github.run_attempt }}-*
+          path: test-results/university-verification-downloads
           merge-multiple: false
 
       - name: Normalize downloaded building shards
@@ -184,7 +284,20 @@ jobs:
           download_root=test-results/university-downloads
           mkdir -p "$output_root"
           for building in B01 B02 B03 B04 B05 B06 B07 B08; do
-            source="$download_root/university-visual-review-shard-$building"
+            source="$download_root/university-visual-review-shard-${{ github.run_attempt }}-$building"
+            [[ ! -d "$source" ]] || mv "$source" "$output_root/$building"
+          done
+
+      - name: Normalize independent verification shards
+        if: ${{ always() }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          output_root=test-results/university-verification
+          download_root=test-results/university-verification-downloads
+          mkdir -p "$output_root"
+          for building in B01 B02 B03 B04 B05 B06 B07 B08; do
+            source="$download_root/university-visual-verification-shard-${{ github.run_attempt }}-$building"
             [[ ! -d "$source" ]] || mv "$source" "$output_root/$building"
           done
 
@@ -196,13 +309,34 @@ jobs:
           UNIVERSITY_REVIEW_MERGE: '1'
         run: node university-visual-review.js
 
+      - name: Merge and validate 57 independent recaptures
+        id: verification-merge
+        continue-on-error: true
+        env:
+          UNIVERSITY_REVIEW_DIR: test-results/university-verification
+          UNIVERSITY_REVIEW_MERGE: '1'
+        run: node university-visual-review.js
+
+      - name: Compare every primary image with an independent Chrome recapture
+        id: compare
+        continue-on-error: true
+        env:
+          UNIVERSITY_REVIEW_COMPARE: '1'
+          UNIVERSITY_REVIEW_PRIMARY_DIR: test-results/university-visuals
+          UNIVERSITY_REVIEW_VERIFICATION_DIR: test-results/university-verification
+        run: node university-visual-review.js
+
       - name: Record aggregate outcome
         id: aggregate
         if: ${{ always() }}
         env:
           CAPTURE_JOBS_RESULT: ${{ needs.capture.result }}
+          VERIFICATION_JOBS_RESULT: ${{ needs.verify.result }}
           DOWNLOAD_OUTCOME: ${{ steps.download.outcome }}
+          VERIFICATION_DOWNLOAD_OUTCOME: ${{ steps.verification-download.outcome }}
           MERGE_OUTCOME: ${{ steps.merge.outcome }}
+          VERIFICATION_MERGE_OUTCOME: ${{ steps.verification-merge.outcome }}
+          COMPARE_OUTCOME: ${{ steps.compare.outcome }}
           SOURCE_RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         shell: bash
         run: |
@@ -222,13 +356,20 @@ jobs:
           const report=read(path.join(root,'report.json')),
             rootCaptures=fs.readdirSync(root).filter(file=>file.endsWith('.png')).length,
             recoveredCaptures=shards.reduce((total,shard)=>total+(Number(shard.views)||0),0),
-            complete=process.env.CAPTURE_JOBS_RESULT==='success'&&process.env.DOWNLOAD_OUTCOME==='success'&&
-              process.env.MERGE_OUTCOME==='success'&&report&&report.complete===true&&report.views===57&&rootCaptures===57;
+            verification=read(path.join(root,'verification.json')),
+            complete=process.env.CAPTURE_JOBS_RESULT==='success'&&process.env.VERIFICATION_JOBS_RESULT==='success'&&
+              process.env.DOWNLOAD_OUTCOME==='success'&&process.env.VERIFICATION_DOWNLOAD_OUTCOME==='success'&&
+              process.env.MERGE_OUTCOME==='success'&&process.env.VERIFICATION_MERGE_OUTCOME==='success'&&
+              process.env.COMPARE_OUTCOME==='success'&&report&&report.complete===true&&report.views===57&&
+              verification&&verification.complete===true&&verification.views===57&&rootCaptures===57;
           fs.writeFileSync(path.join(root,'shards.json'),JSON.stringify(shards,null,2)+'\n');
           if(!complete)fs.writeFileSync(path.join(root,'failure.json'),JSON.stringify({
             status:'failed',sourceSha:process.env.GITHUB_SHA,workflowRun:process.env.SOURCE_RUN,
             captureJobsResult:process.env.CAPTURE_JOBS_RESULT,downloadOutcome:process.env.DOWNLOAD_OUTCOME,
-            mergeOutcome:process.env.MERGE_OUTCOME,captureCount:recoveredCaptures,rootCaptureCount:rootCaptures,
+            verificationJobsResult:process.env.VERIFICATION_JOBS_RESULT,
+            verificationDownloadOutcome:process.env.VERIFICATION_DOWNLOAD_OUTCOME,
+            mergeOutcome:process.env.MERGE_OUTCOME,verificationMergeOutcome:process.env.VERIFICATION_MERGE_OUTCOME,
+            compareOutcome:process.env.COMPARE_OUTCOME,captureCount:recoveredCaptures,rootCaptureCount:rootCaptures,
             expectedViews:57,shards,
           },null,2)+'\n');
           fs.appendFileSync(process.env.GITHUB_OUTPUT,`complete=${complete}\ncaptures=${complete?rootCaptures:recoveredCaptures}\n`);
@@ -239,11 +380,23 @@ jobs:
         if: ${{ steps.aggregate.outputs.complete == 'true' }}
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
-          name: university-visual-review-${{ github.sha }}
+          name: university-visual-review-${{ github.sha }}-${{ github.run_attempt }}
           path: |
             test-results/university-visuals/*.png
             test-results/university-visuals/report.json
             test-results/university-visuals/shards.json
+            test-results/university-visuals/verification.json
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload independent recapture evidence
+        if: ${{ steps.aggregate.outputs.complete == 'true' }}
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
+        with:
+          name: university-visual-verification-${{ github.sha }}-${{ github.run_attempt }}
+          path: |
+            test-results/university-verification/*.png
+            test-results/university-verification/report.json
           if-no-files-found: error
           retention-days: 14
 
@@ -260,15 +413,16 @@ jobs:
           review_dir="$(mktemp -d)"
           mkdir -p "$review_dir/captures"
           cp "$aggregate_dir"/*.png "$review_dir/captures/"
-          cp "$aggregate_dir/report.json" "$aggregate_dir/shards.json" "$review_dir/"
+          cp "$aggregate_dir/report.json" "$aggregate_dir/shards.json" "$aggregate_dir/verification.json" "$review_dir/"
           {
             echo '# University visual review'
             echo
             echo "GitHub-hosted Chrome captures for source commit \`$SOURCE_SHA\`."
             echo
-            echo "[Workflow run]($SOURCE_RUN) · [Machine-readable scene report](report.json) · [Shard report](shards.json)"
+            echo "[Workflow run]($SOURCE_RUN) · [Machine-readable scene report](report.json) · [Shard report](shards.json) · [Independent recapture proof](verification.json)"
             echo
             echo 'All 57 entry/programme views passed structural, runtime, curated-camera, Chinese-glyph, uniqueness, and image-output validation.'
+            echo 'A second set of 57 fresh GitHub Chrome renders independently reproduced the scene/camera evidence and stayed within the bounded perceptual comparison.'
             echo 'Exactly one dedicated B07/F2 arrival capture keeps the player visible as a body/contact-shadow proof; the other 56 architectural and programme views hide the player so interiors remain unobstructed.'
             echo
             for building in B01 B02 B03 B04 B05 B06 B07 B08; do
@@ -284,7 +438,7 @@ jobs:
           git -C "$review_dir" init -b university-visual-review
           git -C "$review_dir" config user.name 'github-actions[bot]'
           git -C "$review_dir" config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git -C "$review_dir" add README.md report.json shards.json captures
+          git -C "$review_dir" add README.md report.json shards.json verification.json captures
           git -C "$review_dir" commit -m "University visual review for $SOURCE_SHA"
           git -C "$review_dir" remote add origin "https://x-access-token:${GITHUB_TOKEN}@github.com/${GITHUB_REPOSITORY}.git"
           git -C "$review_dir" push --force origin HEAD:university-visual-review
@@ -294,7 +448,9 @@ jobs:
         uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: university-visual-review-debug-${{ github.run_id }}-${{ github.run_attempt }}
-          path: test-results/university-visuals/
+          path: |
+            test-results/university-visuals/
+            test-results/university-verification/
           if-no-files-found: error
           retention-days: 14
 
@@ -322,7 +478,7 @@ jobs:
               [[ ! -f "$aggregate_dir/$building/$file" ]] || cp "$aggregate_dir/$building/$file" "$debug_dir/$building/$file"
             done
           done
-          for file in report.json shards.json failure.json fatal-error.json fatal-errors.json; do
+          for file in report.json shards.json verification.json failure.json fatal-error.json fatal-errors.json; do
             [[ ! -f "$aggregate_dir/$file" ]] || cp "$aggregate_dir/$file" "$debug_dir/$file"
           done
           capture_count=${#captures[@]}
@@ -358,5 +514,5 @@ jobs:
       - name: Fail incomplete aggregate after diagnostics
         if: ${{ always() && steps.aggregate.outputs.complete != 'true' }}
         run: |
-          echo "::error::University visual review recovered ${{ steps.aggregate.outputs.captures || '0' }}/57 PNGs; capture=${{ needs.capture.result }}, download=${{ steps.download.outcome }}, merge=${{ steps.merge.outcome }}."
+          echo "::error::University visual review recovered ${{ steps.aggregate.outputs.captures || '0' }}/57 PNGs; capture=${{ needs.capture.result }}, verification=${{ needs.verify.result }}, download=${{ steps.download.outcome }}, merge=${{ steps.merge.outcome }}, verify-merge=${{ steps.verification-merge.outcome }}, compare=${{ steps.compare.outcome }}."
           exit 1

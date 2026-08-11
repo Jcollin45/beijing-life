@@ -79,7 +79,7 @@ const CampusInteriors = (() => {
           m.texture === 'steel' ? .44 : .38;
         // Keep plaster variation as a restrained painted tooth; wood, brick, tile and terrazzo
         // retain enough contrast to read as their actual material under interior lighting.
-        o.matAmt=m.texture === 'wood' ? .42 : m.texture === 'plaster' ? .06 : .30;
+        o.matAmt=m.texture === 'wood' ? .42 : m.texture === 'plaster' ? .025 : .30;
       }
       if (o.mode === undefined && m.renderMode !== undefined) o.mode=m.renderMode;
       return o;
@@ -239,12 +239,13 @@ const CampusInteriors = (() => {
         if(renderDoorByPhysicalKey.get(doorKey)!==door||renderedPhysicalDoorKeys.has(doorKey))continue;
         renderedPhysicalDoorKeys.add(doorKey);
         const [dx,,dz]=door.at,wallYaw=vertical?Math.PI/2:0,openAngle=50*Math.PI/180,
+          renderedOpenAngle=door.restAngleDegrees===undefined?openAngle:door.restAngleDegrees*Math.PI/180,
           hingeX=vertical?dx:dx-door.width/2,hingeZ=vertical?dz-door.width/2:dz;
         let vx,vz;
-        if(side==='west'){vx=Math.sin(openAngle);vz=Math.cos(openAngle);}
-        else if(side==='east'){vx=-Math.sin(openAngle);vz=Math.cos(openAngle);}
-        else if(side==='south'){vx=Math.cos(openAngle);vz=Math.sin(openAngle);}
-        else{vx=Math.cos(openAngle);vz=-Math.sin(openAngle);}
+        if(side==='west'){vx=Math.sin(renderedOpenAngle);vz=Math.cos(renderedOpenAngle);}
+        else if(side==='east'){vx=-Math.sin(renderedOpenAngle);vz=Math.cos(renderedOpenAngle);}
+        else if(side==='south'){vx=Math.cos(renderedOpenAngle);vz=Math.sin(renderedOpenAngle);}
+        else{vx=Math.cos(renderedOpenAngle);vz=-Math.sin(renderedOpenAngle);}
         const leafX=hingeX+vx*door.width*.39,leafZ=hingeZ+vz*door.width*.39,
           leafYaw=Math.atan2(-vz,vx),openPocket=door.operation==='sliding-pocket'&&door.reviewOpen===true;
         // A half-open closer-controlled leaf reads as a usable door without projecting a full
@@ -568,7 +569,7 @@ const CampusInteriors = (() => {
     }
 
     function paintFixtureText(f,w,panelH,centreY,faceZ,maxRows=3,value=f.text) {
-      const minSize=.065,gap=.006,maxChars=Math.max(2,Math.floor((w*.82+minSize*.06)/(minSize*1.06))),
+      const minSize=.075,gap=.006,maxChars=Math.max(2,Math.floor((w*.82+minSize*.06)/(minSize*1.06))),
         rowLimit=Math.max(1,Math.min(maxRows,Math.floor(panelH*.68/minSize))),
         rows=fixtureTextRows(value,rowLimit,maxChars);if(!rows.length)return;
       const linePitch=panelH/rows.length,[gx,gz]=rotated(f.at[0],f.at[2],0,faceZ,f.yaw||0);

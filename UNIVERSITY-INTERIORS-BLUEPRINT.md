@@ -4,7 +4,7 @@ This is the implemented, construction-grade interior companion to `UNIVERSITY-BL
 
 The machine-readable source of truth is [`UNIVERSITY-INTERIORS-BLUEPRINT.json`](UNIVERSITY-INTERIORS-BLUEPRINT.json). Re-run `node tools/generate-university-interiors-blueprint.js` after any authored change. If prose and JSON disagree, use the JSON and regenerate this file.
 
-Blueprint version **2** · exterior layout **2** · canonical hash `e71c90c989b0fa6671bba1c914f2d801ef526824d7f54835db9fdb5a1d231799`.
+Blueprint version **2** · exterior layout **2** · canonical hash `f7a9e553f63d7740c4f373fb732954242f091b0c4725237933ff393ab48a4888`.
 
 ## 1. Audit result
 
@@ -48,7 +48,7 @@ Before this construction pass, only two university interiors existed, and both w
 | buildings | 8 |
 | floors | 28 |
 | rooms | 205 |
-| fixtureInstances | 4569 |
+| fixtureInstances | 4601 |
 | beds | 48 |
 | studentSeatPairs | 2 |
 | labBenches | 25 |
@@ -126,12 +126,12 @@ Circulation: `B01/F2/CORRIDOR` x[-12.8, 12.8] z[3.1, 4.95], clear 1.85 m; `B01/F
 
 Circulation: `B01/F3/CORRIDOR` x[-12.8, 12.8] z[3.1, 4.95], clear 1.85 m; `B01/F3/CENTRE-ROUTE` x[-0.6, 0.6] z[-4.85, 4.95], clear 1.2 m.
 
-#### Floor 4 · elevation 9.9 m · 189 fixture instances
+#### Floor 4 · elevation 9.9 m · 190 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
 | B01/F4/WEST | 401教室 | x[-12.6, -3.4] z[-5, 3] | classroom | 54 | north [-4.6,9.9,3] w1.05 → B01/F4/CORRIDOR<br>west [-12.6,9.9,-2.1] w1.2 → B01/F4/STAIR-W |
-| B01/F4/CENTRE | 教学准备室 | x[-3.2, 3.2] z[-5, 3] | office | 25 | north [0,9.9,3] w1.05 → B01/F4/CORRIDOR |
+| B01/F4/CENTRE | 教学准备室 | x[-3.2, 3.2] z[-5, 3] | office | 26 | north [0,9.9,3] w1.05 → B01/F4/CORRIDOR |
 | B01/F4/EAST | 402教室 | x[3.4, 12.6] z[-5, 3] | classroom | 57 | north [11.4,9.9,3] w1.05 → B01/F4/CORRIDOR<br>east [12.6,9.9,-2.1] w1.2 → B01/F4/STAIR-E |
 | B01/F4/STAIR-W | 西安全楼梯 | x[-15.5, -12.8] z[-5, 0.8] | service | 7 | east [-12.8,9.9,-2.1] w1.2 → B01/F4/WEST |
 | B01/F4/WC-W | 西侧卫生间 | x[-15.5, -12.8] z[1, 5] | service | 6 | east [-12.8,9.9,4.025] w1.2 → B01/F4/CORRIDOR |
@@ -199,12 +199,12 @@ Circulation: `B02/F1/HALL` x[-2.25, 3.4] z[-0.8, 2.55], clear 2 m; `B02/F1/SERVI
 
 Circulation: `B02/F2/SPINE` x[1.1, 3.4] z[-5.2, 11.6], clear 1.5 m; `B02/F2/EGRESS-NW` x[-3.15, 3.4] z[7.05, 8.55], clear 1.5 m.
 
-#### Floor 3 · elevation 6.4 m · 112 fixture instances
+#### Floor 3 · elevation 6.4 m · 117 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
 | B02/F3/SOUTH | 科学期刊书库 | x[-6.15, 0.9] z[-11.6, -0.7] | library | 30 | east [0.9,6.4,-2.95] w1.2 → B02/F3/SPINE |
-| B02/F3/NORTH | 电子阅览室 | x[-6.15, 0.9] z[-0.45, 11.6] | library | 22 | east [0.9,6.4,7.8] w1.2 → B02/F3/EGRESS-NW |
+| B02/F3/NORTH | 电子阅览室 | x[-6.15, 0.9] z[-0.45, 11.6] | library | 26 | east [0.9,6.4,7.8] w1.2 → B02/F3/EGRESS-NW |
 | B02/F3/EAST | 小组学习室 | x[3.55, 6.15] z[-0.7, 11.6] | library | 21 | west [3.55,6.4,5.5] w1.2 → B02/F3/SPINE |
 | B02/F3/CORE | 楼梯与电梯 | x[1.1, 6.15] z[-11.6, -5.35] | service | 8 | north [2.25,6.4,-5.35] w1.2 → B02/F3/SPINE |
 | B02/F3/WC | 卫生间 | x[3.55, 6.15] z[-3.85, -0.9] | service | 5 | west [3.55,6.4,-2.375] w1.2 → B02/F3/SPINE |
@@ -245,20 +245,20 @@ Exterior footprint: `x[-43,-29] z[-7,12]`. Local envelope: `x[-7, 7] z[-9.5, 9.5
 
 ### Floor and room schedule
 
-#### Floor 1 · elevation 0 m · 190 fixture instances
+#### Floor 1 · elevation 0 m · 192 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
-| B03/F1/DINING | 学生餐厅 | x[0.2, 6.6] z[-8.9, 8.9] | canteen | 86 | south [0.35,0,-9.5] w1.5 → campus<br>west [0.2,0,-7.85] w1.2 → B03/F1/QUEUE-SPINE |
+| B03/F1/DINING | 学生餐厅 | x[0.2, 6.6] z[-8.9, 8.9] | canteen | 88 | south [0.35,0,-9.5] w1.5 → campus<br>west [0.2,0,-7.85] w1.2 → B03/F1/QUEUE-SPINE |
 | B03/F1/SERVE | 售饭区 | x[-2.65, 0] z[-8.9, 5.9] | kitchen | 39 | west [-2.65,0,-8.2] w0.9 → B03/F1/SERVICE-ENTRY<br>west [-2.65,0,3.725] w0.95 → B03/F1/CLEAN-PASS |
-| B03/F1/RETURN | 餐具回收 | x[-2.65, 1.15] z[6.1, 8.9] | kitchen | 8 | west [-2.65,0,8.45] w0.8 → B03/F1/DISH-STAFF |
+| B03/F1/RETURN | 餐具回收 | x[-2.65, 1.15] z[6.1, 8.9] | kitchen | 8 | west [-2.65,0,8.45] w0.9 → B03/F1/DISH-STAFF |
 | B03/F1/KITCHEN | 净菜与热厨 | x[-6.6, -2.65] z[-1.5, 4.7] | kitchen | 18 | west [-7,0,3] w1.2 → campus-service<br>east [-2.65,0,3.725] w0.95 → B03/F1/CLEAN-PASS<br>south [-3.55,0,-1.5] w1.2 → B03/F1/BOH-CLEAN<br>north [-5.4,0,4.7] w1.2 → B03/F1/DIRTY |
-| B03/F1/DIRTY | 餐具洗消间 | x[-6.6, -2.65] z[4.7, 8.9] | kitchen | 10 | south [-5.4,0,4.7] w1.2 → B03/F1/KITCHEN<br>east [-2.65,0,8.45] w0.8 → B03/F1/DISH-STAFF |
+| B03/F1/DIRTY | 餐具洗消间 | x[-6.6, -2.65] z[4.7, 8.9] | kitchen | 10 | south [-5.4,0,4.7] w1.2 → B03/F1/KITCHEN<br>east [-2.65,0,8.45] w0.9 → B03/F1/DISH-STAFF |
 | B03/F1/STORE | 冷藏与干货储藏 | x[-6.6, -2.65] z[-8.9, -5] | service | 9 | east [-2.65,0,-8.2] w0.9 → B03/F1/SERVICE-ENTRY<br>north [-3.25,0,-5] w1.2 → B03/F1/BOH-CLEAN |
 | B03/F1/WC | 员工卫生间 | x[-6.6, -4.45] z[-5, -1.5] | service | 7 | east [-4.45,0,-2.6] w1 → B03/F1/BOH-CLEAN |
 | B03/F1/CHANGE | 员工更衣与清洁通道 | x[-4.45, -2.65] z[-5, -1.5] | service | 5 | south [-3.25,0,-5] w1.2 → B03/F1/BOH-CLEAN<br>north [-3.55,0,-1.5] w1.2 → B03/F1/BOH-CLEAN<br>west [-4.45,0,-2.6] w1 → B03/F1/BOH-CLEAN |
 
-Circulation: `B03/F1/QUEUE-SPINE` x[-0.35, 1.15] z[-7.9, 5.85], clear 1.5 m; `B03/F1/ENTRY` x[0.2, 7] z[-2.42, 2.42], clear 2.4 m; `B03/F1/EGRESS-S` x[-0.4, 1.45] z[-9.5, -8], clear 1.5 m; `B03/F1/DINING-AISLE` x[3.225, 4.425] z[-7.6, 7.6], clear 1.2 m; `B03/F1/DINING-CROSS-S` x[1.15, 6.3] z[-5.72, -4.48], clear 1.2 m; `B03/F1/DINING-CROSS-N` x[1.15, 6.3] z[4.48, 5.72], clear 1.2 m; `B03/F1/RETURN-LANE` x[-0.35, 1.15] z[6.1, 8.25], clear 1.5 m; `B03/F1/SERVE-STAFF` x[-2.6, -1.4] z[-8.65, 5.75], clear 1.2 m; `B03/F1/SERVICE-ENTRY` x[-3.25, -1.4] z[-8.65, -7.75], clear 0.9 m; `B03/F1/CLEAN-PASS` x[-3.25, -1.4] z[3.25, 4.2], clear 0.95 m; `B03/F1/DISH-STAFF` x[-3.25, -1.4] z[8, 8.9], clear 0.8 m; `B03/F1/BOH-CLEAN` x[-3.95, -2.75] z[-5, -0.15], clear 1.2 m; `B03/F1/KITCHEN-AISLE` x[-5.55, -3.6] z[-1.2, 2.75], clear 1.95 m; `B03/F1/WASH-AISLE` x[-5.65, -3.55] z[5, 8.5], clear 2.1 m; `B03/F1/STORE-AISLE` x[-5.6, -3.4] z[-8.5, -5.95], clear 2.2 m; `B03/F1/WC-TURN` x[-6.2, -4.7] z[-3.45, -1.95], clear 1.5 m.
+Circulation: `B03/F1/QUEUE-SPINE` x[-0.35, 1.15] z[-7.9, 5.85], clear 1.5 m; `B03/F1/ENTRY` x[0.2, 7] z[-2.42, 2.42], clear 2.4 m; `B03/F1/EGRESS-S` x[-0.4, 1.45] z[-9.5, -8], clear 1.5 m; `B03/F1/DINING-AISLE` x[3.225, 4.425] z[-7.6, 7.6], clear 1.2 m; `B03/F1/DINING-CROSS-S` x[1.15, 6.3] z[-5.72, -4.48], clear 1.2 m; `B03/F1/DINING-CROSS-N` x[1.15, 6.3] z[4.48, 5.72], clear 1.2 m; `B03/F1/RETURN-LANE` x[-0.35, 1.15] z[6.1, 8.25], clear 1.5 m; `B03/F1/SERVE-STAFF` x[-2.6, -1.4] z[-8.65, 5.75], clear 1.2 m; `B03/F1/SERVICE-ENTRY` x[-3.25, -1.4] z[-8.65, -7.75], clear 0.9 m; `B03/F1/CLEAN-PASS` x[-3.25, -1.4] z[3.25, 4.2], clear 0.95 m; `B03/F1/DISH-STAFF` x[-3.25, -1.4] z[8, 8.9], clear 0.9 m; `B03/F1/BOH-CLEAN` x[-3.95, -2.75] z[-5, -0.15], clear 1.2 m; `B03/F1/KITCHEN-AISLE` x[-5.55, -3.6] z[-1.2, 2.75], clear 1.95 m; `B03/F1/WASH-AISLE` x[-5.65, -3.55] z[5, 8.5], clear 2.1 m; `B03/F1/STORE-AISLE` x[-5.6, -3.4] z[-8.5, -5.95], clear 2.2 m; `B03/F1/WC-TURN` x[-6.2, -4.7] z[-3.45, -1.95], clear 1.5 m.
 
 The exact coordinate, size, yaw, material, collision, purpose and prefab ID for every fixture on these floors is in the JSON building record.
 
@@ -276,7 +276,7 @@ Exterior footprint: `x[30,43] z[-9,7]`. Local envelope: `x[-6.5, 6.5] z[-8, 8]`.
 
 ### Floor and room schedule
 
-#### Floor 1 · elevation 0 m · 133 fixture instances
+#### Floor 1 · elevation 0 m · 134 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -292,7 +292,7 @@ Exterior footprint: `x[30,43] z[-9,7]`. Local envelope: `x[-6.5, 6.5] z[-8, 8]`.
 
 Circulation: `B04/F1/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m; `B04/F1/ENTRY` x[-6.5, -1] z[-2.15, 0.15], clear 2.3 m.
 
-#### Floor 2 · elevation 3 m · 253 fixture instances
+#### Floor 2 · elevation 3 m · 254 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -308,7 +308,7 @@ Circulation: `B04/F1/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m; `B04/F1/ENTRY` 
 
 Circulation: `B04/F2/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
-#### Floor 3 · elevation 6 m · 253 fixture instances
+#### Floor 3 · elevation 6 m · 254 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -324,7 +324,7 @@ Circulation: `B04/F2/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
 Circulation: `B04/F3/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
-#### Floor 4 · elevation 9 m · 253 fixture instances
+#### Floor 4 · elevation 9 m · 254 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -340,7 +340,7 @@ Circulation: `B04/F3/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
 Circulation: `B04/F4/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
-#### Floor 5 · elevation 12 m · 253 fixture instances
+#### Floor 5 · elevation 12 m · 254 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -356,7 +356,7 @@ Circulation: `B04/F4/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
 Circulation: `B04/F5/CORRIDOR` x[-1, 1] z[-7.6, 7.6], clear 2 m.
 
-#### Floor 6 · elevation 15 m · 208 fixture instances
+#### Floor 6 · elevation 15 m · 209 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -407,7 +407,7 @@ Exterior footprint: `x[-43,-29] z[24,36]`. Local envelope: `x[-7, 7] z[-6, 6]`. 
 
 Circulation: `B05/F1/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
-#### Floor 2 · elevation 3.1 m · 166 fixture instances
+#### Floor 2 · elevation 3.1 m · 168 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -421,7 +421,7 @@ Circulation: `B05/F1/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
 Circulation: `B05/F2/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
-#### Floor 3 · elevation 6.2 m · 155 fixture instances
+#### Floor 3 · elevation 6.2 m · 157 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -435,7 +435,7 @@ Circulation: `B05/F2/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
 Circulation: `B05/F3/CORRIDOR` x[-6.6, 6.6] z[-1.1, 1.1], clear 2.2 m.
 
-#### Floor 4 · elevation 9.3 m · 150 fixture instances
+#### Floor 4 · elevation 9.3 m · 152 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -482,7 +482,7 @@ Exterior footprint: `x[-43,-28] z[40,62]`. Local envelope: `x[-7.5, 7.5] z[-11, 
 
 Circulation: `B06/F1/CORRIDOR` x[-0.9, 0.9] z[-10.6, 10.6], clear 1.8 m; `B06/F1/ENTRY` x[0.9, 7.5] z[-2, 0.1], clear 2.1 m.
 
-#### Floor 2 · elevation 3.65 m · 186 fixture instances
+#### Floor 2 · elevation 3.65 m · 190 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -495,7 +495,7 @@ Circulation: `B06/F1/CORRIDOR` x[-0.9, 0.9] z[-10.6, 10.6], clear 1.8 m; `B06/F1
 
 Circulation: `B06/F2/CORRIDOR` x[-0.9, 0.9] z[-10.6, 10.6], clear 1.8 m; `B06/F2/ENTRY` x[0.9, 7.5] z[-2, 0.1], clear 2.1 m.
 
-#### Floor 3 · elevation 7.3 m · 151 fixture instances
+#### Floor 3 · elevation 7.3 m · 155 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -508,7 +508,7 @@ Circulation: `B06/F2/CORRIDOR` x[-0.9, 0.9] z[-10.6, 10.6], clear 1.8 m; `B06/F2
 
 Circulation: `B06/F3/CORRIDOR` x[-0.9, 0.9] z[-10.6, 10.6], clear 1.8 m; `B06/F3/ENTRY` x[0.9, 7.5] z[-2, 0.1], clear 2.1 m.
 
-#### Floor 4 · elevation 10.95 m · 153 fixture instances
+#### Floor 4 · elevation 10.95 m · 157 fixture instances
 
 | Room ID | Label | Exact clear bounds | Finish | Fixtures | Doors |
 | --- | --- | --- | --- | --- | --- |
@@ -631,8 +631,8 @@ The exact coordinate, size, yaw, material, collision, purpose and prefab ID for 
 | M-RUBBER | sports/acoustic rubber | #59636a | none | 0.06 |
 | M-EPOXY | pale laboratory epoxy | #b7c1bf | none | 0.2 |
 | M-KITCHEN-EPOXY | red-brown non-slip kitchen epoxy | #8c6254 | none | 0.1 |
-| M-WALL-WARM | warm washable plaster | #e5dfd2 | plaster | 0.08 |
-| M-WALL-WHITE | cool washable plaster | #e7e8e4 | plaster | 0.08 |
+| M-WALL-WARM | warm washable plaster | #ddd6c9 | plaster | 0.08 |
+| M-WALL-WHITE | cool washable plaster | #dedfdb | plaster | 0.08 |
 | M-WALL-GREEN | clinic pale green wall | #c9d8cd | plaster | 0.08 |
 | M-BRICK | interior red brick accent | #9b5546 | brick | 0.08 |
 | M-ACOUSTIC | perforated acoustic panel | #c9c1b4 | none | 0.06 |
@@ -660,94 +660,94 @@ The exact coordinate, size, yaw, material, collision, purpose and prefab ID for 
 
 Prefab anchors are part of the coordinate contract. Each instance in JSON supplies an exact anchor, size, yaw and material; the design below defines its component parts.
 
-| ID | Label | Default size | Anchor | Component design |
-| --- | --- | --- | --- | --- |
-| PF-WALL-RUN | architectural-layer | 1 × 0.12 × 1 | centre | Panelized architectural assembly; floors receive recessed borders, ceiling rafts separated baffles, glazing frames and mullions, and vertical panels shadow joints or fabric pleats. Full dimensions come from the instance size. |
-| PF-DOOR-SINGLE | door-single | 0.98 × 2.12 × 0.08 | threshold | Painted leaf, frame, lever, vision panel and swing metadata. |
-| PF-DOOR-DOUBLE | door-double | 1.8 × 2.22 × 0.1 | threshold | Two glazed leaves, frame, pull rails and clear-opening metadata. |
-| PF-EXIT-SIGN | exit-sign | 0.48 × 0.22 × 0.06 | face-centre | Green bilingual EXIT/出口 face with low emissive glow. |
-| PF-ROOM-SIGN | room-sign | 0.46 × 0.24 × 0.04 | face-centre | Blue bilingual room plate; instance supplies text. |
-| PF-DIRECTORY | directory-screen | 1.2 × 1.7 × 0.1 | floor | Freestanding or wall directory with floor map and accessible route. |
-| PF-CEILING-LIGHT | ceiling-panel | 1.2 × 0.06 × 0.28 | ceiling-centre | LED panel, diffuser and real point-light anchors. |
-| PF-PENDANT | pendant-light | 0.42 × 0.3 × 0.42 | ceiling-centre | Shade, warm emitter and suspension stem. |
-| PF-EMERGENCY-LIGHT | emergency-light | 0.32 × 0.12 × 0.1 | face-centre | Battery emergency luminaire. |
-| PF-ALARM | fire-alarm | 0.16 × 0.24 × 0.08 | face-centre | Manual call point and audible beacon. |
-| PF-EXTINGUISHER | extinguisher-cabinet | 0.42 × 0.72 × 0.18 | floor | Recessed red cabinet, extinguisher bottle and label. |
-| PF-AED | aed-cabinet | 0.52 × 0.58 × 0.18 | face-centre | Public AED cabinet, green light and bilingual label. |
-| PF-FIRST-AID | first-aid-cabinet | 0.52 × 0.68 × 0.2 | face-centre | Lockable first-aid cabinet with marked cross. |
-| PF-STAIR | stair-flight | 2.5 × 3 × 4.8 | floor | Two-flight stair, landing, 1.10 m rails and tactile nosings. |
-| PF-LIFT | lift-car | 1.7 × 2.45 × 1.7 | floor | Accessible lift car, doors, panel, handrail and floor display. |
-| PF-BENCH | bench | 1.8 × 0.84 × 0.58 | floor | Four-leg bench with back and two seat positions. |
-| PF-CHAIR | chair | 0.46 × 0.84 × 0.48 | floor | Seat, back and four legs; instance yaw is seated facing. |
-| PF-STOOL | lab-stool | 0.38 × 0.56 × 0.38 | floor | Height-adjustable round stool and five-foot base. |
-| PF-WAIT-CHAIRS | waiting-chair-bank | 1.9 × 0.84 × 0.62 | floor | Three linked seats on steel beam. |
-| PF-STUDENT-DESK-2 | two-seat-student-desk | 1.4 × 0.78 × 0.82 | floor | Desk top, skirt, four legs, two stools, book and pencil case. |
-| PF-LECTURE-SEAT | lecture-seat | 0.58 × 0.88 × 0.82 | floor | Fixed padded seat with folding writing tablet. |
-| PF-TEACHER-PODIUM | teacher-podium | 1.25 × 1.18 × 0.72 | floor | Lectern, worktop, lockable cabinet and cable grommet. |
-| PF-COMPUTER-DESK | computer-workstation | 1.2 × 0.76 × 0.72 | floor | Desk, ergonomic chair, monitor, keyboard, mouse and under-desk tower. |
-| PF-LANGUAGE-DESK | language-workstation | 1.1 × 0.76 × 0.72 | floor | Computer workstation plus headset, microphone and divider. |
-| PF-CHALKBOARD | chalkboard | 5.4 × 1.5 × 0.1 | face-centre | Green board, wood frame, chalk tray, chalk and lesson glyph layer. |
-| PF-WHITEBOARD | whiteboard | 3.2 × 1.2 × 0.08 | face-centre | Magnetic board, marker tray and four marker blocks. |
-| PF-PROJECTOR | ceiling-projector | 0.32 × 0.18 × 0.42 | ceiling-centre | Projector body, mount, lens and low-glow emitter. |
-| PF-SCREEN | projection-screen | 2.4 × 1.5 × 0.06 | face-centre | Roll case, matte screen and lower weight bar. |
-| PF-CLOCK | wall-clock | 0.46 × 0.46 × 0.06 | face-centre | Dial, 12 marks and animated hour/minute hands. |
-| PF-FLAG | wall-flag | 0.72 × 0.48 × 0.04 | face-centre | Red fabric panel with gold hanging bar. |
-| PF-BOOKCASE | bookcase | 0.9 × 2 × 0.38 | floor | Five shelves, deterministic mixed books and label strip. |
-| PF-BOOKSTACK | double-book-stack | 1 × 2.2 × 3 | floor | Two-sided six-shelf stack with end classification panel and books. |
-| PF-READING-TABLE | four-seat-reading-table | 2.4 × 0.8 × 1.35 | floor | Oak table, four chairs, baize inlay, books and banker lamp. |
-| PF-CIRC-DESK | circulation-desk | 2.8 × 1.05 × 0.9 | floor | Accessible return section, computer, scanner, task lamp and sign. |
-| PF-SELF-CHECK | self-check-kiosk | 0.52 × 1.35 × 0.5 | floor | Touchscreen, RFID pad, receipt slot and status lamp. |
-| PF-SECURITY-GATE | library-security-gate | 0.16 × 1.65 × 0.62 | floor | Transparent RFID gate leaf with status light. |
-| PF-SHELF | storage-shelf | 1 × 2 × 0.48 | floor | Five powder-coated shelves and labelled contents blocks. |
-| PF-FILE-CABINET | file-cabinet | 0.9 × 1.35 × 0.48 | floor | Lockable four-drawer cabinet with label holders. |
-| PF-OFFICE-DESK | office-workstation | 1.5 × 0.76 × 0.75 | floor | Desk, task chair, monitor, keyboard, phone and drawer pedestal. |
-| PF-MEETING-TABLE | meeting-table | 2.8 × 0.76 × 1.15 | floor | Cable-managed table; chairs are separate exact instances. |
-| PF-SIDE-TABLE | side-table | 0.55 × 0.48 × 0.55 | floor | Compact rounded top, recessed apron, four tapered legs and low steel stretcher. |
-| PF-SERVICE-COUNTER | service-counter | 2.4 × 1.05 × 0.82 | floor | Accessible counter section, two terminals and privacy screen. |
-| PF-CANTEEN-TABLE | four-seat-canteen-table | 1.45 × 0.76 × 1.15 | floor | Laminate table with four fixed stools. |
-| PF-TRAY-RACK | tray-rack | 0.72 × 1.25 × 0.52 | floor | Tray shelves, chopstick cups and sanitizer dispenser. |
-| PF-SERVING-COUNTER | heated-serving-counter | 2 × 1.15 × 0.86 | floor | Stainless counter, three food pans, sneeze guard and menu plate. |
-| PF-CASHIER | cashier-station | 1.25 × 1.05 × 0.78 | floor | Counter, POS screen, scanner and payment sign. |
-| PF-DISH-RETURN | dish-return | 2 × 1.15 × 0.82 | floor | Tray aperture, belt, scrape bin and return sign. |
-| PF-KITCHEN-RANGE | commercial-range | 1.8 × 0.92 × 0.82 | floor | Two wok rings, controls, splashback and gas-isolation label. |
-| PF-HOOD | extract-hood | 2.2 × 0.72 × 1.05 | ceiling-centre | Stainless canopy, baffles, light and suppression nozzles. |
-| PF-PREP-TABLE | prep-table | 1.8 × 0.9 × 0.75 | floor | Stainless worktop, undershelf and colour-coded boards. |
-| PF-SINK-DOUBLE | double-sink | 1.4 × 0.92 × 0.72 | floor | Two stainless bowls, taps, drainboard and splashback. |
-| PF-FRIDGE | upright-fridge | 0.82 × 2 × 0.82 | floor | Two-door refrigerator, thermometer and ventilation grille. |
-| PF-FREEZER | upright-freezer | 0.82 × 2 × 0.82 | floor | Lockable freezer, thermometer and ventilation grille. |
-| PF-HANDWASH | handwash-basin | 0.52 × 0.88 × 0.42 | floor | Basin, sensor tap, soap, towel unit and splashback. |
-| PF-WATER | water-dispenser | 0.42 × 1.2 × 0.42 | floor | Hot/cold dispenser, bottle and cup rack. |
-| PF-BIN | waste-bin | 0.42 × 0.68 × 0.42 | floor | Lidded bin with stream label. |
-| PF-PLANT | potted-plant | 0.58 × 1.35 × 0.58 | floor | Weighted pot, soil and deterministic foliage cluster. |
-| PF-BED | single-bed | 2 × 0.58 × 0.92 | floor | Frame, mattress, pillow, sheet and folded quilt. |
-| PF-DORM-DESK | dorm-study-desk | 1.05 × 0.76 × 0.58 | floor | Desk, chair, task lamp, books and power strip. |
-| PF-WARDROBE | wardrobe | 0.9 × 2.15 × 0.6 | floor | Two-door wardrobe, handles, top locker and clothes rail. |
-| PF-SHOE-RACK | shoe-rack | 0.8 × 0.55 × 0.32 | floor | Three shelves with deterministic shoe pairs. |
-| PF-AC | indoor-ac-unit | 0.82 × 0.28 × 0.22 | face-centre | Wall split-unit body, grille and status lamp. |
-| PF-LAUNDRY | washer-dryer | 0.68 × 1.75 × 0.72 | floor | Stacked washer/dryer with doors and control panels. |
-| PF-LOCKERS | locker-bank | 1.8 × 1.9 × 0.5 | floor | Six ventilated steel lockers with number plates. |
-| PF-LAB-BENCH | laboratory-bench | 2.4 × 0.92 × 0.82 | floor | Chemical-resistant worktop, cabinets, service taps and sockets. |
-| PF-FUME-HOOD | fume-hood | 1.5 × 2.35 × 0.88 | floor | Sash, work chamber, extraction plenum and service controls. |
-| PF-LAB-SINK | laboratory-sink | 0.8 × 0.92 × 0.65 | floor | Chemical-resistant sink, gooseneck tap and drying pegs. |
-| PF-EYEWASH | eyewash-shower | 0.65 × 2.25 × 0.65 | floor | Twin eyewash heads, pull shower and floor drain. |
-| PF-MICROSCOPE | microscope-station | 1.2 × 0.92 × 0.72 | floor | Bench, stool, microscope, task light and specimen tray. |
-| PF-ROBOTICS | robotics-bench | 2 × 0.92 × 0.9 | floor | Work bench, tool board, solder extraction and robot model. |
-| PF-EXAM-COUCH | exam-couch | 1.95 × 0.78 × 0.72 | floor | Adjustable couch, paper roll, step and privacy curtain track. |
-| PF-CLINIC-CABINET | clinical-cabinet | 0.8 × 2 × 0.45 | floor | Lockable clinical storage with labelled trays. |
-| PF-MED-FRIDGE | medicine-fridge | 0.68 × 1.85 × 0.68 | floor | Lockable monitored refrigerator. |
-| PF-PHARMACY | pharmacy-counter | 2 × 1.05 × 0.72 | floor | Dispensing counter, privacy screen, terminal and medicine drawers. |
-| PF-DANCE-MIRROR | dance-mirror | 3.2 × 2 × 0.04 | face-centre | Safety-backed mirror with timber barre. |
-| PF-MUSIC-RACK | music-storage | 1.2 × 1.8 × 0.48 | floor | Instrument cubbies and labelled cases. |
-| PF-SPEAKER | wall-speaker | 0.42 × 0.72 × 0.28 | face-centre | Tapered loudspeaker cabinet, protective grille, twin drivers, status lamp and wall bracket. |
-| PF-ART-TABLE | art-table | 1.8 × 0.78 × 0.9 | floor | Washable table, four stools, cutting mat and supply caddy. |
-| PF-CCTV-DESK | security-console | 2.2 × 0.82 × 0.82 | floor | Desk, chair, four CCTV screens, radio and barrier controls. |
-| PF-KEY-CABINET | key-cabinet | 0.72 × 1.05 × 0.18 | face-centre | Lockable numbered key board. |
-| PF-COAT-RAIL | coat-hook-rail | 0.9 × 0.38 × 0.12 | face-centre | Oak mounting rail with five individual brass double hooks and concealed wall brackets. |
-| PF-ELECTRICAL-CABINET | electrical-cabinet | 0.58 × 1.15 × 0.16 | face-centre | Recessed framed distribution cabinet with hinged door, breaker rows, warning plate and latch. |
-| PF-TOILET | toilet | 0.72 × 0.78 × 0.55 | floor | Pan, cistern, seat and grab-rail option. |
-| PF-SHOWER | shower-cubicle | 0.95 × 2.15 × 0.95 | floor | Non-slip tray, tiled partitions, curtain, mixer and hooks. |
-| PF-BASIN | washbasin | 0.62 × 0.88 × 0.45 | floor | Basin, tap, soap, mirror and hand dryer. |
-| PF-CLEANING | cleaning-cupboard | 0.8 × 2.05 × 0.58 | floor | Mop sink, shelves, hooks, warning signs and folded cart. |
+| ID | Label | Default size | Anchor | Review facing | Component design |
+| --- | --- | --- | --- | --- | --- |
+| PF-WALL-RUN | architectural-layer | 1 × 0.12 × 1 | centre | omnidirectional | Panelized architectural assembly; floors receive recessed borders, ceiling rafts separated baffles, glazing frames and mullions, and vertical panels shadow joints or fabric pleats. Full dimensions come from the instance size. |
+| PF-DOOR-SINGLE | door-single | 0.98 × 2.12 × 0.08 | threshold | local-negative-z | Painted leaf, frame, lever, vision panel and swing metadata. |
+| PF-DOOR-DOUBLE | door-double | 1.8 × 2.22 × 0.1 | threshold | local-negative-z | Two glazed leaves, frame, pull rails and clear-opening metadata. |
+| PF-EXIT-SIGN | exit-sign | 0.48 × 0.22 × 0.06 | face-centre | local-negative-z | Green bilingual EXIT/出口 face with low emissive glow. |
+| PF-ROOM-SIGN | room-sign | 0.46 × 0.24 × 0.04 | face-centre | local-negative-z | Blue bilingual room plate; instance supplies text. |
+| PF-DIRECTORY | directory-screen | 1.2 × 1.7 × 0.1 | floor | local-negative-z | Freestanding or wall directory with floor map and accessible route. |
+| PF-CEILING-LIGHT | ceiling-panel | 1.2 × 0.06 × 0.28 | ceiling-centre | omnidirectional | LED panel, diffuser and real point-light anchors. |
+| PF-PENDANT | pendant-light | 0.42 × 0.3 × 0.42 | ceiling-centre | omnidirectional | Shade, warm emitter and suspension stem. |
+| PF-EMERGENCY-LIGHT | emergency-light | 0.32 × 0.12 × 0.1 | face-centre | local-negative-z | Battery emergency luminaire. |
+| PF-ALARM | fire-alarm | 0.16 × 0.24 × 0.08 | face-centre | local-negative-z | Manual call point and audible beacon. |
+| PF-EXTINGUISHER | extinguisher-cabinet | 0.42 × 0.72 × 0.18 | floor | local-negative-z | Recessed red cabinet, extinguisher bottle and label. |
+| PF-AED | aed-cabinet | 0.52 × 0.58 × 0.18 | face-centre | local-negative-z | Public AED cabinet, green light and bilingual label. |
+| PF-FIRST-AID | first-aid-cabinet | 0.52 × 0.68 × 0.2 | face-centre | local-negative-z | Lockable first-aid cabinet with marked cross. |
+| PF-STAIR | stair-flight | 2.5 × 3 × 4.8 | floor | omnidirectional | Two-flight stair, landing, 1.10 m rails and tactile nosings. |
+| PF-LIFT | lift-car | 1.7 × 2.45 × 1.7 | floor | local-negative-z | Accessible lift car, doors, panel, handrail and floor display. |
+| PF-BENCH | bench | 1.8 × 0.84 × 0.58 | floor | local-positive-z | Four-leg bench with back and two seat positions. |
+| PF-CHAIR | chair | 0.46 × 0.84 × 0.48 | floor | local-positive-z | Seat, back and four legs; instance yaw is seated facing. |
+| PF-STOOL | lab-stool | 0.38 × 0.56 × 0.38 | floor | omnidirectional | Height-adjustable round stool and five-foot base. |
+| PF-WAIT-CHAIRS | waiting-chair-bank | 1.9 × 0.84 × 0.62 | floor | local-positive-z | Three linked seats on steel beam. |
+| PF-STUDENT-DESK-2 | two-seat-student-desk | 1.4 × 0.78 × 0.82 | floor | local-negative-z | Desk top, skirt, four legs, two stools, book and pencil case. |
+| PF-LECTURE-SEAT | lecture-seat | 0.58 × 0.88 × 0.82 | floor | local-positive-z | Fixed padded seat with folding writing tablet. |
+| PF-TEACHER-PODIUM | teacher-podium | 1.25 × 1.18 × 0.72 | floor | local-negative-z | Lectern, worktop, lockable cabinet and cable grommet. |
+| PF-COMPUTER-DESK | computer-workstation | 1.2 × 0.76 × 0.72 | floor | local-negative-z | Desk, ergonomic chair, monitor, keyboard, mouse and under-desk tower. |
+| PF-LANGUAGE-DESK | language-workstation | 1.1 × 0.76 × 0.72 | floor | local-negative-z | Computer workstation plus headset, microphone and divider. |
+| PF-CHALKBOARD | chalkboard | 5.4 × 1.5 × 0.1 | face-centre | local-negative-z | Green board, wood frame, chalk tray, chalk and lesson glyph layer. |
+| PF-WHITEBOARD | whiteboard | 3.2 × 1.2 × 0.08 | face-centre | local-negative-z | Magnetic board, marker tray and four marker blocks. |
+| PF-PROJECTOR | ceiling-projector | 0.32 × 0.18 × 0.42 | ceiling-centre | local-negative-z | Projector body, mount, lens and low-glow emitter. |
+| PF-SCREEN | projection-screen | 2.4 × 1.5 × 0.06 | face-centre | local-negative-z | Roll case, matte screen and lower weight bar. |
+| PF-CLOCK | wall-clock | 0.46 × 0.46 × 0.06 | face-centre | local-negative-z | Dial, 12 marks and animated hour/minute hands. |
+| PF-FLAG | wall-flag | 0.72 × 0.48 × 0.04 | face-centre | local-negative-z | Red fabric panel with gold hanging bar. |
+| PF-BOOKCASE | bookcase | 0.9 × 2 × 0.38 | floor | local-negative-z | Five shelves, deterministic mixed books and label strip. |
+| PF-BOOKSTACK | double-book-stack | 1 × 2.2 × 3 | floor | local-negative-z | Two-sided six-shelf stack with end classification panel and books. |
+| PF-READING-TABLE | four-seat-reading-table | 2.4 × 0.8 × 1.35 | floor | omnidirectional | Oak table, four chairs, baize inlay, books and banker lamp. |
+| PF-CIRC-DESK | circulation-desk | 2.8 × 1.05 × 0.9 | floor | local-negative-z | Accessible return section, computer, scanner, task lamp and sign. |
+| PF-SELF-CHECK | self-check-kiosk | 0.52 × 1.35 × 0.5 | floor | local-negative-z | Touchscreen, RFID pad, receipt slot and status lamp. |
+| PF-SECURITY-GATE | library-security-gate | 0.16 × 1.65 × 0.62 | floor | local-negative-z | Transparent RFID gate leaf with status light. |
+| PF-SHELF | storage-shelf | 1 × 2 × 0.48 | floor | local-negative-z | Five powder-coated shelves and labelled contents blocks. |
+| PF-FILE-CABINET | file-cabinet | 0.9 × 1.35 × 0.48 | floor | local-negative-z | Lockable four-drawer cabinet with label holders. |
+| PF-OFFICE-DESK | office-workstation | 1.5 × 0.76 × 0.75 | floor | local-negative-z | Desk, task chair, monitor, keyboard, phone and drawer pedestal. |
+| PF-MEETING-TABLE | meeting-table | 2.8 × 0.76 × 1.15 | floor | omnidirectional | Cable-managed table; chairs are separate exact instances. |
+| PF-SIDE-TABLE | side-table | 0.55 × 0.48 × 0.55 | floor | local-negative-z | Compact rounded top, recessed apron, four tapered legs and low steel stretcher. |
+| PF-SERVICE-COUNTER | service-counter | 2.4 × 1.05 × 0.82 | floor | local-negative-z | Accessible counter section, two terminals and privacy screen. |
+| PF-CANTEEN-TABLE | four-seat-canteen-table | 1.45 × 0.76 × 1.15 | floor | omnidirectional | Laminate table with four fixed stools. |
+| PF-TRAY-RACK | tray-rack | 0.72 × 1.25 × 0.52 | floor | local-negative-z | Tray shelves, chopstick cups and sanitizer dispenser. |
+| PF-SERVING-COUNTER | heated-serving-counter | 2 × 1.15 × 0.86 | floor | local-negative-z | Stainless counter, three food pans, sneeze guard and menu plate. |
+| PF-CASHIER | cashier-station | 1.25 × 1.05 × 0.78 | floor | local-negative-z | Counter, POS screen, scanner and payment sign. |
+| PF-DISH-RETURN | dish-return | 2 × 1.15 × 0.82 | floor | local-negative-z | Tray aperture, belt, scrape bin and return sign. |
+| PF-KITCHEN-RANGE | commercial-range | 1.8 × 0.92 × 0.82 | floor | local-negative-z | Two wok rings, controls, splashback and gas-isolation label. |
+| PF-HOOD | extract-hood | 2.2 × 0.72 × 1.05 | ceiling-centre | local-negative-z | Stainless canopy, baffles, light and suppression nozzles. |
+| PF-PREP-TABLE | prep-table | 1.8 × 0.9 × 0.75 | floor | omnidirectional | Stainless worktop, undershelf and colour-coded boards. |
+| PF-SINK-DOUBLE | double-sink | 1.4 × 0.92 × 0.72 | floor | local-negative-z | Two stainless bowls, taps, drainboard and splashback. |
+| PF-FRIDGE | upright-fridge | 0.82 × 2 × 0.82 | floor | local-negative-z | Two-door refrigerator, thermometer and ventilation grille. |
+| PF-FREEZER | upright-freezer | 0.82 × 2 × 0.82 | floor | local-negative-z | Lockable freezer, thermometer and ventilation grille. |
+| PF-HANDWASH | handwash-basin | 0.52 × 0.88 × 0.42 | floor | local-negative-z | Basin, sensor tap, soap, towel unit and splashback. |
+| PF-WATER | water-dispenser | 0.42 × 1.2 × 0.42 | floor | local-negative-z | Hot/cold dispenser, bottle and cup rack. |
+| PF-BIN | waste-bin | 0.42 × 0.68 × 0.42 | floor | local-negative-z | Lidded bin with stream label. |
+| PF-PLANT | potted-plant | 0.58 × 1.35 × 0.58 | floor | omnidirectional | Weighted pot, soil and deterministic foliage cluster. |
+| PF-BED | single-bed | 2 × 0.58 × 0.92 | floor | omnidirectional | Frame, mattress, pillow, sheet and folded quilt. |
+| PF-DORM-DESK | dorm-study-desk | 1.05 × 0.76 × 0.58 | floor | local-negative-z | Desk, chair, task lamp, books and power strip. |
+| PF-WARDROBE | wardrobe | 0.9 × 2.15 × 0.6 | floor | local-negative-z | Two-door wardrobe, handles, top locker and clothes rail. |
+| PF-SHOE-RACK | shoe-rack | 0.8 × 0.55 × 0.32 | floor | local-negative-z | Three shelves with deterministic shoe pairs. |
+| PF-AC | indoor-ac-unit | 0.82 × 0.28 × 0.22 | face-centre | local-negative-z | Wall split-unit body, grille and status lamp. |
+| PF-LAUNDRY | washer-dryer | 0.68 × 1.75 × 0.72 | floor | local-negative-z | Stacked washer/dryer with doors and control panels. |
+| PF-LOCKERS | locker-bank | 1.8 × 1.9 × 0.5 | floor | local-negative-z | Six ventilated steel lockers with number plates. |
+| PF-LAB-BENCH | laboratory-bench | 2.4 × 0.92 × 0.82 | floor | local-negative-z | Chemical-resistant worktop, cabinets, service taps and sockets. |
+| PF-FUME-HOOD | fume-hood | 1.5 × 2.35 × 0.88 | floor | local-negative-z | Sash, work chamber, extraction plenum and service controls. |
+| PF-LAB-SINK | laboratory-sink | 0.8 × 0.92 × 0.65 | floor | local-negative-z | Chemical-resistant sink, gooseneck tap and drying pegs. |
+| PF-EYEWASH | eyewash-shower | 0.65 × 2.25 × 0.65 | floor | local-negative-z | Twin eyewash heads, pull shower and floor drain. |
+| PF-MICROSCOPE | microscope-station | 1.2 × 0.92 × 0.72 | floor | local-negative-z | Bench, stool, microscope, task light and specimen tray. |
+| PF-ROBOTICS | robotics-bench | 2 × 0.92 × 0.9 | floor | local-negative-z | Work bench, tool board, solder extraction and robot model. |
+| PF-EXAM-COUCH | exam-couch | 1.95 × 0.78 × 0.72 | floor | omnidirectional | Adjustable couch, paper roll, step and privacy curtain track. |
+| PF-CLINIC-CABINET | clinical-cabinet | 0.8 × 2 × 0.45 | floor | local-negative-z | Lockable clinical storage with labelled trays. |
+| PF-MED-FRIDGE | medicine-fridge | 0.68 × 1.85 × 0.68 | floor | local-negative-z | Lockable monitored refrigerator. |
+| PF-PHARMACY | pharmacy-counter | 2 × 1.05 × 0.72 | floor | local-negative-z | Dispensing counter, privacy screen, terminal and medicine drawers. |
+| PF-DANCE-MIRROR | dance-mirror | 3.2 × 2 × 0.04 | face-centre | local-negative-z | Safety-backed mirror with timber barre. |
+| PF-MUSIC-RACK | music-storage | 1.2 × 1.8 × 0.48 | floor | local-negative-z | Instrument cubbies and labelled cases. |
+| PF-SPEAKER | wall-speaker | 0.42 × 0.72 × 0.28 | face-centre | local-negative-z | Tapered loudspeaker cabinet, protective grille, twin drivers, status lamp and wall bracket. |
+| PF-ART-TABLE | art-table | 1.8 × 0.78 × 0.9 | floor | omnidirectional | Washable table, four stools, cutting mat and supply caddy. |
+| PF-CCTV-DESK | security-console | 2.2 × 0.82 × 0.82 | floor | local-negative-z | Desk, chair, four CCTV screens, radio and barrier controls. |
+| PF-KEY-CABINET | key-cabinet | 0.72 × 1.05 × 0.18 | face-centre | local-negative-z | Lockable numbered key board. |
+| PF-COAT-RAIL | coat-hook-rail | 0.9 × 0.38 × 0.12 | face-centre | local-negative-z | Oak mounting rail with five individual brass double hooks and concealed wall brackets. |
+| PF-ELECTRICAL-CABINET | electrical-cabinet | 0.58 × 1.15 × 0.16 | face-centre | local-negative-z | Recessed framed distribution cabinet with hinged door, breaker rows, warning plate and latch. |
+| PF-TOILET | toilet | 0.72 × 0.78 × 0.55 | floor | local-negative-z | Pan, cistern, seat and grab-rail option. |
+| PF-SHOWER | shower-cubicle | 0.95 × 2.15 × 0.95 | floor | local-negative-z | Non-slip tray, tiled partitions, curtain, mixer and hooks. |
+| PF-BASIN | washbasin | 0.62 × 0.88 × 0.45 | floor | local-negative-z | Basin, tap, soap, mirror and hand dryer. |
+| PF-CLEANING | cleaning-cupboard | 0.8 × 2.05 × 0.58 | floor | local-negative-z | Mop sink, shelves, hooks, warning signs and folded cart. |
 
 ## 15. Accessibility and life safety
 
