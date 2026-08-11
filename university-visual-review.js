@@ -122,7 +122,10 @@ function validFocusEvidence(value,minimum){
     new Set(value.focusFixtureIds).size!==value.focusFixtureIds.length||!Array.isArray(value.focusEvidence)||
     value.focusEvidence.length!==value.focusFixtureIds.length)return false;
   return value.focusEvidence.every((e,index)=>e&&e.id===value.focusFixtureIds[index]&&
-    Number.isFinite(e.forward)&&e.forward>.35&&Number.isFinite(e.lateral)&&e.lateral>=0);
+    Number.isFinite(e.forward)&&e.forward>.35&&Number.isFinite(e.lateral)&&e.lateral>=0&&
+    Number.isInteger(e.samples)&&e.samples>=3&&Number.isInteger(e.visibleSamples)&&
+    e.visibleSamples>=Math.max(3,Math.ceil(e.samples*.12))&&e.visibleSamples<=e.samples&&
+    Number.isInteger(e.innerSamples)&&e.innerSamples>0&&e.innerSamples<=e.visibleSamples);
 }
 
 function mergeReviewOutputs(){
@@ -401,59 +404,181 @@ async function main(){
       window.__game.setPlace(${JSON.stringify(view.place)},at||undefined);
       await new Promise(resolve=>setTimeout(resolve,900));const scene=window.__game.scene(),state=window.__game.state(),
         floor=scene.blueprintFloor,building=CampusInteriors.plan.buildings.find(b=>b.id===scene.buildingId),
-        bounds=building.localBounds,radius=.32,backOptions=[3.6,3.2,2.8,2.4,2.0,1.7,1.4];
+        bounds=building.localBounds,radius=.32,backOptions=[3.6,3.2,2.8,2.4,2.0,1.7,1.4],
+        reviewFov=.90,reviewAspect=1.6,reviewPitch=.28,reviewTanY=Math.tan(reviewFov/2),
+        reviewTanX=reviewTanY*reviewAspect,reviewCosPitch=Math.cos(reviewPitch),reviewSinPitch=Math.sin(reviewPitch);
       const inside=(b,x,z,pad=0)=>x>=b[0]+pad&&x<=b[1]-pad&&z>=b[2]+pad&&z<=b[3]-pad,
         free=(x,z,pad=radius)=>inside(bounds,x,z,pad)&&
           !scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad),
-        doorLeaves=(floor.rooms||[]).flatMap(room=>(room.doors||[]).map(door=>{
-          const vertical=door.side==='west'||door.side==='east',w=door.width||.9,dx=door.at[0],dz=door.at[2],
-            a=50*Math.PI/180,hx=vertical?dx:dx-w/2,hz=vertical?dz-w/2:dz;
-          let vx,vz;
-          if(door.side==='west'){vx=Math.sin(a);vz=Math.cos(a);}
-          else if(door.side==='east'){vx=-Math.sin(a);vz=Math.cos(a);}
-          else if(door.side==='south'){vx=Math.cos(a);vz=Math.sin(a);}
-          else{vx=Math.cos(a);vz=-Math.sin(a);}
-          const cx=hx+vx*w*.39,cz=hz+vz*w*.39,yaw=Math.atan2(-vz,vx),c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw)),
-            ex=c*w*.39+s*.04,ez=s*w*.39+c*.04;
-          return{x0:cx-ex,x1:cx+ex,z0:cz-ez,z1:cz+ez};
-        })),
+        fixtures=new Map((floor.rooms||[]).flatMap(room=>room.contents||[]).concat(floor.sharedObjects||[])
+          .map(fixture=>[fixture.id,fixture])),
+        prefabs=new Map(CampusInteriors.plan.prefabCatalog.map(spec=>[spec.id,spec])),
+        transformReview=(m,x,y,z)=>[m[0]*x+m[4]*y+m[8]*z+m[12],m[1]*x+m[5]*y+m[9]*z+m[13],
+          m[2]*x+m[6]*y+m[10]*z+m[14]],
+        reviewCamera=(x,z,yaw,back)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw);return{
+          eye:[x-fx*back,1.15+Math.tan(reviewPitch)*back,z-fz*back],
+          forward:[fx*reviewCosPitch,-reviewSinPitch,fz*reviewCosPitch],
+          right:[-Math.cos(yaw),0,Math.sin(yaw)],up:[reviewSinPitch*fx,reviewCosPitch,reviewSinPitch*fz]};},
+        cameraBlockLimitReview=(origin,dir,maxDistance)=>{let limit=maxDistance;
+          for(const blocker of scene.blockers||[]){let t0=0,t1=maxDistance,hit=true,
+              pad=blocker.pad===undefined?.4:blocker.pad;
+            for(const [axis,lo,hi] of [[0,blocker.x0-pad,blocker.x1+pad],[2,blocker.z0-pad,blocker.z1+pad]]){
+              if(Math.abs(dir[axis])<1e-5){if(origin[axis]<lo||origin[axis]>hi){hit=false;break;}continue;}
+              let a=(lo-origin[axis])/dir[axis],b=(hi-origin[axis])/dir[axis];if(a>b)[a,b]=[b,a];
+              t0=Math.max(t0,a);t1=Math.min(t1,b);if(t1<t0){hit=false;break;}}
+            const eyeY=origin[1]+dir[1]*t0;
+            if(hit&&t0>.2&&eyeY<blocker.top&&(blocker.bot===undefined||eyeY>=blocker.bot))
+              limit=Math.min(limit,t0-.05);}return limit;},
+        cameraStable=(x,z,yaw,back)=>{const requested=back/reviewCosPitch,target=[x,1.15,z],
+            dir=[-Math.sin(yaw)*reviewCosPitch,reviewSinPitch,-Math.cos(yaw)*reviewCosPitch],
+            cameraRoom=scene.roomAt&&scene.roomAt(x,z,null,true);
+          if(!cameraRoom)return false;const endpoint=[target[0]+dir[0]*requested,target[2]+dir[2]*requested];
+          if(endpoint[0]<cameraRoom.x0+.02||endpoint[0]>cameraRoom.x1-.02||
+            endpoint[1]<cameraRoom.z0+.02||endpoint[1]>cameraRoom.z1-.02)return false;
+          let distance=Math.min(requested,cameraRoom.near||12);
+          if(cameraRoom.id==='lift')distance=Math.min(distance,2.30);
+          else if((cameraRoom.near||12)>=3){for(const [axis,lo,hi] of
+            [[0,cameraRoom.x0,cameraRoom.x1],[2,cameraRoom.z0,cameraRoom.z1]]){
+              if(Math.abs(dir[axis])<1e-4)continue;const sign=dir[axis]>0?1:-1,wall=sign>0?hi:lo,
+                inner=(wall-sign*.52-target[axis])/dir[axis],outer=(wall+sign*.18-target[axis])/dir[axis];
+              if(inner>0&&distance>inner&&distance<outer)distance=inner;}}
+          if(cameraRoom.ceil!==undefined&&dir[1]>1e-4)
+            distance=Math.min(distance,Math.max((cameraRoom.ceil-target[1])/dir[1],.85));
+          return Math.abs(distance-requested)<=1e-6&&
+            cameraBlockLimitReview(target,dir,requested)>=requested-.005;},
+        resolvedReviewCamera=()=>{const eye=Array.from(window.__game.eye),cam=window.__game.CAM,
+            target=[cam.fx,cam.lookY,cam.fz],delta=[target[0]-eye[0],target[1]-eye[1],target[2]-eye[2]],
+            length=Math.hypot(...delta)||1,forward=delta.map(v=>v/length),horizontal=Math.hypot(forward[0],forward[2])||1,
+            right=[-forward[2]/horizontal,0,forward[0]/horizontal],
+            up=[right[1]*forward[2]-right[2]*forward[1],right[2]*forward[0]-right[0]*forward[2],
+              right[0]*forward[1]-right[1]*forward[0]];
+          return{eye,forward,right,up,yaw:Math.atan2(forward[0],forward[2]),
+            horizontalBack:Math.hypot(target[0]-eye[0],target[2]-eye[2])};},
+        requireResolvedCamera=(x,z,yaw,back)=>{const expected=reviewCamera(x,z,yaw,back),actual=resolvedReviewCamera(),
+            eyeDelta=Math.hypot(actual.eye[0]-expected.eye[0],actual.eye[1]-expected.eye[1],actual.eye[2]-expected.eye[2]),
+            directionDot=actual.forward[0]*expected.forward[0]+actual.forward[1]*expected.forward[1]+actual.forward[2]*expected.forward[2];
+          if(eyeDelta>.025||directionDot<.9999)
+            throw new Error('resolved review camera differs from authored orbit: eye '+eyeDelta.toFixed(3)+'m dot '+directionDot.toFixed(5));
+          return actual;},
+        reviewProject=(camera,point)=>{const delta=[point[0]-camera.eye[0],point[1]-camera.eye[1],point[2]-camera.eye[2]],
+            dot=axis=>delta[0]*axis[0]+delta[1]*axis[1]+delta[2]*axis[2],forward=dot(camera.forward);
+          if(forward<=.05)return{inside:false,forward};const horizontal=dot(camera.right),vertical=dot(camera.up);
+          const nx=horizontal/(forward*reviewTanX),ny=vertical/(forward*reviewTanY);
+          return{inside:Math.abs(nx)<=1&&Math.abs(ny)<=1,forward,horizontal,vertical,nx,ny};},
+        cubeVertices=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],
+          [-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]],
+        boxTriangles=[[0,1,2],[0,2,3],[4,6,5],[4,7,6],[0,4,5],[0,5,1],
+          [3,2,6],[3,6,7],[0,3,7],[0,7,4],[1,5,6],[1,6,2]],
+        propVertices=prop=>cubeVertices.map(vertex=>transformReview(prop.m,...vertex)),
+        pointInProp=(prop,point)=>{const m=prop.m,delta=[point[0]-m[12],point[1]-m[13],point[2]-m[14]];
+          for(const offset of [0,4,8]){const axis=[m[offset],m[offset+1],m[offset+2]],
+              length2=axis[0]*axis[0]+axis[1]*axis[1]+axis[2]*axis[2];
+            if(length2<1e-12||Math.abs((delta[0]*axis[0]+delta[1]*axis[1]+delta[2]*axis[2])/length2)>.500001)
+              return false;}return true;},
+        clipTriangle=(camera,triangle)=>{const dot=(point,axis)=>(point[0]-camera.eye[0])*axis[0]+
+              (point[1]-camera.eye[1])*axis[1]+(point[2]-camera.eye[2])*axis[2],
+            planes=[point=>dot(point,camera.forward)-.05,
+              point=>dot(point,camera.forward)*reviewTanX-dot(point,camera.right),
+              point=>dot(point,camera.forward)*reviewTanX+dot(point,camera.right),
+              point=>dot(point,camera.forward)*reviewTanY-dot(point,camera.up),
+              point=>dot(point,camera.forward)*reviewTanY+dot(point,camera.up)];
+          let polygon=triangle;for(const plane of planes){if(!polygon.length)break;const clipped=[];
+            let previous=polygon[polygon.length-1],dp=plane(previous);for(const current of polygon){const dc=plane(current),
+                previousInside=dp>=-1e-9,currentInside=dc>=-1e-9;
+              if(previousInside!==currentInside){const t=dp/(dp-dc);clipped.push([
+                previous[0]+(current[0]-previous[0])*t,previous[1]+(current[1]-previous[1])*t,
+                previous[2]+(current[2]-previous[2])*t]);}
+              if(currentInside)clipped.push(current);previous=current;dp=dc;}polygon=clipped;}return polygon;},
+        fixtureSpan=fixture=>{const anchor=(prefabs.get(fixture.prefab)||{}).anchor||'floor',
+            y=fixture.at[1]-floor.elevation,h=fixture.size[1];
+          return anchor==='floor'?[y,y+h]:[y-h/2,y+h/2];},
+        renderedBounds=new Map(),renderedBound=fixture=>{if(renderedBounds.has(fixture.id))return renderedBounds.get(fixture.id);
+          let [bottom,top]=fixtureSpan(fixture),x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity;
+          for(const solid of scene.solids.filter(s=>s.fixtureId===fixture.id)){
+            x0=Math.min(x0,solid.x0);x1=Math.max(x1,solid.x1);z0=Math.min(z0,solid.z0);z1=Math.max(z1,solid.z1);}
+          for(const prop of scene.props.filter(prop=>prop.tag===fixture.id&&prop.m&&prop.mesh!=='quad')){const m=prop.m,
+              radius=.5*(Math.abs(m[1])+Math.abs(m[5])+Math.abs(m[9]));
+            bottom=Math.min(bottom,m[13]-radius);top=Math.max(top,m[13]+radius);
+            for(const point of propVertices(prop)){x0=Math.min(x0,point[0]);x1=Math.max(x1,point[0]);
+              z0=Math.min(z0,point[2]);z1=Math.max(z1,point[2]);}}
+          const bound={x0,x1,z0,z1,bottom,top};renderedBounds.set(fixture.id,bound);return bound;},
+        rayBox=(origin,target,box)=>{const delta=[target[0]-origin[0],target[2]-origin[2]];let lo=0,hi=1;
+          for(const [o,v,min,max] of [[origin[0],delta[0],box.x0,box.x1],[origin[2],delta[1],box.z0,box.z1]]){
+            if(Math.abs(v)<1e-9){if(o<=min||o>=max)return null;}
+            else{let a=(min-o)/v,b=(max-o)/v;if(a>b)[a,b]=[b,a];lo=Math.max(lo,a);hi=Math.min(hi,b);if(lo>=hi)return null;}}
+          return[lo,hi];},
+        lineOfSight=(origin,target,excludeFixtureId,architecturalOnly=false)=>{for(const solid of scene.solids){
+            if(solid.open||solid.fixtureId===excludeFixtureId||architecturalOnly&&solid.fixtureId)continue;
+            // A public portal's rendered panel occupies the visual wall plane inside the wider
+            // shell walking proxy. The containing proxy cannot hide its own marked door surface;
+            // an earlier architectural solid on the ray still can.
+            if(architecturalOnly&&target[0]>=solid.x0-.01&&target[0]<=solid.x1+.01&&
+              target[2]>=solid.z0-.01&&target[2]<=solid.z1+.01)continue;
+            const fixture=solid.fixtureId&&fixtures.get(solid.fixtureId),rendered=fixture&&renderedBound(fixture),
+              hit=rayBox(origin,target,rendered||solid);if(!hit)continue;
+            const lo=Math.max(hit[0],.002),hi=Math.min(hit[1],.985);if(lo>=hi)continue;
+            let bottom=0,top=scene.H||Math.max(2.75,floor.height-.18);
+            if(rendered){bottom=rendered.bottom;top=rendered.top;}
+            const dy=target[1]-origin[1],y0=origin[1]+dy*lo,y1=origin[1]+dy*hi;
+            if(Math.min(y0,y1)<top-.01&&Math.max(y0,y1)>bottom+.01)return false;}return true;},
+        bodyOccludes=(origin,target,x,z,radius=.42,height=1.85)=>{const dx=target[0]-origin[0],
+            dz=target[2]-origin[2],ox=origin[0]-x,oz=origin[2]-z,a=dx*dx+dz*dz,
+            b=2*(ox*dx+oz*dz),c=ox*ox+oz*oz-radius*radius;
+          if(a<1e-10)return c<=0&&Math.min(origin[1],target[1])<=height&&Math.max(origin[1],target[1])>=0;
+          const discriminant=b*b-4*a*c;if(discriminant<0)return false;const root=Math.sqrt(discriminant),
+            lo=Math.max(.002,(-b-root)/(2*a)),hi=Math.min(.985,(-b+root)/(2*a));if(lo>hi)return false;
+          const y0=origin[1]+(target[1]-origin[1])*lo,y1=origin[1]+(target[1]-origin[1])*hi;
+          return Math.min(y0,y1)<=height&&Math.max(y0,y1)>=0;},
+        doorSamples=scene.props.filter(prop=>prop.doorLeaf===true).map(prop=>{const vertices=propVertices(prop),
+          xs=vertices.map(point=>point[0]),zs=vertices.map(point=>point[2]);return{
+            leaf:{id:prop.tag||'untagged-door-leaf'},prop,vertices,
+            aabb:{x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs)}};}),
         sightBlocked=(x,z,pad=.055,excludeFixtureId=null)=>scene.blockers.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
           scene.solids.some(s=>s.fixtureId!==excludeFixtureId&&!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
-          doorLeaves.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad),
+          // Exact rendered markers are complete/cardinality-checked offline. Source aliases can
+          // describe duplicate panels intentionally suppressed by reciprocal-opening dedup.
+          doorSamples.some(({aabb})=>x>aabb.x0-pad&&x<aabb.x1+pad&&z>aabb.z0-pad&&z<aabb.z1+pad),
         rearClear=(x,z,yaw,back)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw),cx=x-fx*back,cz=z-fz*back;
-          if(!inside(bounds,cx,cz,.18))return false;
+          if(!inside(bounds,cx,cz,.18)||!cameraStable(x,z,yaw,back))return false;
           for(let q=.12;q<=back;q+=.10)if(sightBlocked(x-fx*q,z-fz*q))return false;return true;},
         frontDepth=(x,z,yaw,roomBounds)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw);let depth=0;
           for(let q=.16;q<=6;q+=.12){const px=x+fx*q,pz=z+fz*q;
             if(!inside(roomBounds,px,pz,.10)||sightBlocked(px,pz,.025))break;depth=q;}return depth;},
-        foregroundDoor=(x,z,yaw,back)=>{const fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw),
-          cameraX=x-fx*back,cameraZ=z-fz*back;
-          return doorLeaves.find(leaf=>{const cx=(leaf.x0+leaf.x1)/2,cz=(leaf.z0+leaf.z1)/2,dx=cx-cameraX,dz=cz-cameraZ,
-            forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz),radius=Math.hypot(leaf.x1-leaf.x0,leaf.z1-leaf.z0)/2;
-            return forward>.08&&forward<2.10&&lateral-radius<.18+forward*.52;})||null;},
-        focusEvidence=(ids,x,z,yaw,back,minimum)=>{if(!Array.isArray(ids)||ids.length<minimum)
+        foregroundDoor=(x,z,yaw,back,camera=reviewCamera(x,z,yaw,back))=>{
+          for(const {leaf,prop,vertices} of doorSamples){if(!prop||!prop.m)continue;
+            if(pointInProp(prop,camera.eye))return leaf;
+            for(const indices of boxTriangles){const polygon=clipTriangle(camera,indices.map(i=>vertices[i]));
+              if(!polygon.length)continue;const centroid=polygon.reduce((sum,point)=>
+                [sum[0]+point[0]/polygon.length,sum[1]+point[1]/polygon.length,sum[2]+point[2]/polygon.length],[0,0,0]);
+              for(const point of [centroid,...polygon])if(lineOfSight(camera.eye,point,leaf.id,true))return leaf;}}
+          return null;},
+        focusEvidence=(ids,x,z,yaw,back,minimum,camera=reviewCamera(x,z,yaw,back),bodyEvidence=false)=>{if(!Array.isArray(ids)||ids.length<minimum)
             throw new Error('review requires '+minimum+' explicit focus fixture(s)');
           if(new Set(ids).size!==ids.length)throw new Error('review focus fixtures contain duplicate ids');
-          const fixtures=new Map((floor.rooms||[]).flatMap(room=>room.contents||[]).concat(floor.sharedObjects||[])
-              .map(fixture=>[fixture.id,fixture])),prefabs=new Map(CampusInteriors.plan.prefabCatalog.map(spec=>[spec.id,spec])),
-            anchorOf=fixture=>(prefabs.get(fixture.prefab)||{}).anchor||'floor',
-            topOf=fixture=>fixture.at[1]+fixture.size[1]*(/centre/.test(anchorOf(fixture))?.5:1),
+          yaw=camera.yaw===undefined?yaw:camera.yaw;
+          const anchorOf=fixture=>(prefabs.get(fixture.prefab)||{}).anchor||'floor',
             sightY=fixture=>/centre/.test(anchorOf(fixture))?fixture.at[1]:
               fixture.at[1]+Math.min(fixture.size[1]*.65,1.35),fx=Math.sin(yaw),fz=Math.cos(yaw),
-            rx=Math.cos(yaw),rz=-Math.sin(yaw),cameraX=x-fx*back,cameraZ=z-fz*back,cameraY=floor.elevation+1.15,evidence=[];
+            rx=Math.cos(yaw),rz=-Math.sin(yaw),cameraX=camera.eye[0],cameraZ=camera.eye[2],evidence=[];
           for(const id of ids){const fixture=fixtures.get(id);if(!fixture||!fixture.at)
               throw new Error('review focus fixture does not exist: '+id);
             const dx=fixture.at[0]-cameraX,dz=fixture.at[2]-cameraZ,distance=Math.hypot(dx,dz),
-              forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz);
-            if(forward<=.35||lateral>forward*.58+.12)throw new Error('review focus fixture is outside camera cone: '+id);
-            for(let q=.18;q<distance-.28;q+=.12){const progress=q/distance,px=cameraX+dx*progress,pz=cameraZ+dz*progress,
-                rayY=cameraY+(sightY(fixture)-cameraY)*progress;
-              if(scene.blockers.some(s=>s.top>=rayY-.06&&px>s.x0-.025&&px<s.x1+.025&&pz>s.z0-.025&&pz<s.z1+.025)||
-                scene.solids.some(s=>{if(s.fixtureId===id||s.open||!(px>s.x0-.025&&px<s.x1+.025&&pz>s.z0-.025&&pz<s.z1+.025))return false;
-                  const obstacle=fixtures.get(s.fixtureId);return !obstacle||topOf(obstacle)>=rayY-.06;})||
-                doorLeaves.some(s=>px>s.x0-.025&&px<s.x1+.025&&pz>s.z0-.025&&pz<s.z1+.025))
-                throw new Error('review focus fixture is occluded: '+id);}
-            evidence.push({id,forward:+forward.toFixed(2),lateral:+lateral.toFixed(2)});
+              forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz),
+              point=[fixture.at[0],sightY(fixture)-floor.elevation,fixture.at[2]];
+            if(forward<=.35||lateral>forward*.58+.12||!reviewProject(camera,point).inside)
+              throw new Error('review focus fixture is outside camera frustum: '+id);
+            if(!lineOfSight(camera.eye,point,id))throw new Error('review focus fixture is occluded: '+id);
+            if(bodyEvidence&&bodyOccludes(camera.eye,point,x,z))
+              throw new Error('review focus fixture is occluded by evidence body: '+id);
+            const parts=scene.props.filter(prop=>prop.tag===id&&prop.m&&prop.mesh!=='quad');
+            let samples=0,visibleSamples=0,innerSamples=0;
+            for(const prop of parts)for(const u of [-.5,0,.5])for(const v of [-.5,0,.5])for(const w of [-.5,0,.5]){
+              samples++;const sample=transformReview(prop.m,u,v,w),projected=reviewProject(camera,sample);if(!projected.inside||
+                !lineOfSight(camera.eye,sample,id)||bodyEvidence&&bodyOccludes(camera.eye,sample,x,z))continue;
+              visibleSamples++;if(Math.abs(projected.nx)<=.88&&Math.abs(projected.ny)<=.78)innerSamples++;}
+            if(!parts.length||visibleSamples<Math.max(3,Math.ceil(samples*.12))||!innerSamples)
+              throw new Error('review focus fixture is materially cropped: '+id+' '+visibleSamples+'/'+samples);
+            evidence.push({id,forward:+forward.toFixed(2),lateral:+lateral.toFixed(2),visibleSamples,samples,innerSamples});
           }
           return evidence;},
         applyReviewCamera=(x,z,yaw,back)=>{const cam=window.__game.CAM,pitch=.28;
@@ -481,17 +606,21 @@ async function main(){
               rearClear(x,z,reviewYaw,q))||0,front=frontDepth(x,z,reviewYaw,focusRoom.bounds);
           if(!back)throw new Error('authored ground arrival has no clear camera in '+cameraZone.id);
           if(front<${MIN_REVIEW_FRONT})throw new Error('authored ground arrival faces less than ${MIN_REVIEW_FRONT.toFixed(2)}m of '+focusRoom.id);
-          if(foregroundDoor(x,z,reviewYaw,back))throw new Error('authored ground arrival has a foreground door leaf');
-          const focus=focusEvidence(authored.focusFixtureIds,x,z,reviewYaw,back,1);
           if(authored.body!=='hidden'&&authored.body!=='evidence')
             throw new Error('authored ground arrival requires explicit hidden/evidence body policy');
           bodyVisible=authored.body==='evidence';bodyPolicy=authored.body;
           applyReviewCamera(x,z,reviewYaw,back);
+          await new Promise(resolve=>setTimeout(resolve,800));
+          const actual=requireResolvedCamera(x,z,reviewYaw,back),resolvedFront=frontDepth(x,z,actual.yaw,focusRoom.bounds),
+            door=foregroundDoor(x,z,reviewYaw,back,actual),
+            focus=focusEvidence(authored.focusFixtureIds,x,z,reviewYaw,back,1,actual);
+          if(resolvedFront<${MIN_REVIEW_FRONT})
+            throw new Error('resolved ground arrival faces less than ${MIN_REVIEW_FRONT.toFixed(2)}m of '+focusRoom.id);
+          if(door)throw new Error('authored ground arrival has a foreground door leaf: '+door.id);
           entryReviewAt={x:+x.toFixed(2),z:+z.toFixed(2),yaw:reviewYaw,inward:0,lateral:0,
-            cameraBack:+back.toFixed(2),frontDepth:+front.toFixed(2),entryZone:cameraZone.id,
+            cameraBack:+actual.horizontalBack.toFixed(2),frontDepth:+resolvedFront.toFixed(2),entryZone:cameraZone.id,
             focusRoom:focusRoom.id,cameraZone:cameraZone.id,authored:true,
             focusFixtureIds:[...authored.focusFixtureIds],focusEvidence:focus};
-          await new Promise(resolve=>setTimeout(resolve,800));
         }else{
         if(!entryZone)throw new Error('portal threshold has no authored entry zone for '+scene.buildingId);
         const staysInZone=(x,z,pad=.04)=>inside(entryZone.bounds,x,z,pad),
@@ -513,10 +642,15 @@ async function main(){
         candidates.sort((a,b)=>a.score-b.score);const chosen=candidates[0];
         if(!chosen)throw new Error('entry camera could not find a clear frame inside '+entryZone.id);
         applyReviewCamera(chosen.x,chosen.z,yaw,chosen.back);
-        entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw,inward:+chosen.d.toFixed(2),
-          lateral:+chosen.lateral.toFixed(2),cameraBack:+chosen.back.toFixed(2),frontDepth:+chosen.front.toFixed(2),
-          entryZone:entryZone.id,authored:false};
         await new Promise(resolve=>setTimeout(resolve,800));
+        const actual=requireResolvedCamera(chosen.x,chosen.z,yaw,chosen.back),
+          resolvedFront=frontDepth(chosen.x,chosen.z,actual.yaw,entryZone.bounds),
+          door=foregroundDoor(chosen.x,chosen.z,yaw,chosen.back,actual);
+        if(resolvedFront<.72)throw new Error('resolved fallback entry has insufficient front depth in '+entryZone.id);
+        if(door)throw new Error('fallback entry has a foreground door leaf: '+door.id);
+        entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw,inward:+chosen.d.toFixed(2),
+          lateral:+chosen.lateral.toFixed(2),cameraBack:+actual.horizontalBack.toFixed(2),frontDepth:+resolvedFront.toFixed(2),
+          entryZone:entryZone.id,authored:false};
         }
       }
       if(mode==='entry'&&!at){
@@ -531,7 +665,27 @@ async function main(){
           yaws=[window.__game.P.yaw,0,Math.PI/2,Math.PI,-Math.PI/2],moveClear=(x,z)=>{
             const distance=Math.hypot(x-ox,z-oz),steps=Math.max(1,Math.ceil(distance/.10));
             for(let i=1;i<=steps;i++){const q=i/steps,px=ox+(x-ox)*q,pz=oz+(z-oz)*q;
-              if(!inside(entryZone.bounds,px,pz,.04)||!free(px,pz))return false;}return true;};
+              if(!inside(entryZone.bounds,px,pz,.04)||!free(px,pz))return false;}return true;},
+          connectedTo=(targetX,targetZ)=>{const step=.20,playerRadius=.30,[bx0,bx1,bz0,bz1]=bounds,
+              width=Math.floor((bx1-bx0)/step)+1,height=Math.floor((bz1-bz0)/step)+1,
+              blocked=new Uint8Array(width*height),seen=new Uint8Array(width*height),index=(ix,iz)=>iz*width+ix;
+            for(let iz=0;iz<height;iz++)for(let ix=0;ix<width;ix++){const px=bx0+ix*step,pz=bz0+iz*step;
+              blocked[index(ix,iz)]=scene.solids.some(s=>!s.open&&px>s.x0-playerRadius&&px<s.x1+playerRadius&&
+                pz>s.z0-playerRadius&&pz<s.z1+playerRadius)?1:0;}
+            let sx=Math.round((ox-bx0)/step),sz=Math.round((oz-bz0)/step);
+            if(sx<0||sz<0||sx>=width||sz>=height||blocked[index(sx,sz)]){let best=null;
+              for(let iz=0;iz<height;iz++)for(let ix=0;ix<width;ix++)if(!blocked[index(ix,iz)]){
+                const score=(ix-sx)**2+(iz-sz)**2;if(!best||score<best[2])best=[ix,iz,score];}
+              if(!best)return false;[sx,sz]=best;}
+            const queue=[[sx,sz]];seen[index(sx,sz)]=1;
+            for(let cursor=0;cursor<queue.length;cursor++){const [ix,iz]=queue[cursor],px=bx0+ix*step,pz=bz0+iz*step;
+              if(Math.hypot(px-targetX,pz-targetZ)<=.24)return true;
+              for(const [dx,dz] of [[1,0],[-1,0],[0,1],[0,-1]]){const nx=ix+dx,nz=iz+dz;
+                if(nx<0||nz<0||nx>=width||nz>=height)continue;const key=index(nx,nz);if(blocked[key]||seen[key])continue;
+                const tx=bx0+nx*step,tz=bz0+nz*step,moved=scene.clampMove(px,pz,tx,tz,playerRadius);
+                if(Math.abs(moved[0]-tx)>.011||Math.abs(moved[1]-tz)>.011)continue;
+                seen[key]=1;queue.push([nx,nz]);}}
+            return false;};
         const zoneCameraBack=(x,z,yaw)=>backOptions.find(back=>{
           const cx=x-Math.sin(yaw)*back,cz=z-Math.cos(yaw)*back;
           return inside(entryZone.bounds,cx,cz,.18)&&rearClear(x,z,yaw,back);
@@ -540,10 +694,9 @@ async function main(){
           const pose=authored.at||{},x=pose.x,z=pose.z,yaw=pose.yaw,back=zoneCameraBack(x,z,yaw),
             front=frontDepth(x,z,yaw,entryZone.bounds);
           if(![x,z,yaw].every(Number.isFinite)||!inside(entryZone.bounds,x,z,radius)||!free(x,z)||
-            !moveClear(x,z)||!back||front<${MIN_REVIEW_FRONT})throw new Error('authored upper-floor arrival is not clear in '+entryZone.id);
-          if(foregroundDoor(x,z,yaw,back))throw new Error('authored upper-floor arrival has a foreground door leaf');
+            !connectedTo(x,z)||!back||front<${MIN_REVIEW_FRONT})throw new Error('authored upper-floor arrival is not clear in '+entryZone.id);
           candidates.push({x,z,yaw,back,front,move:Math.hypot(x-ox,z-oz),score:1e6,
-            focus:focusEvidence(authored.focusFixtureIds,x,z,yaw,back,1)});
+            focusFixtureIds:[...authored.focusFixtureIds]});
         }else for(const [dx,dz] of offsets){const x=ox+dx,z=oz+dz;
           if(!inside(entryZone.bounds,x,z,radius)||!free(x,z)||!moveClear(x,z))continue;
           for(const yaw of yaws){const back=zoneCameraBack(x,z,yaw),front=frontDepth(x,z,yaw,entryZone.bounds);
@@ -552,16 +705,24 @@ async function main(){
         candidates.sort((a,b)=>b.score-a.score);const chosen=candidates[0];
         if(!chosen)throw new Error('upper-floor arrival camera could not frame '+entryZone.id);
         applyReviewCamera(chosen.x,chosen.z,chosen.yaw,chosen.back);
+        await new Promise(resolve=>setTimeout(resolve,800));
+        const actual=requireResolvedCamera(chosen.x,chosen.z,chosen.yaw,chosen.back),
+          resolvedFront=frontDepth(chosen.x,chosen.z,actual.yaw,entryZone.bounds),
+          door=foregroundDoor(chosen.x,chosen.z,chosen.yaw,chosen.back,actual),
+          focus=authored?focusEvidence(authored.focusFixtureIds,chosen.x,chosen.z,chosen.yaw,chosen.back,1,actual,
+            authored.body==='evidence'):[];
+        if(resolvedFront<(authored?${MIN_REVIEW_FRONT}:.72))
+          throw new Error('resolved upper-floor arrival has insufficient front depth in '+entryZone.id);
+        if(door)throw new Error('authored upper-floor arrival has a foreground door leaf: '+door.id);
         entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,inward:0,
-          lateral:+chosen.move.toFixed(2),cameraBack:+chosen.back.toFixed(2),entryZone:entryZone.id,
-          frontDepth:+chosen.front.toFixed(2),authored:!!authored,
-          focusFixtureIds:authored?[...authored.focusFixtureIds]:[],focusEvidence:chosen.focus||[]};
+          lateral:+chosen.move.toFixed(2),cameraBack:+actual.horizontalBack.toFixed(2),entryZone:entryZone.id,
+          frontDepth:+resolvedFront.toFixed(2),authored:!!authored,
+          focusFixtureIds:authored?[...authored.focusFixtureIds]:[],focusEvidence:focus};
         if(authored){
           if(authored.body!==undefined&&authored.body!=='hidden'&&authored.body!=='evidence')
             throw new Error('authored upper-floor arrival has invalid body policy');
           bodyVisible=authored.body==='evidence';bodyPolicy=bodyVisible?'evidence':'hidden';
         }
-        await new Promise(resolve=>setTimeout(resolve,800));
       }
       if(mode==='programme'){
         const authored=floor.visualReview&&floor.visualReview.programme,rooms=[...(floor.rooms||[])].filter(r=>r.finish!=='service')
@@ -578,9 +739,7 @@ async function main(){
             rearClear(x,z,yaw,q))||0,front=frontDepth(x,z,yaw,room.bounds);
           if(!back)throw new Error('authored programme pose has no clear rear-camera sightline in '+room.id);
           if(front<${MIN_REVIEW_FRONT})throw new Error('authored programme pose faces less than ${MIN_REVIEW_FRONT.toFixed(2)}m of '+room.id);
-          if(foregroundDoor(x,z,yaw,back))throw new Error('authored programme pose has a foreground door leaf in '+room.id);
-          chosen={x,z,yaw,back,front,authored:true,focusFixtureIds:[...authored.focusFixtureIds],
-            focusEvidence:focusEvidence(authored.focusFixtureIds,x,z,yaw,back,2)};
+          chosen={x,z,yaw,back,front,authored:true,focusFixtureIds:[...authored.focusFixtureIds]};
         }else{
           room=rooms[0]||floor.rooms[0];if(!room)throw new Error('floor has no programme room');
           const b=room.bounds,candidates=[],yaws=[0,Math.PI/2,Math.PI,-Math.PI/2];
@@ -594,10 +753,17 @@ async function main(){
           if(!chosen)throw new Error('programme camera could not frame '+room.id);
         }
         applyReviewCamera(chosen.x,chosen.z,chosen.yaw,chosen.back);reviewRoom=room.id;
-        reviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,
-          cameraBack:+chosen.back.toFixed(2),frontDepth:+chosen.front.toFixed(2),authored:chosen.authored,
-          focusFixtureIds:chosen.focusFixtureIds||[],focusEvidence:chosen.focusEvidence||[]};
         await new Promise(resolve=>setTimeout(resolve,800));
+        const actual=requireResolvedCamera(chosen.x,chosen.z,chosen.yaw,chosen.back),
+          resolvedFront=frontDepth(chosen.x,chosen.z,actual.yaw,room.bounds),
+          door=foregroundDoor(chosen.x,chosen.z,chosen.yaw,chosen.back,actual),
+          focus=chosen.authored?focusEvidence(chosen.focusFixtureIds,chosen.x,chosen.z,chosen.yaw,chosen.back,2,actual):[];
+        if(resolvedFront<(chosen.authored?${MIN_REVIEW_FRONT}:.72))
+          throw new Error('resolved programme pose has insufficient front depth in '+room.id);
+        if(door)throw new Error('authored programme pose has a foreground door leaf in '+room.id+': '+door.id);
+        reviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,
+          cameraBack:+actual.horizontalBack.toFixed(2),frontDepth:+resolvedFront.toFixed(2),authored:chosen.authored,
+          focusFixtureIds:chosen.focusFixtureIds||[],focusEvidence:focus};
       }
       window.__game.showBody(bodyVisible);
       await new Promise(resolve=>setTimeout(resolve,350));

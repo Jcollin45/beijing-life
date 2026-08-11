@@ -156,7 +156,37 @@ const CampusInteriors = (() => {
 
     // Room rectangles become real, cutaway-aware partitions.  Each side is split around every
     // blueprint door on that side; both the visible wall and the body collider use the same gaps.
-    const seen=new Set();
+    const seen=new Set(),renderedPhysicalDoorKeys=new Set(),roundedDoorValue=value=>Math.round(value*1000)/1000,
+      exactDoorKey=door=>{const vertical=door.side==='west'||door.side==='east';return `${vertical?'v':'h'}:`+
+        `${roundedDoorValue(vertical?door.at[0]:door.at[2])}:`+
+        `${roundedDoorValue(vertical?door.at[2]:door.at[0])}:${roundedDoorValue(door.width||.9)}`;
+      },roomById=new Map(floor.rooms.map(candidateRoom=>[candidateRoom.id,candidateRoom])),
+      physicalDoorKeys=new Map(),doorRecords=floor.rooms.flatMap(candidateRoom=>(candidateRoom.doors||[])
+        .map(candidateDoor=>({room:candidateRoom,door:candidateDoor})));
+    for(const {room:candidateRoom,door:candidateDoor} of doorRecords){
+      if(physicalDoorKeys.has(candidateDoor))continue;
+      const vertical=candidateDoor.side==='west'||candidateDoor.side==='east',fixed=vertical?candidateDoor.at[0]:candidateDoor.at[2],
+        along=vertical?candidateDoor.at[2]:candidateDoor.at[0],destination=roomById.get(candidateDoor.destination),
+        reciprocal=destination&&(destination.doors||[]).find(other=>{
+          const otherVertical=other.side==='west'||other.side==='east',otherFixed=otherVertical?other.at[0]:other.at[2],
+            otherAlong=otherVertical?other.at[2]:other.at[0];
+          return other.destination===candidateRoom.id&&otherVertical===vertical&&Math.abs(otherAlong-along)<=.03&&
+            Math.abs((other.width||.9)-(candidateDoor.width||.9))<=.03&&Math.abs(otherFixed-fixed)<=.30;
+        });
+      if(reciprocal){const otherAlong=vertical?reciprocal.at[2]:reciprocal.at[0],rooms=[candidateRoom.id,destination.id].sort(),
+          key=`pair:${rooms[0]}:${rooms[1]}:${vertical?'v':'h'}:`+
+            `${roundedDoorValue((along+otherAlong)/2)}:${roundedDoorValue(((candidateDoor.width||.9)+(reciprocal.width||.9))/2)}`;
+        physicalDoorKeys.set(candidateDoor,key);physicalDoorKeys.set(reciprocal,key);
+      }else physicalDoorKeys.set(candidateDoor,exactDoorKey(candidateDoor));
+    }
+    const physicalDoorKey=door=>physicalDoorKeys.get(door)||exactDoorKey(door),physicalDoorGroups=new Map(),
+      renderDoorByPhysicalKey=new Map();
+    for(const {door:candidateDoor} of doorRecords){
+      const doorKey=physicalDoorKey(candidateDoor);
+      if(!physicalDoorGroups.has(doorKey))physicalDoorGroups.set(doorKey,[]);
+      physicalDoorGroups.get(doorKey).push(candidateDoor);
+    }
+    for(const [doorKey,doors] of physicalDoorGroups)renderDoorByPhysicalKey.set(doorKey,doors[0]);
     function partitionRun(room,side) {
       const [a,b,c,d]=room.bounds,vertical=side==='east'||side==='west';
       const fixed=vertical?(side==='west'?a:b):(side==='south'?c:d);
@@ -205,6 +235,9 @@ const CampusInteriors = (() => {
       }
       // An open leaf and a labelled lintel show where the omitted wall segment is.
       for(const door of (room.doors||[]).filter(q=>q.side===side)){
+        const doorKey=physicalDoorKey(door);
+        if(renderDoorByPhysicalKey.get(doorKey)!==door||renderedPhysicalDoorKeys.has(doorKey))continue;
+        renderedPhysicalDoorKeys.add(doorKey);
         const [dx,,dz]=door.at,wallYaw=vertical?Math.PI/2:0,openAngle=50*Math.PI/180,
           hingeX=vertical?dx:dx-door.width/2,hingeZ=vertical?dz-door.width/2:dz;
         let vx,vz;
@@ -213,11 +246,12 @@ const CampusInteriors = (() => {
         else if(side==='south'){vx=Math.cos(openAngle);vz=Math.sin(openAngle);}
         else{vx=Math.cos(openAngle);vz=-Math.sin(openAngle);}
         const leafX=hingeX+vx*door.width*.39,leafZ=hingeZ+vz*door.width*.39,
-          leafYaw=Math.atan2(-vz,vx);
+          leafYaw=Math.atan2(-vz,vx),openPocket=door.operation==='sliding-pocket'&&door.reviewOpen===true;
         // A half-open closer-controlled leaf reads as a usable door without projecting a full
         // opaque slab across compact rooms and their sightlines. The authored opening remains
         // collision-clear; this is the honest resting pose of the visible leaf.
-        prop(door.id,leafX,1.05,leafZ,door.width*.78,2.10,.07,'M-OAK-DARK',{ry:leafYaw,round:.012,bevel:.006});
+        if(!openPocket)prop(door.id,leafX,1.05,leafZ,door.width*.78,2.10,.07,'M-OAK-DARK',
+          {ry:leafYaw,round:.012,bevel:.006,doorLeaf:true});
         const frameMat=finish.trim||accent,post=.075;
         if(vertical){
           prop(`${door.id}/FRAME-A`,dx,1.08,dz-door.width/2-post/2,.13,2.16,post,frameMat);
@@ -228,14 +262,29 @@ const CampusInteriors = (() => {
           prop(`${door.id}/FRAME-B`,dx+door.width/2+post/2,1.08,dz,post,2.16,.13,frameMat);
           prop(`${door.id}/FRAME-T`,dx,2.13,dz,door.width+post*2,.10,.13,frameMat);
         }
-        // Lever and vision strip stay attached to the open leaf, making the swing legible.
-        prop(`${door.id}/VISION`,leafX,1.48,leafZ,door.width*.20,.54,.078,'M-GLASS',{ry:leafYaw,alpha:.42});
-        const [hx,hz]=rotated(leafX,leafZ,door.width*.27,-.055,leafYaw);
-        prop(`${door.id}/HANDLE`,hx,1.00,hz,.20,.035,.035,'M-STAINLESS',{ry:leafYaw});
-        const [kx,kz]=rotated(leafX,leafZ,0,-.039,leafYaw);
-        prop(`${door.id}/KICK`,kx,.19,kz,door.width*.62,.28,.012,'M-STAINLESS',{ry:leafYaw,round:.006});
-        const [cx,cz]=rotated(leafX,leafZ,door.width*.13,-.045,leafYaw);
-        prop(`${door.id}/CLOSER`,cx,1.94,cz,door.width*.28,.055,.035,'M-STEEL-DARK',{ry:leafYaw,round:.010});
+        if(openPocket){
+          // These authored studio/training thresholds are honest permanently-open pocket doors:
+          // the panel is fully recessed into its wall pocket, while the head track and recessed
+          // pocket liner remain visible construction details. This is opt-in blueprint semantics,
+          // never a capture-only suppression of an ordinary hinged leaf.
+          const pocketSign=door.pocketSide==='east'||door.pocketSide==='north'?1:-1;
+          if(vertical){
+            prop(`${door.id}/POCKET-TRACK`,dx,2.075,dz,.15,.035,door.width*.92,'M-STEEL-DARK',{round:.006});
+            prop(`${door.id}/POCKET-REVEAL`,dx,1.08,dz+pocketSign*(door.width/2+.018),.16,2.02,.025,'M-STEEL-DARK',{round:.005});
+          }else{
+            prop(`${door.id}/POCKET-TRACK`,dx,2.075,dz,door.width*.92,.035,.15,'M-STEEL-DARK',{round:.006});
+            prop(`${door.id}/POCKET-REVEAL`,dx+pocketSign*(door.width/2+.018),1.08,dz,.025,2.02,.16,'M-STEEL-DARK',{round:.005});
+          }
+        }else{
+          // Lever, vision strip, kick plate and closer stay attached to an ordinary open leaf.
+          prop(`${door.id}/VISION`,leafX,1.48,leafZ,door.width*.20,.54,.078,'M-GLASS',{ry:leafYaw,alpha:.42});
+          const [hx,hz]=rotated(leafX,leafZ,door.width*.27,-.055,leafYaw);
+          prop(`${door.id}/HANDLE`,hx,1.00,hz,.20,.035,.035,'M-STAINLESS',{ry:leafYaw});
+          const [kx,kz]=rotated(leafX,leafZ,0,-.039,leafYaw);
+          prop(`${door.id}/KICK`,kx,.19,kz,door.width*.62,.28,.012,'M-STAINLESS',{ry:leafYaw,round:.006});
+          const [cx,cz]=rotated(leafX,leafZ,door.width*.13,-.045,leafYaw);
+          prop(`${door.id}/CLOSER`,cx,1.94,cz,door.width*.28,.055,.035,'M-STEEL-DARK',{ry:leafYaw,round:.010});
+        }
         prop(`${door.id}/THRESHOLD`,dx,.018,dz,vertical?.16:door.width+.12,.035,vertical?door.width+.12:.16,'M-BRASS',{round:.006});
         const label=room.label.length>12?room.label.slice(0,12):room.label;
         glyphs(dx,2.28,dz,wallYaw+(side==='south'||side==='west'?0:Math.PI),label,
@@ -915,17 +964,37 @@ const CampusInteriors = (() => {
           localBox(f,0,y,0,w,h,d,'M-WALL-WHITE');
           localBox(f,0,y,-d*.53,w*.23,h*.46,.04,'M-SCREEN',{glow:.20}); break;
         case 'PF-FLAG': {
-          // Five shallow textile folds, a weighted hem and real hanging hardware keep the flag
-          // from reading as one rigid coloured board.  The relief stays inside the existing
-          // face-centred footprint and remains decorative/non-colliding exactly as authored.
-          for(let i=-2;i<=2;i++)localBox(f,i*w*.19,y+(Math.abs(i)===1?.008:0),
-            (i%2?d*.14:-d*.08),w*.215,h*.94,d*.58,f.material,{round:.018,bevel:.006,gloss:.035});
-          localBox(f,0,y-h*.47,0,w*.96,.028,d*.72,'M-OAK-DARK',{round:.008});
-          localBox(f,0,y+h*.53,0,w*1.12,.035,d*1.2,'M-BRASS',{round:.012,gloss:.48});
+          // A flag is a hanging textile, not a coloured sign card. Nine narrow overlapping
+          // leaves turn alternately toward and away from the room, their lower edges finish at
+          // different heights, and each carries its own short weighted hem. The result has a
+          // real rippled silhouette, changing highlights and visible seams even from a frontal
+          // review camera. Everything remains decorative and inside the existing footprint plus
+          // the renderer's normal nine-centimetre articulation tolerance.
+          const foldCount=9,foldW=w*.126,foldDepth=Math.max(.034,d*.82),top=y+h*.43,
+            relief=[-.018,.018,-.010,.026,-.020,.022,-.008,.017,-.016],
+            twist=[-.16,.13,-.10,.17,-.13,.15,-.09,.12,-.15],
+            length=[.88,.84,.91,.86,.93,.85,.90,.83,.88];
+          for(let i=0;i<foldCount;i++){
+            const dx=(i-(foldCount-1)/2)*w*.112,ph=h*length[i],py=top-ph/2,dz=relief[i];
+            localBox(f,dx,py,dz,foldW,ph,foldDepth,f.material,
+              {round:.026,bevel:.008,gloss:.025,mode:7,ry:twist[i]});
+            localBox(f,dx,py-ph*.50+.014,dz-.004,foldW*.91,.028,foldDepth*.78,
+              'M-OAK-DARK',{round:.009,gloss:.12,ry:twist[i]});
+          }
+          // Real suspension hardware: a continuous pole, five fabric loops and ball finials.
+          localBox(f,0,y+h*.53,0,w*1.12,.035,Math.max(.045,d*1.2),'M-BRASS',{round:.012,gloss:.48});
+          for(const dx of [-w*.40,-w*.20,0,w*.20,w*.40])
+            localBox(f,dx,y+h*.465,0,w*.035,h*.12,Math.max(.025,d*.65),'M-BRASS',
+              {round:.010,gloss:.40});
           for(const dx of [-w*.55,w*.55])localBall(f,dx,y+h*.53,0,w*.035,w*.035,d*.75,
             'M-BRASS',{gloss:.52});
-          localBall(f,0,y,-d*.36,w*.075,h*.11,d*.16,f.material==='M-BRASS'?'M-SAFETY-RED':'M-BRASS',
-            {gloss:.28});
+          // A raised multipart rosette replaces the former almost-coplanar single disc, which
+          // z-fought with the cloth and appeared as a translucent square in screenshots.
+          const crest=f.material==='M-BRASS'?'M-SAFETY-RED':'M-BRASS',
+            crestZ=-Math.max(.060,Math.min(.085,d*.85));
+          localBall(f,0,y+h*.02,crestZ,w*.080,h*.095,.018,crest,{gloss:.34});
+          for(const [dx,dy] of [[-.085,0],[.085,0],[0,-.10],[0,.10],[-.060,-.072],[.060,.072]])
+            localBall(f,dx*w, y+dy*h,crestZ-.004,w*.038,h*.045,.015,crest,{gloss:.30});
           break;
         }
         case 'PF-CHALKBOARD': case 'PF-WHITEBOARD': case 'PF-SCREEN': case 'PF-DANCE-MIRROR':
@@ -1083,7 +1152,7 @@ const CampusInteriors = (() => {
           localBox(f,w*.40,y,-d*.575,.025,h*.22,.018,'M-STAINLESS',{round:.008});
           localBox(f,-w*.27,y+h*.36,-d*.575,w*.25,h*.12,.018,'M-SAFETY-YELLOW',{round:.010}); break;
         case 'PF-DOOR-SINGLE': case 'PF-DOOR-DOUBLE':
-          localBox(f,0,y+h/2,0,w,h,d,'M-STEEL-DARK',{round:.018,bevel:.010});
+          localBox(f,0,y+h/2,0,w,h,d,'M-STEEL-DARK',{round:.018,bevel:.010,doorLeaf:true});
           localBox(f,0,y+h*.49,-d*.20,w*.88,h*.92,d*.70,f.material,{round:.014,alpha:f.prefab==='PF-DOOR-DOUBLE'?.48:undefined});
           if(f.prefab==='PF-DOOR-DOUBLE')localBox(f,0,y+h*.49,-d*.54,.025,h*.86,.018,'M-STEEL-DARK',{round:.008});
           for(const dx of f.prefab==='PF-DOOR-DOUBLE'?[-w*.18,w*.18]:[w*.28])
@@ -1112,7 +1181,8 @@ const CampusInteriors = (() => {
         {d:Math.abs(spawnZ-z0),x:spawnX,z:z0+.07,yaw:0,ix:0,iz:1},
         {d:Math.abs(spawnZ-z1),x:spawnX,z:z1-.07,yaw:0,ix:0,iz:-1},
       ].sort((a,b)=>a.d-b.d)[0];
-      prop(`${p.id}/DOOR`,nearest.x,1.08,nearest.z,1.35,2.16,.08,'M-GLASS',{ry:nearest.yaw,alpha:.42});
+      prop(`${p.id}/DOOR`,nearest.x,1.08,nearest.z,1.35,2.16,.08,'M-GLASS',
+        {ry:nearest.yaw,alpha:.42,doorLeaf:true});
       const vertical=Math.abs(nearest.yaw)>1,half=.72;
       if(vertical){
         prop(`${p.id}/FRAME-A`,nearest.x,1.10,nearest.z-half,.15,2.20,.12,'M-STEEL-DARK');

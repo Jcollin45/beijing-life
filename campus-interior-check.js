@@ -60,7 +60,7 @@ const minimumDetailedParts=new Map([
   ['PF-WALL-RUN',3],
   ['PF-BIN',4],['PF-TOILET',6],['PF-BASIN',7],['PF-HANDWASH',7],
   ['PF-LAB-SINK',8],['PF-EYEWASH',11],['PF-STOOL',13],['PF-SHOWER',9],
-  ['PF-FLAG',9],
+  ['PF-FLAG',30],
   ['PF-COMPUTER-DESK',15],['PF-ROBOTICS',16],['PF-SCREEN',7],['PF-DANCE-MIRROR',6],
 ]);
 const architecturalSlabLanguage=/wall|panel|datum|raft|ceiling|floor|rug|mat|runner|line|route|field|inset|marker|curtain|blind|window|glass|glazed|glazing|mirror|sill|headboard|pinboard|rail|divider|partition|curb|drain|grille|threshold|jamb|portal|reveal|canopy|inlay|turning|approach|privacy|identity|feature|acoustic|tactile|welcome|backdrop|circuit|calibration|alignment|work grid|aisle|wheelchair|dining bay|sash|plenum|duct|fixed services|service strip|service identification/i;
@@ -235,37 +235,206 @@ function walkMap(scene,b,step=.20,radius=.30){
   return{points,rooms:scene.blueprintFloor.rooms.filter(room=>points.some(([x,z])=>
     x>room.bounds[0]+radius&&x<room.bounds[1]-radius&&z>room.bounds[2]+radius&&z<room.bounds[3]-radius))};
 }
+const walkMapCache=new WeakMap();
+function cachedWalkMap(scene,b){
+  if(!walkMapCache.has(scene))walkMapCache.set(scene,walkMap(scene,b));
+  return walkMapCache.get(scene);
+}
 
 const scenes=[],visualReviewDefects=[],entryReviewDefects=[],authoredVisualReviewFloors=new Set(),
   authoredEntryReviewFloors=new Set(),authoredGroundEntryReviews=new Set(),bodyEvidenceRows=new Set(),
-  reviewBackOptions=[3.6,3.2,2.8,2.4,2.0,1.7,1.4],reviewDoorCache=new WeakMap();
+  reviewBackOptions=[3.6,3.2,2.8,2.4,2.0,1.7,1.4],reviewDoorSampleCache=new WeakMap(),
+  reviewFixtureCache=new WeakMap(),reviewRenderedBoundsCache=new WeakMap();
+const REVIEW_FOV=.90,REVIEW_ASPECT=1.6,REVIEW_PITCH=.28,
+  REVIEW_TAN_Y=Math.tan(REVIEW_FOV/2),REVIEW_TAN_X=REVIEW_TAN_Y*REVIEW_ASPECT,
+  REVIEW_COS_PITCH=Math.cos(REVIEW_PITCH),REVIEW_SIN_PITCH=Math.sin(REVIEW_PITCH);
 const reviewInside=(bounds,x,z,pad=0)=>x>=bounds[0]+pad&&x<=bounds[1]-pad&&z>=bounds[2]+pad&&z<=bounds[3]-pad;
-function reviewDoorLeaves(floor){
-  if(reviewDoorCache.has(floor))return reviewDoorCache.get(floor);
-  const leaves=floor.rooms.flatMap(room=>(room.doors||[]).map(door=>{
-    const vertical=door.side==='west'||door.side==='east',w=door.width||.9,dx=door.at[0],dz=door.at[2],
-      a=50*Math.PI/180,hx=vertical?dx:dx-w/2,hz=vertical?dz-w/2:dz;
-    let vx,vz;
-    if(door.side==='west'){vx=Math.sin(a);vz=Math.cos(a);}
-    else if(door.side==='east'){vx=-Math.sin(a);vz=Math.cos(a);}
-    else if(door.side==='south'){vx=Math.cos(a);vz=Math.sin(a);}
-    else{vx=Math.cos(a);vz=-Math.sin(a);}
-    const cx=hx+vx*w*.39,cz=hz+vz*w*.39,yaw=Math.atan2(-vz,vx),c=Math.abs(Math.cos(yaw)),s=Math.abs(Math.sin(yaw)),
-      ex=c*w*.39+s*.04,ez=s*w*.39+c*.04;
-    return{x0:cx-ex,x1:cx+ex,z0:cz-ez,z1:cz+ez};
-  }));
-  reviewDoorCache.set(floor,leaves);return leaves;
+function reviewFixtures(floor){
+  if(!reviewFixtureCache.has(floor))reviewFixtureCache.set(floor,new Map(
+    floor.rooms.flatMap(room=>room.contents||[]).concat(floor.sharedObjects||[]).map(fixture=>[fixture.id,fixture])));
+  return reviewFixtureCache.get(floor);
+}
+function reviewTransform(m,x,y,z){
+  return[m[0]*x+m[4]*y+m[8]*z+m[12],m[1]*x+m[5]*y+m[9]*z+m[13],m[2]*x+m[6]*y+m[10]*z+m[14]];
+}
+function reviewCamera(pose,back){
+  const fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw);
+  return{eye:[pose.x-fx*back,1.15+Math.tan(REVIEW_PITCH)*back,pose.z-fz*back],
+    forward:[fx*REVIEW_COS_PITCH,-REVIEW_SIN_PITCH,fz*REVIEW_COS_PITCH],
+    right:[-Math.cos(pose.yaw),0,Math.sin(pose.yaw)],
+    up:[REVIEW_SIN_PITCH*fx,REVIEW_COS_PITCH,REVIEW_SIN_PITCH*fz]};
+}
+function reviewCameraBlockLimit(origin,dir,maxDistance,blockers){
+  let limit=maxDistance;
+  for(const blocker of blockers||[]){
+    let t0=0,t1=maxDistance,hit=true;const pad=blocker.pad===undefined?.4:blocker.pad;
+    for(const [axis,lo,hi] of [[0,blocker.x0-pad,blocker.x1+pad],[2,blocker.z0-pad,blocker.z1+pad]]){
+      if(Math.abs(dir[axis])<1e-5){if(origin[axis]<lo||origin[axis]>hi){hit=false;break;}continue;}
+      let a=(lo-origin[axis])/dir[axis],b=(hi-origin[axis])/dir[axis];if(a>b)[a,b]=[b,a];
+      t0=Math.max(t0,a);t1=Math.min(t1,b);if(t1<t0){hit=false;break;}
+    }
+    const eyeY=origin[1]+dir[1]*t0;
+    if(hit&&t0>.2&&eyeY<blocker.top&&(blocker.bot===undefined||eyeY>=blocker.bot))
+      limit=Math.min(limit,t0-.05);
+  }
+  return limit;
+}
+function reviewCameraStable(scene,pose,back){
+  const requested=back/REVIEW_COS_PITCH,target=[pose.x,1.15,pose.z],
+    dir=[-Math.sin(pose.yaw)*REVIEW_COS_PITCH,REVIEW_SIN_PITCH,-Math.cos(pose.yaw)*REVIEW_COS_PITCH],
+    room=scene.roomAt&&scene.roomAt(pose.x,pose.z,null,true);
+  if(!room)return false;
+  const endpoint=[target[0]+dir[0]*requested,target[2]+dir[2]*requested];
+  // Keep the resolved eye in the same semantic room as the review target. Then the game's
+  // cutaway is inactive (hideX/hideZ are both zero), and the offline visibility proof describes
+  // the same set of props the PNG actually draws rather than guessing which cross-room wall drops.
+  if(endpoint[0]<room.x0+.02||endpoint[0]>room.x1-.02||endpoint[1]<room.z0+.02||endpoint[1]>room.z1-.02)
+    return false;
+  let distance=Math.min(requested,room.near||12);
+  if(room.id==='lift')distance=Math.min(distance,2.30);
+  else if((room.near||12)>=3){
+    for(const [axis,lo,hi] of [[0,room.x0,room.x1],[2,room.z0,room.z1]]){
+      if(Math.abs(dir[axis])<1e-4)continue;const sign=dir[axis]>0?1:-1,wall=sign>0?hi:lo,
+        inner=(wall-sign*.52-target[axis])/dir[axis],outer=(wall+sign*.18-target[axis])/dir[axis];
+      if(inner>0&&distance>inner&&distance<outer)distance=inner;
+    }
+  }
+  if(room.ceil!==undefined&&dir[1]>1e-4)
+    distance=Math.min(distance,Math.max((room.ceil-target[1])/dir[1],.85));
+  // The hosted capture must use the authored orbit, not a shorter clearWall/blocker solution.
+  // Once both comparisons are exact, the game's recovery branch has no reason to add slide/rise.
+  if(Math.abs(distance-requested)>1e-6)return false;
+  return reviewCameraBlockLimit(target,dir,requested,scene.blockers)>=requested-.005;
+}
+function reviewProject(camera,point){
+  const delta=[point[0]-camera.eye[0],point[1]-camera.eye[1],point[2]-camera.eye[2]],
+    dot=axis=>delta[0]*axis[0]+delta[1]*axis[1]+delta[2]*axis[2],forward=dot(camera.forward);
+  if(forward<=.05)return{inside:false,forward};
+  const horizontal=dot(camera.right),vertical=dot(camera.up);
+  const nx=horizontal/(forward*REVIEW_TAN_X),ny=vertical/(forward*REVIEW_TAN_Y);
+  return{inside:Math.abs(nx)<=1&&Math.abs(ny)<=1,forward,horizontal,vertical,nx,ny};
+}
+const REVIEW_CUBE_VERTICES=[[-.5,-.5,-.5],[.5,-.5,-.5],[.5,.5,-.5],[-.5,.5,-.5],
+  [-.5,-.5,.5],[.5,-.5,.5],[.5,.5,.5],[-.5,.5,.5]],REVIEW_BOX_TRIANGLES=[
+  [0,1,2],[0,2,3],[4,6,5],[4,7,6],
+  [0,4,5],[0,5,1],[3,2,6],[3,6,7],
+  [0,3,7],[0,7,4],[1,5,6],[1,6,2],
+];
+const reviewPropVertices=prop=>REVIEW_CUBE_VERTICES.map(vertex=>reviewTransform(prop.m,...vertex));
+function reviewPointInProp(prop,point){
+  const m=prop.m,delta=[point[0]-m[12],point[1]-m[13],point[2]-m[14]];
+  for(const offset of [0,4,8]){const axis=[m[offset],m[offset+1],m[offset+2]],length2=
+      axis[0]*axis[0]+axis[1]*axis[1]+axis[2]*axis[2];
+    if(length2<1e-12||Math.abs((delta[0]*axis[0]+delta[1]*axis[1]+delta[2]*axis[2])/length2)>.500001)
+      return false;
+  }
+  return true;
+}
+function reviewClipTriangle(camera,triangle){
+  const dot=(point,axis)=>(point[0]-camera.eye[0])*axis[0]+(point[1]-camera.eye[1])*axis[1]+
+      (point[2]-camera.eye[2])*axis[2],
+    planes=[
+      point=>dot(point,camera.forward)-.05,
+      point=>dot(point,camera.forward)*REVIEW_TAN_X-dot(point,camera.right),
+      point=>dot(point,camera.forward)*REVIEW_TAN_X+dot(point,camera.right),
+      point=>dot(point,camera.forward)*REVIEW_TAN_Y-dot(point,camera.up),
+      point=>dot(point,camera.forward)*REVIEW_TAN_Y+dot(point,camera.up),
+    ];
+  let polygon=triangle;
+  for(const plane of planes){
+    if(!polygon.length)break;const clipped=[];let previous=polygon[polygon.length-1],dp=plane(previous);
+    for(const current of polygon){const dc=plane(current),previousInside=dp>=-1e-9,currentInside=dc>=-1e-9;
+      if(previousInside!==currentInside){const t=dp/(dp-dc);clipped.push([
+        previous[0]+(current[0]-previous[0])*t,
+        previous[1]+(current[1]-previous[1])*t,
+        previous[2]+(current[2]-previous[2])*t,
+      ]);}
+      if(currentInside)clipped.push(current);previous=current;dp=dc;
+    }
+    polygon=clipped;
+  }
+  return polygon;
+}
+function reviewRayBox(origin,target,box){
+  const delta=[target[0]-origin[0],target[2]-origin[2]];let lo=0,hi=1;
+  for(const [o,v,min,max] of [[origin[0],delta[0],box.x0,box.x1],[origin[2],delta[1],box.z0,box.z1]]){
+    if(Math.abs(v)<1e-9){if(o<=min||o>=max)return null;}
+    else{let a=(min-o)/v,b=(max-o)/v;if(a>b)[a,b]=[b,a];lo=Math.max(lo,a);hi=Math.min(hi,b);if(lo>=hi)return null;}
+  }
+  return[lo,hi];
+}
+function reviewFixtureSpan(floor,fixture){
+  const anchor=(prefabSpecs.get(fixture.prefab)||{}).anchor||'floor',y=fixture.at[1]-floor.elevation,h=fixture.size[1];
+  return anchor==='floor'?[y,y+h]:[y-h/2,y+h/2];
+}
+function reviewRenderedFixtureBounds(scene,floor,fixture){
+  if(!reviewRenderedBoundsCache.has(scene))reviewRenderedBoundsCache.set(scene,new Map());
+  const cache=reviewRenderedBoundsCache.get(scene);if(cache.has(fixture.id))return cache.get(fixture.id);
+  let [bottom,top]=reviewFixtureSpan(floor,fixture),x0=Infinity,x1=-Infinity,z0=Infinity,z1=-Infinity;
+  for(const solid of scene.solids.filter(s=>s.fixtureId===fixture.id)){
+    x0=Math.min(x0,solid.x0);x1=Math.max(x1,solid.x1);z0=Math.min(z0,solid.z0);z1=Math.max(z1,solid.z1);
+  }
+  for(const prop of scene.props.filter(prop=>prop.tag===fixture.id&&prop.m&&prop.mesh!=='quad')){
+    const m=prop.m,radius=.5*(Math.abs(m[1])+Math.abs(m[5])+Math.abs(m[9]));
+    bottom=Math.min(bottom,m[13]-radius);top=Math.max(top,m[13]+radius);
+    for(const point of reviewPropVertices(prop)){x0=Math.min(x0,point[0]);x1=Math.max(x1,point[0]);
+      z0=Math.min(z0,point[2]);z1=Math.max(z1,point[2]);}
+  }
+  const bounds={x0,x1,z0,z1,bottom,top};cache.set(fixture.id,bounds);return bounds;
+}
+function reviewLineOfSight(scene,floor,origin,target,excludeFixtureId,architecturalOnly=false){
+  const fixtures=reviewFixtures(floor);
+  for(const solid of scene.solids){
+    if(solid.open||solid.fixtureId===excludeFixtureId||architecturalOnly&&solid.fixtureId)continue;
+    // Public portal panels sit on the visual wall plane, inside the shell's deliberately broad
+    // walking proxy. That proxy cannot hide the very door surface it contains; only an earlier
+    // architectural solid along the ray may occlude a marked leaf.
+    if(architecturalOnly&&target[0]>=solid.x0-.01&&target[0]<=solid.x1+.01&&
+      target[2]>=solid.z0-.01&&target[2]<=solid.z1+.01)continue;
+    const fixture=solid.fixtureId&&fixtures.get(solid.fixtureId),rendered=fixture&&
+      reviewRenderedFixtureBounds(scene,floor,fixture),box=rendered||solid,
+      hit=reviewRayBox(origin,target,box);if(!hit)continue;
+    const lo=Math.max(hit[0],.002),hi=Math.min(hit[1],.985);if(lo>=hi)continue;
+    let bottom=0,top=scene.H||Math.max(2.75,floor.height-.18);
+    if(rendered){bottom=rendered.bottom;top=rendered.top;}
+    const dy=target[1]-origin[1],y0=origin[1]+dy*lo,y1=origin[1]+dy*hi;
+    if(Math.min(y0,y1)<top-.01&&Math.max(y0,y1)>bottom+.01)return false;
+  }
+  return true;
+}
+function reviewBodyOccludes(origin,target,x,z,radius=.42,height=1.85){
+  const dx=target[0]-origin[0],dz=target[2]-origin[2],ox=origin[0]-x,oz=origin[2]-z,
+    a=dx*dx+dz*dz,b=2*(ox*dx+oz*dz),c=ox*ox+oz*oz-radius*radius;
+  if(a<1e-10)return c<=0&&Math.min(origin[1],target[1])<=height&&Math.max(origin[1],target[1])>=0;
+  const discriminant=b*b-4*a*c;if(discriminant<0)return false;const root=Math.sqrt(discriminant),
+    lo=Math.max(.002,(-b-root)/(2*a)),hi=Math.min(.985,(-b+root)/(2*a));
+  if(lo>hi)return false;const y0=origin[1]+(target[1]-origin[1])*lo,y1=origin[1]+(target[1]-origin[1])*hi;
+  return Math.min(y0,y1)<=height&&Math.max(y0,y1)>=0;
+}
+function reviewDoorSamples(scene,floor){
+  if(reviewDoorSampleCache.has(scene))return reviewDoorSampleCache.get(scene);
+  // The renderer is authoritative here. Public portal panels and authored PF-DOOR fire leaves
+  // are not room-door records, and a hard glass panel is not a softBox. Every visible door panel
+  // marks itself explicitly so the review gate cannot silently omit either class.
+  const rows=scene.props.filter(prop=>prop.doorLeaf===true).map(prop=>{const vertices=reviewPropVertices(prop),
+    xs=vertices.map(point=>point[0]),zs=vertices.map(point=>point[2]);return{
+      leaf:{id:prop.tag||'untagged-door-leaf'},prop,vertices,
+      aabb:{x0:Math.min(...xs),x1:Math.max(...xs),z0:Math.min(...zs),z1:Math.max(...zs)},
+    };});
+  reviewDoorSampleCache.set(scene,rows);return rows;
 }
 function reviewSightBlocked(scene,floor,x,z,pad=.055){
   return scene.blockers.some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
     scene.solids.some(s=>!s.open&&x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad)||
-    reviewDoorLeaves(floor).some(s=>x>s.x0-pad&&x<s.x1+pad&&z>s.z0-pad&&z<s.z1+pad);
+    // Rendered markers are complete and cardinality-checked below; synthetic source aliases can
+    // describe panels that the reciprocal-opening dedup intentionally suppresses.
+    reviewDoorSamples(scene,floor).some(({aabb})=>x>aabb.x0-pad&&x<aabb.x1+pad&&z>aabb.z0-pad&&z<aabb.z1+pad);
 }
 function reviewBack(scene,floor,envelope,pose){
   const fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw);
   return reviewBackOptions.find(distance=>{
     const cx=pose.x-fx*distance,cz=pose.z-fz*distance;
-    if(!reviewInside(envelope,cx,cz,.18))return false;
+    if(!reviewInside(envelope,cx,cz,.18)||!reviewCameraStable(scene,pose,distance))return false;
     for(let q=.12;q<=distance;q+=.10)if(reviewSightBlocked(scene,floor,pose.x-fx*q,pose.z-fz*q))return false;
     return true;
   })||0;
@@ -276,48 +445,55 @@ function reviewFront(scene,floor,envelope,pose){
     if(!reviewInside(envelope,x,z,.10)||reviewSightBlocked(scene,floor,x,z,.025))break;front=q;}
   return front;
 }
-function reviewForegroundDoor(floor,pose,back){
-  const fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw),rx=Math.cos(pose.yaw),rz=-Math.sin(pose.yaw),
-    cameraX=pose.x-fx*back,cameraZ=pose.z-fz*back;
-  return reviewDoorLeaves(floor).find(leaf=>{
-    const cx=(leaf.x0+leaf.x1)/2,cz=(leaf.z0+leaf.z1)/2,dx=cx-cameraX,dz=cz-cameraZ,
-      forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz),
-      radius=Math.hypot(leaf.x1-leaf.x0,leaf.z1-leaf.z0)/2;
-    // A 50-degree door leaf inside the first two metres of the camera cone can consume a
-    // quarter of a 1024x640 frame even when the exact centre ray is clear. Reject that framing.
-    return forward>.08&&forward<2.10&&lateral-radius<.18+forward*.52;
-  })||null;
+function reviewForegroundDoor(scene,floor,pose,back){
+  const camera=reviewCamera(pose,back);
+  for(const {leaf,prop,vertices} of reviewDoorSamples(scene,floor)){
+    if(!prop||!prop.m)continue;
+    if(reviewPointInProp(prop,camera.eye))return{...leaf,point:camera.eye};
+    // Clip all twelve transformed face triangles against the exact hosted perspective frustum.
+    // This catches a panel that covers the camera while every fixed lattice point lies outside,
+    // as well as arbitrarily thin edge slivers. Only real architecture may then hide the clipped
+    // polygon; open/glazed furniture collision proxies never certify a door as invisible.
+    for(const indices of REVIEW_BOX_TRIANGLES){const polygon=reviewClipTriangle(camera,indices.map(i=>vertices[i]));
+      if(!polygon.length)continue;const centroid=polygon.reduce((sum,point)=>
+        [sum[0]+point[0]/polygon.length,sum[1]+point[1]/polygon.length,sum[2]+point[2]/polygon.length],[0,0,0]);
+      for(const point of [centroid,...polygon])if(reviewLineOfSight(scene,floor,camera.eye,point,leaf.id,true))
+        return{...leaf,point};
+    }
+  }
+  return null;
 }
-function reviewFocusEvidence(scene,floor,pose,back,ids,minimum){
+function reviewFocusEvidence(scene,floor,pose,back,ids,minimum,bodyVisible=false){
   if(!Array.isArray(ids)||ids.length<minimum)return{error:`focus-fixtures-${Array.isArray(ids)?ids.length:0}/${minimum}`};
   if(new Set(ids).size!==ids.length)return{error:'duplicate-focus-fixtures'};
-  const fixtures=new Map(floor.rooms.flatMap(room=>room.contents||[]).concat(floor.sharedObjects||[])
-    .map(fixture=>[fixture.id,fixture])),prefabs=new Map(plan.prefabCatalog.map(spec=>[spec.id,spec])),
+  const fixtures=reviewFixtures(floor),prefabs=new Map(plan.prefabCatalog.map(spec=>[spec.id,spec])),
     anchorOf=fixture=>(prefabs.get(fixture.prefab)||{}).anchor||'floor',
-    topOf=fixture=>fixture.at[1]+fixture.size[1]*(/centre/.test(anchorOf(fixture))?.5:1),
     sightY=fixture=>/centre/.test(anchorOf(fixture))?fixture.at[1]:
       fixture.at[1]+Math.min(fixture.size[1]*.65,1.35),fx=Math.sin(pose.yaw),fz=Math.cos(pose.yaw),
     rx=Math.cos(pose.yaw),rz=-Math.sin(pose.yaw),cameraX=pose.x-fx*back,cameraZ=pose.z-fz*back,
-    cameraY=floor.elevation+1.15,evidence=[];
+    camera=reviewCamera(pose,back),evidence=[];
   for(const id of ids){
     const fixture=fixtures.get(id);
     if(!fixture||!fixture.at)return{error:`missing-focus-fixture:${id}`};
     const dx=fixture.at[0]-cameraX,dz=fixture.at[2]-cameraZ,distance=Math.hypot(dx,dz),
-      forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz);
-    if(forward<=.35||lateral>forward*.58+.12)return{error:`focus-outside-camera-cone:${id}`};
-    let occluded=false;
-    for(let q=.18;q<distance-.28;q+=.12){
-      const progress=q/distance,x=cameraX+dx*progress,z=cameraZ+dz*progress,
-        rayY=cameraY+(sightY(fixture)-cameraY)*progress;
-      if(scene.blockers.some(s=>s.top>=rayY-.06&&x>s.x0-.025&&x<s.x1+.025&&z>s.z0-.025&&z<s.z1+.025)||
-        scene.solids.some(s=>{if(s.fixtureId===id||s.open||!(x>s.x0-.025&&x<s.x1+.025&&z>s.z0-.025&&z<s.z1+.025))return false;
-          const obstacle=fixtures.get(s.fixtureId);return !obstacle||topOf(obstacle)>=rayY-.06;})||
-        reviewDoorLeaves(floor).some(s=>x>s.x0-.025&&x<s.x1+.025&&z>s.z0-.025&&z<s.z1+.025)){
-        occluded=true;break;
-      }
+      forward=dx*fx+dz*fz,lateral=Math.abs(dx*rx+dz*rz),
+      point=[fixture.at[0],sightY(fixture)-floor.elevation,fixture.at[2]];
+    if(forward<=.35||lateral>forward*.58+.12||!reviewProject(camera,point).inside)
+      return{error:`focus-outside-camera-frustum:${id}`};
+    if(!reviewLineOfSight(scene,floor,camera.eye,point,id))return{error:`focus-occluded:${id}`};
+    if(bodyVisible&&reviewBodyOccludes(camera.eye,point,pose.x,pose.z))
+      return{error:`focus-occluded-by-evidence-body:${id}`};
+    const parts=scene.props.filter(prop=>prop.tag===id&&prop.m&&prop.mesh!=='quad');
+    let samples=0,visibleSamples=0,innerSamples=0;
+    for(const prop of parts)for(const u of [-.5,0,.5])for(const v of [-.5,0,.5])for(const w of [-.5,0,.5]){
+      samples++;const sample=reviewTransform(prop.m,u,v,w),projected=reviewProject(camera,sample);
+      if(!projected.inside||!reviewLineOfSight(scene,floor,camera.eye,sample,id))continue;
+      if(bodyVisible&&reviewBodyOccludes(camera.eye,sample,pose.x,pose.z))continue;visibleSamples++;
+      if(Math.abs(projected.nx)<=.88&&Math.abs(projected.ny)<=.78)innerSamples++;
     }
-    if(occluded)return{error:`focus-occluded:${id}`};
-    evidence.push({id,forward:+forward.toFixed(2),lateral:+lateral.toFixed(2)});
+    if(!parts.length||visibleSamples<Math.max(3,Math.ceil(samples*.12))||!innerSamples)
+      return{error:`focus-render-cropped:${id}:${visibleSamples}/${samples}`};
+    evidence.push({id,forward:+forward.toFixed(2),lateral:+lateral.toFixed(2),visibleSamples,samples,innerSamples});
   }
   return{evidence};
 }
@@ -395,9 +571,9 @@ for(const [name,build] of builders){
       if(!back)visualReviewDefects.push(`${b.id}/F${f.level}:rear-camera-blocked`);
       if(front<REVIEW_FRONT_MIN)visualReviewDefects.push(`${b.id}/F${f.level}:front-depth-${front.toFixed(2)}m`);
       if(back){
-        const focus=reviewFocusEvidence(scene,f,pose,back,programmeReview.focusFixtureIds,2),door=reviewForegroundDoor(f,pose,back);
+        const focus=reviewFocusEvidence(scene,f,pose,back,programmeReview.focusFixtureIds,2),door=reviewForegroundDoor(scene,f,pose,back);
         if(focus.error)visualReviewDefects.push(`${b.id}/F${f.level}:${focus.error}`);
-        if(door)visualReviewDefects.push(`${b.id}/F${f.level}:foreground-door-leaf`);
+        if(door)visualReviewDefects.push(`${b.id}/F${f.level}:foreground-door-leaf:${door.id}`);
       }
     }
   }
@@ -414,20 +590,19 @@ for(const [name,build] of builders){
     else if(scene.solids.some(s=>!s.open&&pose.x>s.x0-radius&&pose.x<s.x1+radius&&pose.z>s.z0-radius&&pose.z<s.z1+radius))
       entryReviewDefects.push(`${b.id}/F${f.level}:entry-pose-body-blocked`);
     else {
-      const distance=Math.hypot(pose.x-scene.spawn.x,pose.z-scene.spawn.z),steps=Math.max(1,Math.ceil(distance/.10));
-      for(let i=1;i<=steps;i++){
-        const q=i/steps,x=scene.spawn.x+(pose.x-scene.spawn.x)*q,z=scene.spawn.z+(pose.z-scene.spawn.z)*q;
-        if(!reviewInside(zone.bounds,x,z,.04)||scene.solids.some(s=>!s.open&&x>s.x0-radius&&x<s.x1+radius&&z>s.z0-radius&&z<s.z1+radius)){
-          entryReviewDefects.push(`${b.id}/F${f.level}:entry-path-blocked-${zone.id}`);break;
-        }
-      }
+      // The chosen arrival may be a connected public room beyond a corridor or open pocket
+      // threshold. Prove it with the real clampMove flood rather than requiring the entire route
+      // from the floor spawn to lie inside the destination zone or along one straight segment.
+      const walk=cachedWalkMap(scene,b),arrivalReachable=walk.points.some(([x,z])=>Math.hypot(x-pose.x,z-pose.z)<=.24);
+      if(!arrivalReachable)entryReviewDefects.push(`${b.id}/F${f.level}:entry-path-blocked-${zone.id}`);
       const back=reviewBack(scene,f,zone.bounds,pose),front=reviewFront(scene,f,zone.bounds,pose);
       if(!back)entryReviewDefects.push(`${b.id}/F${f.level}:entry-rear-camera-blocked`);
       if(front<REVIEW_FRONT_MIN)entryReviewDefects.push(`${b.id}/F${f.level}:entry-front-depth-${front.toFixed(2)}m`);
       if(back){
-        const focus=reviewFocusEvidence(scene,f,pose,back,entryReview.focusFixtureIds,1),door=reviewForegroundDoor(f,pose,back);
+        const focus=reviewFocusEvidence(scene,f,pose,back,entryReview.focusFixtureIds,1,entryReview.body==='evidence'),
+          door=reviewForegroundDoor(scene,f,pose,back);
         if(focus.error)entryReviewDefects.push(`${b.id}/F${f.level}:entry-${focus.error}`);
-        if(door)entryReviewDefects.push(`${b.id}/F${f.level}:entry-foreground-door-leaf`);
+        if(door)entryReviewDefects.push(`${b.id}/F${f.level}:entry-foreground-door-leaf:${door.id}`);
       }
     }
   }
@@ -457,9 +632,9 @@ for(const [name,build] of builders){
         if(!back)entryReviewDefects.push(`${key}:ground-rear-camera-blocked-${cameraZone.id}`);
         if(front<REVIEW_FRONT_MIN)entryReviewDefects.push(`${key}:ground-front-depth-${front.toFixed(2)}m`);
         if(back){
-          const focus=reviewFocusEvidence(scene,f,pose,back,entry.focusFixtureIds,1),door=reviewForegroundDoor(f,pose,back);
+          const focus=reviewFocusEvidence(scene,f,pose,back,entry.focusFixtureIds,1),door=reviewForegroundDoor(scene,f,pose,back);
           if(focus.error)entryReviewDefects.push(`${key}:ground-${focus.error}`);
-          if(door)entryReviewDefects.push(`${key}:ground-foreground-door-leaf`);
+          if(door)entryReviewDefects.push(`${key}:ground-foreground-door-leaf:${door.id}`);
         }
       }
     }
@@ -553,7 +728,7 @@ for(const [name,build] of builders){
   check(`${name} spawn inside floor envelope`,scene.spawn.x>=x0&&scene.spawn.x<=x1&&scene.spawn.z>=z0&&scene.spawn.z<=z1,JSON.stringify(scene.spawn));
   const blocked=scene.solids.some(s=>!s.open&&scene.spawn.x>s.x0-.20&&scene.spawn.x<s.x1+.20&&scene.spawn.z>s.z0-.20&&scene.spawn.z<s.z1+.20);
   check(`${name} spawn has body clearance`,!blocked,JSON.stringify(scene.spawn));
-  const walk=walkMap(scene,b);
+  const walk=cachedWalkMap(scene,b);
   const unreachable=f.rooms.filter(room=>!walk.rooms.includes(room));
   check(`${name} rooms connect to the spawn`,unreachable.length===0,unreachable.map(r=>r.id).join(','));
   const unreachableThings=scene.things.filter(t=>!walk.points.some(([x,z])=>Math.hypot(x-t.focus[0],z-t.focus[1])<=(t.reach||1.5)));
@@ -566,13 +741,156 @@ const requiredVisualReviewFloors=plan.buildings.flatMap(b=>b.floorsPlan.map(f=>`
 check('every university floor has a curated programme review pose',missingVisualReviewFloors.length===0,
   missingVisualReviewFloors.join(','));
 check('curated programme review poses are body-clear with open front and rear sightlines',
-  visualReviewDefects.length===0,visualReviewDefects.slice(0,16).join(','));
+  visualReviewDefects.length===0,visualReviewDefects.slice(0,64).join(','));
 const requiredEntryReviewFloors=plan.buildings.flatMap(b=>b.floorsPlan.filter(f=>f.level>1).map(f=>`${b.id}/F${f.level}`)),
   missingEntryReviewFloors=requiredEntryReviewFloors.filter(key=>!authoredEntryReviewFloors.has(key));
 check('every occupied upper floor has a curated arrival review pose',missingEntryReviewFloors.length===0,
   missingEntryReviewFloors.join(','));
 check('curated upper-floor arrival poses stay within their zones with clear paths and sightlines',
-  entryReviewDefects.length===0,entryReviewDefects.slice(0,16).join(','));
+  entryReviewDefects.length===0,entryReviewDefects.slice(0,64).join(','));
+const approvedOpenPocketDoorIds=new Set([
+  'B07/F2/DANCE/TO-COR-W','B07/F2/DANCE/TO-COR-E',
+  'B07/F3/MEDIA/TO-COR','B07/F3/HEALTH/TO-COR',
+]),unmarkedDoorScenes=[],openPocketDefects=[],seenApprovedOpenPocketDoorIds=new Set();
+let ordinaryDoorLeafProof=null,b07LobbyCommonsDedupProof=false;
+for(const [,scene] of scenes){
+  const floor=scene.blueprintFloor,building=plan.buildings.find(b=>b.id===scene.buildingId),
+    roomDoorRows=floor.rooms.flatMap(room=>(room.doors||[]).map(door=>({room,door}))),
+    roomDoors=roomDoorRows.map(row=>row.door),
+    fixtureDoors=floor.rooms.flatMap(room=>room.contents||[]).concat(floor.sharedObjects||[])
+      .filter(f=>f.prefab==='PF-DOOR-SINGLE'||f.prefab==='PF-DOOR-DOUBLE'),
+    roomById=new Map(floor.rooms.map(room=>[room.id,room])),roundedDoorValue=value=>Math.round(value*1000)/1000,
+    exactPhysicalKey=door=>{const vertical=door.side==='west'||door.side==='east',
+      fixed=vertical?door.at[0]:door.at[2],along=vertical?door.at[2]:door.at[0],
+      rounded=roundedDoorValue;
+      return`${vertical?'v':'h'}:${rounded(fixed)}:${rounded(along)}:${rounded(door.width||.9)}`;},
+    physicalKeyByDoor=new Map(),roomDoorGroups=new Map();
+  for(const {room,door} of roomDoorRows){
+    if(physicalKeyByDoor.has(door))continue;
+    const vertical=door.side==='west'||door.side==='east',fixed=vertical?door.at[0]:door.at[2],
+      along=vertical?door.at[2]:door.at[0],destination=roomById.get(door.destination),
+      reciprocal=destination&&(destination.doors||[]).find(other=>{
+        const otherVertical=other.side==='west'||other.side==='east',otherFixed=otherVertical?other.at[0]:other.at[2],
+          otherAlong=otherVertical?other.at[2]:other.at[0];
+        return other.destination===room.id&&otherVertical===vertical&&Math.abs(otherAlong-along)<=.03&&
+          Math.abs((other.width||.9)-(door.width||.9))<=.03&&Math.abs(otherFixed-fixed)<=.30;
+      });
+    if(reciprocal){const otherAlong=vertical?reciprocal.at[2]:reciprocal.at[0],rooms=[room.id,destination.id].sort(),
+        key=`pair:${rooms[0]}:${rooms[1]}:${vertical?'v':'h'}:`+
+          `${roundedDoorValue((along+otherAlong)/2)}:${roundedDoorValue(((door.width||.9)+(reciprocal.width||.9))/2)}`;
+      physicalKeyByDoor.set(door,key);physicalKeyByDoor.set(reciprocal,key);
+    }else physicalKeyByDoor.set(door,exactPhysicalKey(door));
+  }
+  const physicalKey=door=>physicalKeyByDoor.get(door)||exactPhysicalKey(door);
+  for(const door of roomDoors){const key=physicalKey(door);if(!roomDoorGroups.has(key))roomDoorGroups.set(key,[]);
+    roomDoorGroups.get(key).push(door);}
+  const expectedRoomGroups=[...roomDoorGroups.entries()].filter(([,doors])=>!doors.every(door=>
+      approvedOpenPocketDoorIds.has(door.id)&&door.operation==='sliding-pocket'&&door.reviewOpen===true)),
+    exactExpectedIds=new Set([
+      ...fixtureDoors.map(fixture=>fixture.id),
+      ...(floor.level===1?building.portals.filter(portal=>portal.localSpawn).map(portal=>`${portal.id}/DOOR`):[]),
+    ]),expectedRoomIds=new Set(expectedRoomGroups.flatMap(([,doors])=>doors.map(door=>door.id))),
+    markedRows=reviewDoorSamples(scene,floor),markedIds=new Set(markedRows.map(row=>row.leaf.id)),
+    // A shared opening may legitimately suppress one source-side record, but B03 also contains
+    // paired records that render two different leaves swinging to opposite sides. Identify every
+    // actual full-height room panel independently of the marker and require that exact render ID;
+    // a marked neighbour at the same opening cannot mask an unmarked visible panel.
+    roomDoorIds=new Set(roomDoors.map(door=>door.id)),renderedRoomDoorPanels=scene.props.filter(prop=>
+      roomDoorIds.has(prop.tag)&&prop.ob&&prop.ob.sy>2&&Math.min(prop.ob.sx,prop.ob.sz)<.12),
+    missingRoomGroups=expectedRoomGroups.filter(([,doors])=>!doors.some(door=>markedIds.has(door.id)))
+      .map(([key,doors])=>`${key}[${doors.map(door=>door.id).join('|')}]`),
+    roomGroupCardinality=[...roomDoorGroups.entries()].flatMap(([key,doors])=>{
+      const approvedPocket=doors.every(door=>approvedOpenPocketDoorIds.has(door.id)&&
+        door.operation==='sliding-pocket'&&door.reviewOpen===true),ids=new Set(doors.map(door=>door.id)),
+        rendered=markedRows.filter(row=>ids.has(row.leaf.id)&&row.prop&&row.prop.ob&&row.prop.ob.sy>2).length,
+        expected=approvedPocket?0:1;
+      return rendered===expected?[]:[`${key}[${doors.map(door=>door.id).join('|')}]=${rendered}/${expected}`];
+    }),
+    missingRendered=renderedRoomDoorPanels.filter(prop=>prop.doorLeaf!==true).map(prop=>prop.tag),
+    missingExact=[
+      ...fixtureDoors.filter(fixture=>!scene.props.some(prop=>prop.tag===fixture.id&&prop.doorLeaf===true&&prop.ob&&
+        Math.abs(prop.ob.sx-fixture.size[0])<.01&&Math.abs(prop.ob.sy-fixture.size[1])<.01&&
+        Math.abs(prop.ob.sz-fixture.size[2])<.01)).map(fixture=>fixture.id),
+      ...(floor.level===1?building.portals.filter(portal=>portal.localSpawn&&!scene.props.some(prop=>
+        prop.tag===`${portal.id}/DOOR`&&prop.doorLeaf===true&&prop.ob&&prop.ob.sy>2)).map(portal=>`${portal.id}/DOOR`):[]),
+    ],unexpectedRows=markedRows.filter(row=>!row.prop||!row.prop.ob||
+      !['box','softBox'].includes(row.prop.mesh)).map(row=>`${row.leaf.id}:${row.prop&&row.prop.mesh||'missing'}`),
+    unexpected=[...markedIds].filter(id=>id==='untagged-door-leaf'||
+      !expectedRoomIds.has(id)&&!exactExpectedIds.has(id)).concat(unexpectedRows);
+  if(scene.buildingId==='B07'&&floor.level===1){
+    const pairIds=new Set(['B07/F1/SC-LOBBY/TO-COMMONS','B07/F1/SC-COMMONS/TO-LOBBY']),
+      pair=[...roomDoorGroups.values()].find(doors=>doors.length===2&&doors.every(door=>pairIds.has(door.id)));
+    b07LobbyCommonsDedupProof=!!pair&&markedRows.filter(row=>pairIds.has(row.leaf.id)&&row.prop&&row.prop.ob&&row.prop.ob.sy>2).length===1;
+  }
+  if(missingRoomGroups.length||roomGroupCardinality.length||missingRendered.length||missingExact.length||unexpected.length)unmarkedDoorScenes.push(
+    `${scene.buildingId}/F${floor.level}:missingRoom=${missingRoomGroups.join('|')||'-'} `+
+    `cardinality=${roomGroupCardinality.join('|')||'-'} `+
+    `missingRendered=${missingRendered.join('|')||'-'} missingExact=${missingExact.join('|')||'-'} `+
+    `unexpected=${unexpected.join('|')||'-'}`);
+  for(const door of roomDoors){
+    const approved=approvedOpenPocketDoorIds.has(door.id),optedIn=door.operation==='sliding-pocket'&&door.reviewOpen===true,
+      exposed=scene.props.some(prop=>prop.doorLeaf===true&&prop.tag===door.id),
+      pocketParts=scene.props.filter(prop=>prop.tag===`${door.id}/POCKET-TRACK`||prop.tag===`${door.id}/POCKET-REVEAL`).length;
+    if(approved)seenApprovedOpenPocketDoorIds.add(door.id);
+    if(approved&&(!optedIn||exposed||pocketParts!==2))openPocketDefects.push(
+      `${door.id}:metadata=${optedIn} exposed=${exposed} pocketParts=${pocketParts}`);
+    if(!approved&&door.reviewOpen===true)openPocketDefects.push(`${door.id}:unapproved-reviewOpen`);
+    if(!approved&&exposed&&!ordinaryDoorLeafProof)ordinaryDoorLeafProof=door.id;
+  }
+}
+check('every expected room, fire-separation and public portal door maps to an exact marked render ID',
+  unmarkedDoorScenes.length===0,unmarkedDoorScenes.slice(0,12).join(','));
+check('approved permanently-open pocket thresholds retain frames and pocket details without exposed leaves',
+  openPocketDefects.length===0&&[...approvedOpenPocketDoorIds].every(id=>seenApprovedOpenPocketDoorIds.has(id)),
+  openPocketDefects.slice(0,8).join(','));
+check('ordinary room doors retain exposed review-marked leaves',!!ordinaryDoorLeafProof,ordinaryDoorLeafProof||'missing');
+check('B07 lobby and commons reciprocal aliases render one physical room panel',b07LobbyCommonsDedupProof);
+const stableControl={roomAt:()=>({id:'control',x0:-5,x1:5,z0:-5,z1:5}),blockers:[]},
+  wallBandControl={roomAt:()=>({id:'wall-band',x0:-2,x1:2,z0:-2,z1:2}),blockers:[]},
+  blockerControl={roomAt:()=>({id:'blocker',x0:-5,x1:5,z0:-5,z1:5}),
+    blockers:[{x0:-.10,x1:.10,z0:-1.10,z1:-.90,top:3}]},controlPose={x:0,z:0,yaw:0};
+check('native review camera accepts an unaltered clear indoor orbit',
+  reviewCameraStable(stableControl,controlPose,1.4));
+check('native review camera rejects a clearWall-shortened orbit',
+  !reviewCameraStable(wallBandControl,controlPose,1.7));
+check('native review camera rejects a default-padded blocker-shortened orbit',
+  !reviewCameraStable(blockerControl,controlPose,1.4));
+let nativeDoorGateProof=null,nativeInsideDoorGateProof=null;
+for(const [,scene] of scenes){
+  const floor=scene.blueprintFloor,row=reviewDoorSamples(scene,floor)[0];if(!row)continue;
+  const prop=row.prop;if(!prop)continue;
+  // Positive-control the strict gate with an unobstructed synthetic camera aimed directly at a
+  // real transformed leaf. A future simplification cannot silently turn every authored zero-door
+  // result green by making the detector incapable of seeing a door at all.
+  const isolated={props:[prop],solids:[],H:scene.H},pose={x:prop.m[12],z:prop.m[14],yaw:0};
+  nativeDoorGateProof=reviewForegroundDoor(isolated,floor,pose,1.4);break;
+}
+check('native review frustum positively detects a visible transformed door leaf',
+  !!nativeDoorGateProof,nativeDoorGateProof&&nativeDoorGateProof.id);
+for(const [,scene] of scenes){
+  const floor=scene.blueprintFloor,prop=scene.props.find(p=>p.doorLeaf===true&&p.m);if(!prop)continue;
+  const back=.10,isolated={props:[prop],solids:[],H:scene.H},
+    // yaw zero puts the eye at z-back; offset the target by +back so the eye is exactly inside
+    // the panel. This catches the catastrophic close-door case that a surface lattice can miss.
+    pose={x:prop.m[12],z:prop.m[14]+back,yaw:0};
+  nativeInsideDoorGateProof=reviewForegroundDoor(isolated,floor,pose,back);break;
+}
+check('native review frustum rejects a camera eye inside a marked door cuboid',
+  !!nativeInsideDoorGateProof,nativeInsideDoorGateProof&&nativeInsideDoorGateProof.id);
+let nativePortalDoorGateProof=null;
+for(const [,scene] of scenes){
+  const floor=scene.blueprintFloor;if(floor.level!==1)continue;
+  const building=plan.buildings.find(b=>b.id===scene.buildingId),portal=building.portals.find(p=>p.localSpawn);
+  if(!portal)continue;const prop=scene.props.find(p=>p.doorLeaf===true&&p.tag===`${portal.id}/DOOR`);
+  if(!prop)continue;const px=prop.m[12],pz=prop.m[14],[x0,x1,z0,z1]=building.localBounds,
+    dx=px-(x0+x1)/2,dz=pz-(z0+z1)/2,yaw=Math.atan2(dx,dz),
+    containingShell=scene.solids.filter(s=>!s.fixtureId&&px>=s.x0&&px<=s.x1&&pz>=s.z0&&pz<=s.z1),
+    isolated={props:[prop],solids:containingShell,H:scene.H};
+  const hit=reviewForegroundDoor(isolated,floor,{x:px,z:pz,yaw},1.4);
+  if(hit&&containingShell.length){nativePortalDoorGateProof={id:hit.id,shells:containingShell.length};break;}
+}
+check('native review frustum detects a public portal panel through its co-located shell proxy',
+  !!nativePortalDoorGateProof,nativePortalDoorGateProof&&JSON.stringify(nativePortalDoorGateProof));
 const requiredGroundEntryReviews=['B01/F1/entry','B02/F1/entry','B03/F1/entry','B04/F1/entry','B05/F1/entry',
     'B06/F1/entry','B07/F1/entry','B07/F1/clinic-entry','B08/F1/entry'],
   missingGroundEntryReviews=requiredGroundEntryReviews.filter(key=>!authoredGroundEntryReviews.has(key));
