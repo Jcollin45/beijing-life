@@ -730,8 +730,12 @@ async function main(){
           return Math.abs(distance-requested)<=1e-6&&
             cameraBlockLimitReview(target,dir,requested)>=requested-.005;},
         resolvedReviewCamera=()=>{const eye=Array.from(window.__game.eye),cam=window.__game.CAM,
-            canvas=document.querySelector('canvas'),aspect=canvas&&canvas.height?canvas.width/canvas.height:
-              window.innerWidth/window.innerHeight,
+            canvas=document.querySelector('canvas'),rect=canvas&&canvas.getBoundingClientRect?canvas.getBoundingClientRect():null,
+            // R.resize builds the projection from the canvas CSS content extent. The backing
+            // buffer is independently render-scaled and integer-rounded (for example 921x576 at
+            // 0.90 quality), so its ratio is not the lens ratio and must not certify the camera.
+            aspect=rect&&rect.height?rect.width/rect.height:canvas&&canvas.clientHeight?
+              canvas.clientWidth/canvas.clientHeight:window.innerWidth/window.innerHeight,
             target=[cam.fx,cam.lookY,cam.fz],delta=[target[0]-eye[0],target[1]-eye[1],target[2]-eye[2]],
             length=Math.hypot(...delta)||1,forward=delta.map(v=>v/length),horizontal=Math.hypot(forward[0],forward[2])||1,
             right=[-forward[2]/horizontal,0,forward[0]/horizontal],
