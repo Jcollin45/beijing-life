@@ -3272,11 +3272,14 @@ const Street = Lazy('Street', () => {
     // ---- the corner block that closes the east end of the alley, and plain masses filling
     // the near side of the road beyond it. Without them the pavement ran off into open ground.
     const czb = -3.05;
-    box(17.6, 7.6, czb - 8.0, 11.4, 15.2, 16.0, col.render, { hard: true, mode: 14, gloss: G.paint, ...RENDER });
+    // Its former 16 m depth overlapped the fire station's north wing by five metres. End it at
+    // the shared party line instead of leaving two complete buildings in the same volume.
+    const czSouth = -14.40, czDepth = czb - czSouth, czMid = (czb + czSouth) / 2;
+    box(17.6, 7.6, czMid, 11.4, 15.2, czDepth, col.render, { hard: true, mode: 14, gloss: G.paint, ...RENDER });
     box(17.8, .70, czb - .04, 11.7, 1.40, .34, col.brick, { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-    box(17.8, 15.7, czb - 8.0, 11.9, .56, 16.2, col.renderD, { hard: true, gloss: G.paint });
-    blocker(12.0, 23.4, czb - 16.1, czb, 15.2);
-    solid(12.0, 23.4, czb - 16.1, czb + .10);
+    box(17.8, 15.7, czMid, 11.9, .56, czDepth + .2, col.renderD, { hard: true, gloss: G.paint });
+    blocker(12.0, 23.4, czSouth, czb, 15.2);
+    solid(12.0, 23.4, czSouth, czb + .10);
     // On FL, not on the 2.86 this was built to. Two reasons, and the second is the one that
     // matters: a block four metres from the one you live in with a different storey height reads
     // as a mistake, and at 2.86 the lowest window sat at 3.66 — through the fascia band the
@@ -3316,7 +3319,10 @@ const Street = Lazy('Street', () => {
     // Which is where they go: a hutong gets its station mouth at the mouth of the hutong. Not at
     // x 15 — number 16's gate is at 13.8 and the canopy stood on its threshold.
     metroMouth(19.40, 2.30, '杨柳胡同');
-    for (const [mz, md] of [[-34, 40], [26, 34]]) {
+    // The former anonymous south mass is now the authored fire station. Preserve the 32 random
+    // draws from its old window grid so removing the placeholder does not re-deal later scenery.
+    for (let i = 0; i < 32; i++) rnd();
+    for (const [mz, md] of [[26, 34]]) {
       box(16.7, 7.0, mz, 13.0, 14.0, md, col.renderD, { hard: true, mode: 14, gloss: G.paint, ...RENDER });
       blocker(10.5, 23.2, mz - md / 2, mz + md / 2, 14.0);
       solid(10.5, 23.2, mz - md / 2, mz + md / 2);
@@ -4175,6 +4181,8 @@ const Street = Lazy('Street', () => {
       // Stopping at the west kerb preserves the controlled crossing: this is not a second road.
       { id: 'hospital-road', x0: 23.2, x1: RD0 - .1, z0: 12.8, z1: 42.8,
         light: [25.3, 5.0, 24.0] },
+      // The fire-station module publishes its connected public apron after it builds.
+      ...(S.FIRE_ZONE ? [S.FIRE_ZONE] : []),
       // street-hotel.js extends the east pavement north of the hypermarket. Kept in that module's
       // coordinate contract so the arrival court and its walkable boundary cannot drift apart.
       ...(S.HOTEL_ZONE ? [S.HOTEL_ZONE] : []),
@@ -4184,6 +4192,9 @@ const Street = Lazy('Street', () => {
     ],
     roomAt(x, z, prev) {
       const zs = this.zones;
+      const fireZone=zs.find(q=>q.id==='fire-station-front');
+      if(fireZone&&x>=fireZone.x0&&x<=fireZone.x1&&z>=fireZone.z0&&z<=fireZone.z1)
+        return fireZone;
       const hotelZone=zs.find(q=>q.id==='hotel-forecourt');
       if(hotelZone&&x>=hotelZone.x0&&x<=hotelZone.x1&&z>=hotelZone.z0&&z<=hotelZone.z1)
         return hotelZone;

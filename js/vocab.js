@@ -1610,6 +1610,29 @@ X光片|X guāng piàn|X-ray film|medical
 楼梯|lóutī|stairs, staircase|direction
 消防栓|xiāofángshuān|fire hydrant
 
+# ---- 杨柳消防救援站
+消防站|xiāofángzhàn|fire station|place
+消防车|xiāofángchē|fire engine|transport
+消防员|xiāofángyuán|firefighter|people
+车库|chēkù|vehicle bay, garage|place
+车库门|chēkùmén|appliance-bay door
+出警|chūjǐng|to turn out for an emergency
+水带|shuǐdài|fire hose
+空气呼吸器|kōngqì hūxīqì|self-contained breathing apparatus
+防护服|fánghùfú|protective clothing|clothing
+头盔|tóukuī|helmet|clothing
+装备架|zhuāngbèijià|equipment rack
+值班室|zhíbānshì|watch room, duty room|place
+训练室|xùnliànshì|training room|place
+洗消间|xǐxiāojiān|decontamination room|place
+灭火器|mièhuǒqì|fire extinguisher
+工作台|gōngzuòtái|workbench
+清洗消毒|qīngxǐ xiāodú|wash and decontamination
+调度值班室|diàodù zhíbānshì|dispatch and watch room|place
+报警器|bàojǐngqì|alarm device
+访客登记|fǎngkè dēngjì|visitor registration
+消防宣传栏|xiāofáng xuānchuánlán|fire-safety noticeboard
+
 # ---- words the rest of the building asks for. Every one of these is the headword of a thing that
 # already exists in js/home-*.js with no row here, and Vocab.get has no fallback: walking up to
 # (no backticks in this file, ever — RAW is a template literal and one here ends it mid-table,

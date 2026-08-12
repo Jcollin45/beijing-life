@@ -53,6 +53,7 @@ const FOV = 0.95;
 // the one you are standing in is the only one the loop touches, so the cost of having five is
 // the cost of the largest one.
 const PLACES = { home: World, street: Street, shop: Shop, pharmacy: Pharmacy, market: Market, diner: Diner,
+                 firestation: FireStation,
                  bank: Bank,
                  hospital: Hospital, hospital2: Hospital2, hospital3: Hospital3, hospital4: Hospital4,
                  hotelB1:HotelB1,hotel:Hotel,hotel2:Hotel2,hotel3:Hotel3,hotel4:Hotel4,
@@ -1439,6 +1440,9 @@ if (typeof MetroCast !== 'undefined') for (const n of MetroCast) NPCS.push(n);
 // files load before data.js/game.js and contribute a static roster without reaching into this
 // file's private addNPC/initNPC functions.
 if (typeof HospitalCast !== 'undefined') for (const n of HospitalCast) NPCS.push(n);
+// Fire-station staff are owned by the station module so their patrol spots stay aligned with
+// its measured apparatus floor, watch desk and crew rooms.
+if (typeof FireStationCast !== 'undefined') for (const n of FireStationCast) NPCS.push(n);
 // The bank currently ships its hall before its recurring staff dialogue, but keeping the same
 // room-owned roster hook makes teller/guard additions safe and costs nothing while it is empty.
 if (typeof BankCast !== 'undefined') for (const n of BankCast) NPCS.push(n);
@@ -9363,6 +9367,7 @@ const DOORS = [
   { hz: '公司', en: 'the office complex', place: 'office1', at: '商务区', mins: 3 },
   { hz: '购物中心', en: 'the shopping mall', place: 'mall', at: '商务区', mins: 4 },
   { hz: '医院', en: 'Beijing Renhe Hospital', place: 'hospital', at: '商务区', mins: 4 },
+  { hz: '消防站', en: 'Yangliu Fire and Rescue Station', place: 'firestation', at: '商务区', mins: 5 },
   { hz: '银行', en: 'Beijing Bank', place: 'bank', at: '商务区', mins: 3 },
   { hz: '京华大酒店', en: 'Jinghua Grand Hotel', place: 'hotel', at: '商务区', mins: 5 },
   { hz: '街上', en: 'the main road',   place: 'street', at: '商务区',   mins: 2 },
@@ -9373,7 +9378,7 @@ const RIDE_BOARD = 5, RIDE_LEG = 3;    // minutes: getting down there, then per 
 // a question about which end of it you are on.
 const DISTRICT = { officeB1:'商务区',office1:'商务区',office2:'商务区',office3:'商务区',
                    office:'商务区',office5:'商务区',office6:'商务区',office7:'商务区',officeRoof:'商务区',
-                   officeLift:'商务区', mall: '商务区', bank: '商务区',
+                   officeLift:'商务区', mall: '商务区', bank: '商务区', firestation:'商务区',
                    hospital:'商务区', hospital2:'商务区', hospital3:'商务区', hospital4:'商务区',
                    hotelB1:'商务区',hotel:'商务区',hotel2:'商务区',hotel3:'商务区',hotel4:'商务区',
                    hotel5:'商务区',hotel6:'商务区',hotel7:'商务区',hotel8:'商务区',hotel9:'商务区',
@@ -9385,7 +9390,11 @@ for (const key of Object.keys(CampusInteriors.places)) DISTRICT[key] = '大学�
 function hereStation() {
   if (place === 'metro' || place === 'train') return station;
   if (DISTRICT[place]) return DISTRICT[place];
-  if (place === 'street') return P.x > 29 ? '商务区' : '杨柳胡同';
+  if (place === 'street') {
+    // The fire-station and hospital frontage branches sit west of the road's old x>29 shortcut.
+    // Keep them in the business district when a doorway returns the player to either branch.
+    return P.x > 29 || (P.x > 23 && Math.abs(P.z) > 12.25) ? '商务区' : '杨柳胡同';
+  }
   return '杨柳胡同';                   // the flat, the shop and the noodle place are all on it
 }
 // What the map would charge for a ride: nothing if you are holding a single made out to that
@@ -9511,6 +9520,9 @@ function updateMap() {
     el.onclick = () => { travelToStation(el.dataset.hz); updateMap(); };
   });
   const doors = DOORS.filter(d => d.at === here);
+  // Put the station entrance first among the business-district destinations.
+  const fireDoorIndex = doors.findIndex(d => d.place === 'firestation');
+  if (fireDoorIndex > 0) doors.unshift(doors.splice(fireDoorIndex, 1)[0]);
   const host = $('#mapHere');
   // 回家 in one press — offered exactly where the gap is, which is any station that is not the
   // one the building is on. At 杨柳胡同 the 家 door is already in the row and a second button saying
@@ -9518,9 +9530,10 @@ function updateMap() {
   const gap = place !== 'home' && !doors.some(d => d.place === 'home');
   const fare = gap ? mapFare('杨柳胡同') : null;
   host.innerHTML = (doors.length
-    ? doors.map((d, i) => `<button class="door${sameDoorPlace(d.place,place) ? ' on' : ''}`
+    ? doors.map((d, i) => `<button class="door${d.place === 'firestation' ? ' firestation' : ''}${sameDoorPlace(d.place,place) ? ' on' : ''}`
         + `${doorShut(d) ? ' shut' : ''}" data-i="${i}" `
-        + `title="${d.hz} · ${d.en}${doorShut(d) ? ' · 关门了 shut' : ''}">${d.hz}</button>`)
+        + `title="${d.hz} · ${d.en}${doorShut(d) ? ' · 关门了 shut' : ''}">`
+        + `${d.place === 'firestation' ? '消防站 · FIRE STATION' : d.hz}</button>`)
         .join('')
     : `<span class="none">${here} · you are here</span>`)
     + (gap ? `<button class="door" data-home="1" title="回家 · straight back to your building, `
@@ -12456,7 +12469,7 @@ let placeCutToken = 0;
 // are under the older `Office` module, which is still live — `Office.TASKS` is what the whiteboard
 // reads. Mapping the place id at it is what stops `ROOMS.Office` being a declaration nothing can
 // ever reach; `.roomgate.js` fails if any `Assets.ROOMS` key is orphaned like that again.
-const ASSET_ROOM = { home:'World', street:'Street', shop:'Shop', diner:'Diner', office:'Office' };
+const ASSET_ROOM = { home:'World', street:'Street', shop:'Shop', diner:'Diner', office:'Office', firestation:'FireStation' };
 const assetRoom = name => ASSET_ROOM[name] || name;
 
 function setPlace(name, at) {

@@ -155,6 +155,8 @@ const Assets = (() => {
   // eighteen files that only add up when it is too late.
   const ROOMS = {
     Diner: ['chinese_stool', 'wall_clock'],
+    // Stream the station's reusable seating on first entry; the clock is already a boot asset.
+    FireStation: ['plastic_monobloc_chair', 'wall_clock'],
     // 'wok' and 'rice_cooker' added 2026-08-08. js/home-kitchen.js:311 and :360 have placed both
     // since 2026-08-07 and neither was declared, so `Assets.get` returned nothing and
     // js/build.js:73-75 returned null without a word. Flat 202's kitchen has been shipping with a
