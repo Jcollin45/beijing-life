@@ -2727,21 +2727,21 @@ function buildB04() {
         doorway(`${p}/LOUNGE-E/TO-COR`,'west',[1.2,e,2.05],1.2,`${p}/CORRIDOR`),
       ],[
         fixture(`${p}/LOUNGE-E/RUG`,'quiet-study rug','PF-WALL-RUN',[3.65,e+.018,2.0],'M-RUBBER','acoustic study zone',{size:[3.9,.025,2.8],collision:'none'}),
-        ...[[3.0,1.0,0],[4.75,1.0,0],[3.0,3.1,PI],[4.75,3.1,PI]].map(([x,z,yaw],i)=>
+        ...[[2.60,.80,0],[4.10,.80,0],[3.45,3.10,PI],[4.65,3.10,PI]].map(([x,z,yaw],i)=>
           fixture(`${p}/LOUNGE-E/D${i+1}`,'study workstation','PF-DORM-DESK',[x,e,z],'M-WOOD-DESK','shared study with pull-back clearance',{yaw})),
         fixture(`${p}/LOUNGE-E/BOOK`,'shared bookcase','PF-BOOKCASE',[5.72,e,2.0],'M-OAK-DARK','shared books',{yaw:-PI/2}),
-        fixture(`${p}/LOUNGE-E/BOARD`,'shared planning board','PF-WHITEBOARD',[3.65,e+1.52,3.84],
+        fixture(`${p}/LOUNGE-E/BOARD`,'shared planning board','PF-WHITEBOARD',[4.50,e+1.52,3.84],
           'M-WHITEBOARD','magnetic planning surface behind the separately authored live study cards',
           {yaw:0,size:[2.6,1.0,.05]}),
-        fixture(`${p}/LOUNGE-E/BOARD-AGENDA`,'quiet-study agenda header','PF-ROOM-SIGN',[3.65,e+1.91,3.79],
+        fixture(`${p}/LOUNGE-E/BOARD-AGENDA`,'quiet-study agenda header','PF-ROOM-SIGN',[4.50,e+1.91,3.79],
           'M-SCREEN','programme header held inside the visible whiteboard field rather than above the camera crop',
           {yaw:0,size:[1.54,.25,.04],text:'自习 · STUDY PLAN',collision:'none',hudSafe:true}),
         ...[-.72,0,.72].map((dx,i)=>fixture(`${p}/LOUNGE-E/BOARD-TASK-${String.fromCharCode(65+i)}`,
-          'populated quiet-study planning card','PF-ROOM-SIGN',[3.65+dx,e+1.50,3.77],
+          'populated quiet-study planning card','PF-ROOM-SIGN',[4.50+dx,e+1.50,3.77],
           'M-SCREEN','live tutoring, exam and group-booking card layered onto the planning wall',
           {yaw:0,size:[.58,.22,.035],collision:'none',
             text:['18:00 · TUTOR','EXAM · PLAN','GROUP · 4'][i],hudSafe:true})),
-        fixture(`${p}/LOUNGE-E/BOARD-STATUS`,'quiet-study availability strip','PF-ROOM-SIGN',[3.65,e+1.20,3.78],
+        fixture(`${p}/LOUNGE-E/BOARD-STATUS`,'quiet-study availability strip','PF-ROOM-SIGN',[4.50,e+1.20,3.78],
           'M-FABRIC-BLUE','short occupied/available status completing the planning wall below the task cards',
           {yaw:0,size:[1.42,.18,.035],collision:'none',text:'2 DESKS FREE · QUIET',hudSafe:true}),
         fixture(`${p}/LOUNGE-E/PLANT`,'study-room plant','PF-PLANT',[5.6,e,.55],'M-PLANT','quiet greenery'),
@@ -2760,7 +2760,9 @@ function buildB04() {
         // complete planning wall is face-on and comfortably inside the native frustum rather
         // than losing its right-hand task card at the capture edge.
         programme:{roomId:`${p}/LOUNGE-E`,at:{x:4.10,z:2.20,yaw:1.05},
-          focusFixtureIds:[`${p}/LOUNGE-E/BOARD-AGENDA`,`${p}/LOUNGE-E/BOARD-TASK-B`,`${p}/LOUNGE-E/BOARD-STATUS`]},
+          focusFixtureIds:[`${p}/LOUNGE-E/BOARD-AGENDA`,`${p}/LOUNGE-E/BOARD-TASK-A`,
+            `${p}/LOUNGE-E/BOARD-TASK-B`,`${p}/LOUNGE-E/BOARD-TASK-C`,
+            `${p}/LOUNGE-E/BOARD-STATUS`]},
       }}));
   }
   // Floors 2–5: six twin rooms each.
@@ -3305,8 +3307,10 @@ function plannedB05Waiting(prefix,e,b) {
 }
 
 function plannedB05Office(prefix,e,b,label,accent='M-FABRIC-BLUE') {
-  const [x0,x1,z0,z1]=b,south=z1<0,wide=x1-x0>5,rows=south?[-4.55,-2.45]:[2.45,4.55];
+  const [x0,x1,z0,z1]=b,south=z1<0,wide=x1-x0>5,
+    rows=prefix==='B05/F2/C'?[2.45,4.85]:south?[-4.55,-2.45]:[2.45,4.55];
   const route=wide?[3.05,4.25,z0,z1]:[-2.35,-1.15,z0,z1];
+  const westWorkflow=prefix==='B05/F2/C';
   const workflow=label.includes('财务')?'预算 · 报销 · 学费':label.includes('人事')?'招聘 · 合同 · 培训':
     label.includes('教务')?'课程 · 成绩 · 教室':label.includes('院系')?'院系联络 · 项目进度':'综合行政 · TASK BOARD';
   const sides=wide?[
@@ -3320,13 +3324,15 @@ function plannedB05Office(prefix,e,b,label,accent='M-FABRIC-BLUE') {
     plannedB05Route(`${prefix}/ROUTE`,e,route,'M-VINYL','1.20 m central route serving every workstation',1.20),
     fixture(`${prefix}/FILES`,'department file cabinet','PF-FILE-CABINET',[x0+.38,e,south?z1-.22:z0+.22],
       'M-STEEL-DARK','labelled lockable records at the room perimeter',{yaw:south?0:PI,size:[.76,1.35,.40]}),
-    fixture(`${prefix}/COAT-RAIL`,'staff coat and visitor-bag rail','PF-COAT-RAIL',[x0+.025,e+1.36,(z0+z1)/2],
+    fixture(`${prefix}/COAT-RAIL`,'staff coat and visitor-bag rail','PF-COAT-RAIL',
+      [x0+.025,e+1.36,westWorkflow?z0+.55:(z0+z1)/2],
       'M-OAK','wall-mounted hooks between the two workstation rows',{yaw:-PI/2,size:[1.0,.38,.12],collision:'none'}),
     fixture(`${prefix}/CLOCK`,'department office clock','PF-CLOCK',[x1-.55,e+2.24,south?z1-.07:z0+.07],
       'M-WALL-WHITE','shared appointment and meeting time',{yaw:south?0:PI}),
-    fixture(`${prefix}/WORKFLOW`,'department workflow display','PF-SCREEN',[(x0+x1)/2,e+1.58,south?z0+.055:z1-.055],
+    fixture(`${prefix}/WORKFLOW`,'department workflow display','PF-SCREEN',westWorkflow?
+      [x0+.055,e+1.58,(z0+z1)/2]:[(x0+x1)/2,e+1.58,south?z0+.055:z1-.055],
       'M-SCREEN','department-specific work queue and service identity',
-      {yaw:south?PI:0,size:[2.05,.78,.04],collision:'none',text:workflow}),
+      {yaw:westWorkflow?-PI/2:south?PI:0,size:[2.05,.78,.04],collision:'none',text:workflow}),
     ...plannedB05Envelope(prefix,e,b,label,{accent,temperature:3500}),
   ];
   let n=0;
@@ -3341,7 +3347,7 @@ function plannedB05Office(prefix,e,b,label,accent='M-FABRIC-BLUE') {
     );
   }
   return {contents:out,planning:{publicRoutes:[{id:`${prefix}/ROUTE`,bounds:route,width:1.20}],
-    workAisles:[{id:'between desk rows',width:.90},{id:'central shared route',width:1.20}],staffStations:4,rowPitch:2.10}};
+    workAisles:[{id:'between desk rows',width:.90},{id:'central shared route',width:1.20}],staffStations:4,rowPitch:westWorkflow?2.40:2.10}};
 }
 
 function plannedB05Meeting(prefix,e,b,label,{formal=false,narrow=false,training=false}={}) {
@@ -3828,7 +3834,7 @@ function buildB05() {
         focusFixtureIds:['B05/F1/B/COUNTER-MAIN','B05/F1/B/COUNTER-ACCESS']},
     },
     2:{
-      entry:{zoneId:'B05/F2/C',at:{x:-1.50,z:3.90,yaw:0},
+      entry:{zoneId:'B05/F2/C',at:{x:-2.35,z:3.55,yaw:-1.50},
         focusFixtureIds:['B05/F2/C/WORKFLOW']},
       programme:{roomId:'B05/F2/D',at:{x:2.67,z:3.87,yaw:.123},
         focusFixtureIds:['B05/F2/D/SCAN-STATUS','B05/F2/D/SCAN-STEPS','B05/F2/D/SCAN-MONITOR']},
@@ -4815,7 +4821,7 @@ function buildB06() {
       4:{
         entry:{zoneId:`${p}/ENTRY`,at:{x:5.20,z:-1.50,yaw:1.50},body:'hidden',
           focusFixtureIds:[`${p}/ARRIVAL/IDENTITY`,`${p}/ENTRY-DISPLAY`,`${p}/ARRIVAL/ROBOT-DEMO`]},
-        programme:{roomId:`${p}/WN`,at:{x:-2.60,z:2.30,yaw:PI},
+        programme:{roomId:`${p}/WN`,at:{x:-3.60,z:2.00,yaw:2.75},
           focusFixtureIds:[`${p}/WN/ROVER`,`${p}/WN/TEST-CONSOLE`]},
       },
     }[spec.level];
@@ -5321,7 +5327,7 @@ function buildB07() {
           focusAt:{x:-4.10,z:3.50,yaw:-.32},body:'hidden',
           focusFixtureIds:[`${p}/CL-WAIT/REC`,`${p}/CL-WAIT/STATUS`]},
       ],
-      programme:{roomId:`${p}/CL-PHARM`,at:{x:2.68,z:3.47,yaw:-.20},
+      programme:{roomId:`${p}/CL-PHARM`,at:{x:3.15,z:3.35,yaw:-.04},
         focusFixtureIds:[`${p}/CL-PHARM/COUNTER`,`${p}/CL-PHARM/TEMP`]},
     }}));
   }
@@ -5934,9 +5940,9 @@ function buildB08() {
       fixture(`${p}/BRAND`,'university security crest wall','PF-ROOM-SIGN',[-2.63,e+2.38,1.72],'M-BRASS','institutional identity at the visitor window',{yaw:-PI/2,size:[1.30,.30,.04],text:'校园安全'}),
     ],{occupancy:4,visualReview:{
       entries:[{suffix:'entry',portalId:'B08/STAFF',focusRoomId:`${p}/WORK`,cameraZoneId:`${p}/WORK`,
-        focusAt:{x:-1.78,z:.80,yaw:-.502},body:'hidden',
-        focusFixtureIds:[`${p}/WORK/COUNTER`,`${p}/WORK/CCTV-CAM01`]}],
-      programme:{roomId:`${p}/WORK`,at:{x:-1.30,z:-.28,yaw:-.662},
+        focusAt:{x:-1.30,z:-1.00,yaw:-1.20},body:'hidden',
+        focusFixtureIds:[`${p}/WORK/COUNTER`,`${p}/WORK/WINDOW`]}],
+      programme:{roomId:`${p}/WORK`,at:{x:-1.70,z:.20,yaw:-.30},
         focusFixtureIds:[`${p}/WORK/CONSOLE`,`${p}/WORK/CCTV-CAM01`]},
     }})],
   };

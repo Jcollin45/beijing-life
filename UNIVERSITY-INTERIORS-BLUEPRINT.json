@@ -8,7 +8,7 @@
     "units": "metres",
     "generatedFrom": "tools/generate-university-interiors-blueprint.js",
     "sourceOfTruth": "JSON",
-    "canonicalGeometryHash": "10b0cd893a46a88d3b413213296ac99c0cb058281b05b5da36efe5e54bb9d587"
+    "canonicalGeometryHash": "cb8b13677ff45d9c5701c1efbd04fa3dfca78096fdd446c72a2b52e19d0ee1be"
   },
   "coordinateContract": {
     "axis": {
@@ -38779,9 +38779,9 @@
                   "label": "study workstation",
                   "prefab": "PF-DORM-DESK",
                   "at": [
-                    3,
+                    2.6,
                     0,
-                    1
+                    0.8
                   ],
                   "size": [
                     1.05,
@@ -38798,9 +38798,9 @@
                   "label": "study workstation",
                   "prefab": "PF-DORM-DESK",
                   "at": [
-                    4.75,
+                    4.1,
                     0,
-                    1
+                    0.8
                   ],
                   "size": [
                     1.05,
@@ -38817,7 +38817,7 @@
                   "label": "study workstation",
                   "prefab": "PF-DORM-DESK",
                   "at": [
-                    3,
+                    3.45,
                     0,
                     3.1
                   ],
@@ -38836,7 +38836,7 @@
                   "label": "study workstation",
                   "prefab": "PF-DORM-DESK",
                   "at": [
-                    4.75,
+                    4.65,
                     0,
                     3.1
                   ],
@@ -38874,7 +38874,7 @@
                   "label": "shared planning board",
                   "prefab": "PF-WHITEBOARD",
                   "at": [
-                    3.65,
+                    4.5,
                     1.52,
                     3.84
                   ],
@@ -38893,7 +38893,7 @@
                   "label": "quiet-study agenda header",
                   "prefab": "PF-ROOM-SIGN",
                   "at": [
-                    3.65,
+                    4.5,
                     1.91,
                     3.79
                   ],
@@ -38914,7 +38914,7 @@
                   "label": "populated quiet-study planning card",
                   "prefab": "PF-ROOM-SIGN",
                   "at": [
-                    2.93,
+                    3.78,
                     1.5,
                     3.77
                   ],
@@ -38935,7 +38935,7 @@
                   "label": "populated quiet-study planning card",
                   "prefab": "PF-ROOM-SIGN",
                   "at": [
-                    3.65,
+                    4.5,
                     1.5,
                     3.77
                   ],
@@ -38956,7 +38956,7 @@
                   "label": "populated quiet-study planning card",
                   "prefab": "PF-ROOM-SIGN",
                   "at": [
-                    4.37,
+                    5.22,
                     1.5,
                     3.77
                   ],
@@ -38977,7 +38977,7 @@
                   "label": "quiet-study availability strip",
                   "prefab": "PF-ROOM-SIGN",
                   "at": [
-                    3.65,
+                    4.5,
                     1.2,
                     3.78
                   ],
@@ -40522,7 +40522,9 @@
               },
               "focusFixtureIds": [
                 "B04/F1/LOUNGE-E/BOARD-AGENDA",
+                "B04/F1/LOUNGE-E/BOARD-TASK-A",
                 "B04/F1/LOUNGE-E/BOARD-TASK-B",
+                "B04/F1/LOUNGE-E/BOARD-TASK-C",
                 "B04/F1/LOUNGE-E/BOARD-STATUS"
               ]
             }
@@ -73850,7 +73852,7 @@
                   "at": [
                     -3.975,
                     4.46,
-                    3.45
+                    1.85
                   ],
                   "size": [
                     1,
@@ -73886,9 +73888,9 @@
                   "label": "department workflow display",
                   "prefab": "PF-SCREEN",
                   "at": [
-                    -1.75,
+                    -3.945,
                     4.68,
-                    5.545
+                    3.45
                   ],
                   "size": [
                     2.05,
@@ -73898,7 +73900,7 @@
                   "material": "M-SCREEN",
                   "collision": "none",
                   "purpose": "department-specific work queue and service identity",
-                  "yaw": 0,
+                  "yaw": -1.5707963267948966,
                   "text": "课程 · 成绩 · 教室"
                 },
                 {
@@ -74259,7 +74261,7 @@
                   "at": [
                     -3.3,
                     3.1,
-                    4.55
+                    4.85
                   ],
                   "size": [
                     1.2,
@@ -74279,7 +74281,7 @@
                   "at": [
                     -2.75,
                     3.1,
-                    4.55
+                    4.85
                   ],
                   "size": [
                     0.46,
@@ -74299,7 +74301,7 @@
                   "at": [
                     -3.42,
                     4.08,
-                    4.55
+                    4.85
                   ],
                   "size": [
                     0.38,
@@ -74319,7 +74321,7 @@
                   "at": [
                     0.15,
                     3.1,
-                    4.55
+                    4.85
                   ],
                   "size": [
                     1.2,
@@ -74339,7 +74341,7 @@
                   "at": [
                     -0.4,
                     3.1,
-                    4.55
+                    4.85
                   ],
                   "size": [
                     0.46,
@@ -74359,7 +74361,7 @@
                   "at": [
                     0.27,
                     4.08,
-                    4.55
+                    4.85
                   ],
                   "size": [
                     0.38,
@@ -74398,7 +74400,7 @@
                   }
                 ],
                 "staffStations": 4,
-                "rowPitch": 2.1
+                "rowPitch": 2.4
               }
             },
             {
@@ -76305,9 +76307,9 @@
             "entry": {
               "zoneId": "B05/F2/C",
               "at": {
-                "x": -1.5,
-                "z": 3.9,
-                "yaw": 0
+                "x": -2.35,
+                "z": 3.55,
+                "yaw": -1.5
               },
               "focusFixtureIds": [
                 "B05/F2/C/WORKFLOW"
@@ -98561,9 +98563,9 @@
             "programme": {
               "roomId": "B06/F4/WN",
               "at": {
-                "x": -2.6,
-                "z": 2.3,
-                "yaw": 3.141592653589793
+                "x": -3.6,
+                "z": 2,
+                "yaw": 2.75
               },
               "focusFixtureIds": [
                 "B06/F4/WN/ROVER",
@@ -102440,9 +102442,9 @@
             "programme": {
               "roomId": "B07/F1/CL-PHARM",
               "at": {
-                "x": 2.68,
-                "z": 3.47,
-                "yaw": -0.2
+                "x": 3.15,
+                "z": 3.35,
+                "yaw": -0.04
               },
               "focusFixtureIds": [
                 "B07/F1/CL-PHARM/COUNTER",
@@ -110010,23 +110012,23 @@
                 "focusRoomId": "B08/F1/WORK",
                 "cameraZoneId": "B08/F1/WORK",
                 "focusAt": {
-                  "x": -1.78,
-                  "z": 0.8,
-                  "yaw": -0.502
+                  "x": -1.3,
+                  "z": -1,
+                  "yaw": -1.2
                 },
                 "body": "hidden",
                 "focusFixtureIds": [
                   "B08/F1/WORK/COUNTER",
-                  "B08/F1/WORK/CCTV-CAM01"
+                  "B08/F1/WORK/WINDOW"
                 ]
               }
             ],
             "programme": {
               "roomId": "B08/F1/WORK",
               "at": {
-                "x": -1.3,
-                "z": -0.28,
-                "yaw": -0.662
+                "x": -1.7,
+                "z": 0.2,
+                "yaw": -0.3
               },
               "focusFixtureIds": [
                 "B08/F1/WORK/CONSOLE",
