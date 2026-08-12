@@ -88,6 +88,21 @@ const counts=vm.runInContext('CampusInteriors.counts',context);
 const keys=vm.runInContext('Object.keys(CampusInteriors.places)',context);
 const entryHtml=fs.readFileSync(path.join(ROOT,'index.html'),'utf8');
 const gameJs=fs.readFileSync(path.join(ROOT,'js/game.js'),'utf8');
+const wallsDownSourceDefects=[];
+if(!/const anyHidden\s*=\s*\(SET\.wallsOff\s*&&\s*scene\.hasPartitions\)\s*\|\|/.test(gameJs))
+  wallsDownSourceDefects.push('partition-aware-renderer-fast-path');
+if(!/if\s*\(SET\.wallsOff\s*&&\s*p\.partition\)\s*return true/.test(gameJs))
+  wallsDownSourceDefects.push('partition-cull');
+if(!/packed\.wallsOff===SET\.wallsOff/.test(gameJs)||!/packed\.wallsOff=SET\.wallsOff/.test(gameJs))
+  wallsDownSourceDefects.push('packed-cache-state');
+if(!/scene\s*&&\s*scene\.dollHouse\s*&&\s*scene\.buildingId/.test(gameJs)||
+  !/syncWallsCameraForScene\(true\)/.test(gameJs)||!/if \(changed\) syncWallsCameraForScene\(\)/.test(gameJs))
+  wallsDownSourceDefects.push('scene-camera-transition');
+if(!/id="setWalls"[^>]*aria-label="lower interior walls"[^>]*aria-describedby="setWallsHelp"[^>]*aria-pressed="false"/.test(entryHtml)||
+  !/<b>V<\/b> lower walls/.test(entryHtml)||!/40 cm outline/.test(entryHtml))
+  wallsDownSourceDefects.push('discoverable-accessible-control');
+check('university walls-down option is discoverable, state-bound and evaluated by every render path',
+  wallsDownSourceDefects.length===0,wallsDownSourceDefects.join(','));
 const coreJs=fs.readFileSync(path.join(ROOT,'js/campus-interior-core.js'),'utf8');
 const manifestMatch=entryHtml.match(/var FILES\s*=\s*\[([\s\S]*?)\];/);
 const manifestFiles=manifestMatch?[...manifestMatch[1].matchAll(/'([^']+)'/g)].map(m=>m[1]):[];
@@ -713,6 +728,27 @@ for(const [name,build] of builders){
   scenes.push([name,scene]);
   check(`${name} public contract`,scene&&Array.isArray(scene.props)&&Array.isArray(scene.things)&&Array.isArray(scene.solids));
   check(`${name} finite render transforms`,scene&&scene.props.every(p=>p.m&&[...p.m].every(Number.isFinite)));
+  const building=plan.buildings.find(row=>row.id===scene?.buildingId),bounds=building?.localBounds,
+    expectedDollFar=bounds?Math.min(24,Math.max(8,Math.hypot(bounds[1]-bounds[0],bounds[3]-bounds[2])*.72)):NaN,
+    upperPartitions=scene?.props.filter(prop=>prop.partition===true)||[],
+    partitionSolids=scene?.solids.filter(solid=>solid.partitionId)||[],partitionDefects=[];
+  if(!scene?.dollHouse||Math.abs(scene.dollHouse.pitch-1.45)>.001||
+    Math.abs(scene.dollHouse.far-expectedDollFar)>.001)partitionDefects.push('camera-contract');
+  if(scene?.hasPartitions!==true)partitionDefects.push('missing-partition-fast-bit');
+  if(!upperPartitions.length||upperPartitions.length!==partitionSolids.length)
+    partitionDefects.push(`upper-solid-count:${upperPartitions.length}/${partitionSolids.length}`);
+  for(const upper of upperPartitions){
+    const upperBottom=upper.m[13]-Math.abs(upper.m[5])/2,
+      mate=scene.props.find(candidate=>candidate!==upper&&candidate.partition!==true&&candidate.tag===upper.tag&&
+        Math.abs(candidate.m[12]-upper.m[12])<1e-6&&Math.abs(candidate.m[14]-upper.m[14])<1e-6&&
+        Math.abs(candidate.m[0]-upper.m[0])<1e-6&&Math.abs(candidate.m[2]-upper.m[2])<1e-6&&
+        Math.abs(candidate.m[8]-upper.m[8])<1e-6&&Math.abs(candidate.m[10]-upper.m[10])<1e-6&&
+        Math.abs(candidate.m[13]+Math.abs(candidate.m[5])/2-.40)<.003);
+    if(Math.abs(upperBottom-.398)>.003||!mate){partitionDefects.push(`${upper.tag}:missing-40cm-stub`);break;}
+  }
+  if(scene?.props.some(prop=>prop.nocut===true&&prop.partition===true))partitionDefects.push('shell-or-ceiling-hidden');
+  check(`${name} lowers only partition uppers and retains a 40 cm collided plan outline`,
+    partitionDefects.length===0,partitionDefects.slice(0,4).join(','));
   const verticalEscapes=scene&&scene.props.filter(p=>{
     // Quads are mathematical planes whose unused unit axis is still present in the transform;
     // check volumetric meshes here and leave plane validity to the finite-transform gate.

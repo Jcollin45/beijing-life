@@ -513,6 +513,10 @@ const Build = (() => {
         },
         indoor: true, cutaway: true, near: .05, far: 60, expose: 1,
         ...extra,
+        // One build-time bit keeps the saved walls preference from forcing per-prop visibility
+        // work in large outdoor scenes that have nothing it can lower. Derived after `extra` so a
+        // caller cannot accidentally claim a value that disagrees with the sealed prop list.
+        hasPartitions: props.some(p => p.partition === true),
 
         pick(origin, dir, skip) {
           let bestT = Infinity, best = null, bestProp = null;

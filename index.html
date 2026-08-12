@@ -1503,7 +1503,7 @@
     <span><b>scroll</b> zoom</span><span><b>F</b> recenter</span><span><b>click</b> anything</span>
     <span><b>E</b> word</span><span><b>Q</b> use it</span><span><b>R</b> review</span>
     <span><b>1–4</b> answer</span><span><b>B</b> notebook</span><span><b>M</b> 手机 phone</span>
-    <span><b>P</b> quality</span><span><b>N</b> next song</span><span><b>G</b> 广播 again</span>
+    <span><b>V</b> lower walls</span><span><b>P</b> quality</span><span><b>N</b> next song</span><span><b>G</b> 广播 again</span>
     <span><b>Esc</b> pause</span>
   </div>
   <div id="touchControls" aria-label="Touch controls">
@@ -1567,10 +1567,11 @@
           <button class="tog" id="setAmbience" aria-label="room ambience"></button>
         </div>
         <div class="srow">
-          <div class="lab"><b>隐藏墙壁</b><span>Take the flat's interior walls away so you can see
-            into every room at once. Furniture, floors and the outside of the building stay, and a
-            wall you cannot see still stops you walking through it. Shortcut: V.</span></div>
-          <button class="tog" id="setWalls" aria-label="hide interior walls"></button>
+          <div class="lab"><b>降低室内墙壁</b><span id="setWallsHelp">Lower room partitions to a
+            40 cm outline so you can see across the floor. Door gaps remain visible, and lowered
+            walls still stop movement. Shortcut: V.</span></div>
+          <button class="tog" id="setWalls" type="button" aria-label="lower interior walls"
+            aria-describedby="setWallsHelp" aria-pressed="false"></button>
         </div>
         <div class="srow">
           <div class="lab"><b>帧数</b><span>Show the frame rate in the top bar.</span></div>
@@ -1587,7 +1588,8 @@
       <div class="foot">
         <b>WASD</b> move &nbsp; <b>Shift</b> run &nbsp; <b>drag</b> look &nbsp;
         <b>E</b> word &nbsp; <b>Q</b> use &nbsp; <b>R</b> review<br>
-        <b>B</b> notebook &nbsp; <b>M</b> phone &nbsp; <b>Esc</b> pause and settings
+        <b>B</b> notebook &nbsp; <b>M</b> phone &nbsp; <b>V</b> lower walls &nbsp;
+        <b>Esc</b> pause and settings
       </div>
     </div>
   </div>

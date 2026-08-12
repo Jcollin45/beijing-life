@@ -1506,8 +1506,8 @@ const SET = { sens: 1, clock: 1, assist: false, fps: true, speech: true, ambienc
   // 3.2 flashes per second on a lit floor in the darkest room in the mall, over the 3/s
   // photosensitivity line, and no setting existed to turn it down.
   motion: 'auto',
-  // Walls down, the way a doll's house is played with. Only the flat's interior partitions carry
-  // the `partition` flag, so the building's own envelope, the floor, the ceiling, the furniture
+  // Walls down, the way a doll's house is played with. Authored interior partitions carry the
+  // `partition` flag, so the building's own envelope, the floor, the ceiling, the furniture
   // and the player all stay — you are still enclosed, you can just see in. It is a drawing
   // setting and nothing else: `hiddenProp` is consulted from the three paint loops only, and the
   // colliders come from `A.stop`, which this never touches. A wall you cannot see still stops you.
@@ -1724,6 +1724,7 @@ function syncSettings() {
   $('#setAmbience').classList.toggle('on', SET.ambience);
   $('#setFps').classList.toggle('on', SET.fps);
   $('#setWalls').classList.toggle('on', SET.wallsOff);
+  $('#setWalls').setAttribute('aria-pressed', String(SET.wallsOff));
 }
 
 function bindRange(id, key, after) {
@@ -1765,22 +1766,11 @@ bindToggle('#setAmbience', 'ambience', () => applyAmbience());
 // change overwrites both anyway (js/game.js:12275).
 function toggleWalls() {
   SET.wallsOff = !SET.wallsOff;
-  if (SET.wallsOff) {
-    CAM.wallsWas = { pitch: CAM.tPitch, dist: CAM.tDist };
-    // The crane-in, as a fraction of the scene's own released bounds rather than two constants.
-    // 1.18 / 1.45 and 7.2 / 10.5 are the ratios that were chosen by looking in flat 202: steep
-    // enough to read the plan, short of the fully overhead pose, and pulled back far enough to
-    // hold a 12 m plate without losing the figure. A new scene declares `far` and `pitch` and
-    // gets an opening shot in proportion to its own footprint.
-    const dhc = dollHouse();
-    if (dhc) { CAM.tPitch = dhc.pitch * 0.814; CAM.tDist = dhc.far * 0.686; }
-  } else if (CAM.wallsWas) {
-    CAM.tPitch = CAM.wallsWas.pitch; CAM.tDist = CAM.wallsWas.dist; CAM.wallsWas = null;
-  }
+  syncWallsCameraForScene();
   saveSettings(); syncSettings();
   // The panel is over a frozen frame, so say what changed rather than leaving the player to
   // unpause and guess.
-  toast(SET.wallsOff ? '墙壁隐藏 · walls down' : '墙壁显示 · walls up');
+  toast(SET.wallsOff ? '低墙模式 · walls lowered' : '墙壁恢复 · walls restored');
 }
 $('#setWalls').addEventListener('click', toggleWalls);
 bindToggle('#setFps', 'fps');
@@ -1909,7 +1899,7 @@ addEventListener('keydown', e => {
     toast(`画质 · quality: ${Perf.auto ? '自动 auto' : Perf.q.en}`);
     return;
   }
-  // V drops the flat's walls, the way a doll's house opens. Paired with the toggle in the pause
+  // V lowers authored interior walls, the way a doll's house opens. Paired with the toggle in the pause
   // menu rather than replacing it — the menu is where a player finds it, the key is how they use
   // it once they know. V is free: nothing else in the game claims it.
   if (e.key === 'v' || e.key === 'V') {
@@ -2379,10 +2369,9 @@ function syncMovingCulls(s) {
 // of them released is an eye that rises to a ceiling it cannot pass, or backs out to a blocker
 // 2.97 m away, which is the same stuck picture with more machinery behind it.
 //
-// Gated on `place` as well as the setting because only the tower's partitions carry the flag
-// (js/home-walls.js) — the setting does nothing to the geometry of any other scene, so it must not
-// move any other scene's camera either. Cheap: two reads, called a handful of times a frame, never
-// per prop.
+// Gated on authored scene data as well as the setting: the draw flag is safe anywhere, but the
+// released camera is only safe where somebody has checked the ceiling and exterior shell. Cheap:
+// a few reads, called a handful of times a frame, never per prop.
 // Deck 2 and not the whole tower, and the lobby is why. Verified on the live site 2026-08-09:
 // with the release gated on `place` alone, V in 一楼·大堂 craned the eye up into the underside of
 // the street above and filled the frame with the top face of a slab, player included — the exact
@@ -2399,9 +2388,29 @@ function syncMovingCulls(s) {
 // Returns the entry rather than a boolean, and every call site treats a truthy entry as before.
 function dollHouse() {
   if (!SET.wallsOff) return null;
+  // Blueprint university floors are independent roofless scenes and expose their own measured
+  // footprint distance. This avoids 28 brittle place keys and keeps the camera proportional to
+  // buildings ranging from the compact gatehouse to the 32 m academic block.
+  if (scene && scene.dollHouse && scene.buildingId) return scene.dollHouse;
   const d = Build.DOLLHOUSE[place];
   if (!d) return null;
   return (!d.levels || (scene.level && d.levels.includes(scene.level()))) ? d : null;
+}
+// Reconcile the saved preference with the scene that is actually standing. `setPlace` calls this
+// after installing the ordinary camera, while the home tower calls it when its in-scene lift
+// changes deck. That keeps a deck-2 overhead camera from leaking into a roofed neighbour floor and
+// makes a persisted preference apply on every university arrival without another key press.
+function syncWallsCameraForScene(immediate = false) {
+  const d = dollHouse();
+  if (d) {
+    if (!CAM.wallsWas) CAM.wallsWas = { pitch: CAM.tPitch, dist: CAM.tDist };
+    CAM.tPitch = d.pitch * .814; CAM.tDist = d.far * .686;
+    if (immediate) { CAM.pitch = CAM.tPitch; CAM.dist = CAM.tDist; }
+  } else if (CAM.wallsWas) {
+    CAM.tPitch = CAM.wallsWas.pitch; CAM.tDist = CAM.wallsWas.dist;
+    if (immediate) { CAM.pitch = CAM.tPitch; CAM.dist = CAM.tDist; }
+    CAM.wallsWas = null;
+  }
 }
 function hiddenAt(px, pz) {
   return (hideX > 0 && px > cutRoom.x1 - 0.42) || (hideX < 0 && px < cutRoom.x0 + 0.42) ||
@@ -2785,6 +2794,10 @@ function endTitle() {
     CAM.tPitch = CAM.pitch = BOOT.camPitch;
     CAM.tDist = CAM.dist = BOOT.camDist;
     CAM.lookY = 1.10;
+    // BOOT was captured before the persisted settings were applied. Reconcile the restored
+    // default with the current preference, just as a loaded destination does.
+    CAM.wallsWas = null;
+    syncWallsCameraForScene(true);
   }
   if (shotCut) shotCut.style.opacity = 0;
 }
@@ -8213,6 +8226,7 @@ function syncHomeFloor(announce = false) {
   if (place !== 'home' || !World.level) return false;
   const deck = World.level(), changed = deck !== homeFloorSeen;
   homeFloorSeen = deck;
+  if (changed) syncWallsCameraForScene();
   paintPlaceLabel();
   if (!changed || !announce || !started) return changed;
   const f = homeFloorAt(deck);
@@ -12290,6 +12304,7 @@ function loadGame() {
     P.lift=World.deckY(savedHomeFloor);
     room=scene.roomAt(P.x,P.z,null)||scene.zones[0];
     homeFloorSeen=savedHomeFloor;
+    syncWallsCameraForScene(true);
     paintPlaceLabel();
   }
   if (s.place === 'mall' && Number.isSafeInteger(s.mallFloor) && s.mallFloor > 1 && s.mallFloor <= 3) {
@@ -12578,6 +12593,11 @@ function setPlace(name, at) {
   CAM.tPitch = CAM.pitch = cd.pitch !== undefined ? cd.pitch : scene.indoor ? 0.34 : 0.22;
   CAM.tDist = CAM.dist = cd.dist !== undefined ? cd.dist : scene.indoor ? 4.4 : 5.2;
   if (cd.lookY !== undefined) CAM.lookY = cd.lookY;
+  // A persisted walls-down preference must apply on arrival too, not only when V is pressed in
+  // an already-loaded room. Save this destination's ordinary framing so restoring the walls can
+  // never resurrect the previous building's camera.
+  CAM.wallsWas = null;
+  syncWallsCameraForScene(true);
   room = scene.zones[0];
   // A quality level that could not be held in the hutong may be easy in a room with four hundred
   // props in it instead of three and a half thousand, so let the ladder try again from here.
@@ -15197,9 +15217,9 @@ function frame(now) {
   let dist = CAM.dist;
   // Walls down, and the four limits below stand down together — see `dollHouse` above for why it
   // is all four or none. `blockers` is the shell's own camera cage (js/world.js, camBlockFlat):
-  // with the partitions drawn it is what stops the eye ending up outside the building looking at
-  // the unlit backs of its walls; with them gone it is the one thing between the player and the
-  // view the setting exists to give. `cameraBlockLimit` already reads `blockers || []`.
+  // with the partitions drawn it stops the eye ending up outside the building looking at unlit
+  // backs. The released, authored overhead camera intentionally clears that cage so it can hold
+  // a whole floor plate. `cameraBlockLimit` already reads `blockers || []`.
   const doll = dollHouse();
   const blockers = doll ? null : scene.blockers;
   // A room may declare that the space behind you is tighter than its own orbit distance — walking
@@ -15823,10 +15843,11 @@ function frame(now) {
   const portalFrame=!lb&&place==='mall'&&scene.portalCull?scene.portalCull.begin(eye):null;
   // Is anything being hidden at all this frame? `hiddenProp` can only answer yes if the camera
   // has backed out through a wall (hideX/hideZ) or if we are in the tower, where twelve floors
-  // share one footprint and eleven of them must not draw. Outdoors neither is true, and asking
-  // the question thirty thousand times to be told no thirty thousand times was most of a
-  // millisecond a frame. `drawDeck` and `hideX/hideZ` are both set once a frame, above.
-  const anyHidden = drawDeck >= 0 || hideX !== 0 || hideZ !== 0 ||
+  // share one footprint and eleven of them must not draw. Walls-down also needs this path even
+  // when the overhead camera disables the ordinary cutaway. Outdoors none is true, and asking the
+  // question thirty thousand times to be told no thirty thousand times was most of a millisecond
+  // a frame. `drawDeck` and `hideX/hideZ` are both set once a frame, above.
+  const anyHidden = (SET.wallsOff && scene.hasPartitions) || drawDeck >= 0 || hideX !== 0 || hideZ !== 0 ||
     !!(scene.expansion && scene.expansion.renderChunks);
   // ---- the depth pass, batched.
   //
@@ -15976,7 +15997,7 @@ function frame(now) {
         if (retain) {
           let packed=b._mainPacked;
           const glyphVersion=b.glyph?Glyphs.version:0;
-          const same=packed&&packed.epoch===visEpoch&&packed.hideX===hideX&&
+          const same=packed&&packed.epoch===visEpoch&&packed.wallsOff===SET.wallsOff&&packed.hideX===hideX&&
             packed.hideZ===hideZ&&packed.drawDeck===drawDeck&&packed.room===room&&
             packed.bestTag===bestTag&&packed.glyphVersion===glyphVersion&&
             packed.dynamicCullEpoch===dynamicCullEpoch&&
@@ -16002,7 +16023,7 @@ function frame(now) {
               n++;
             }
             if(!packed)packed=b._mainPacked={};
-            packed.epoch=visEpoch;packed.hideX=hideX;packed.hideZ=hideZ;
+            packed.epoch=visEpoch;packed.wallsOff=SET.wallsOff;packed.hideX=hideX;packed.hideZ=hideZ;
             packed.drawDeck=drawDeck;packed.room=room;packed.bestTag=bestTag;
             packed.glyphVersion=glyphVersion;packed.dynamicCullEpoch=dynamicCullEpoch;
             packed.portalVersion=portalFrame?portalFrame.version:-1;

@@ -1624,6 +1624,9 @@ const CampusInteriors = (() => {
       RX,RZ,H,OUT:publicPortal?{x:publicPortal.campusReturn[0],z:publicPortal.campusReturn[1],yaw:publicPortal.campusReturn[2]}:null,
       setNight,tick(){},label:`${building.label} · ${floor.level}层`,labelK:`${building.id} · floor ${floor.level}`,
       indoor:true,cutaway:true,near:.05,far:Math.max(42,Math.hypot(x1-x0,z1-z0)*2.1),expose:1,
+      // The shared walls-down camera reads this only while SET.wallsOff is active. Colliders and
+      // the full-height shell are untouched; only the flagged upper partition pieces disappear.
+      dollHouse:{far:Math.min(24,Math.max(8,Math.hypot(x1-x0,z1-z0)*.72)),pitch:1.45},
       spawn,zones:movementZones,level:()=>floor.level,buildingId:building.id,blueprintFloor:floor,
       roomAt(x,z){return zones.find(q=>x>=q.x0&&x<=q.x1&&z>=q.z0&&z<=q.z1)||zones[0];},
     });
