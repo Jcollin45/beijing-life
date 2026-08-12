@@ -20,7 +20,9 @@ const BUILDING_FLOORS={B01:5,B02:4,B03:1,B04:6,B05:4,B06:4,B07:3,B08:1};
 const OUTPUT_DIR=MERGE_MODE?OUTPUT_ROOT:REVIEW_BUILDING?path.join(OUTPUT_ROOT,REVIEW_BUILDING):OUTPUT_ROOT;
 const VIEWPORT={width:1024,height:640,deviceScaleFactor:1,mobile:false};
 const CAPTURE_ATTEMPTS=2,CAPTURE_TIMEOUT_MS=75000,CAPTURE_SETTLE_MS=220,CAPTURE_RETRY_MS=750;
-const MIN_REVIEW_FRONT=1.50,MIN_REVIEW_BACK=1.70,MIN_NEAR_FIXTURE_CLEARANCE=.60;
+// Authored reviews must select at least the 2.00 m orbit option; 1.95 m is the resolved-camera
+// floor after live settling. Keep opaque furniture a full 0.80 m out of the capture envelope.
+const MIN_REVIEW_FRONT=1.50,MIN_REVIEW_BACK=1.95,MIN_NEAR_FIXTURE_CLEARANCE=.80;
 const REVIEW_BACK_OPTIONS=[3.6,3.2,2.8,2.4,2.0,1.7];
 const REPORT_SCHEMA='chinesegame.university-visual-review-report/v2',
   ROW_SCHEMA='chinesegame.university-visual-review-row/v2',
@@ -405,17 +407,20 @@ function mergeReviewOutputs(){
       }
       if(suffix==='programme'&&(
         typeof row.reviewRoom!=='string'||!row.reviewRoom.trim()||
-        !hasFiniteFields(row.reviewAt,['x','z','yaw','cameraBack','frontDepth'])||
-        !validReviewBack(row.reviewAt.cameraBack)||row.reviewAt.cameraBack<MIN_REVIEW_BACK||
+        !hasFiniteFields(row.reviewAt,['x','z','yaw','cameraBack','authoredCameraBack','frontDepth'])||
+        !validReviewBack(row.reviewAt.authoredCameraBack)||row.reviewAt.authoredCameraBack<MIN_REVIEW_BACK||
+        row.reviewAt.cameraBack<MIN_REVIEW_BACK||
+        Math.abs(row.reviewAt.authoredCameraBack-row.reviewAt.cameraBack)>.031||
         row.reviewAt.frontDepth<MIN_REVIEW_FRONT||typeof row.reviewAt.authored!=='boolean'||
         CURATED_PROGRAMME_BUILDINGS.has(building)&&row.reviewAt.authored!==true||!validFocusEvidence(row.reviewAt,2))){
         defects.push(`${building}: programme camera evidence is incomplete for ${key}`);valid=false;
       }
       const requiresAuthoredGround=rowLevel===1;
       if((suffix==='clinic-entry'||suffix==='entry')&&
-        (!hasFiniteFields(row.entryReviewAt,['x','z','yaw','inward','lateral','cameraBack'])||
-          row.entryReviewAt.inward<0||!validReviewBack(row.entryReviewAt.cameraBack)||
-          row.entryReviewAt.cameraBack<MIN_REVIEW_BACK||
+        (!hasFiniteFields(row.entryReviewAt,['x','z','yaw','inward','lateral','cameraBack','authoredCameraBack'])||
+          row.entryReviewAt.inward<0||!validReviewBack(row.entryReviewAt.authoredCameraBack)||
+          row.entryReviewAt.authoredCameraBack<MIN_REVIEW_BACK||row.entryReviewAt.cameraBack<MIN_REVIEW_BACK||
+          Math.abs(row.entryReviewAt.authoredCameraBack-row.entryReviewAt.cameraBack)>.031||
           !Number.isFinite(row.entryReviewAt.frontDepth)||row.entryReviewAt.frontDepth<MIN_REVIEW_FRONT||
           typeof row.entryReviewAt.authored!=='boolean'||
           (rowLevel>1||requiresAuthoredGround)&&row.entryReviewAt.authored!==true||
@@ -848,8 +853,11 @@ async function main(){
             sum[2]+point[2]/polygon.length],[0,0,0]),samples=[centroid,...polygon];
           for(let i=0;i<polygon.length;i++){const a=polygon[i],b=polygon[(i+1)%polygon.length];
             samples.push([(a[0]+b[0])/2,(a[1]+b[1])/2,(a[2]+b[2])/2]);}
-          return scene.solids.some(solid=>samples.every(point=>
-            architecturalSolidBlocksPoint(solid,origin,point)));},
+          if(scene.solids.some(solid=>samples.every(point=>
+            architecturalSolidBlocksPoint(solid,origin,point))))return true;
+          return scene.props.some(prop=>{const owner=prop&&fixtureOwnerId(prop.tag),fixture=owner&&fixtures.get(owner);
+            return fixture&&fixture.architecturalOccluder===true&&prop.m&&prop.mesh!=='quad'&&
+              (prop.alpha===undefined||prop.alpha>=.55)&&samples.every(point=>rayProp(origin,point,prop));});},
         polygonOpaquelyOccluded=(origin,polygon,excludeFixtureId)=>{const centroid=polygon.reduce((sum,point)=>[
             sum[0]+point[0]/polygon.length,sum[1]+point[1]/polygon.length,
             sum[2]+point[2]/polygon.length],[0,0,0]),samples=[centroid,...polygon];
@@ -1018,7 +1026,8 @@ async function main(){
           if(door)throw new Error('authored ground arrival has a foreground door leaf: '+door.id);
           if(intrusion)throw new Error('authored ground arrival has near-camera fixture: '+intrusion.fixtureId);
           entryReviewAt={x:+x.toFixed(2),z:+z.toFixed(2),yaw:reviewYaw,inward:0,lateral:0,
-            cameraBack:+actual.horizontalBack.toFixed(2),frontDepth:+resolvedFront.toFixed(2),entryZone:cameraZone.id,
+            cameraBack:+actual.horizontalBack.toFixed(2),authoredCameraBack:+back.toFixed(2),
+            frontDepth:+resolvedFront.toFixed(2),entryZone:cameraZone.id,
             focusRoom:focusRoom.id,cameraZone:cameraZone.id,authored:true,
             focusFixtureIds:[...authored.focusFixtureIds],focusEvidence:focus};
         }else{
@@ -1049,7 +1058,8 @@ async function main(){
         if(resolvedFront<.72)throw new Error('resolved fallback entry has insufficient front depth in '+entryZone.id);
         if(door)throw new Error('fallback entry has a foreground door leaf: '+door.id);
         entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw,inward:+chosen.d.toFixed(2),
-          lateral:+chosen.lateral.toFixed(2),cameraBack:+actual.horizontalBack.toFixed(2),frontDepth:+resolvedFront.toFixed(2),
+          lateral:+chosen.lateral.toFixed(2),cameraBack:+actual.horizontalBack.toFixed(2),
+          authoredCameraBack:+chosen.back.toFixed(2),frontDepth:+resolvedFront.toFixed(2),
           entryZone:entryZone.id,authored:false};
         }
       }
@@ -1100,7 +1110,8 @@ async function main(){
         if(door)throw new Error('authored upper-floor arrival has a foreground door leaf: '+door.id);
         if(authored&&intrusion)throw new Error('authored upper-floor arrival has near-camera fixture: '+intrusion.fixtureId);
         entryReviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,inward:0,
-          lateral:+chosen.move.toFixed(2),cameraBack:+actual.horizontalBack.toFixed(2),entryZone:entryZone.id,
+          lateral:+chosen.move.toFixed(2),cameraBack:+actual.horizontalBack.toFixed(2),
+          authoredCameraBack:+chosen.back.toFixed(2),entryZone:entryZone.id,
           frontDepth:+resolvedFront.toFixed(2),authored:!!authored,
           focusFixtureIds:authored?[...authored.focusFixtureIds]:[],focusEvidence:focus};
         if(authored){
@@ -1153,7 +1164,8 @@ async function main(){
         if(door)throw new Error('authored programme pose has a foreground door leaf in '+room.id+': '+door.id);
         if(chosen.authored&&intrusion)throw new Error('authored programme pose has near-camera fixture in '+room.id+': '+intrusion.fixtureId);
         reviewAt={x:+chosen.x.toFixed(2),z:+chosen.z.toFixed(2),yaw:chosen.yaw,
-          cameraBack:+actual.horizontalBack.toFixed(2),frontDepth:+resolvedFront.toFixed(2),authored:chosen.authored,
+          cameraBack:+actual.horizontalBack.toFixed(2),authoredCameraBack:+chosen.back.toFixed(2),
+          frontDepth:+resolvedFront.toFixed(2),authored:chosen.authored,
           focusFixtureIds:chosen.focusFixtureIds||[],focusEvidence:focus};
       }
       if(scene.buildingId==='B06'&&floor.level===1&&mode==='entry'&&suffix==='entry'){

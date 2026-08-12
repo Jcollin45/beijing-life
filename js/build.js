@@ -224,7 +224,12 @@ const Build = (() => {
     // surface is single-sided and the eye would otherwise see straight through the block.
     // `top` matters — a single-storey courtyard should not stop a camera that has already
     // risen above its roof, or looking across a narrow alley would be impossible.
-    function blocker(x0, x1, z0, z1, top = 400) { blockers.push({ x0, x1, z0, z1, top }); }
+    function blocker(x0, x1, z0, z1, top = 400, opts) {
+      const b = { x0, x1, z0, z1, top };
+      if (opts && Number.isFinite(opts.pad) && opts.pad >= 0) b.pad = opts.pad;
+      blockers.push(b);
+      return b;
+    }
     // Sits above any rug layers below, so furniture shadows fall *onto* a rug instead of
     // being swallowed by it.
     function shade(x, z, w, d, a = .42, y = .020) {

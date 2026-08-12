@@ -169,7 +169,7 @@ CampusFits.register('academic', 20, kit => {
 
   // Exact tactile route. Each straight run is one merged mesh: a .30 m strip from y=.008..012,
   // plus literal .10 m transverse bars every .30 m whose top is exactly y=.014.
-  function tactileSegment(a, b) {
+  function tactileSegment(a, b, accessibleBranch) {
     const dx = b[0] - a[0], dz = b[1] - a[1];
     const len = Math.hypot(dx, dz), yaw = Math.atan2(dx, dz);
     const cx = (a[0] + b[0]) / 2, cz = (a[1] + b[1]) / 2;
@@ -177,14 +177,64 @@ CampusFits.register('academic', 20, kit => {
     appendMeshBox(data,-.15,.15,0,.004,-len/2,len/2);
     for (let d=.15;d+.05<=len+1e-6;d+=.30)
       appendMeshBox(data,-.15,.15,.004,.006,-len/2+d-.05,-len/2+d+.05);
-    customMeshProp(`campus-tactile-v2-${tactileMeshId++}`,data,cx,.008,cz,yaw,
+    const prop=customMeshProp(`campus-tactile-v2-${tactileMeshId++}`,data,cx,.008,cz,yaw,
       held(col.yellow,S.path),[.30,.006,len],{gloss:.10,...S.path,matScale:.30});
+    if(accessibleBranch)Object.assign(prop,{accessibleTactileBranch:accessibleBranch,from:a,to:b});
+    return prop;
   }
-  const tactileMain = [[-11.4,-9.35],[-6,-7.5],[-3,-7.5],[-3,4.8],[-5,4.8],[-5,8.2],[-3,8.2],[-3,50]];
+  // A real 1:12 entrance ramp is a sloped deck with a 1.50 m clear strip between raised edge
+  // kerbs. The game walks in plan, so only the kerbs are collision solids; the central route
+  // remains traversable while the rendered deck, tactile strip and metadata prove the grade.
+  function accessibleRampX(id,lowX,highX,z,rise,clearWidth,tag) {
+    const run=Math.abs(highX-lowX),slopeLength=Math.hypot(run,rise),
+      angle=Math.atan2(rise,highX-lowX),normalY=Math.abs(Math.cos(angle)),cx=(lowX+highX)/2,
+      deckWidth=clearWidth+.20,deck=box(cx,rise/2-.04*normalY,z,slopeLength,.08,deckWidth,held(col.stoneL,S.stone),
+        {tag,hard:true,rz:angle,gloss:G.matte,...S.stone});
+    Object.assign(deck,{accessibleRamp:id,run,rise,grade:rise/run,clearWidth,
+      low:[lowX,z],high:[highX,z]});
+    for(const side of [-1,1]){
+      const edgeZ=z+side*(clearWidth/2+.05),edge=box(cx,rise/2+.065,edgeZ,slopeLength,.13,.10,
+        held(col.stoneD,S.stone),{tag,hard:true,rz:angle,gloss:G.matte,...S.stone});
+      edge.accessibleRampEdge=id;
+      solid(Math.min(lowX,highX),Math.max(lowX,highX),edgeZ-.05,edgeZ+.05);
+      const rail=box(cx,rise/2+.90,edgeZ,slopeLength,.055,.055,col.steel,
+        {tag,hard:true,rz:angle,gloss:G.metal});
+      Object.assign(rail,{accessibleRampHandrail:id,part:'rail'});
+      for(const t of [0,.5,1]){
+        const px=lowX+(highX-lowX)*t,surfaceY=rise*t,
+          post=box(px,surfaceY+.45,edgeZ,.055,.90,.055,col.steel,
+            {tag,hard:true,gloss:G.metal});
+        Object.assign(post,{accessibleRampHandrail:id,part:'post'});
+      }
+    }
+    const tactile=box(cx,rise/2+.0075*normalY,z,slopeLength,.015,.30,held(col.yellow,S.path),
+      {tag,hard:true,rz:angle,mode:9,gloss:.10,...S.path});
+    Object.assign(tactile,{accessibleRampTactile:id,from:[lowX,z],to:[highX,z]});
+    return deck;
+  }
+  function accessibleLanding(id,x,z,w,d,height,tag) {
+    const landing=box(x,height-.04,z,w,.08,d,held(col.stoneL,S.stone),
+      {tag,hard:true,gloss:G.matte,...S.stone});
+    Object.assign(landing,{accessibleLanding:id,clearWidth:Math.min(w,d),height,
+      bounds:[x-w/2,x+w/2,z-d/2,z+d/2]});
+    return landing;
+  }
+  function accessibleLandingTactile(id,a,b,height,tag) {
+    const x=(a[0]+b[0])/2,z=(a[1]+b[1])/2,w=Math.abs(b[0]-a[0]),d=Math.abs(b[1]-a[1]),
+      strip=box(x,height+.0075,z,w||.30,.015,d||.30,held(col.yellow,S.path),
+        {tag,hard:true,mode:9,gloss:.10,...S.path});
+    Object.assign(strip,{accessibleLandingTactile:id,from:a,to:b});
+    return strip;
+  }
+  const tactileMain = [[-11.4,-9.35],[-6,-7.5],[-3,-7.5],[-3,4.8],[-5,4.8],[-5,8.2],[-3,8.2],[-3,44.80]];
   for (let i = 1; i < tactileMain.length; i++) tactileSegment(tactileMain[i - 1], tactileMain[i]);
-  tactileSegment([-3,50], [27.3,50]);
-  // Branch B's endpoint (-3,48.4) already lies on the final main-route segment; no coincident
-  // overlay is emitted, avoiding a duplicate surface and z-fighting.
+  // The accessible cross-campus branch stays visible at grade instead of disappearing beneath
+  // the two elevated entrance systems. It runs around the teaching steps to ACC-B01's low end,
+  // resumes at that toe, and terminates at ACC-B02's low end; each ramp/landing carries the
+  // tactile route upward from there.
+  tactileSegment([-3,44.80],[8.50,44.80],'ACC-B01');
+  tactileSegment([8.50,44.80],[8.50,50],'ACC-B01');
+  tactileSegment([7.68,50],[26.00,50],'ACC-B02');
 
   // ---------------------------------------------------------------- B01 — 第一教学楼
   const b01Tag = '教学楼';
@@ -226,6 +276,12 @@ CampusFits.register('academic', 20, kit => {
   [[48.4,.18,9.6],[48.9,.36,9.0],[49.4,.54,8.4]].forEach(([z,h,w]) =>
     box(-3, h / 2, z, w, h, .50, held(col.stoneL, S.stone),
       { tag:b01Tag, hard:true, gloss:G.matte, ...S.stone }));
+  // ACC-B01: the main tactile spine meets a 6.48 m run rising .54 m (exactly 1:12).
+  // Its high landing spans every public leaf, so the route never narrows at the threshold.
+  accessibleRampX('ACC-B01',7.68,1.20,50,.54,1.50,b01Tag);
+  accessibleLanding('ACC-B01',-3,50.73,8.40,2.18,.54,b01Tag);
+  accessibleLandingTactile('ACC-B01',[1.20,50],[-3,50],.54,b01Tag);
+  accessibleLandingTactile('ACC-B01',[-3,50],[-3,51.76],.54,b01Tag);
   signZ(-3, 3.48, 51.82, 6.4, '第一教学楼', b01Tag, -1);
   for (const g of glyphs(-3, 18.00, 51.74, Math.PI, '厚德博学',
     { size:.50, gap:.28, color:col.redD, mode:1, tag:b01Tag })) litten(g, .4);
@@ -311,9 +367,17 @@ CampusFits.register('academic', 20, kit => {
       { tag:b02Tag, hard:true, mode:1, gloss:G.glass }), rnd());
   box(28.9, 3.20, 50, 2.4, .26, 4.4, held(col.stoneD, S.lib),
     { tag:b02Tag, hard:true, gloss:G.paint, ...S.lib });
+  // The three library steps stop either side of the central ramp instead of continuing as a
+  // hidden barrier beneath it.
   [[29.78,.18],[29.48,.12],[29.18,.06]].forEach(([x,h]) =>
-    box(x, h / 2, 50, .34, h, 4.0, held(col.stoneL, S.stone),
-      { tag:b02Tag, hard:true, gloss:G.matte, ...S.stone }));
+    [[48,49.15],[50.85,52]].forEach(([z0,z1])=>
+      box(x,h/2,(z0+z1)/2,.34,h,z1-z0,held(col.stoneL,S.stone),
+        {tag:b02Tag,hard:true,gloss:G.matte,...S.stone})));
+  // ACC-B02: .18 m rise over 2.16 m, with a full 1.50 m clear ramp and top landing aligned to
+  // the existing tactile route at z=50.
+  accessibleRampX('ACC-B02',26.00,28.16,50,.18,1.50,b02Tag);
+  accessibleLanding('ACC-B02',28.97,50,1.62,1.70,.18,b02Tag);
+  accessibleLandingTactile('ACC-B02',[28.16,50],[29.76,50],.18,b02Tag);
   for (const z of [48.05,51.95]) {
     box(27.8, 1.55, z, .18, 3.10, .18, held(col.stoneL, S.stone),
       { tag:b02Tag, hard:true, gloss:G.paint, ...S.stone });
