@@ -1862,7 +1862,7 @@ accessRequire(accessFixtureMatches(b07Privacy,'PF-WALL-RUN',[-2.85,3.10],[1.30,2
 accessRequire(JSON.stringify(b07Entry)===JSON.stringify({suffix:'clinic-entry',portalId:'B07/CLINIC',
   focusRoomId:'B07/F1/CL-WAIT',cameraZoneId:'B07/F1/CL-WAIT',focusAt:{x:-4.10,z:3.50,yaw:-.32},body:'hidden',
   focusFixtureIds:['B07/F1/CL-WAIT/REC','B07/F1/CL-WAIT/STATUS']})&&
-  JSON.stringify(b07Programme)===JSON.stringify({roomId:'B07/F1/CL-PHARM',at:{x:2.65,z:3.45,yaw:.15},
+  JSON.stringify(b07Programme)===JSON.stringify({roomId:'B07/F1/CL-PHARM',at:{x:2.27,z:3.30,yaw:.17},
     focusFixtureIds:['B07/F1/CL-PHARM/HEADER','B07/F1/CL-PHARM/TEMP']}),b07AccessDefects,'B07/F1:clinic-entry-semantics');
 accessRequire(accessFixtureMatches(b07ScWcById.get('B07/F2/SC-WC/T'),'PF-TOILET',[-5.72,-.48],[.72,.78,.55])&&
   b07ScWcById.get('B07/F2/SC-WC/T')?.accessible===true&&b07ScWcById.get('B07/F2/SC-WC/T')?.grabRails===true&&

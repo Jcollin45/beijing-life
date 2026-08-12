@@ -8,7 +8,7 @@
     "units": "metres",
     "generatedFrom": "tools/generate-university-interiors-blueprint.js",
     "sourceOfTruth": "JSON",
-    "canonicalGeometryHash": "c171e9088ac1408b85bdd6f177657af3b863d9879164ce7da54fcbf4f377fcef"
+    "canonicalGeometryHash": "1e08cef3a5de6087239efb477f101f2576dd7c786b91857a5be55f0008874523"
   },
   "coordinateContract": {
     "axis": {
@@ -101286,10 +101286,10 @@
                 },
                 {
                   "id": "B07/F1/CL-PHARM/S1",
-                  "label": "north medicine shelving",
+                  "label": "east medicine shelving",
                   "prefab": "PF-SHELF",
                   "at": [
-                    2.08,
+                    3.37,
                     0,
                     4.22
                   ],
@@ -101300,8 +101300,8 @@
                   ],
                   "material": "M-CLINIC",
                   "collision": "prefab-default",
-                  "purpose": "labelled locked medicine stock",
-                  "yaw": 0
+                  "purpose": "labelled locked medicine stock on the east wall, outside the dispensing-display sightline",
+                  "yaw": 1.5707963267948966
                 },
                 {
                   "id": "B07/F1/CL-PHARM/PRIVACY-LINE",
@@ -102442,9 +102442,9 @@
             "programme": {
               "roomId": "B07/F1/CL-PHARM",
               "at": {
-                "x": 2.65,
-                "z": 3.45,
-                "yaw": 0.15
+                "x": 2.27,
+                "z": 3.3,
+                "yaw": 0.17
               },
               "focusFixtureIds": [
                 "B07/F1/CL-PHARM/HEADER",
