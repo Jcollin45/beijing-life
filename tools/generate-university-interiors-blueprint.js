@@ -5286,8 +5286,9 @@ function buildB07() {
       room(`${p}/CL-PHARM`,'校内药房',[1.75,3.6,.75,5.1],'clinic',[
         doorway(`${p}/CL-PHARM/TO-COR`,'south',[2.65,e,.75],1.2,`${p}/DUAL-COR`),
       ],[
-        fixture(`${p}/CL-PHARM/COUNTER`,'composed dispensing counter','PF-PHARMACY',[2.10,e,3.00],
-          'M-CLINIC','east-facing private medicine dispensing point with a clear staff-entry sightline',{yaw:-PI/2,size:[1.40,1.05,.65]}),
+        fixture(`${p}/CL-PHARM/COUNTER`,'composed dispensing counter','PF-PHARMACY',[3.22,e,3.00],
+          'M-CLINIC','west-facing private medicine dispensing point on the east wall, clear of the north stock-wall sightline',
+          {yaw:PI/2,size:[1.40,1.05,.65]}),
         fixture(`${p}/CL-PHARM/FRIDGE`,'locked medicine refrigerator','PF-MED-FRIDGE',[2.08,e,4.78],
           'M-CLINIC','temperature-controlled medicine',{size:[.60,1.80,.60]}),
         fixture(`${p}/CL-PHARM/S1`,'north medicine shelving','PF-SHELF',[2.08,e,4.22],
@@ -5327,8 +5328,8 @@ function buildB07() {
           focusAt:{x:-4.10,z:3.50,yaw:-.32},body:'hidden',
           focusFixtureIds:[`${p}/CL-WAIT/REC`,`${p}/CL-WAIT/STATUS`]},
       ],
-      programme:{roomId:`${p}/CL-PHARM`,at:{x:3.15,z:3.35,yaw:-.04},
-        focusFixtureIds:[`${p}/CL-PHARM/COUNTER`,`${p}/CL-PHARM/TEMP`]},
+      programme:{roomId:`${p}/CL-PHARM`,at:{x:2.65,z:3.45,yaw:.15},
+        focusFixtureIds:[`${p}/CL-PHARM/HEADER`,`${p}/CL-PHARM/TEMP`]},
     }}));
   }
 

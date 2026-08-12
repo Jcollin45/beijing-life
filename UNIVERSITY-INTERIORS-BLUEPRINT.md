@@ -4,7 +4,7 @@ This is the implemented, construction-grade interior companion to `UNIVERSITY-BL
 
 The machine-readable source of truth is [`UNIVERSITY-INTERIORS-BLUEPRINT.json`](UNIVERSITY-INTERIORS-BLUEPRINT.json). Re-run `node tools/generate-university-interiors-blueprint.js` after any authored change. If prose and JSON disagree, use the JSON and regenerate this file.
 
-Blueprint version **2** · exterior layout **2** · canonical hash `cb8b13677ff45d9c5701c1efbd04fa3dfca78096fdd446c72a2b52e19d0ee1be`.
+Blueprint version **2** · exterior layout **2** · canonical hash `c171e9088ac1408b85bdd6f177657af3b863d9879164ce7da54fcbf4f377fcef`.
 
 ## 1. Audit result
 

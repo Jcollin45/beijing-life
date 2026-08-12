@@ -8,7 +8,7 @@
     "units": "metres",
     "generatedFrom": "tools/generate-university-interiors-blueprint.js",
     "sourceOfTruth": "JSON",
-    "canonicalGeometryHash": "cb8b13677ff45d9c5701c1efbd04fa3dfca78096fdd446c72a2b52e19d0ee1be"
+    "canonicalGeometryHash": "c171e9088ac1408b85bdd6f177657af3b863d9879164ce7da54fcbf4f377fcef"
   },
   "coordinateContract": {
     "axis": {
@@ -101251,7 +101251,7 @@
                   "label": "composed dispensing counter",
                   "prefab": "PF-PHARMACY",
                   "at": [
-                    2.1,
+                    3.22,
                     0,
                     3
                   ],
@@ -101262,8 +101262,8 @@
                   ],
                   "material": "M-CLINIC",
                   "collision": "prefab-default",
-                  "purpose": "east-facing private medicine dispensing point with a clear staff-entry sightline",
-                  "yaw": -1.5707963267948966
+                  "purpose": "west-facing private medicine dispensing point on the east wall, clear of the north stock-wall sightline",
+                  "yaw": 1.5707963267948966
                 },
                 {
                   "id": "B07/F1/CL-PHARM/FRIDGE",
@@ -102442,12 +102442,12 @@
             "programme": {
               "roomId": "B07/F1/CL-PHARM",
               "at": {
-                "x": 3.15,
-                "z": 3.35,
-                "yaw": -0.04
+                "x": 2.65,
+                "z": 3.45,
+                "yaw": 0.15
               },
               "focusFixtureIds": [
-                "B07/F1/CL-PHARM/COUNTER",
+                "B07/F1/CL-PHARM/HEADER",
                 "B07/F1/CL-PHARM/TEMP"
               ]
             }
