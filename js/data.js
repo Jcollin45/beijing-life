@@ -81,6 +81,35 @@ const homeCastCAP = 7;
 // comment and fails if the two drift, so a re-measurement there cannot leave this stale.
 const homeCastDRAWS = 57;
 const homeCastDRAWBUDGET = homeCastCAP * homeCastDRAWS;   // 399
+// The same ceiling, for the rest of the city. Once a resident's day can name another building
+// (CITY-LIFE.md 3.2) the tower's cap stops being the only one that can be broken: an itinerary
+// that sends nine people to the park at noon costs the park nine bodies, and nothing in js/data.js
+// would have said so. `.citycast.js` walks all 24 hours of a weekday and a weekend for every place
+// and fails on the first hour a room is over its number.
+//
+// Each figure is the same 57 draws budgeted above, so a cap is a draw budget written as people:
+// the default 10 is 570 draws. The numbers are set roughly a quarter above the measured peak of
+// the founding roster, which is room for a wave of itineraries and not room for a crowd. Raising
+// one is allowed with a frame-rate measurement behind it and not otherwise; `.homecastcheck.js`
+// still owns 'home', so that entry is the same number rather than a second copy of it.
+const cityCastCAP = {
+  '*': 10,
+  home: homeCastCAP,
+  street: 18,        // the hutong: nine districts of stalls, chess players and passers-by
+  // The mall counts *authored* presence, which is a ceiling rather than a live crowd: 22 of these
+  // rows are ordinary shoppers and js/game.js's own `mallCrowdProfileAt` threshold culls most of
+  // them at 03:00 and thins them all day. This number therefore governs what may be written into
+  // the building, not what is standing in it — the live crowd is the mall's own budget.
+  mall: 24,
+  zoo: 24,           // sixteen animals are figures too — the animal rig is skinned like the human
+  airport: 14,
+  diner: 12,
+  park: 8,
+  nightmarket: 8,
+  bund: 8,
+  chengdu: 8,
+  campus: 8,
+};
 const NPCS = [
   // ---- 门卫室, the night half. 刘师傅 below has the day; this is who is behind the glass at 03:00.
   { hz: '保安', name: '老陈', py: 'Lǎo Chén', place: 'home', deck: 0, uniform: '保安',
@@ -128,13 +157,23 @@ const NPCS = [
   // the same amount of information, so these two are on the clock: he takes the morning, she
   // takes the afternoon, and between eleven and two the bench is genuinely empty. 长椅 at
   // js/home-lobby.js:1266 is the seat both of them are sitting on.
+  //
+  // The eleven-to-two gap is now where they *went* rather than a hole in the day: he walks over to
+  // the park bench, she joins the 广场舞 in the square, and 李大妈 — who owns both of those park
+  // positions the rest of the day — is on 王阿姨's stool in the hutong at the same hour. Three
+  // people, one chain of vacated seats, every coordinate an already-authored spot rather than a
+  // new guess at a standable one. `place` on a spot is CITY-LIFE.md 3.2; omitted it still means
+  // `n.place`, which is why every other row in this file is untouched.
   { hz: '大爷', name: '张大爷', py: 'Zhāng dàye', place: 'home', deck: 0, livesOn: 11,
-    hours: [9, 11], temper: 'frail',
+    hours: [9, 14], temper: 'frail',
     look: { skin:'#c8a184', hair:'#cfccc4', hairStyle:'short', top:'#e6e2d4', pants:'#39414c',
             shoe:'#43474d', sleeve:'short', beard:'goatee', beardColor:'#d6d3cb',
             tall:0.90, wide:0.98, headScale:0.98, stoop:0.19, age:0.92, faceSeed:204 },
     seatY: 0.36,
-    spots: [ { h0:9, h1:11, at:[-3.15, 3.50], face:0, act:'sit' } ],
+    spots: [ { h0:9,  h1:11, at:[-3.15, 3.50], face:0, act:'sit' },
+             // 李大妈's own 11–17 bench, which she vacates for the hutong at exactly eleven and
+             // takes back at two. Her seat, her facing (js/data.js:711) — a proven sit position.
+             { h0:11, h1:14, place:'park', at:[-1.20, -6.42], face:0, act:'sit' } ],
     lines: [
       ["吃了吗？这么早出门。", "Have you eaten? Out early today."],
       ["我在这楼住了三十年喽。", "I have lived in this block thirty years."],
@@ -143,12 +182,15 @@ const NPCS = [
       ["电梯慢，我不着急。", "The lift is slow. I am in no hurry."],
     ] },
   { hz: '大妈', name: '刘大妈', py: 'Liú dàmā', place: 'home', deck: 0, livesOn: 10,
-    hours: [14, 17], temper: 'steady',
+    hours: [11, 17], temper: 'steady',
     look: { skin:'#dcb08b', hair:'#7a7269', hairStyle:'perm', top:'#c8b6a4', pants:'#3b4250',
             shoe:'#4a4f57', sleeve:'short', collar:'polo', vest:'#8a4a4e',
             tall:0.92, wide:1.12, headScale:0.99, stoop:0.13, age:0.80, faceSeed:205 },
     seatY: 0.36,
-    spots: [ { h0:14, h1:17, at:[-2.05, 3.50], face:0, act:'sit' } ],
+    spots: [ // 晚上七点楼下跳舞，来啊 is already one of her lines; this is her doing it at noon in
+             // the park instead, on 李大妈's own dance mark while 李大妈 is out of the park.
+             { h0:11, h1:14, place:'park', at:[-4.6, -3.0], face:Math.PI * 1.02, act:'dance' },
+             { h0:14, h1:17, at:[-2.05, 3.50], face:0, act:'sit' } ],
     lines: [
       ["回来啦？今天这么早。", "Back already? Early today."],
       ["我孙子今年上小学了。", "My grandson started primary school this year."],
@@ -699,8 +741,12 @@ const NPCS = [
             shoe:'#e8e2d6', sleeve:'short', collar:'polo', hat:'visor', hatColor:'#e4dcc4',
             tall:0.92, wide:1.11, headScale:0.99, stoop:0.04, age:0.66, faceSeed:79 },
     hours: [6, 21], temper: 'genial',
-    spots: [ { h0:6, h1:11, at:[-4.6, -3.0], face:Math.PI * 1.02, act:'dance' },
-             { h0:11, h1:17, at:[-1.20, -6.42], face:0, act:'sit' },
+    spots: [ { h0:6,  h1:11, at:[-4.6, -3.0], face:Math.PI * 1.02, act:'dance' },
+             // Eleven to two she is not in the park at all. 王阿姨 leaves her stool by the gate
+             // for her own 11–14 errand up the alley (js/data.js:356), so this is that stool, its
+             // facing and its measured seat — not a new coordinate anybody has to trust.
+             { h0:11, h1:14, place:'street', at:[1.9, 1.55], face:-2.2, act:'sit' },
+             { h0:14, h1:17, at:[-1.20, -6.42], face:0, act:'sit' },
              { h0:17, h1:21, at:[-4.6, -3.0], face:Math.PI * 1.02, act:'dance' } ],
     seatY: 0.48,
     lines: [

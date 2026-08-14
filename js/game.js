@@ -1267,6 +1267,17 @@ function initNPC(n, i) {
   // Casting is location-owned, so resolve the location before asking the catalog. Everybody was
   // in the hutong until there were rooms to be in; that remains the fallback for old roster rows.
   n.place = n.place || 'street';
+  // Two places per person. `n.place` is where they belong: authored, constant, and part of the
+  // save key. `n.curPlace` is where they are right now, and only an authored spot naming another
+  // room ever moves it. `n.roams` records whether any spot does, so every roster row written before
+  // this field existed takes exactly the code path it took before. CITY-LIFE.md 3.1.
+  //
+  // Not `n.here`: `courier.here` is a shipped boolean with readers in three harnesses and a setter
+  // in .audit.js, and an NPC field of that name overloads it into a permanently truthy place
+  // string. Wave 1 did rename the courier's flag instead and put two harnesses red — the failure is
+  // silent rather than an error, which is exactly why the new field is the one that moves.
+  n.curPlace = n.place;
+  n.roams = !!(n.spots && n.spots.some(s => s.place && s.place !== n.place));
   // An animal has no face, no wardrobe and no age in its hair — everything `makeLook` derives is
   // about being a person, and none of it has an answer for a penguin. `makeAnimal` is the same
   // idea one table smaller: the species out of `ANIMALS`, plus whatever this individual overrides,
@@ -1459,6 +1470,10 @@ if (typeof AirportAmbientCast !== 'undefined')
   for (const n of AirportAmbientCast) NPCS.push(n);
 
 NPCS.forEach(initNPC);
+// The clock is already running at boot (14:00, or whatever a save restores before setPlace runs),
+// so a resident whose current spot is in another room must not spend the first frame standing on
+// that room's coordinates inside this one.
+settleResidents();
 
 // Four social stories, all cast from people who were already in the public roster.  Leaders keep
 // their authored routes; followers borrow a small formation offset only during their group's
@@ -4649,12 +4664,17 @@ function mallCrowdState() {
     afterHours:awake.filter(n=>n.mallAfterHours).map(n=>({role:n.mallAfterHours,
       held:npcHeldItem(n),x:+n.x.toFixed(2),z:+n.z.toFixed(2)})),shops};
 }
+// Where this person is standing this minute. Identical to `n.place` for everybody who never
+// leaves it, which is everybody who has no spot naming another room — so every gate below reads
+// the same value it always read for every row written before CITY-LIFE.md 3.1.
+function npcRoom(n) { return n.curPlace || n.place; }
+
 function npcAwake(n) {
   // Item 334. Twelve floors share one footprint and one NPC list, so a resident authored for the
   // fourth floor was drawn on all twelve — the cast lane had to park sixteen of seventeen people
   // on the always-live decks to hide it. `deck` is only set by rows that belong to one storey;
   // everyone else is unaffected.
-  if (n.place === 'home' && n.deck !== undefined && World.level() !== n.deck) return false;
+  if (npcRoom(n) === 'home' && n.deck !== undefined && World.level() !== n.deck) return false;
   // Item 330. `days` is Date.getDay() order — 0 Sunday, 6 Saturday, matching .homecastcheck.js:121
   // — and `day` counts from 1 on a Monday, the same origin js/disrupt.js:158 reads weekends off.
   // Without this the weekday/weekend split in js/data.js is decoration.
@@ -4753,11 +4773,11 @@ const NPC_SEAT_ACTS = new Set([...NPC_SEAT_REQUIRED, ...NPC_SEAT_OPTIONAL]);
 const npcSeatClaims = [];
 
 function npcSeatFloor(n, sp, room) {
-  if (n.place === 'mall' && typeof Mall !== 'undefined')
+  if (npcRoom(n) === 'mall' && typeof Mall !== 'undefined')
     return Mall.deckY(n.mallFloor || 1) || 0;
   // A berthed metro car is a second floor inside the station.  Its riders are moved with the car
   // and carry that floor explicitly; Metro.liftAt only describes the platform and stairs.
-  if (n.place === 'metro' && Number.isFinite(n.lift)) return n.lift;
+  if (npcRoom(n) === 'metro' && Number.isFinite(n.lift)) return n.lift;
   if (room && typeof room.liftAt === 'function') {
     const y = room.liftAt(sp.at[0], sp.at[1]);
     if (Number.isFinite(y)) return y;
@@ -4768,7 +4788,7 @@ function npcSeatFloor(n, sp, room) {
 function resolveNPCSeat(n, sp) {
   const act = n.act || (sp && sp.act);
   if (n.animal || !sp || !Array.isArray(sp.at) || !NPC_SEAT_ACTS.has(act)) return null;
-  const room = PLACES[n.place];
+  const room = PLACES[npcRoom(n)];
   if (!room || !Array.isArray(room.props)) return null;
   const floor = npcSeatFloor(n, sp, room), x = sp.at[0], z = sp.at[1];
   const authoredHere = Number.isFinite(sp.seatY) ? sp.seatY : null;
@@ -4838,10 +4858,10 @@ function resolveNPCSeat(n, sp) {
 
 function claimNPCSeat(n, support) {
   for (const q of npcSeatClaims) {
-    if (q.place !== n.place || Math.abs(q.floor - support.floor) > .12) continue;
+    if (q.place !== npcRoom(n) || Math.abs(q.floor - support.floor) > .12) continue;
     if (Math.hypot(q.x - support.x, q.z - support.z) < .44) return false;
   }
-  npcSeatClaims.push({ place:n.place, floor:support.floor, x:support.x, z:support.z, n });
+  npcSeatClaims.push({ place:npcRoom(n), floor:support.floor, x:support.x, z:support.z, n });
   return true;
 }
 
@@ -5059,11 +5079,15 @@ function mallAccessibilityState() {
     kinds:[...new Set(actors.map(q=>q.kind))].sort(),route:'entrance-to-lift'};
 }
 
-function campusStaticSpotNow(n) {
+// The spot whose window covers the current hour. A window that runs past midnight is written past
+// 24, the same wrapping rule `npcAwake` uses; falling back to the first spot leaves somebody with
+// a gap in their day standing where their day starts rather than nowhere.
+function spotNow(n) {
   const h = minutes / 60;
   return n.spots.find(q => q.h1 > 24 ? (h >= q.h0 || h < q.h1 - 24)
                                      : (h >= q.h0 && h < q.h1)) || n.spots[0];
 }
+const campusStaticSpotNow = spotNow;
 function snapCampusStaticNPC(n, sp = campusStaticSpotNow(n)) {
   n.campusStaticSpot = sp;
   n.campusStaticPending = null;
@@ -5079,6 +5103,57 @@ function snapCampusStaticNPC(n, sp = campusStaticSpotNow(n)) {
 function syncCampusStaticNPCs() {
   for (const n of NPCS) if (n.place === 'campus' && n.campusStatic)
     snapCampusStaticNPC(n);
+}
+
+// A resident is simply *at* whichever room the current hour's spot names. There is no travel
+// simulation here: no pathfinding between buildings, no travel time, and nobody walking out of a
+// door you are watching. The move happens off-camera on the setPlace seam, behind the one-frame
+// veil, exactly as `syncCampusStaticNPCs` above settles the campus tableaux.
+//
+// ponytail: snap-on-seam, no visible exit walk. Upgrade path if it reads wrong — `updateHomeRoutine`
+// (js/game.js:5561) already implements leaving and entering through `n.home.{inside,outside}`;
+// generalise that to a per-place exit point rather than writing anything new. Do it only when a
+// resident is reported popping out of existence in front of the player. CITY-LIFE.md 3.3.
+function settleResident(n, sp = spotNow(n)) {
+  const from = npcRoom(n), to = sp.place || n.place;
+  if (to !== from) {
+    n.curPlace = to;
+    if (to === 'mall') n.mallFloor = sp.mallFloor || n.mallFloor || 1;
+    if (n.th) {
+      n.th.mallFloor = to === 'mall' ? (n.mallFloor || 1) : undefined;
+      if (n.lines) moveThing(n.th, from, to);
+    }
+  }
+  n.x = sp.at[0]; n.z = sp.at[1];
+  n.face = sp.face; n.yaw = sp.face === undefined ? n.yaw : sp.face;
+  n.spot = sp; n.errand = null; n.wait = 0; n.leg = 0; n.ground = 0; n.animGround = 0;
+  if (n.th) {
+    n.th.pos[0] = n.x; n.th.pos[2] = n.z;
+    n.th.focus[0] = n.x; n.th.focus[1] = n.z;
+  }
+}
+// Only the rows that authored a spot in another room. Everybody else is exactly where they were,
+// so this loop is the whole per-seam cost of the resident layer.
+function settleResidents() {
+  // `n.home` rows are excluded: their position belongs to `updateHomeRoutine`'s threshold walk
+  // through js/street.js's own door, and snapping one onto a spot mid-transition would put them
+  // through the wall they are walking round. Giving a street resident an itinerary in another
+  // building is a wave-2 problem and wants that routine generalised, not overridden here.
+  for (const n of NPCS) if (n.roams && n.spots && !n.home) settleResident(n);
+}
+// A person's interaction record is filed under one room (`queueThing`, js/game.js:1523), so moving
+// the person moves the record: out of whichever list holds it — the built room's, or the queue for
+// a room nobody has walked into yet — and into the destination's. The label element itself was made
+// once by `adoptThing` and travels with the record, so nothing is rebuilt.
+function moveThing(th, from, to) {
+  if (from === to) return;
+  for (const list of [PLACES[from] && PLACES[from].things, pendingThings[from]]) {
+    const i = list ? list.indexOf(th) : -1;
+    if (i >= 0) list.splice(i, 1);
+  }
+  th.place = to;
+  if (adopted.has(to)) PLACES[to].things.push(th);
+  else (pendingThings[to] = pendingThings[to] || []).push(th);
 }
 function campusStaticTarget(n) {
   const scheduled = campusStaticSpotNow(n);
@@ -5159,10 +5234,17 @@ function npcTarget(n) {
     n.spot = null;
     return n.patrol[n.leg % n.patrol.length];
   }
-  const h = minutes / 60;
-  // Same wrapping rule as `awake` above: a spot that runs past midnight is written past 24.
-  const sp = n.spots.find(q => q.h1 > 24 ? (h >= q.h0 || h < q.h1 - 24)
-                                         : (h >= q.h0 && h < q.h1)) || n.spots[0];
+  // The hour's spot, and the room it names. `place` on a spot is optional: omitted it inherits
+  // `n.place`, so a roster row written before CITY-LIFE.md 3.2 resolves exactly as it always did.
+  let sp = spotNow(n);
+  if (n.roams) {
+    const here = npcRoom(n);
+    const inHere = q => (q.place || n.place) === here;
+    // A spot in another building is not a destination in this one, and a straight line to it would
+    // be a walk through several walls. While the player is standing here the resident holds their
+    // last spot in this room; `settleResidents` moves them on the next seam, behind the veil.
+    if (!inHere(sp)) sp = (n.spot && inHere(n.spot)) ? n.spot : (n.spots.find(inHere) || sp);
+  }
   n.face = sp.face; n.spot = sp;
   const support = resolveNPCSeat(n, sp);
   if (support && support.supported) n.seatCandidate = support;
@@ -6203,7 +6285,7 @@ function updateNPCs(dt, now) {
     // Awake means "in the place you are standing in, during their own hours". Tested against a
     // hard-coded 'street' it was impossible for anyone to be indoors.
     const wasAwake = !!n.awake;
-    n.awake = place === n.place && npcAwake(n);
+    n.awake = place === npcRoom(n) && npcAwake(n);
     // Off-camera campus schedule changes are true snaps. Keeping this before the awake early-out
     // means the next campus visit is already staged even if several clock windows passed elsewhere.
     if (n.campusStatic && place !== 'campus') campusStaticTarget(n);
@@ -11942,7 +12024,20 @@ const SAVE_MAX = 400 * 1024;
 let saveBytes = 0;
 // A person, named the same way across two sessions. `rig` is unique where it exists; otherwise the
 // place and the pair of names is, because two 阿姨 in one room would be one person to a player too.
-const npcKey = n => n.rig || `${n.place || '-'}/${n.hz}/${n.name || ''}`;
+// A pooled anonymous figure shares one rig with the whole pool (`n.rigShared`, js/game.js:1657),
+// so a rig id only names a person when the pool did not hand it out — two 顾客 in one mall used to
+// collide on a single `met` slot. Everyone with a rig of their own keeps the key they already had,
+// so no existing save loses its history. The composite keys off `n.place`, where this person
+// belongs, and never `n.curPlace`, where they happen to be: a key that travels loses the memory
+// every time they change room.
+//
+// This reduces collisions, it does not end them: measured 162 -> 85 colliding rows, 240 rows
+// resolving to 155 unique keys against 78 before. The residue is identically-named anonymous rows
+// in the same place, which a composite of place/hz/name cannot separate. Acceptable while `met` is
+// the only per-NPC state; the day a resident carries anything richer this needs a stable per-row
+// id that survives roster reordering, or old saves stop matching. CITY-LIFE.md 3.5.
+const npcKey = n => (n.rig && !n.rigShared) ? n.rig
+                  : `${n.place || '-'}/${n.hz}/${n.name || ''}`;
 function saveGame() {
   if (!started || wiping) return;        // nothing to save from behind the title screen —
                                          // and nothing to save while a New Game is wiping it,
@@ -12519,6 +12614,10 @@ function setPlace(name, at) {
   // every actor at the current authored spot before the first campus frame can expose a teleport.
   if ((cameFrom === 'campus' && name !== 'campus') ||
       (name === 'campus' && cameFrom !== 'campus')) syncCampusStaticNPCs();
+  // Residents follow the clock, not the player. Settle them onto the current hour's spot while the
+  // old coordinate space is still hidden, so somebody whose day has moved to another building is
+  // simply there when you get there rather than teleporting in front of you. CITY-LIFE.md 3.3.
+  settleResidents();
   // Queue paper and the form in your hand belong to this physical visit. Leaving through the
   // branch door gives the number back; returning or loading begins at the machine, not mid-call.
   if(cameFrom==='bank'&&name!=='bank') resetBankVisit();
