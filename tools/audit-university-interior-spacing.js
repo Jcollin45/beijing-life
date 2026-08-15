@@ -3,7 +3,8 @@
 // Geometry-only quality gate for the university interiors.  It reads the generated source of
 // truth and checks the mistakes that a scene-build test cannot see: furniture outside its room,
 // objects occupying a door approach, and independent floor objects intersecting each other.
-// Decorations explicitly marked collision:none and wall/ceiling anchored fixtures are ignored.
+// Decorations explicitly marked collision:none and wall/ceiling anchored fixtures are ignored,
+// except for accessible tables that explicitly opt their measured supports into collision.
 
 const fs=require('fs');
 const path=require('path');
@@ -24,6 +25,27 @@ const axesFor=yaw=>{
 function obb(f){
   const [w,,d]=f.size,yaw=f.yaw||0,axes=axesFor(yaw);
   return {id:f.id,f,c:[f.at[0],f.at[2]],u:axes[0],v:axes[1],hu:w/2,hv:d/2};
+}
+
+function supportCollisionTable(f){
+  const p=prefabs.get(f.prefab);
+  return p&&p.anchor==='floor'&&f.prefab==='PF-MEETING-TABLE'&&f.accessible===true&&
+    f.supportCollision===true&&f.size[1]>.20;
+}
+
+function tableSupportObbs(f){
+  const [w,,d]=f.size,yaw=f.yaw||0,leg=Math.min(.045,w*.05,d*.08),
+    c=Math.cos(yaw),s=Math.sin(yaw),all=[
+      ['front-left',-w/2+leg/2,-d/2+leg/2],
+      ['front-right',w/2-leg/2,-d/2+leg/2],
+      ['rear-left',-w/2+leg/2,d/2-leg/2],
+      ['rear-right',w/2-leg/2,d/2-leg/2],
+    ],positions=all,axes=axesFor(yaw);
+  return positions.map(([name,dx,dz])=>({
+    id:`${f.id}/ACCESS-SUPPORT-${name}`,f,
+    c:[f.at[0]+c*dx+s*dz,f.at[2]-s*dx+c*dz],
+    u:axes[0],v:axes[1],hu:leg/2,hv:leg/2,
+  }));
 }
 
 function corners(o){
@@ -56,6 +78,9 @@ function physical(f){
   return p&&p.anchor==='floor'&&f.collision!=='none'&&f.size[1]>.20&&
     !['PF-EXTINGUISHER','PF-BIN'].includes(f.prefab);
 }
+
+const audited=f=>physical(f)||supportCollisionTable(f);
+const footprints=f=>supportCollisionTable(f)?tableSupportObbs(f):[obb(f)];
 
 function doorApproach(room,door){
   const along=door.width/2+.20,depth=DOOR_DEPTH;
@@ -92,9 +117,10 @@ for(const building of plan.buildings){
     const approaches=[];
     for(const room of floor.rooms){
       totals.rooms++;byBuilding[building.id].rooms++;
-      const objects=(room.contents||[]).filter(physical).map(f=>({...obb(f),owner:room.id}));
+      const fixtures=(room.contents||[]).filter(audited),
+        objects=fixtures.flatMap(f=>footprints(f).map(o=>({...o,owner:room.id})));
       floorObjects.push(...objects);
-      totals.physicalFixtures+=objects.length;byBuilding[building.id].physicalFixtures+=objects.length;
+      totals.physicalFixtures+=fixtures.length;byBuilding[building.id].physicalFixtures+=fixtures.length;
       const [x0,x1,z0,z1]=room.bounds;
       for(const door of room.doors||[])approaches.push({room,door,shape:doorApproach(room,door)});
       for(const o of objects){
@@ -114,9 +140,10 @@ for(const building of plan.buildings){
 
     // Shared floor-standing fixtures participate in the same geometry as room contents.  They
     // must remain within the building, outside every doorway approach and clear of route plates.
-    const shared=(floor.sharedObjects||[]).filter(physical).map(f=>({...obb(f),owner:`${building.id}/F${floor.level}/SHARED`}));
+    const sharedFixtures=(floor.sharedObjects||[]).filter(audited),
+      shared=sharedFixtures.flatMap(f=>footprints(f).map(o=>({...o,owner:`${building.id}/F${floor.level}/SHARED`})));
     floorObjects.push(...shared);
-    totals.physicalFixtures+=shared.length;byBuilding[building.id].physicalFixtures+=shared.length;
+    totals.physicalFixtures+=sharedFixtures.length;byBuilding[building.id].physicalFixtures+=sharedFixtures.length;
     const [bx0,bx1,bz0,bz1]=building.localBounds;
     for(const o of shared){
       const outside=corners(o).filter(([x,z])=>x<bx0-CONTAIN_TOL||x>bx1+CONTAIN_TOL||z<bz0-CONTAIN_TOL||z>bz1+CONTAIN_TOL);

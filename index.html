@@ -1617,7 +1617,7 @@
     <span><b>scroll</b> zoom</span><span><b>F</b> recenter</span><span><b>click</b> anything</span>
     <span><b>E</b> word</span><span><b>Q</b> use it</span><span><b>R</b> review</span>
     <span><b>1–4</b> answer</span><span><b>B</b> notebook</span><span><b>Shift+B</b> home directory</span>
-    <span><b>M</b> 手机 phone</span>
+    <span><b>M</b> 手机 phone</span><span><b>V</b> lower walls</span>
     <span><b>P</b> quality</span><span><b>N</b> next song</span><span><b>G</b> 广播 again</span>
     <span><b>Esc</b> pause</span>
   </div>
@@ -1699,11 +1699,11 @@
             aria-pressed="true"></button>
         </div>
         <div class="srow">
-          <div class="lab"><b>隐藏墙壁</b><span>Lower the interior walls in supported homes and
-            offices so you can read the whole plan. Furniture, floors and the outside
-            shell stay, and a wall you cannot see still stops you walking through it. Shortcut: V.</span></div>
-          <button class="tog" id="setWalls" type="button" aria-label="hide interior walls"
-            aria-pressed="false"></button>
+          <div class="lab"><b>降低室内墙壁</b><span id="setWallsHelp">Lower room partitions to a
+            40 cm outline so you can see across the floor. Door gaps remain visible, and lowered
+            walls still stop movement. Shortcut: V.</span></div>
+          <button class="tog" id="setWalls" type="button" aria-label="lower interior walls"
+            aria-describedby="setWallsHelp" aria-pressed="false"></button>
         </div>
         <div class="srow">
           <div class="lab"><b>帧数</b><span>Show the frame rate in the top bar.</span></div>
@@ -1722,7 +1722,7 @@
         <b>WASD</b> move &nbsp; <b>Shift</b> run &nbsp; <b>drag</b> look &nbsp;
         <b>E</b> word &nbsp; <b>Q</b> use &nbsp; <b>R</b> review<br>
         <b>B</b> notebook &nbsp; <b>Shift+B</b> home directory &nbsp;
-        <b>M</b> phone &nbsp; <b>Esc</b> pause and settings
+        <b>M</b> phone &nbsp; <b>V</b> lower walls &nbsp; <b>Esc</b> pause and settings
       </div>
     </div>
   </div>
@@ -2045,6 +2045,7 @@
     ['FireStation', 'things PLAN OUT'],
     ['Pharmacy', 'things setNight OUT'], ['Market', 'things setNight OUT'],
     ['Bank', 'things tick setNight OUT'],
+    ['FireStation', 'things PLAN OUT'],
     ['Hospital', 'things setNight OUT'], ['Hospital2', 'things setNight OUT'],
     ['Hospital3', 'things setNight OUT'], ['Hospital4', 'things setNight OUT'],
     ['HotelB1', 'things tick setNight OUT'], ['Hotel', 'things tick setNight OUT'],

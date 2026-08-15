@@ -83,7 +83,7 @@ check('seven overlapping walk zones', scene.zones.length === 7, scene.zones.leng
 check('all zones have a light anchor', scene.zones.every(zone =>
   Array.isArray(zone.light) && zone.light.length === 3 && zone.light.every(Number.isFinite)));
 check('33 interactions', scene.things.length === 33, scene.things.length);
-check('178 solids', scene.solids.length === 178, scene.solids.length);
+check('182 solids', scene.solids.length === 182, scene.solids.length);
 check('23 camera blockers', scene.blockers.length === 23, scene.blockers.length);
 check('33 authored point lights', scene.lights.length === 33, scene.lights.length);
 check('prop ceiling', scene.props.length <= 3200, scene.props.length);
@@ -150,8 +150,8 @@ const tactile = [...meshes].filter(([name]) => name.startsWith('campus-tactile-v
 const tactileVertices = tactile.reduce((sum, [, data]) => sum + data.pos.length / 3, 0);
 const tactileTriangles = tactile.reduce((sum, [, data]) => sum + data.idx.length / 3, 0);
 const tactileBars = (tactileVertices - tactile.length * 24) / 24;
-check('eight tactile route meshes', tactile.length === 8, tactile.length);
-check('335 literal tactile bars', tactileBars === 335, tactileBars);
+check('ten tactile route meshes including the clear ramp approach branch', tactile.length === 10, tactile.length);
+check('333 literal tactile bars', tactileBars === 333, tactileBars);
 check('tactile mesh vertex contract', tactileVertices === 8232, tactileVertices);
 check('tactile mesh triangle contract', tactileTriangles === 4116, tactileTriangles);
 check('tactile strip/bar heights', tactile.every(([, data]) => {
@@ -159,6 +159,78 @@ check('tactile strip/bar heights', tactile.every(([, data]) => {
   for (let i = 1; i < data.pos.length; i += 3) ys.add(+data.pos[i].toFixed(6));
   return ys.has(0) && ys.has(.004) && ys.has(.006) && Math.max(...ys) === .006;
 }));
+
+const accessRamps=scene.props.filter(prop=>prop.accessibleRamp),
+  accessLandings=scene.props.filter(prop=>prop.accessibleLanding),
+  accessRampTactile=scene.props.filter(prop=>prop.accessibleRampTactile),
+  accessRampEdges=scene.props.filter(prop=>prop.accessibleRampEdge),
+  accessRampHandrails=scene.props.filter(prop=>prop.accessibleRampHandrail),
+  accessLandingTactile=scene.props.filter(prop=>prop.accessibleLandingTactile),
+  accessGroundBranches=scene.props.filter(prop=>prop.accessibleTactileBranch),
+  accessById=new Map(accessRamps.map(prop=>[prop.accessibleRamp,prop]));
+const exactSegment=(prop,key,id,a,b)=>prop?.[key]===id&&prop.from?.join(',')===a.join(',')&&
+  prop.to?.join(',')===b.join(','),
+  slopedFaceEndpoints=(prop,upper)=>[-.5,.5].map(lx=>prop.m[13]+prop.m[1]*lx+
+    (upper?1:-1)*Math.abs(prop.m[5])*.5).sort((a,b)=>a-b),
+  horizontalTop=prop=>prop.m[13]+Math.abs(prop.m[5])*.5;
+check('B01 and B02 have exact 1:12 accessible entrance ramps',
+  accessRamps.length===2&&['ACC-B01','ACC-B02'].every(id=>accessById.has(id))&&
+  accessRamps.every(prop=>near(prop.grade,1/12,.000001)&&prop.clearWidth>=1.50&&
+    near(prop.run/prop.rise,12,.000001)&&near(Math.abs(prop.m[0]),prop.run,.000001)&&
+    near(Math.abs(prop.m[1]),prop.rise,.000001)),
+  accessRamps.map(prop=>`${prop.accessibleRamp}:${prop.run}/${prop.rise}/${prop.clearWidth}`).join(','));
+check('ramp and landing walking faces are flush at grade, rise and door elevations',
+  accessRamps.every(prop=>{
+    const deck=slopedFaceEndpoints(prop,true),tactile=accessRampTactile.find(candidate=>
+      candidate.accessibleRampTactile===prop.accessibleRamp),touch=tactile&&slopedFaceEndpoints(tactile,false);
+    return near(deck[0],0,.001)&&near(deck[1],prop.rise,.001)&&
+      near(touch?.[0],0,.001)&&near(touch?.[1],prop.rise,.001);
+  })&&accessLandings.every(prop=>near(horizontalTop(prop),prop.height,.001))&&
+  accessLandingTactile.every(prop=>{
+    const landing=accessLandings.find(candidate=>candidate.accessibleLanding===prop.accessibleLandingTactile);
+    return landing&&near(prop.m[13]-Math.abs(prop.m[5])*.5,landing.height,.001);
+  }),
+  accessRamps.map(prop=>`${prop.accessibleRamp}:deck=${slopedFaceEndpoints(prop,true).map(v=>v.toFixed(3))}`+
+    `/tactile=${slopedFaceEndpoints(accessRampTactile.find(candidate=>candidate.accessibleRampTactile===prop.accessibleRamp),false).map(v=>v.toFixed(3))}`).join(' '));
+check('both ramps retain tactile strips, full landings, two edge kerbs and complete handrails',
+  accessLandings.length===2&&accessRampTactile.length===2&&accessRampEdges.length===4&&
+  ['ACC-B01','ACC-B02'].every(id=>accessLandings.some(prop=>prop.accessibleLanding===id)&&
+    accessRampTactile.some(prop=>prop.accessibleRampTactile===id)&&
+    accessRampEdges.filter(prop=>prop.accessibleRampEdge===id).length===2&&
+    accessRampHandrails.filter(prop=>prop.accessibleRampHandrail===id&&prop.part==='rail').length===2&&
+    accessRampHandrails.filter(prop=>prop.accessibleRampHandrail===id&&prop.part==='post').length===6));
+const b01Landing=accessLandings.find(prop=>prop.accessibleLanding==='ACC-B01'),
+  b02Landing=accessLandings.find(prop=>prop.accessibleLanding==='ACC-B02');
+check('ramp landings physically meet both facade thresholds and the final teaching step',
+  b01Landing?.bounds?.[2]<=49.65&&b01Landing.bounds[3]>=51.76&&
+  b02Landing?.bounds?.[0]<=28.16&&b02Landing.bounds[1]>=29.76,
+  `B01=${b01Landing?.bounds?.join(',')} B02=${b02Landing?.bounds?.join(',')}`);
+check('tactile route stays visible from the campus spine, up both ramps and across both landings',
+  accessGroundBranches.length===3&&
+  accessGroundBranches.some(prop=>exactSegment(prop,'accessibleTactileBranch','ACC-B01',[-3,44.8],[8.5,44.8]))&&
+  accessGroundBranches.some(prop=>exactSegment(prop,'accessibleTactileBranch','ACC-B01',[8.5,44.8],[8.5,50]))&&
+  accessGroundBranches.some(prop=>exactSegment(prop,'accessibleTactileBranch','ACC-B02',[7.68,50],[26,50]))&&
+  accessRampTactile.some(prop=>exactSegment(prop,'accessibleRampTactile','ACC-B01',[7.68,50],[1.2,50]))&&
+  accessRampTactile.some(prop=>exactSegment(prop,'accessibleRampTactile','ACC-B02',[26,50],[28.16,50]))&&
+  accessLandingTactile.length===3&&
+  accessLandingTactile.some(prop=>exactSegment(prop,'accessibleLandingTactile','ACC-B01',[1.2,50],[-3,50]))&&
+  accessLandingTactile.some(prop=>exactSegment(prop,'accessibleLandingTactile','ACC-B01',[-3,50],[-3,51.76]))&&
+  accessLandingTactile.some(prop=>exactSegment(prop,'accessibleLandingTactile','ACC-B02',[28.16,50],[29.76,50])));
+check('ramp kerbs are the only new collision strips and leave each 1.50 m centre route open',
+  hasSolid(1.20,7.68,49.15,49.25)&&hasSolid(1.20,7.68,50.75,50.85)&&
+  hasSolid(26.00,28.16,49.15,49.25)&&hasSolid(26.00,28.16,50.75,50.85)&&
+  !scene.solids.some(s=>s.x0<=4.44&&s.x1>=4.44&&s.z0<50&&s.z1>50)&&
+  !scene.solids.some(s=>s.x0<=27.08&&s.x1>=27.08&&s.z0<50&&s.z1>50));
+const accessRouteRects=[
+  [-3,8.5,44.05,45.55], [7.75,9.25,44.80,50], [7.68,26,49.25,50.75],
+  [1.20,7.68,49.25,50.75], [-3,1.20,49.25,50.75], [-3.75,-2.25,50,51.70],
+  [26,28.16,49.25,50.75], [28.16,29.76,49.25,50.75],
+];
+check('the complete 1.50 m ramp and tactile centreline stays clear of every collision solid',
+  accessRouteRects.every(([x0,x1,z0,z1])=>!scene.solids.some(s=>
+    s.x0<x1-.001&&s.x1>x0+.001&&s.z0<z1-.001&&s.z1>z0+.001)),
+  accessRouteRects.filter(([x0,x1,z0,z1])=>scene.solids.some(s=>
+    s.x0<x1-.001&&s.x1>x0+.001&&s.z0<z1-.001&&s.z1>z0+.001)).map(bounds=>bounds.join(',')).join('|'));
 
 const serviceMeshNames = [
   'b01-steel', 'b01-sills', 'b02-steel', 'b02-sills',
@@ -231,6 +303,10 @@ check('spawn enters occupancy graph', !!start);
 check('all interaction focuses flood-fill reachable', scene.things.every(t =>
   reachable(t.focus[0], t.focus[1])), scene.things.filter(t =>
   !reachable(t.focus[0], t.focus[1])).map(t => t.hz).join(', '));
+check('both ramp grade and threshold endpoints are in the live campus movement component',
+  accessRamps.every(prop=>reachable(prop.low[0],prop.low[1])&&reachable(prop.high[0],prop.high[1])),
+  accessRamps.filter(prop=>!reachable(prop.low[0],prop.low[1])||!reachable(prop.high[0],prop.high[1]))
+    .map(prop=>prop.accessibleRamp).join(','));
 // A zone centre may deliberately sit inside a building mass (the west/east districts do), so
 // connectivity is proved by a reachable safe cell inside each zone rather than by that arbitrary
 // centre point.

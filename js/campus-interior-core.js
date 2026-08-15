@@ -12,6 +12,15 @@ const CampusInteriors = (() => {
   const prefabs = new Map(plan.prefabCatalog.map(p => [p.id, p]));
   const buildings = new Map(plan.buildings.map(b => [b.id, b]));
   const prefix = { B01:'b01', B02:'b02', B04:'dorm', B05:'admin', B06:'science', B07:'student' };
+  // These are the constructed public apertures, not a fallback derived from the generic glass
+  // leaf. Keep them here, immutable and keyed by the actual campus portal, until the blueprint
+  // itself gains a first-class opening contract.
+  const PUBLIC_PORTAL_WIDTHS=Object.freeze({
+    'B01/PUBLIC':3.2,'B02/PUBLIC':3.2,'B03/PUBLIC':4.2,'B04/PUBLIC':2.6,
+    'B05/PUBLIC':3.2,'B06/PUBLIC':3.2,'B07/STUDENT':2.2,'B07/CLINIC':2.2,
+    'B08/STAFF':.95,
+  });
+  const PUBLIC_PORTAL_HEIGHT=2.24;
   const places = {};
 
   const placeKey = (buildingId, level) => buildingId === 'B03' ? 'campus_canteen' :
@@ -105,15 +114,107 @@ const CampusInteriors = (() => {
     };
     const bodySolid = (f,w,d) => {
       const q=((Math.round((f.yaw||0)/(Math.PI/2))%2)+2)%2;
-      const sw=q?d:w,sd=q?w:d,x=f.at[0],z=f.at[2];
+      const sw=q?d:w,sd=q?w:d,x=f.at[0],z=f.at[2],factor=f.walkBlocker===true?.50:.40;
       // Keep the collision body just inside the visible footprint.  This is the same small
       // tolerance used by hand-built rooms: it prevents a visually clear 0.90–1.20 m doorway
       // from becoming impassable when the player's radius is added to both the wall and a desk.
-      const body={x0:x-sw*.40,x1:x+sw*.40,z0:z-sd*.40,z1:z+sd*.40};
+      const body={x0:x-sw*factor,x1:x+sw*factor,z0:z-sd*factor,z1:z+sd*factor};
       // Never hide a bad layout by silently dropping its collider. Door and route envelopes are
       // enforced by the blueprint spacing gate, and the runtime flood-fill verifies the result.
       const s=solid(body.x0,body.x1,body.z0,body.z1);
       s.fixtureId=f.id;
+      if(f.walkBlocker===true)s.walkBlocker=true;
+    };
+    const fixtureSolid = (f,kind,dx,dz,w,d,meta={}) => {
+      // Furniture is authored in local coordinates but Build collision bodies are axis-aligned.
+      // Resolve the exact rotated footprint of each measured support instead of restoring a
+      // hidden, full-footprint proxy beneath furniture that is explicitly open to a wheelchair.
+      const [x,z]=rotated(f.at[0],f.at[2],dx,dz,f.yaw||0),c=Math.abs(Math.cos(f.yaw||0)),
+        s=Math.abs(Math.sin(f.yaw||0)),halfX=(c*w+s*d)/2,halfZ=(s*w+c*d)/2,
+        body=solid(x-halfX,x+halfX,z-halfZ,z+halfZ);
+      body.fixtureId=f.id;
+      body.collisionKind=kind;
+      body.accessibleSurface=true;
+      Object.assign(body,meta);
+      return body;
+    };
+    const accessibleTableLayout = (f,w,d) => {
+      const leg=Math.min(.045,w*.05,d*.08),directions={
+          east:[1,0],west:[-1,0],north:[0,1],south:[0,-1],
+        },direction=directions[f.wheelchairSide],c=Math.cos(f.yaw||0),s=Math.sin(f.yaw||0),
+        // Local +x maps to [cos(yaw),-sin(yaw)]. An approach aligned with that end must fit
+        // between the front/rear supports (depth); an approach on either long side fits between
+        // the left/right supports (width). This prevents a 1.40 m table from falsely certifying a
+        // wheelchair entry through its 0.64 m end.
+        localX=direction&&direction[0]*c-direction[1]*s,
+        endApproach=direction&&Math.abs(localX)>.707,
+        clear=Math.max(0,(endApproach?d:w)-2*leg),all=[
+          ['front-left',-w/2+leg/2,-d/2+leg/2],['front-right',w/2-leg/2,-d/2+leg/2],
+          ['rear-left',-w/2+leg/2,d/2-leg/2],['rear-right',w/2-leg/2,d/2-leg/2],
+        ],positions=all;
+      return{leg,direction,endApproach,clear,positions};
+    };
+    const accessibleTableSolids = (f,w,h,d,offsetZ=0) => {
+      const {leg,direction,clear,positions}=accessibleTableLayout(f,w,d),knee=Math.max(0,h-.04);
+      if(!direction||knee<.68-1e-6||clear<.75-1e-6)
+        throw new Error(`CampusInteriors: ${f.id} accessible ${f.wheelchairSide||'unspecified'} opening measures only ${clear.toFixed(3)} m wide x ${knee.toFixed(3)} m high`);
+      for(const [name,dx,dz] of positions)fixtureSolid(f,`accessible-table-${name}`,dx,offsetZ+dz,leg,leg,
+        {kneeClearance:knee,usableKneeWidth:clear});
+    };
+    const accessibleReadingTableSolids = (f,w,h,d) => {
+      const side=f.wheelchairSide;
+      if(side!=='north'&&side!=='south')
+        throw new Error(`CampusInteriors: ${f.id} accessible reading table requires wheelchairSide north or south`);
+      const chairW=Math.min(.42,w*.24),chairD=Math.min(.42,d*.31),x=w*.38,z=d*.30,
+        baySign=side==='north'?1:-1;
+      if(h-.04<.68-1e-6||w<.90-1e-6)
+        throw new Error(`CampusInteriors: ${f.id} accessible reading position is below the 0.90 m x 0.68 m contract`);
+      for(const [dx,dz] of [[-x,-z],[x,-z],[-x,z],[x,z]]){
+        if(Math.sign(dz)===baySign&&dx>0)continue;
+        // Match the ordinary furniture tolerance while keeping the authored central 0.90 m bay
+        // genuinely open. The visible narrow table legs sit inside these occupied-chair zones and
+        // are below the useful scale of the player collider, so they do not receive a second,
+        // overlapping proxy.
+        fixtureSolid(f,`accessible-reading-chair-${dz<0?'south':'north'}-${dx<0?'left':'right'}`,
+          dx,dz,chairW*.72,chairD*.72,
+          {wheelchairSide:side,kneeClearance:Math.max(0,h-.04),usableKneeWidth:.90});
+      }
+    };
+    const accessibleCounterSolids = (f,w,h,d) => {
+      const returnWidth=Math.min(.90,w),wing=(w-returnWidth)/2,low=Math.min(.76,h),
+        knee=Math.max(0,low-.06),support=.045;
+      if(returnWidth<.90-1e-6||knee<.68-1e-6)
+        throw new Error(`CampusInteriors: ${f.id} accessible counter return measures only ${returnWidth.toFixed(3)} m wide x ${knee.toFixed(3)} m high`);
+      if(wing>.04)for(const sign of [-1,1])fixtureSolid(f,
+        sign<0?'accessible-counter-standing-left':'accessible-counter-standing-right',
+        sign*(returnWidth/2+wing/2),0,Math.max(.02,wing-.04),d*.72,
+        {returnWidth,kneeClearance:knee});
+      for(const sign of [-1,1])fixtureSolid(f,
+        sign<0?'accessible-counter-return-support-left':'accessible-counter-return-support-right',
+        sign*(returnWidth/2-support/2),d*.34,support,support,
+        {returnWidth,kneeClearance:knee,usableKneeWidth:Math.max(0,returnWidth-2*support)});
+    };
+    const accessibleSurfaceSolids = (f,w,h,d) => {
+      switch(f.prefab){
+        case 'PF-MEETING-TABLE': case 'PF-ART-TABLE': case 'PF-PREP-TABLE': case 'PF-SIDE-TABLE':
+          accessibleTableSolids(f,w,h,d);return true;
+        case 'PF-COMPUTER-DESK': case 'PF-LANGUAGE-DESK': case 'PF-OFFICE-DESK': case 'PF-DORM-DESK':
+          accessibleTableSolids(f,w,h,d*.58,d*.14);return true;
+        case 'PF-READING-TABLE':
+          accessibleReadingTableSolids(f,w,h,d);return true;
+        case 'PF-CIRC-DESK': case 'PF-SERVICE-COUNTER': case 'PF-PHARMACY': case 'PF-CASHIER':
+          accessibleCounterSolids(f,w,h,d);return true;
+        case 'PF-BASIN': case 'PF-HANDWASH':
+          {
+            const rim=Math.min(.80,h-.05),bowlH=Math.min(.10,Math.max(.06,rim-.68)),
+              knee=rim-bowlH;
+            if(knee<.68-1e-6)
+              throw new Error(`CampusInteriors: ${f.id} accessible basin underside is only ${knee.toFixed(3)} m high`);
+            fixtureSolid(f,'accessible-basin-wall',0,d*.40,w*.62,d*.12,
+              {kneeClearance:knee,usableKneeWidth:w*.90});return true;
+          }
+        default:return false;
+      }
     };
     const realLight = (x,y,z,temp=3800,power=.72,radius=3.0) => {
       // Keep every authored room luminaire available. The main renderer already ranks all scene
@@ -124,27 +225,94 @@ const CampusInteriors = (() => {
       lights.push(B.light(x,y,z,[1,.90+.07*(1-warm),.76+.19*(1-warm)],power,radius));
     };
 
+    // Resolve every public threshold once, before either the shell or the glazing is built. The
+    // blueprint currently carries the threshold point but not its constructed width, so the
+    // immutable portal contract above supplies that one missing dimension without mutating the
+    // source record. The same resolved object drives walls, bodies, trim, glass and interaction.
+    const portals=building.portals.filter(p=>p.localSpawn&&floor.level===1);
+    const portalGeometry=p=>{
+      const [spawnX,,spawnZ]=p.localSpawn,width=PUBLIC_PORTAL_WIDTHS[p.id];
+      if(!Number.isFinite(width))throw new Error(`CampusInteriors: missing public portal width for ${p.id}`);
+      const nearest=[
+        {d:Math.abs(spawnX-x0),side:'west',code:'W',fixed:x0,along:spawnZ,x:x0+.07,z:spawnZ,
+          yaw:Math.PI/2,ix:1,iz:0,vertical:true,lo:z0,hi:z1},
+        {d:Math.abs(spawnX-x1),side:'east',code:'E',fixed:x1,along:spawnZ,x:x1-.07,z:spawnZ,
+          yaw:-Math.PI/2,ix:-1,iz:0,vertical:true,lo:z0,hi:z1},
+        {d:Math.abs(spawnZ-z0),side:'south',code:'S',fixed:z0,along:spawnX,x:spawnX,z:z0+.07,
+          yaw:0,ix:0,iz:1,vertical:false,lo:x0,hi:x1},
+        {d:Math.abs(spawnZ-z1),side:'north',code:'N',fixed:z1,along:spawnX,x:spawnX,z:z1-.07,
+          yaw:Math.PI,ix:0,iz:-1,vertical:false,lo:x0,hi:x1},
+      ].sort((a,b)=>a.d-b.d)[0],opening=[nearest.along-width/2,nearest.along+width/2];
+      if(opening[0]<nearest.lo-.001||opening[1]>nearest.hi+.001)
+        throw new Error(`CampusInteriors: public portal ${p.id} exceeds the ${nearest.side} shell`);
+      return Object.freeze({...nearest,portal:p,width,height:PUBLIC_PORTAL_HEIGHT,opening:Object.freeze(opening)});
+    };
+    const portalGeometries=portals.map(portalGeometry);
+    const shellSides=[
+      {side:'south',code:'S',fixed:z0,trimFixed:z0+.03,yaw:0,vertical:false,lo:x0,hi:x1,camera:true},
+      {side:'north',code:'N',fixed:z1,trimFixed:z1-.03,yaw:Math.PI,vertical:false,lo:x0,hi:x1,camera:true},
+      {side:'west',code:'W',fixed:x0,trimFixed:x0+.03,yaw:Math.PI/2,vertical:true,lo:z0,hi:z1,camera:true},
+      {side:'east',code:'E',fixed:x1,trimFixed:x1-.03,yaw:-Math.PI/2,vertical:true,lo:z0,hi:z1,camera:true},
+    ];
+    const mergedOpenings=side=>{
+      const source=portalGeometries.filter(g=>g.side===side.side).map(g=>[...g.opening])
+        .sort((a,b)=>a[0]-b[0]),merged=[];
+      for(const interval of source){const last=merged.at(-1);
+        if(last&&interval[0]<=last[1]+.001)last[1]=Math.max(last[1],interval[1]);
+        else merged.push(interval);
+      }
+      return merged;
+    };
+    const closedShellRuns=side=>{const runs=[],openings=mergedOpenings(side);let cursor=side.lo;
+      for(const [a,b] of openings){if(a>cursor+.001)runs.push([cursor,a]);cursor=Math.max(cursor,b);}
+      if(cursor<side.hi-.001)runs.push([cursor,side.hi]);return runs;
+    };
+
     // Base deck, ceiling and exterior envelope.  Room/circulation finish patches are laid a few
     // millimetres above the base, so the complete plate remains walkable even in service gaps.
     flat(CX,0,CZ,x1-x0,z1-z0,C0('M-TERRAZZO'),opts('M-TERRAZZO',{tag:`${building.id}/F${floor.level}/FLOOR`}));
     B.props.push({mesh:'quad',color:C0('M-WALL-WHITE'),mode:1,alpha:1,nocut:true,
       m:M.mul(M.trans(CX,H,CZ),M.mul(M.rotZ(Math.PI),M.scale(x1-x0,1,z1-z0)))});
-    for (const [x,y,z,w,h,yaw] of [[CX,H/2,z1,x1-x0,H,Math.PI],[x0,H/2,CZ,z1-z0,H,Math.PI/2],
-      [x1,H/2,CZ,z1-z0,H,-Math.PI/2],[CX,H/2,z0,x1-x0,H,0]])
-      wall(x,y,z,w,h,yaw,C0('M-WALL-WARM'),opts('M-WALL-WARM',{nocut:true}));
     const edge=.16;
-    solid(x0-edge,x0+edge,z0-edge,z1+edge); solid(x1-edge,x1+edge,z0-edge,z1+edge);
-    solid(x0-edge,x1+edge,z0-edge,z0+edge); solid(x0-edge,x1+edge,z1-edge,z1+edge);
-    blocker(x0-edge,x0+edge,z0-edge,z1+edge,H); blocker(x1-edge,x1+edge,z0-edge,z1+edge,H);
-    // A continuous skirting, ceiling reveal and low exterior-wall datum give every floor a
-    // finished architectural shell rather than four unarticulated boxes.  The accent follows the
-    // building identity but stays shallow and non-colliding.
-    for(const [tag,x,z,w,d] of [[`${building.id}/SHELL/S`,CX,z0+.03,x1-x0-.2,.07],
-      [`${building.id}/SHELL/N`,CX,z1-.03,x1-x0-.2,.07],
-      [`${building.id}/SHELL/W`,x0+.03,CZ,.07,z1-z0-.2],
-      [`${building.id}/SHELL/E`,x1-.03,CZ,.07,z1-z0-.2]]){
-      prop(`${tag}/BASE`,x,.075,z,w,.15,d,accent);
-      prop(`${tag}/COVE`,x,H-.09,z,w,.10,d,'M-OAK-DARK');
+    for(const side of shellSides){
+      const runs=closedShellRuns(side);
+      for(let index=0;index<runs.length;index++){
+        const [a,b]=runs[index],mid=(a+b)/2,len=b-a,metadata={shell:true,shellSide:side.side,
+          shellPart:'run',shellSpan:[a,b]};
+        wall(side.vertical?side.fixed:mid,H/2,side.vertical?mid:side.fixed,len,H,side.yaw,
+          C0('M-WALL-WARM'),opts('M-WALL-WARM',{tag:`${building.id}/SHELL/${side.code}/WALL-${index}`,
+            nocut:true,...metadata,shellBottom:0,shellTop:H}));
+        const body=side.vertical?solid(side.fixed-edge,side.fixed+edge,a,b):
+          solid(a,b,side.fixed-edge,side.fixed+edge);
+        Object.assign(body,metadata);
+        if(side.camera){const camera=side.vertical?blocker(side.fixed-edge,side.fixed+edge,a,b,H):
+          blocker(a,b,side.fixed-edge,side.fixed+edge,H);
+          Object.assign(camera,metadata);
+        }
+        // Keep the old 100 mm corner relief, but cut the skirting at the exact same aperture as
+        // the structural run. Nothing opaque is allowed to bridge the bottom of the glass.
+        const ta=Math.max(a,side.lo+.10),tb=Math.min(b,side.hi-.10);
+        if(tb>ta+.001){const tm=(ta+tb)/2,tl=tb-ta;
+          prop(`${building.id}/SHELL/${side.code}/BASE-${index}`,side.vertical?side.trimFixed:tm,.075,
+            side.vertical?tm:side.trimFixed,side.vertical?.07:tl,.15,side.vertical?tl:.07,accent,
+            {shell:true,shellSide:side.side,shellPart:'base',shellSpan:[ta,tb]});
+        }
+      }
+      // The reveal remains above the portal, where it cannot cover the opening.
+      const coveMid=(side.lo+side.hi)/2,coveLength=side.hi-side.lo-.20;
+      prop(`${building.id}/SHELL/${side.code}/COVE`,side.vertical?side.trimFixed:coveMid,H-.09,
+        side.vertical?coveMid:side.trimFixed,side.vertical?.07:coveLength,.10,
+        side.vertical?coveLength:.07,'M-OAK-DARK',{shell:true,shellSide:side.side,shellPart:'cove'});
+    }
+    // A portal removes only the occupied opening height. Its authored lintel closes the shell
+    // above, while movement is stopped later by the real glazed boundary rather than a hidden
+    // full-height wall body.
+    for(const g of portalGeometries){
+      const headHeight=H-g.height;if(headHeight<=.001)continue;
+      wall(g.vertical?g.fixed:g.along,g.height+headHeight/2,g.vertical?g.along:g.fixed,g.width,
+        headHeight,g.yaw,C0('M-WALL-WARM'),opts('M-WALL-WARM',{tag:`${g.portal.id}/PORTAL-HEAD`,
+          nocut:true,shell:true,shellSide:g.side,shellPart:'head',shellSpan:[...g.opening],
+          shellBottom:g.height,shellTop:H,portalId:g.portal.id}));
     }
 
     const floorPatch = (bounds,materialId,tag) => {
@@ -190,6 +358,13 @@ const CampusInteriors = (() => {
       physicalDoorGroups.get(doorKey).push(candidateDoor);
     }
     for(const [doorKey,doors] of physicalDoorGroups)renderDoorByPhysicalKey.set(doorKey,doors[0]);
+    const publicPortalOwningDoor=door=>{
+      if(door.portal!==true)return null;
+      const vertical=door.side==='west'||door.side==='east',fixed=vertical?door.at[0]:door.at[2],
+        along=vertical?door.at[2]:door.at[0];
+      return portalGeometries.find(g=>g.side===door.side&&Math.abs(g.fixed-fixed)<=.03&&
+        Math.abs(g.along-along)<=.03&&Math.abs(g.width-(door.width||.9))<=.03)||null;
+    };
     function partitionRun(room,side) {
       const [a,b,c,d]=room.bounds,vertical=side==='east'||side==='west';
       const fixed=vertical?(side==='west'?a:b):(side==='south'?c:d);
@@ -240,6 +415,10 @@ const CampusInteriors = (() => {
       for(const door of (room.doors||[]).filter(q=>q.side===side)){
         const doorKey=physicalDoorKey(door);
         if(renderDoorByPhysicalKey.get(doorKey)!==door||renderedPhysicalDoorKeys.has(doorKey))continue;
+        // A `portal:true` room record owns the partition cut only. When its exact boundary is
+        // already served by a constructed public portal, rendering this source alias would put a
+        // second timber leaf, frame and threshold through the glazed entrance assembly.
+        if(publicPortalOwningDoor(door))continue;
         renderedPhysicalDoorKeys.add(doorKey);
         const [dx,,dz]=door.at,wallYaw=vertical?Math.PI/2:0,openAngle=50*Math.PI/180,
           renderedOpenAngle=door.restAngleDegrees===undefined?openAngle:door.restAngleDegrees*Math.PI/180,
@@ -267,7 +446,7 @@ const CampusInteriors = (() => {
           prop(`${door.id}/FRAME-T`,dx,2.13,dz,door.width+post*2,.10,.13,frameMat);
         }
         if(openPocket){
-          // These authored studio/training thresholds are honest permanently-open pocket doors:
+          // These authored studio/training and staffed-service thresholds are honest open pocket doors:
           // the panel is fully recessed into its wall pocket, while the head track and recessed
           // pocket liner remain visible construction details. This is opt-in blueprint semantics,
           // never a capture-only suppression of an ordinary hinged leaf.
@@ -325,16 +504,35 @@ const CampusInteriors = (() => {
       return fallback();
     }
     function renderTable(f,w,h,d,material=f.material) {
-      const y=f.at[1]-base;
-      localBox(f,0,y+h-.055,0,w,.11,d,material,{round:Math.min(.07,d*.10),bevel:.018});
-      localBox(f,0,y+h-.15,0,w*.88,.15,d*.74,material,{round:.028,bevel:.014});
-      for(const dx of [-w*.42,w*.42])for(const dz of [-d*.36,d*.36])
-        localBox(f,dx,y+(h-.14)/2,dz,.052,h-.14,.052,'M-STEEL-DARK',{round:.012});
-      localBox(f,0,y+.055,0,w*.78,.055,d*.70,'M-STEEL-DARK',{round:.018});
+      const y=f.at[1]-base,access=f.accessible?{...f,id:`${f.id}/ACCESS-KNEE`}:f;
+      if(f.accessible)
+        localBox(f,0,y+h-.02,0,w,.04,d,material,{round:Math.min(.035,d*.07),bevel:.010});
+      else
+        localBox(f,0,y+h-.055,0,w,.11,d,material,{round:Math.min(.07,d*.10),bevel:.018});
+      // Accessible tables stay genuinely open below the work surface. Ordinary tables retain
+      // the deep apron and low frame; the accessible variant has a thin top and perimeter legs,
+      // leaving at least h-.04 metres of honest knee height instead of a decorative label.
+      if(!f.accessible)
+        localBox(f,0,y+h-.15,0,w*.88,.15,d*.74,material,{round:.028,bevel:.014});
+      const leg=f.accessible?Math.min(.045,w*.05,d*.08):.052,
+        legX=f.accessible?w/2-leg/2:w*.42,legZ=f.accessible?d/2-leg/2:d*.36,
+        legH=f.accessible?h-.04:h-.14,positions=f.accessible?
+          accessibleTableLayout(f,w,d).positions.map(([,dx,dz])=>[dx,dz]):
+          [[-legX,-legZ],[-legX,legZ],[legX,-legZ],[legX,legZ]];
+      for(const [dx,dz] of positions){
+        if(f.accessible){
+          const foot=.018,columnH=legH-foot;
+          localBox(access,dx,y+foot+columnH/2,dz,leg,columnH,leg,'M-STEEL-DARK',{round:.010});
+          localBox(access,dx,y+foot/2,dz,leg,foot,leg,'M-STAINLESS',{round:.006});
+        } else localBox(access,dx,y+legH/2,dz,leg,legH,leg,'M-STEEL-DARK',{round:.010});
+      }
+      if(!f.accessible)localBox(f,0,y+.055,0,w*.78,.055,d*.70,'M-STEEL-DARK',{round:.018});
     }
     function renderSideTable(f,w,h,d) {
       const y=f.at[1]-base;
       renderTable(f,w,h,d,f.material);
+      // The accessible variant is an open knee-clear return, not the ordinary closed drawer box.
+      if(f.accessible)return;
       localBox(f,0,y+h*.58,0,w*.72,h*.34,d*.70,'M-OAK-DARK',{round:.025,bevel:.012});
       localBox(f,0,y+h*.62,-d*.37,w*.58,h*.18,.035,f.material,{round:.018,bevel:.008});
       localBox(f,w*.23,y+h*.62,-d*.40,.035,.035,.025,'M-BRASS',{round:.010});
@@ -347,8 +545,15 @@ const CampusInteriors = (() => {
     function renderCompositeTable(f,w,h,d,reading=false) {
       const top={...f,at:[...f.at]},topW=w*(reading?.72:.70),topD=d*(reading?.46:.50);
       renderTable(top,topW,h,topD,f.material);
-      const chairW=Math.min(.42,w*.24),chairD=Math.min(.42,d*.31),x=w*.27,z=d*.30;
+      if(f.accessible&&reading&&f.wheelchairSide!=='north'&&f.wheelchairSide!=='south')
+        throw new Error(`CampusInteriors: ${f.id} accessible reading table requires wheelchairSide north or south`);
+      const chairW=Math.min(.42,w*.24),chairD=Math.min(.42,d*.31),x=w*(f.accessible&&reading?.38:.27),z=d*.30,
+        baySign=f.wheelchairSide==='north'?1:-1;
       for(const [dx,dz,yaw] of [[-x,-z,0],[x,-z,0],[-x,z,Math.PI],[x,z,Math.PI]]){
+        // Preserve the authored north/south wheelchair position. The remaining chair on that
+        // side moves outward, keeping the complete central 0.90 m bay clear rather than merely
+        // deleting whichever chair happened to be authored first.
+        if(f.accessible&&reading&&Math.sign(dz)===baySign&&dx>0)continue;
         const q={...f,id:`${f.id}/CHAIR/${dx}/${dz}`,at:[...f.at],yaw:(f.yaw||0)+yaw};
         [q.at[0],q.at[2]]=rotated(f.at[0],f.at[2],dx,dz,f.yaw||0);
         renderChair(q,chairW,reading?.82:.76,chairD,reading?'M-FABRIC-BLUE':'M-WALL-GREEN');
@@ -390,9 +595,11 @@ const CampusInteriors = (() => {
         localBox(f,screenW*.29,y+h+.25,d*.179,screenW*.18,.11,.010,'M-WALL-GREEN',{round:.008,glow:.09});
         localBox(f,0,y+h+.09,d*.02,Math.min(.48,w*.48),.025,d*.20,'M-WALL-WHITE',{round:.012});
         localBox(f,w*.30,y+h+.075,d*.02,.08,.035,.12,'M-STEEL-DARK',{round:.020});
-        const chair={...f,id:`${f.id}/TASK-CHAIR`,at:[...f.at]};
-        [chair.at[0],chair.at[2]]=rotated(f.at[0],f.at[2],0,-d*.24,f.yaw||0);
-        renderChair(chair,Math.min(.42,w*.42),.82,Math.min(.36,d*.52),'M-FABRIC-BLUE');
+        if(!f.accessible){
+          const chair={...f,id:`${f.id}/TASK-CHAIR`,at:[...f.at]};
+          [chair.at[0],chair.at[2]]=rotated(f.at[0],f.at[2],0,-d*.24,f.yaw||0);
+          renderChair(chair,Math.min(.42,w*.42),.82,Math.min(.36,d*.52),'M-FABRIC-BLUE');
+        }
         if(f.prefab==='PF-LANGUAGE-DESK'){
           localBox(f,-w*.46,y+h+.25,d*.10,.035,.48,d*.46,'M-ACOUSTIC',{round:.012});
           localBox(f,w*.46,y+h+.25,d*.10,.035,.48,d*.46,'M-ACOUSTIC',{round:.012});
@@ -497,6 +704,31 @@ const CampusInteriors = (() => {
 
     function renderCounter(f,w,h,d,clinical=false) {
       const y=f.at[1]-base,body=clinical?'M-CLINIC':f.material;
+      if(f.accessible){
+        const low=Math.min(.76,h),returnW=Math.min(.90,w),wing=(w-returnW)/2,
+          access={...f,id:`${f.id}/ACCESS-RETURN`},support=.045,knee=low-.06;
+        // Every accessible counter has a measured, centred 0.90 m low return. A counter that is
+        // only 0.90 m wide is wholly lowered; wider counters keep symmetric standing modules so
+        // the authored approach cannot accidentally land against a mirrored high cabinet.
+        if(wing>.04)for(const sign of [-1,1]){
+          const cx=sign*(returnW/2+wing/2),bodyW=Math.max(.04,wing-.035);
+          localBox(f,cx,y+h*.40,0,bodyW,h*.72,d*.84,body,{round:.022,bevel:.012});
+          localBox(f,cx,y+.055,0,bodyW,.11,d*.92,'M-STEEL-DARK',{round:.016});
+          localBox(f,cx,y+h-.045,0,wing,.09,d,f.material,{round:.035,bevel:.016});
+          localBox(f,cx,y+h*.46,-d*.445,bodyW*.92,h*.43,.035,
+            clinical?'M-WALL-GREEN':accent,{round:.015});
+        }
+        localBox(access,0,y+low-.03,0,returnW,.06,d*.92,f.material,{round:.030,bevel:.014});
+        for(const dx of [-returnW/2+support/2,returnW/2-support/2])
+          localBox(access,dx,y+knee/2,d*.34,support,knee,support,'M-STEEL-DARK',{round:.010});
+        localBox(f,wing>.04?-returnW/2-wing/2:0,y+(wing>.04?h:low)+.17,.02,
+          Math.min(.38,Math.max(.30,wing*.72||.30)),.28,.055,'M-SCREEN',{round:.026,glow:.13});
+        localBox(access,0,y+low+.025,-d*.08,Math.min(.44,returnW*.52),.025,d*.28,
+          'M-WALL-WHITE',{round:.010});
+        if(wing>.04&&/SERVICE|PHARMACY|CIRC/.test(f.prefab))
+          localBox(f,returnW/2+wing*.08,y+h+.38,0,.035,.68,d*.72,'M-GLASS',{alpha:.34});
+        return;
+      }
       localBox(f,-w*.18,y+h*.40,0,w*.60,h*.72,d*.84,body,{round:.025,bevel:.014});
       localBox(f,w*.40,y+h*.32,0,w*.16,h*.58,d*.84,body,{round:.020,bevel:.012});
       localBox(f,0,y+.055,0,w*.94,.11,d*.92,'M-STEEL-DARK',{round:.018});
@@ -687,8 +919,10 @@ const CampusInteriors = (() => {
     function renderFixture(f) {
       const p=prefab(f.prefab),size=f.size||p.size,[w,h,d]=size,y=f.at[1]-base;
       const physicalFloor=p.anchor==='floor'&&h>.20&&!nonBodyFloorPrefabs.has(f.prefab);
-      if(f.collision!=='none'&&(collide.test(f.prefab)||physicalFloor)) bodySolid(f,w*.9,d*.9);
-      if(p.anchor==='floor'&&f.collision!=='none'&&h>.20){
+      if(f.walkBlocker===true)bodySolid(f,w,d);
+      else if(f.accessible&&(f.collision!=='none'||f.supportCollision===true)&&accessibleSurfaceSolids(f,w,h,d)){}
+      else if(f.collision!=='none'&&(collide.test(f.prefab)||physicalFloor)) bodySolid(f,w*.9,d*.9);
+      if(p.anchor==='floor'&&(f.collision!=='none'||f.supportCollision===true)&&h>.20){
         const c=Math.abs(Math.cos(f.yaw||0)),s=Math.abs(Math.sin(f.yaw||0));
         shade(f.at[0],f.at[2],(c*w+s*d)*.92,(s*w+c*d)*.92,.16,.022);
       }
@@ -841,7 +1075,12 @@ const CampusInteriors = (() => {
           localBox(f,0,y+h*.90,-d*.48,w,.20,.07,'M-STAINLESS');
           localBox(f,-w*.33,y+h*.48,-d*.49,w*.27,h*.78,.035,'M-STAINLESS');
           localBox(f,w*.33,y+h*.48,-d*.49,w*.27,h*.78,.035,'M-STAINLESS');
-          localBox(f,w*.46,y+h*.55,-d*.53,.12,.42,.04,'M-SCREEN',{glow:.15}); break;
+          localBox(f,w*.46,y+h*.55,-d*.53,.12,.42,.04,'M-SCREEN',{glow:.15});
+          // A visible internal handrail earns the catalogue's accessible-lift claim instead of
+          // leaving the car as doors, panels and a control button only.
+          localBox({...f,id:`${f.id}/ACCESS-HANDRAIL`},0,y+h*.38,d*.41,w*.62,.055,.055,
+            'M-STAINLESS',{round:.018,gloss:.52});
+          break;
         case 'PF-SERVING-COUNTER':
           renderCounter(f,w,h,d,false);
           localBox(f,0,y+h+.34,0,w*.92,.62,.035,'M-GLASS',{alpha:.30});
@@ -956,14 +1195,30 @@ const CampusInteriors = (() => {
         case 'PF-BASIN': case 'PF-HANDWASH': case 'PF-LAB-SINK':
           {
             const lab=f.prefab==='PF-LAB-SINK',hand=f.prefab==='PF-HANDWASH',ceramic=lab?'M-STAINLESS':'M-CERAMIC';
-            localBox(f,0,y+h*.53,d*.13,w*(lab ? .98 : .34),h*(lab ? .58 : .48),d*(lab ? .88 : .36),lab?'M-STEEL-DARK':'M-WALL-WHITE',{round:.035,bevel:.014});
-            localBall(f,0,y+h*.68,-d*.04,w*(lab ? .42 : .45),h*.115,d*(lab ? .38 : .43),ceramic,{gloss:.42});
-            localBall(f,0,y+h*.70,-d*.04,w*(lab ? .29 : .32),h*.075,d*(lab ? .27 : .30),'M-STEEL-DARK',{gloss:.38});
-            localCyl(f,0,y+h*.72,-d*.04,.022,.018,'M-STAINLESS',{gloss:.55});
-            localCyl(f,0,y+h*.87,d*.25,.026,h*.30,'M-STAINLESS',{gloss:.52});
-            localBox(f,0,y+h*.99,d*.12,.052,.052,d*.30,'M-STAINLESS',{round:.016});
-            localBox(f,hand?w*.28:-w*.30,y+h*.91,d*.39,w*.16,h*.18,d*.08,hand?'M-WALL-WHITE':'M-LAB-BLUE',{round:.018});
-            if(lab)localBox(f,w*.36,y+h*.72,0,w*.18,.035,d*.72,'M-STAINLESS',{round:.014});
+            if(f.accessible&&!lab){
+              const rim=Math.min(.80,h-.05),bowlH=Math.min(.10,Math.max(.06,rim-.68));
+              // A shallow wall-hung bowl keeps its lowest point at or above 0.68 m. Only the
+              // narrow rear mounting bracket reaches below the bowl, and both the visible bracket
+              // and runtime collider are wall-backed rather than occupying the approach bay.
+              localBox({...f,id:`${f.id}/ACCESS-KNEE`},0,y+(rim+.68)/2,d*.40,w*.62,
+                rim-.68,d*.12,'M-STAINLESS',{round:.018,bevel:.010});
+              localBall(f,0,y+rim-bowlH/2,-d*.04,w*.45,bowlH/2,d*.43,ceramic,{gloss:.42});
+              localBall(f,0,y+rim-.012,-d*.04,w*.31,.018,d*.29,'M-STEEL-DARK',{gloss:.38});
+              localCyl(f,0,y+rim+.006,-d*.04,.018,.012,'M-STAINLESS',{gloss:.55});
+              localCyl(f,0,y+rim+.11,d*.25,.026,.22,'M-STAINLESS',{gloss:.52});
+              localBox(f,0,y+rim+.21,d*.12,.052,.052,d*.30,'M-STAINLESS',{round:.016});
+              localBox(f,hand?w*.28:-w*.30,y+rim+.14,d*.39,w*.16,.16,d*.08,
+                hand?'M-WALL-WHITE':'M-LAB-BLUE',{round:.018});
+            } else {
+              localBox(f,0,y+h*.53,d*.13,w*(lab ? .98 : .34),h*(lab ? .58 : .48),d*(lab ? .88 : .36),lab?'M-STEEL-DARK':'M-WALL-WHITE',{round:.035,bevel:.014});
+              localBall(f,0,y+h*.68,-d*.04,w*(lab ? .42 : .45),h*.115,d*(lab ? .38 : .43),ceramic,{gloss:.42});
+              localBall(f,0,y+h*.70,-d*.04,w*(lab ? .29 : .32),h*.075,d*(lab ? .27 : .30),'M-STEEL-DARK',{gloss:.38});
+              localCyl(f,0,y+h*.72,-d*.04,.022,.018,'M-STAINLESS',{gloss:.55});
+              localCyl(f,0,y+h*.87,d*.25,.026,h*.30,'M-STAINLESS',{gloss:.52});
+              localBox(f,0,y+h*.99,d*.12,.052,.052,d*.30,'M-STAINLESS',{round:.016});
+              localBox(f,hand?w*.28:-w*.30,y+h*.91,d*.39,w*.16,h*.18,d*.08,hand?'M-WALL-WHITE':'M-LAB-BLUE',{round:.018});
+              if(lab)localBox(f,w*.36,y+h*.72,0,w*.18,.035,d*.72,'M-STAINLESS',{round:.014});
+            }
           }
           break;
         case 'PF-SHOWER':
@@ -975,7 +1230,16 @@ const CampusInteriors = (() => {
           localCyl(f,-w*.34,y+h*.87,d*.06,w*.13,.035,'M-STAINLESS',{gloss:.46});
           localBox(f,-w*.34,y+h*.49,d*.38,w*.20,.16,.035,'M-STEEL-DARK',{round:.030});
           localCyl(f,0,y+.065,0,w*.10,.018,'M-STEEL-DARK',{gloss:.32});
-          localBox(f,w*.34,y+h*.68,-d*.42,.06,.12,.06,'M-BRASS',{round:.018}); break;
+          localBox(f,w*.34,y+h*.68,-d*.42,.06,.12,.06,'M-BRASS',{round:.018});
+          if(f.rollIn){
+            // The accessible variant remains open at the front and visibly earns its metadata:
+            // a wall-mounted folding seat, continuous support rail and low reachable controls.
+            localBox(f,-w*.20,y+.52,d*.36,w*.42,.08,d*.32,'M-CLINIC',{round:.028,rx:-.08});
+            localBox(f,-w*.43,y+.72,d*.04,.04,.04,d*.66,'M-SAFETY-YELLOW',{round:.014});
+            localBox(f,-w*.43,y+.54,d*.34,.04,.36,.04,'M-SAFETY-YELLOW',{round:.014});
+            localBox(f,-w*.30,y+.82,d*.42,w*.22,.30,.035,'M-STAINLESS',{round:.024});
+          }
+          break;
         case 'PF-PROJECTOR':
           localBox(f,0,y+.22,0,.035,.44,.035,'M-STEEL-DARK');
           localBox(f,0,y,0,w,h,d,'M-WALL-WHITE');
@@ -1187,33 +1451,53 @@ const CampusInteriors = (() => {
 
     const clearAt=(x,z,margin=.34)=>!B.solids.some(s=>!s.open&&x>s.x0-margin&&x<s.x1+margin&&z>s.z0-margin&&z<s.z1+margin);
 
-    // Main building door(s).  Ground-floor public portals retain their distinct campus return
+    // Main building door(s). Ground-floor public portals retain their distinct campus return
     // points; B07 consequently has separate student-centre and clinic doors in one shared scene.
-    const portals=building.portals.filter(p=>p.localSpawn&&floor.level===1);
-    for(const p of portals){
-      const [spawnX,,spawnZ]=p.localSpawn;
-      const nearest=[
-        {d:Math.abs(spawnX-x0),x:x0+.07,z:spawnZ,yaw:Math.PI/2,ix:1,iz:0},
-        {d:Math.abs(spawnX-x1),x:x1-.07,z:spawnZ,yaw:Math.PI/2,ix:-1,iz:0},
-        {d:Math.abs(spawnZ-z0),x:spawnX,z:z0+.07,yaw:0,ix:0,iz:1},
-        {d:Math.abs(spawnZ-z1),x:spawnX,z:z1-.07,yaw:0,ix:0,iz:-1},
-      ].sort((a,b)=>a.d-b.d)[0];
-      prop(`${p.id}/DOOR`,nearest.x,1.08,nearest.z,1.35,2.16,.08,'M-GLASS',
-        {ry:nearest.yaw,alpha:.42,doorLeaf:true});
-      const vertical=Math.abs(nearest.yaw)>1,half=.72;
-      if(vertical){
-        prop(`${p.id}/FRAME-A`,nearest.x,1.10,nearest.z-half,.15,2.20,.12,'M-STEEL-DARK');
-        prop(`${p.id}/FRAME-B`,nearest.x,1.10,nearest.z+half,.15,2.20,.12,'M-STEEL-DARK');
-        prop(`${p.id}/FRAME-T`,nearest.x,2.17,nearest.z,.15,.14,1.56,accent);
-        prop(`${p.id}/PULL-A`,nearest.x-.07,1.12,nearest.z-.22,.05,.70,.035,'M-BRASS');
-        prop(`${p.id}/PULL-B`,nearest.x-.07,1.12,nearest.z+.22,.05,.70,.035,'M-BRASS');
-      } else {
-        prop(`${p.id}/FRAME-A`,nearest.x-half,1.10,nearest.z,.12,2.20,.15,'M-STEEL-DARK');
-        prop(`${p.id}/FRAME-B`,nearest.x+half,1.10,nearest.z,.12,2.20,.15,'M-STEEL-DARK');
-        prop(`${p.id}/FRAME-T`,nearest.x,2.17,nearest.z,1.56,.14,.15,accent);
-        prop(`${p.id}/PULL-A`,nearest.x-.22,1.12,nearest.z-.07,.035,.70,.05,'M-BRASS');
-        prop(`${p.id}/PULL-B`,nearest.x+.22,1.12,nearest.z-.07,.035,.70,.05,'M-BRASS');
+    // Wide apertures are a central usable leaf plus real sidelights, never one stretched panel.
+    for(const nearest of portalGeometries){
+      const p=nearest.portal,jamb=.10,glassSpan=nearest.width-jamb*2,
+        leafWidth=Math.min(1.35,glassSpan),sideSlot=(glassSpan-leafWidth)/2,mullion=.055,
+        sidelightWidth=sideSlot>mullion+.08?sideSlot-mullion:0;
+      const portalPart=(tag,along,y,width,height,depth,materialId,o={},normalOffset=0)=>nearest.vertical?
+        prop(tag,nearest.x+nearest.ix*normalOffset,y,along,depth,height,width,materialId,o):
+        prop(tag,along,y,nearest.z+nearest.iz*normalOffset,width,height,depth,materialId,o);
+      portalPart(`${p.id}/DOOR`,nearest.along,1.08,leafWidth,2.16,.08,'M-GLASS',
+        {alpha:.54,doorLeaf:true,portalId:p.id,portalPart:'leaf',portalOpeningWidth:nearest.width});
+      if(sidelightWidth){
+        for(const [suffix,sign] of [['A',-1],['B',1]]){
+          const mullionAt=nearest.along+sign*(leafWidth/2+mullion/2),
+            sidelightAt=nearest.along+sign*(leafWidth/2+mullion+sidelightWidth/2);
+          portalPart(`${p.id}/MULLION-${suffix}`,mullionAt,1.08,mullion,2.16,.10,'M-STEEL-DARK',
+            {portalId:p.id,portalPart:'mullion'});
+          portalPart(`${p.id}/SIDELIGHT-${suffix}`,sidelightAt,1.08,sidelightWidth,2.16,.07,'M-GLASS',
+            {alpha:.54,portalId:p.id,portalPart:'sidelight'});
+        }
       }
+      portalPart(`${p.id}/FRAME-A`,nearest.opening[0]+jamb/2,1.10,jamb,2.20,.12,'M-STEEL-DARK',
+        {portalId:p.id,portalPart:'jamb'});
+      portalPart(`${p.id}/FRAME-B`,nearest.opening[1]-jamb/2,1.10,jamb,2.20,.12,'M-STEEL-DARK',
+        {portalId:p.id,portalPart:'jamb'});
+      portalPart(`${p.id}/FRAME-T`,nearest.along,2.17,nearest.width,.14,.14,accent,
+        {portalId:p.id,portalPart:'head'});
+      const pullOffset=Math.min(.22,leafWidth*.25);
+      portalPart(`${p.id}/PULL-A`,nearest.along-pullOffset,1.12,.05,.70,.035,'M-BRASS',
+        {portalId:p.id,portalPart:'pull'},.07);
+      portalPart(`${p.id}/PULL-B`,nearest.along+pullOffset,1.12,.05,.70,.035,'M-BRASS',
+        {portalId:p.id,portalPart:'pull'},.07);
+
+      // The closed glazed assembly is a real scene boundary. It blocks the body and camera at
+      // the glass itself; it is tagged transparent so the review occlusion proof does not mistake
+      // a collision proxy for an opaque wall. The narrow camera pad preserves the authored orbit.
+      const halfDepth=.04,boundary=nearest.vertical?
+        solid(nearest.x-halfDepth,nearest.x+halfDepth,nearest.opening[0],nearest.opening[1]):
+        solid(nearest.opening[0],nearest.opening[1],nearest.z-halfDepth,nearest.z+halfDepth),
+        cameraBoundary=nearest.vertical?
+          blocker(nearest.x-halfDepth,nearest.x+halfDepth,nearest.opening[0],nearest.opening[1],H,{pad:.05}):
+          blocker(nearest.opening[0],nearest.opening[1],nearest.z-halfDepth,nearest.z+halfDepth,H,{pad:.05});
+      Object.assign(boundary,{portalBoundary:true,transparent:true,portalId:p.id,shellSide:nearest.side,
+        portalWidth:nearest.width});
+      Object.assign(cameraBoundary,{portalBoundary:true,transparent:true,portalId:p.id,shellSide:nearest.side,
+        portalWidth:nearest.width});
       // The camera-safe arrival can be several metres into a large lobby. It is not the place
       // from which the visible front door should be usable: B06 consequently put the door label
       // at its east wall but left its interaction hot spot 5.03 m behind it. Pick the first
@@ -1227,6 +1511,7 @@ const CampusInteriors = (() => {
       const t=thing('门',nearest.x,1.15,nearest.z,'从这里回到校园。','This door returns to the campus.','门 is a door; 出门 is to step outside.',
         {focus:[doorFocus.x,doorFocus.z],reach:2.0});
       t.exit={place:'campus',at:{x:p.campusReturn[0],z:p.campusReturn[1],yaw:p.campusReturn[2]}};
+      t.portalId=p.id;t.portalWidth=nearest.width;
     }
 
     const navObjects=allObjects(floor).filter(o=>o.prefab==='PF-LIFT'||o.prefab==='PF-STAIR');
@@ -1352,6 +1637,9 @@ const CampusInteriors = (() => {
       RX,RZ,H,OUT:publicPortal?{x:publicPortal.campusReturn[0],z:publicPortal.campusReturn[1],yaw:publicPortal.campusReturn[2]}:null,
       setNight,tick(){},label:`${building.label} · ${floor.level}层`,labelK:`${building.id} · floor ${floor.level}`,
       indoor:true,cutaway:true,near:.05,far:Math.max(42,Math.hypot(x1-x0,z1-z0)*2.1),expose:1,
+      // The shared walls-down camera reads this only while SET.wallsOff is active. Colliders and
+      // the full-height shell are untouched; only the flagged upper partition pieces disappear.
+      dollHouse:{far:Math.min(24,Math.max(8,Math.hypot(x1-x0,z1-z0)*.72)),pitch:1.45},
       spawn,zones:movementZones,level:()=>floor.level,buildingId:building.id,blueprintFloor:floor,
       roomAt(x,z){return zones.find(q=>x>=q.x0&&x<=q.x1&&z>=q.z0&&z<=q.z1)||zones[0];},
     });

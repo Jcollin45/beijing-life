@@ -533,8 +533,10 @@ function buildB01() {
   function plannedDoorSideRoute(id,e,b,accessible=false) {
     const x=b[1]-1.15,out=[fixture(`${id}/ROUTE`,'2.30 m door-side circulation route','PF-WALL-RUN',
       [x,e+.012,-1.0],'M-VINYL','clear route from corridor door to rear of room',{size:[1.12,.02,7.45],collision:'none',clearWidth:2.30})];
-    if(accessible)out.push(fixture(`${id}/WHEELCHAIR-BAY`,'wheelchair teaching bay marker','PF-WALL-RUN',
-      [x,e+.016,-.15],'M-FABRIC-BLUE','1.50 m turning and companion-seat bay',{size:[1.35,.022,1.50],collision:'none',turningDiameter:1.50}));
+    if(accessible)for(const [key,z] of [['WHEELCHAIR-BAY',-.08],['WHEELCHAIR-BAY-2',-1.68]])
+      out.push(fixture(`${id}/${key}`,'wheelchair teaching position','PF-WALL-RUN',
+        [x,e+.016,z],'M-FABRIC-BLUE','1.20 m wheelchair bay beside an open-leg writing table and the protected side route',
+        {size:[1.20,.022,1.20],collision:'none',accessible:true,clearBay:[1.20,1.20]}));
     return out;
   }
 
@@ -574,7 +576,17 @@ function buildB01() {
     for(const z of zs)for(const x of xs)if(!(x0<0&&x===xs[0]&&z===zs[1]))positions.push([x,z]);
     const studentSeats=positions.length*2,out=[
       ...plannedWindowWall(id,e,b,curtain),
-      ...plannedDoorSideRoute(id,e,b,accessible),
+      ...(accessible?[
+        fixture(`${id}/ROUTE`,'1.20 m door-side circulation route','PF-WALL-RUN',
+          [b[1]-.60,e+.012,-1.0],'M-VINYL','clear through-route beside, not through, the occupied wheelchair places',
+          {size:[1.20,.02,7.45],collision:'none',clearWidth:1.20}),
+        fixture(`${id}/WHEELCHAIR-BAY`,'wheelchair teaching position','PF-WALL-RUN',
+          [b[1]-1.80,e+.016,-.08],'M-FABRIC-BLUE','1.20 m wheelchair bay between its writing table and the protected through-route',
+          {size:[1.20,.022,1.20],collision:'none',accessible:true,clearBay:[1.20,1.20]}),
+        fixture(`${id}/WHEELCHAIR-BAY-2`,'wheelchair teaching position','PF-WALL-RUN',
+          [b[1]-1.80,e+.016,-1.68],'M-FABRIC-BLUE','1.20 m wheelchair bay between its writing table and the protected through-route',
+          {size:[1.20,.022,1.20],collision:'none',accessible:true,clearBay:[1.20,1.20]}),
+      ]:plannedDoorSideRoute(id,e,b,false)),
       ...plannedTeachingWall(id,e,b,{label}),
       fixture(`${id}/REFERENCE`,'slim course-reference shelf','PF-BOOKCASE',[x0+.22,e,-4.18],
         'M-OAK-DARK','shared readings and a small display of current coursework',{yaw:-PI/2,size:[.72,1.65,.32]}),
@@ -586,24 +598,36 @@ function buildB01() {
     ];
     let n=0;
     for(const [x,z] of positions){
-      const k=pad(++n);
+      const k=pad(++n),accessiblePosition=accessible&&x===xs[2]&&(z===zs[1]||z===zs[2]),
+        tableX=accessiblePosition?b[1]-3.10:x;
       out.push(
-        fixture(`${id}/TABLE${k}`,'two-person student table','PF-MEETING-TABLE',[x,e,z],
-          'M-WOOD-DESK',`${studentSeats}-seat classroom table layout`,{size:[1.40,.76,.64],yaw:0,columnAisle:.90,rowPitch:1.60}),
-        fixture(`${id}/CHAIR${k}A`,'student chair A','PF-CHAIR',[x-.36,e,z-.58],
-          'M-FABRIC-BLUE','north-facing student seat',{yaw:0,facing:'north'}),
-        fixture(`${id}/CHAIR${k}B`,'student chair B','PF-CHAIR',[x+.36,e,z-.58],
+        fixture(`${id}/TABLE${k}`,accessiblePosition?'accessible teaching table':'two-person student table','PF-MEETING-TABLE',[tableX,e,z],
+          'M-WOOD-DESK',accessiblePosition?'open-leg writing surface beside a wheelchair teaching bay':`${studentSeats}-seat classroom table layout`,
+          {size:[1.40,.76,accessiblePosition?.90:.64],yaw:0,columnAisle:.90,rowPitch:1.60,accessible:accessiblePosition,
+            openLeg:accessiblePosition?true:undefined,wheelchairSide:accessiblePosition?'east':undefined}),
+        fixture(`${id}/CHAIR${k}A`,'student chair A','PF-CHAIR',[tableX-.36,e,z-(accessiblePosition?.75:.58)],
           'M-FABRIC-BLUE','north-facing student seat',{yaw:0,facing:'north'}),
       );
+      if(!accessiblePosition)out.push(fixture(`${id}/CHAIR${k}B`,'student chair B','PF-CHAIR',[tableX+.36,e,z-.58],
+        'M-FABRIC-BLUE','north-facing student seat',{yaw:0,facing:'north'}));
     }
     return out;
   }
 
   function plannedLectureRoom(id,e,b,curtain) {
-    const x0=b[0],cx=(b[0]+b[1])/2,z1=b[3];
+    const x0=b[0],cx=(b[0]+b[1])/2,z1=b[3],routeX=b[1]-.60,bayX=b[1]-1.80,
+      tableX=bayX-1.05;
     const relX=[.84,1.46,2.08,2.70,4.48,5.10,5.72,6.34],zs=[-3.20,-1.65,-.10],out=[
       ...plannedWindowWall(id,e,b,curtain),
-      ...plannedDoorSideRoute(id,e,b,true),
+      fixture(`${id}/ROUTE`,'1.20 m door-side circulation route','PF-WALL-RUN',
+        [routeX,e+.012,-1.0],'M-VINYL','clear through-route beside, not through, the occupied wheelchair places',
+        {size:[1.20,.02,7.45],collision:'none',clearWidth:1.20}),
+      fixture(`${id}/WHEELCHAIR-BAY`,'wheelchair teaching position','PF-WALL-RUN',
+        [bayX,e+.016,-.10],'M-FABRIC-BLUE','1.20 m wheelchair bay between its writing table and the protected through-route',
+        {size:[1.20,.022,1.20],collision:'none',accessible:true,clearBay:[1.20,1.20]}),
+      fixture(`${id}/WHEELCHAIR-BAY-2`,'wheelchair teaching position','PF-WALL-RUN',
+        [bayX,e+.016,-1.65],'M-FABRIC-BLUE','1.20 m wheelchair bay between its writing table and the protected through-route',
+        {size:[1.20,.022,1.20],collision:'none',accessible:true,clearBay:[1.20,1.20]}),
       fixture(`${id}/CENTRE-AISLE`,'1.20 m lecture-room centre aisle','PF-WALL-RUN',
         [x0+3.59,e+.012,-1.65],'M-VINYL','accessible aisle between seat blocks',{size:[1.20,.02,5.35],collision:'none',clearWidth:1.20}),
       fixture(`${id}/TEACHING/BACK`,'lecture-room acoustic teaching wall','PF-WALL-RUN',[cx,e+1.66,z1-.025],
@@ -625,13 +649,20 @@ function buildB01() {
         'M-OAK','wall-mounted hooks kept above the protected side route',{yaw:PI/2,size:[1.10,.38,.12],collision:'none'}),
       ...plannedCeiling(id,e,b,[cx-2.2,cx,cx+2.2],3900),
     ];
-    // Two seats are deliberately omitted at the west stair landing; the remaining 22-seat room
-    // retains both three-row blocks and a 1.20 m centre aisle without compromising the second exit.
+    // Two seats are omitted at the west stair landing. The two eastmost seats in each accessible
+    // row are replaced by a conventional four-leg writing table and wheelchair bay, leaving a
+    // separate 1.20 m through-route along the east wall instead of sharing it with an occupied bay.
     const positions=[];
-    for(const z of zs)for(const dx of relX)if(!(dx===relX[0]&&z<=zs[1]))positions.push([dx,z]);
+    for(const z of zs)for(const dx of relX)if(!(dx===relX[0]&&z<=zs[1])&&
+      !(relX.slice(-2).includes(dx)&&(z===zs[1]||z===zs[2])))positions.push([dx,z]);
     let n=0;
     for(const [dx,z] of positions)out.push(fixture(`${id}/SEAT${pad(++n)}`,'fixed lecture seat',
-      'PF-LECTURE-SEAT',[x0+dx,e,z],'M-FABRIC-BLUE','22-seat north-facing lecture layout',{yaw:0,facing:'north',blockAisle:1.20,rowPitch:1.55}));
+      'PF-LECTURE-SEAT',[x0+dx,e,z],'M-FABRIC-BLUE','18 fixed seats plus two wheelchair writing places',{yaw:0,facing:'north',blockAisle:1.20,rowPitch:1.55}));
+    for(const [index,z] of [zs[1],zs[2]].entries())out.push(fixture(
+      `${id}/ACCESS-TABLE-${index+1}`,'wheelchair lecture writing surface','PF-MEETING-TABLE',
+      [tableX,e,z],'M-WOOD-DESK','four-support open east end aligned exactly with the adjacent wheelchair teaching bay',
+      {size:[.90,.78,.90],yaw:0,supportCollision:true,
+        accessible:true,openLeg:true,wheelchairSide:'east'}));
     return out;
   }
 
@@ -754,20 +785,26 @@ function buildB01() {
       fixture(`${id}/RUNNER`,'1.20 m preparation-room route','PF-WALL-RUN',[cx,e+.012,-1.0],
         'M-VINYL','clear materials route from corridor',{size:[1.20,.02,7.45],collision:'none',clearWidth:1.20}),
       fixture(`${id}/KIT-DEMO-L`,'supervised microscope preparation station','PF-MICROSCOPE',
-        [-1.30,e,.20],'M-STEEL-DARK',
+        [-2.35,e,-1.40],'M-STEEL-DARK',
         'complete front-facing bench, stool, microscope, specimen tray and task light composed against the solid preparation wall',
-        {yaw:0,size:[1.08,1.0,.84]}),
+        {yaw:-.25,size:[1.00,1.04,.82]}),
       fixture(`${id}/KIT-DEMO-R`,'supervised robotics preparation station','PF-ROBOTICS',
-        [1.30,e,.20],'M-LAB-BLUE',
+        [-1.20,e,-.60],'M-LAB-BLUE',
         'complete front-facing bench, controller, robot model, tool board and extraction assembly composed beside the microscope workflow',
-        {yaw:0,size:[1.08,1.0,.84]}),
-      fixture(`${id}/KIT-CADDY-L`,'microscope specimen-and-lens caddy','PF-TRAY-RACK',[-2.72,e,.20],
-        'M-LAB-BLUE','labelled specimen, lens and cleaning trays beside the microscope station',
-        {yaw:0,size:[.48,1.02,.40]}),
-      fixture(`${id}/KIT-CADDY-R`,'robotics parts-and-tool caddy','PF-TRAY-RACK',[2.72,e,.20],
-        'M-FABRIC-RED','colour-coded controller, sensor and tool trays beside the robotics station',
-        {yaw:0,size:[.48,1.02,.40]}),
-      fixture(`${id}/SHELF-L`,'west wall preparation shelf','PF-SHELF',[-3.0,e,1.62],
+        {yaw:-.25,size:[1.00,1.04,.82]}),
+      fixture(`${id}/KIT-STOOL-L`,'microscope preparation stool','PF-STOOL',[-2.35,e,-2.40],
+        'M-FABRIC-BLUE','height-adjustable operator stool aligned to the microscope eyepiece',
+        {yaw:-.25,size:[.38,.56,.38]}),
+      fixture(`${id}/KIT-STOOL-R`,'robotics preparation stool','PF-STOOL',[-1.20,e,-1.60],
+        'M-FABRIC-RED','height-adjustable operator stool aligned to the robotics controller',
+        {yaw:-.25,size:[.38,.56,.38]}),
+      fixture(`${id}/KIT-CADDY-L`,'microscope specimen-and-lens caddy','PF-TRAY-RACK',[-2.35,e+.82,-1.35],
+        'M-LAB-BLUE','compact labelled specimen, lens and cleaning trays staged directly on the microscope bench',
+        {yaw:-.25,size:[.46,.28,.32],collision:'none'}),
+      fixture(`${id}/KIT-CADDY-R`,'robotics parts-and-tool caddy','PF-TRAY-RACK',[-1.20,e+.82,-.55],
+        'M-FABRIC-RED','compact colour-coded controller, sensor and tool trays staged directly on the robotics bench',
+        {yaw:-.25,size:[.46,.28,.32],collision:'none'}),
+      fixture(`${id}/SHELF-L`,'west wall preparation shelf','PF-SHELF',[-3.0,e,-3.60],
         'M-STEEL','labelled microscope consumables stored on the solid west wall, clear of the south glazing',
         {yaw:-PI/2,size:[.72,1.72,.40]}),
       fixture(`${id}/SHELF-R`,'east wall preparation shelf','PF-SHELF',[3.0,e,1.62],
@@ -779,9 +816,12 @@ function buildB01() {
       fixture(`${id}/KIT-STATUS`,'course-kit preparation status','PF-SCREEN',[-1.86,e+1.55,b[3]-.08],
         'M-SCREEN','labelled microscope and robotics sets, collection times and readiness checks on the solid north wall',
         {yaw:0,size:[2.02,1.0,.05],text:'显微镜 · 机器人 · 待领 / 已备',collision:'none'}),
-      fixture(`${id}/SPECIMEN-LOG`,'microscope specimen workflow log','PF-SCREEN',[-1.30,e+1.72,.66],
+      fixture(`${id}/SPECIMEN-LOG`,'microscope specimen workflow log','PF-SCREEN',[-2.35,e+1.70,-.94],
         'M-SCREEN','compact batch, slide and cleaning-status display mounted directly above the microscope bench',
         {yaw:0,size:[.92,.34,.035],text:'玻片 · 批次 · 清洁',collision:'none'}),
+      fixture(`${id}/ROBOT-LOG`,'robotics controller and sensor workflow log','PF-SCREEN',[-1.20,e+1.70,-.14],
+        'M-SCREEN','compact controller, sensor and test-status display mounted directly above the robotics bench',
+        {yaw:0,size:[.92,.34,.035],text:'控制器 · 传感器 · 测试',collision:'none'}),
       ...plannedCeiling(id,e,b,[-1.65,1.65],3700),
     ];
     return out;
@@ -820,7 +860,8 @@ function buildB01() {
       fixture(`${id}/MAIN-ROUTE`,'1.20 m uninterrupted lobby route','PF-WALL-RUN',[0,e+.012,-1.0],
         'M-TERRAZZO','direct route between exterior and corridor doors',{size:[1.20,.02,7.75],collision:'none',clearWidth:1.20}),
       fixture(`${id}/RECEPTION`,'side-mounted accessible reception','PF-SERVICE-COUNTER',[2.78,e,0],
-        'M-OAK','information without blocking the main route',{yaw:PI/2,size:[2.05,1.05,.72]}),
+        'M-OAK','information without blocking the main route',
+        {yaw:PI/2,size:[2.05,1.05,.72],accessible:true,wheelchairSide:'west'}),
       fixture(`${id}/RECEPTION-CHAIR`,'reception staff chair','PF-CHAIR',[1.91,e,0],
         'M-FABRIC-BLUE','east-facing staffed service position outside the public entry route',
         {yaw:PI/2,facing:'east'}),
@@ -950,8 +991,14 @@ function buildB01() {
     ];
     if(level===4)return[
       fixture(`${prefix}/CENTRE/ARRIVAL-KIT-BACKDROP`,'microscope and robotics issue status','PF-SCREEN',
-        [-1.86,e+2.35,2.89],'M-SCREEN','face-on solid-wall header identifying the microscope and robotics preparation workflow',
-        {yaw:0,size:[2.02,.42,.05],text:'显微镜 · 机器人 · 已备',collision:'none'}),
+        [-3.12,e+1.65,1.45],'M-SCREEN','large west-wall issue and readiness display identifying the microscope and robotics preparation workflow',
+        {yaw:-PI/2,size:[2.40,1.02,.05],text:'显微镜 · 机器人 · 已备',collision:'none'}),
+      fixture(`${prefix}/CENTRE/ARRIVAL-KIT-MIC`,'microscope issue and return caddy','PF-TRAY-RACK',
+        [-2.88,e,.10],'M-LAB-BLUE','labelled slide, lens-cleaning and issue-return tiers beside the west-wall preparation display',
+        {yaw:-PI/2,size:[.52,.88,.34],collision:'none'}),
+      fixture(`${prefix}/CENTRE/ARRIVAL-KIT-ROBOT`,'robotics issue and return caddy','PF-TRAY-RACK',
+        [-2.88,e,2.70],'M-FABRIC-RED','labelled controller, sensor and tool-return tiers beside the west-wall preparation display',
+        {yaw:-PI/2,size:[.52,.88,.34],collision:'none'}),
     ];
     return[
       fixture(`${prefix}/CENTRE/ARRIVAL-OFFICE`,'faculty consultation and seminar directory','PF-SCREEN',
@@ -999,23 +1046,39 @@ function buildB01() {
 
   function plannedB01LiftWC(prefix,e) {
     return [
-      fixture(`${prefix}/LIFT`,'accessible lift','PF-LIFT',[14.72,e,4.05],
-        'M-STEEL','accessible vertical circulation facing the west lobby approach',{yaw:PI/2,size:[1.45,2.45,1.55],levels:[1,2,3,4,5]}),
-      fixture(`${prefix}/WC-FLOOR`,'accessible-WC anti-slip floor field','PF-WALL-RUN',[14.15,e+.012,1.80],
-        'M-TILE-DARK','continuous sanitary floor finish south of the privacy screen',{size:[2.45,.02,1.45],collision:'none'}),
-      fixture(`${prefix}/WC-PARTITION`,'accessible-WC privacy partition','PF-WALL-RUN',[14.60,e+1.38,2.78],
-        'M-TILE-LIGHT','full-height privacy screen with a 0.95 m west opening',{size:[1.70,2.55,.08],collision:'none',openingWidth:.95}),
-      fixture(`${prefix}/T`,'south-wall accessible toilet in east transfer bay','PF-TOILET',[14.75,e,1.55],
-        'M-CERAMIC','accessible toilet with cistern against the south wall and transfer rails',{yaw:PI,facing:'north',grabRails:true}),
-      fixture(`${prefix}/B`,'west-wall accessible basin','PF-BASIN',[13.15,e,1.55],
-        'M-CERAMIC','accessible hand washing outside the toilet transfer side',{yaw:-PI/2,facing:'east'}),
-      fixture(`${prefix}/MIRROR`,'accessible basin mirror','PF-DANCE-MIRROR',[12.845,e+1.55,1.55],
+      fixture(`${prefix}/LIFT`,'accessible lift','PF-LIFT',[14.72,e,4.15],
+        'M-STEEL','accessible vertical circulation facing the protected turning and approach field',
+        {yaw:PI/2,size:[1.45,2.45,1.55],levels:[1,2,3,4,5],accessible:true}),
+      fixture(`${prefix}/TURN`,'wheelchair turning field','PF-WALL-RUN',[13.55,e+.012,2.60],
+        'M-LAB-BLUE','full 1.50 m turn shared by the lift and accessible sanitary route',
+        {size:[1.50,.02,1.50],collision:'none',accessible:true,turningDiameter:1.50}),
+      fixture(`${prefix}/LIFT-APPROACH`,'accessible lift approach field','PF-WALL-RUN',[13.55,e+.010,3.12],
+        'M-TERRAZZO','0.90 m clear approach from the turn to the lift threshold',
+        {size:[1.50,.018,.40],collision:'none',accessible:true,clearWidth:.90}),
+      fixture(`${prefix}/WC-FLOOR`,'accessible-WC anti-slip floor field','PF-WALL-RUN',[14.15,e+.012,1.55],
+        'M-TILE-DARK','continuous sanitary floor finish south of the privacy screen',{size:[2.45,.02,1.00],collision:'none'}),
+      fixture(`${prefix}/WC-PARTITION`,'accessible-WC privacy partition','PF-WALL-RUN',[14.95,e+1.38,2.28],
+        'M-TILE-LIGHT','short privacy screen leaving a full 1.50 m west turning opening',
+        {size:[1.10,2.55,.08],collision:'none',walkBlocker:true,openingWidth:1.50}),
+      fixture(`${prefix}/T`,'south-wall accessible toilet in east transfer bay','PF-TOILET',[15.10,e,1.42],
+        'M-CERAMIC','accessible toilet with cistern against the south wall and west transfer rails',
+        {yaw:PI,facing:'south',grabRails:true,accessible:true}),
+      fixture(`${prefix}/T-TRANSFER`,'wheelchair toilet transfer field','PF-WALL-RUN',[13.90,e+.012,1.47],
+        'M-SAFETY-YELLOW','1.20 m by 0.90 m side-transfer field held clear beside the toilet',
+        {size:[1.20,.02,.90],collision:'none',accessible:true,clearBay:[1.20,.90]}),
+      fixture(`${prefix}/B`,'west-wall accessible basin','PF-BASIN',[13.05,e,1.42],
+        'M-CERAMIC','accessible hand washing with a separate knee-clear approach',
+        {yaw:-PI/2,size:[.84,.88,.45],facing:'east',accessible:true}),
+      fixture(`${prefix}/B-APPROACH`,'wheelchair basin approach field','PF-WALL-RUN',[13.75,e+.012,1.47],
+        'M-LAB-BLUE','0.90 m clear knee and pull-back field at the basin',
+        {size:[.90,.02,.90],collision:'none',accessible:true,clearBay:[.90,.90]}),
+      fixture(`${prefix}/MIRROR`,'accessible basin mirror','PF-DANCE-MIRROR',[12.805,e+1.45,1.42],
         'M-GLASS','mirror aligned above the accessible basin',{yaw:-PI/2,size:[.70,.72,.035]}),
-      fixture(`${prefix}/WC-SIGN`,'accessible-WC identity sign','PF-ROOM-SIGN',[14.60,e+2.12,2.725],
-        'M-SCREEN','sanitary-room identity on the privacy partition',{yaw:0,size:[.82,.28,.04],text:'无障碍卫生间 · WC'}),
-      fixture(`${prefix}/WC-LIGHT`,'accessible-WC ceiling light','PF-CEILING-LIGHT',[14.15,e+2.76,1.80],
+      fixture(`${prefix}/WC-SIGN`,'accessible-WC identity sign','PF-ROOM-SIGN',[14.95,e+2.12,2.225],
+        'M-SCREEN','sanitary-room identity on the short privacy screen',{yaw:0,size:[.82,.28,.04],text:'无障碍卫生间 · WC'}),
+      fixture(`${prefix}/WC-LIGHT`,'accessible-WC ceiling light','PF-CEILING-LIGHT',[14.15,e+2.76,1.55],
         'M-WALL-WHITE','authored sanitary-room lighting',{temperatureK:4000,size:[.68,.06,.48]}),
-      fixture(`${prefix}/LOBBY-LIGHT`,'lift-lobby ceiling light','PF-CEILING-LIGHT',[14.15,e+2.76,4.05],
+      fixture(`${prefix}/LOBBY-LIGHT`,'lift-lobby ceiling light','PF-CEILING-LIGHT',[14.15,e+2.76,4.15],
         'M-WALL-WHITE','authored lift waiting illumination',{temperatureK:3700,size:[.78,.06,.42]}),
     ];
   }
@@ -1051,7 +1114,8 @@ function buildB01() {
           if(vectorError>.001)errors.push(`${seat.id}: yaw vector disagrees with facing ${seat.facing}`);
         }
       }
-      const objects=(room.contents||[]).filter(o=>floorStanding.has(o.prefab)),rs=objects.map(rect);checked+=rs.length;
+      const objects=(room.contents||[]).filter(o=>floorStanding.has(o.prefab)&&o.collision!=='none'),
+        rs=objects.map(rect);checked+=rs.length;
       for(const r of rs)if(r.x0<room.bounds[0]-.01||r.x1>room.bounds[1]+.01||r.z0<room.bounds[2]-.01||r.z1>room.bounds[3]+.01)
         errors.push(`${r.id}: floor fixture outside room`);
       for(let i=0;i<rs.length;i++)for(let j=i+1;j<rs.length;j++)if(hit(rs[i],rs[j])){
@@ -1065,8 +1129,9 @@ function buildB01() {
       }
       const key=room.id.split('/').pop();
       if(['WEST','CENTRE','EAST'].includes(key)){
-        const route=key==='CENTRE'?{x0:-.60,x1:.60,z0:room.bounds[2],z1:room.bounds[3]}:
-          {x0:room.bounds[1]-2.30,x1:room.bounds[1],z0:room.bounds[2],z1:room.bounds[3]};
+        const routeWidth=room.programme==='lecture'||room.accessible===true?1.20:2.30,
+          route=key==='CENTRE'?{x0:-.60,x1:.60,z0:room.bounds[2],z1:room.bounds[3]}:
+            {x0:room.bounds[1]-routeWidth,x1:room.bounds[1],z0:room.bounds[2],z1:room.bounds[3]};
         for(const r of rs)if(hit(r,route)){routeBlocks++;errors.push(`${r.id}: obstructs authored main route`);}
       }
       if(room.programme==='lobby'){
@@ -1107,8 +1172,11 @@ function buildB01() {
       if(spec.level===1&&key==='CENTRE') doors.push(doorway(`${id}/D-EXT`,'south',[0,e,-5.5],3.2,'campus',{portal:true}));
       rooms.push(room(id,label,b,type==='lobby'?'public':['office','prep','tutorial'].includes(type)?'office':'classroom',doors,contents,{
         programme:type,legacySceneAlias:spec.level===2&&key==='WEST'?'classroom':undefined,
-        planning:type==='standard'?{studentSeats:key==='WEST'?16:18,crossAisles:.90,doorSideRoute:2.30,protectedStairLanding:key==='WEST'?1.15:undefined,teacherClearance:1.31,rearClearance:.90,wheelchairBays:spec.level===1&&key==='EAST'?2:0}:
-          type==='lecture'?{studentSeats:22,centreAisle:1.20,doorSideRoute:2.57,protectedStairLanding:1.15,teacherClearance:1.23}:
+        accessible:spec.level===1&&key==='EAST'?true:undefined,
+        planning:type==='standard'?{studentSeats:key==='WEST'?16:18,crossAisles:.90,doorSideRoute:spec.level===1&&key==='EAST'?1.20:2.30,protectedStairLanding:key==='WEST'?1.15:undefined,teacherClearance:1.31,rearClearance:.90,
+          wheelchairBays:spec.level===1&&key==='EAST'?2:0,accessibleWritingSurfaces:spec.level===1&&key==='EAST'?2:0}:
+          type==='lecture'?{capacity:20,fixedSeats:18,wheelchairBays:2,accessibleWritingSurfaces:2,
+            centreAisle:1.20,doorSideRoute:1.20,protectedStairLanding:1.15,teacherClearance:1.23}:
           ['computer','language'].includes(type)?{studentStations:type==='language'?7:9,columnAisles:1.10,doorSideRoute:2.55,protectedStairLanding:type==='language'?1.15:undefined,teacherClearance:1.30}:
           type==='lobby'?{mainRoute:1.20,turningCircle:{centre:[0,-2.20],diameter:1.50}}:
           key==='CENTRE'?{mainRoute:1.20}:type==='seminar'?{seats:9,doorSideRoute:2.60}:undefined,
@@ -1120,7 +1188,12 @@ function buildB01() {
         {services:{mechanicalExtract:'concealed ceiling extract; no decorative equipment block'}}),
       room(`${prefix}/STAIR-E`,'东安全楼梯',[12.8,15.5,-5,.8],'service',[],plannedB01Stair(`${prefix}/STAIR-E`,e,'E')),
       room(`${prefix}/LIFT-E`,'电梯与无障碍卫生间',[12.8,15.5,1,5],'service',[],plannedB01LiftWC(`${prefix}/LIFT-E`,e),
-        {services:{mechanicalExtract:'concealed WC extract behind the privacy partition'}}),
+        {accessible:true,planning:{
+          turns:[{id:`${prefix}/LIFT-E/TURN`,centre:[13.55,2.60],diameter:1.50}],
+          liftApproaches:[{id:`${prefix}/LIFT-E/LIFT-APPROACH`,fixtureId:`${prefix}/LIFT-E/LIFT`,bounds:[12.80,14.30,2.92,3.32],width:.90}],
+          toiletTransfers:[{id:`${prefix}/LIFT-E/T-TRANSFER`,fixtureId:`${prefix}/LIFT-E/T`,bounds:[13.30,14.50,1.02,1.92],width:.90,depth:1.20}],
+          basinApproaches:[{id:`${prefix}/LIFT-E/B-APPROACH`,fixtureId:`${prefix}/LIFT-E/B`,bounds:[13.30,14.20,1.02,1.92],width:.90,depth:.90}],
+        },services:{mechanicalExtract:'concealed WC extract behind the privacy partition'}}),
     );
     const shared=[
       ...safetySet(prefix,e,[-12.55,4.3],[0,3.35],spec.level,spec.level===1),
@@ -1133,8 +1206,8 @@ function buildB01() {
         focusFixtureIds:[`${prefix}/WEST/COURSE-BRIEF`,`${prefix}/WEST/TEACHING/BOARD`]}:
       spec.level===3?{roomId:`${prefix}/EAST`,at:{x:5.80,z:-.80,yaw:-.20},
         focusFixtureIds:[`${prefix}/EAST/WS04`,`${prefix}/EAST/WS05`]}:
-      spec.level===4?{roomId:`${prefix}/CENTRE`,at:{x:0,z:-2.00,yaw:-5*PI/12},
-        focusFixtureIds:[`${prefix}/CENTRE/KIT-DEMO-L`,`${prefix}/CENTRE/SPECIMEN-LOG`]}:
+      spec.level===4?{roomId:`${prefix}/CENTRE`,at:{x:.50,z:-2.50,yaw:-1.15},
+        focusFixtureIds:[`${prefix}/CENTRE/KIT-DEMO-L`,`${prefix}/CENTRE/KIT-DEMO-R`]}:
       {roomId:`${prefix}/WEST`,at:{x:-10.00,z:0,yaw:-PI/18},
         focusFixtureIds:[`${prefix}/WEST/AGENDA`,`${prefix}/WEST/BOARD`]};
     const entryReview=spec.level===1?null:spec.level===2?{zoneId:`${prefix}/CENTRE`,
@@ -1142,7 +1215,7 @@ function buildB01() {
       focusFixtureIds:[`${prefix}/CENTRE/ARRIVAL-TUTORIAL`]}:
       spec.level===3?{zoneId:`${prefix}/CENTRE`,at:{x:.80,z:-1.20,yaw:7*PI/18},body:'hidden',
         focusFixtureIds:[`${prefix}/CENTRE/ARRIVAL-COLLAB`]}:
-      spec.level===4?{zoneId:`${prefix}/CENTRE`,at:{x:-.80,z:-.80,yaw:-5*PI/12},body:'hidden',
+      spec.level===4?{zoneId:`${prefix}/CENTRE`,at:{x:.40,z:-.30,yaw:-1.40},body:'hidden',
         focusFixtureIds:[`${prefix}/CENTRE/ARRIVAL-KIT-BACKDROP`]}:
       {zoneId:`${prefix}/CENTRE`,at:{x:-1.60,z:-1.20,yaw:-PI/3},body:'hidden',
         focusFixtureIds:[`${prefix}/CENTRE/ARRIVAL-OFFICE`]};
@@ -1166,11 +1239,12 @@ function buildB01() {
     portals:[{id:'B01/PUBLIC',campusAt:[-3,52],campusReturn:[-3,47.2,0],localSpawn:[0,0,-4.25,0],placeKey:'campus_b01_f1'},
       {id:'B01/LEGACY-CLASSROOM',mapsTo:'B01/F2/WEST',placeKey:'classroom',preserve:true}],
     facadeAlignment:{southWindows:{x:[-14,-10,-6,-2,2,6,10,14],localZ:-5.5},northServiceWindows:'start 1.8 m from corner; pitch 3.2 m',levels:[2,3,4,5]},
-    design:'A measured university teaching block planned from circulation outward: 1.20 m primary routes, 0.90 m cross-aisles, clear 1.15 m protected-stair landings, restrained 16–18-seat classrooms, a two-block 22-seat lecture room, seven- to nine-station computing rooms, aligned acoustic ceiling zones, operable curtain-and-window bands and distinct floor identities without freestanding corridor clutter.',
+    design:'A measured university teaching block planned from circulation outward: 1.20 m primary routes, 0.90 m cross-aisles, clear 1.15 m protected-stair landings, restrained 16–18-seat classrooms, a two-block 20-place accessible lecture room, seven- to nine-station computing rooms, aligned acoustic ceiling zones, operable curtain-and-window bands and distinct floor identities without freestanding corridor clutter.',
     planningMetrics:{
       primaryRouteMinimum:1.20,secondaryAisleMinimum:.90,corridorClearWidth:1.85,doorApproachDepth:1.35,
-      sideRoomDoorRoute:2.30,protectedStairLanding:1.15,lobbyTurningCircle:{centre:[0,-2.20],diameter:1.50},standardClassroom:{studentSeats:{west:16,east:18},deskColumns:3,deskRows:3,columnAisles:.90,rowPitch:1.60,rearClearance:.90,teacherClearance:1.31},
-      lectureRoom:{studentSeats:22,seatBlocks:2,centreAisle:1.20,doorSideRoute:2.57},
+      sideRoomDoorRoute:2.30,protectedStairLanding:1.15,lobbyTurningCircle:{centre:[0,-2.20],diameter:1.50},standardClassroom:{studentSeats:{west:16,east:18},deskColumns:3,deskRows:3,columnAisles:.90,rowPitch:1.60,rearClearance:.90,teacherClearance:1.31,accessibleDoorSideRoute:1.20},
+      lectureRoom:{capacity:20,fixedSeats:18,wheelchairBays:2,accessibleWritingSurfaces:2,
+        seatBlocks:2,centreAisle:1.20,doorSideRoute:1.20},
       computerRoom:{studentStations:9,columnAisles:1.10,doorSideRoute:2.55},
       languageRoom:{studentStations:7,columnAisles:1.10,doorSideRoute:2.55},
     },
@@ -1252,10 +1326,25 @@ function b02StackRuns(prefix,e,xs,zs,label,material='M-OAK-DARK',size=[.9,2.05,2
 
 function b02ReadingTables(prefix,e,points,options={}) {
   const out=[];
-  points.forEach(([x,z,yaw=0],i)=>out.push(fixture(`${prefix}/TABLE${pad(i+1)}`,
-    'four-seat library reading table','PF-READING-TABLE',[x,e,z],'M-OAK',
-    options.purpose||'quiet reading with chair pull-back clearance',
-    {yaw,size:[2.1,.78,1.05],tableLamp:true,accessible:i===0,pullBackClearance:.6})));
+  const accessibleIndices=new Set(options.accessibleIndices||[]),wheelchairBays=options.wheelchairBays||[];
+  if(/accessible/i.test(options.purpose||'')&&!accessibleIndices.size)
+    throw new Error(`${prefix}: accessible reading purpose requires explicit accessibleIndices`);
+  points.forEach(([x,z,yaw=0],i)=>{
+    const table=i+1,accessible=accessibleIndices.has(table),bay=wheelchairBays.find(item=>item.table===table);
+    if(accessible&&!bay)throw new Error(`${prefix}/TABLE${pad(table)}: accessible table lacks a wheelchair bay`);
+    out.push(fixture(`${prefix}/TABLE${pad(table)}`,
+      accessible?'accessible open-leg library reading table':'four-seat library reading table',
+      'PF-READING-TABLE',[x,e,z],'M-OAK',options.purpose||'quiet reading with chair pull-back clearance',
+      {yaw,size:[2.1,.78,1.05],tableLamp:true,pullBackClearance:.6,
+        ...(accessible?{accessible:true,openLeg:true,wheelchairSide:bay.side}:{})}));
+    if(bay){
+      const [w,d]=bay.size||[.90,1.20];
+      out.push(fixture(`${prefix}/TABLE${pad(table)}/WHEELCHAIR`,'wheelchair reading position',
+        'PF-WALL-RUN',[bay.at[0],e+.012,bay.at[1]],'M-LAB-BLUE',
+        `unobstructed ${w.toFixed(2)} × ${d.toFixed(2)} m wheelchair position at the table's ${bay.side} side`,
+        {size:[w,.02,d],collision:'none',accessible:true,clearBay:[w,d],tableId:`${prefix}/TABLE${pad(table)}`,side:bay.side}));
+    }
+  });
   (options.benches||[]).forEach(([x,z,yaw=0,facing,facesPoint],i)=>out.push(fixture(`${prefix}/BENCH${pad(i+1)}`,
     'upholstered window reading bench','PF-BENCH',[x,e,z],'M-FABRIC-BLUE',
     'daylit informal reading',{yaw,facing,facesPoint,size:[1.8,.84,.58]})));
@@ -1306,25 +1395,52 @@ function buildB02() {
       fixture(`${prefix}/CORE/STAIR`,'protected library stair','PF-STAIR',[4.8,e,-8.6],
         'M-TERRAZZO','protected vertical egress',{size:[2.05,3.0,4.0]}),
       fixture(`${prefix}/CORE/LIFT`,'accessible library lift','PF-LIFT',[2.2,e,-9.2],
-        'M-STEEL','accessible vertical circulation',{size:[1.65,2.45,1.55],levels:[1,2,3,4]}),
+        'M-STEEL','accessible vertical circulation facing a full clear lift-front turn',
+        {yaw:PI,facing:'north',size:[1.65,2.45,1.55],levels:[1,2,3,4],accessible:true}),
+      fixture(`${prefix}/CORE/LIFT-TURN`,'wheelchair lift-front turning field','PF-WALL-RUN',[2.20,e+.012,-7.55],
+        'M-LAB-BLUE','unobstructed 1.50 m turn directly in front of the accessible lift',
+        {size:[1.50,.02,1.50],collision:'none',accessible:true,turningDiameter:1.50}),
+      fixture(`${prefix}/CORE/ACCESS-ROUTE`,'accessible lift approach route','PF-WALL-RUN',[2.20,e+.010,-6.075],
+        'M-RUBBER','clear route from the quiet spine to the lift-front turn',
+        {size:[1.50,.018,1.45],collision:'none',accessible:true,clearWidth:1.20}),
       fixture(`${prefix}/CORE/ELEC`,'electrical cabinet','PF-FILE-CABINET',[5.62,e,-11.12],
         'M-STEEL-DARK','floor electrical distribution',{size:[.65,1.7,.30]}),
       fixture(`${prefix}/CORE/CLEAN`,'cleaning cupboard','PF-CLEANING',[2.0,e,-11.12],
         'M-STEEL','janitorial storage',{size:[.75,1.9,.55]}),
       b02WallSign(`${prefix}/CORE/LEVEL`,e,4.85,-5.39,`图书馆 ${level}层`,0,1.55),
       ...b02Ceiling(`${prefix}/CORE/CEILING`,e,[[2.2,-6.25,1.25,.24]],3500,false),
-    ]),
+    ],{accessible:true,planning:{
+      publicRoutes:[{id:`${prefix}/CORE/ACCESS-ROUTE`,bounds:[1.45,2.95,-6.80,-5.35],width:1.20}],
+      turns:[{id:`${prefix}/CORE/LIFT-TURN`,centre:[2.20,-7.55],diameter:1.50}],
+      liftApproaches:[{liftId:`${prefix}/CORE/LIFT`,turnId:`${prefix}/CORE/LIFT-TURN`,front:'north',clearGap:.125}],
+    }}),
     room(`${prefix}/WC`,'卫生间',wcB,'service',[],[
-      fixture(`${prefix}/WC/T1`,'accessible toilet','PF-TOILET',[5.50,e,-1.45],
-        'M-CERAMIC','accessible sanitary fixture',{grabRails:true}),
-      fixture(`${prefix}/WC/T2`,'toilet','PF-TOILET',[5.50,e,-2.45],
-        'M-CERAMIC','sanitary fixture'),
-      fixture(`${prefix}/WC/B1`,'washbasin','PF-BASIN',[4.20,e,-1.20],
-        'M-CERAMIC','hand washing'),
-      fixture(`${prefix}/WC/CLEAN`,'cleaning cupboard','PF-CLEANING',[5.50,e,-3.40],
-        'M-STEEL','janitorial storage',{size:[.72,1.9,.52]}),
+      fixture(`${prefix}/WC/T1`,'accessible north-wall toilet','PF-TOILET',[5.75,e,-1.25],
+        'M-CERAMIC','south-facing sanitary fixture with an independent west side-transfer bay',
+        {yaw:0,facing:'south',grabRails:true,accessible:true}),
+      fixture(`${prefix}/WC/T1-TRANSFER`,'wheelchair toilet side-transfer field','PF-WALL-RUN',[4.70,e+.012,-1.35],
+        'M-LAB-BLUE','clear 1.20 × 0.90 m west side-transfer space beside the accessible toilet',
+        {size:[1.20,.02,.90],collision:'none',accessible:true,clearBay:[1.20,.90]}),
+      fixture(`${prefix}/WC/TURN`,'wheelchair turning field','PF-WALL-RUN',[4.35,e+.012,-2.65],
+        'M-LAB-BLUE','full 1.50 m turn between the protected entrance route and sanitary fixtures',
+        {size:[1.50,.02,1.50],collision:'none',accessible:true,turningDiameter:1.50}),
+      fixture(`${prefix}/WC/ACCESS-ROUTE`,'protected WC entrance route','PF-WALL-RUN',[4.125,e+.010,-2.375],
+        'M-RUBBER','unobstructed 1.20 m route aligned to the auto-completed west corridor door',
+        {size:[1.15,.018,1.20],collision:'none',accessible:true,clearWidth:1.20}),
+      fixture(`${prefix}/WC/B1`,'accessible east-wall washbasin','PF-BASIN',[5.85,e,-2.60],
+        'M-CERAMIC','wheelchair-height hand washing clear of the door route and turning field',
+        {yaw:PI/2,size:[.84,.88,.45],facing:'west',accessible:true}),
+      fixture(`${prefix}/WC/MIRROR`,'low accessible basin mirror','PF-WALL-RUN',[6.11,e+1.42,-2.60],
+        'M-GLASS','low mirror aligned above the accessible basin',{size:[.035,.82,.72],collision:'none'}),
+      fixture(`${prefix}/WC/CLEAN`,'cleaning cupboard','PF-CLEANING',[5.80,e,-3.50],
+        'M-STEEL','janitorial storage held outside every accessible clear field',{size:[.65,1.9,.50]}),
       ...b02Ceiling(`${prefix}/WC/CEILING`,e,[[4.85,-2.45,1.2,.24]],3800,false),
-    ]),
+    ],{accessible:true,planning:{
+      publicRoutes:[{id:`${prefix}/WC/ACCESS-ROUTE`,bounds:[3.55,4.70,-2.975,-1.775],width:1.20}],
+      protectedDoorRoutes:[{doorId:`${prefix}/WC/D-AUTO-01`,id:`${prefix}/WC/ACCESS-ROUTE`,boundary:'west',at:[3.55,-2.375],width:1.20,depth:1.15}],
+      turns:[{id:`${prefix}/WC/TURN`,centre:[4.35,-2.65],diameter:1.50}],
+      toiletTransfers:[{toiletId:`${prefix}/WC/T1`,id:`${prefix}/WC/T1-TRANSFER`,side:'west',clearBay:[1.20,.90]}],
+    }}),
     room(`${prefix}/STAIR-NW`,'西北安全楼梯',remoteStairB,'service',[
       doorway(`${prefix}/STAIR-NW/D-APPROACH`,'east',[-3.15,e,7.80],1.10,`${prefix}/EGRESS-NW`),
     ],[
@@ -1348,8 +1464,11 @@ function buildB02() {
     const level=1,e=0,p='B02/F1';
     const rooms=[
       room(`${p}/LOBBY`,'入口与安检',[-6.15,-2.25,-2.4,2.4],'public',[
-        doorway(`${p}/LOBBY/EXT`,'west',[-6.5,e,0],2.4,'campus',{portal:true}),
-        doorway(`${p}/LOBBY/IN`,'east',[-2.25,e,0],1.8,`${p}/HALL`),
+        // The facade opening and its exterior panel are supplied by B02/PUBLIC. Duplicating that
+        // same physical entrance here produced a second overlapping leaf inside the vestibule.
+        doorway(`${p}/LOBBY/IN`,'east',[-2.25,e,-.30],1.8,`${p}/HALL`,{
+          operation:'sliding-pocket',pocketSide:'north',reviewOpen:true,
+          designIntent:'staffed-hours automatic sliding-pocket inner threshold retracts fully into the north wall pocket, preserving the unobstructed security-to-hall route while its track and pocket reveal remain visible'}),
       ],[
         fixture(`${p}/LOBBY/MAT`,'recessed entry mat','PF-WALL-RUN',[-4.55,e+.018,0],
           'M-RUBBER','weather and dirt control',{size:[2.7,.025,1.35],collision:'none'}),
@@ -1357,9 +1476,10 @@ function buildB02() {
           'M-GLASS','entry security',{collision:'none'}),
         fixture(`${p}/LOBBY/G2`,'library security gate','PF-SECURITY-GATE',[-5.05,e,.85],
           'M-GLASS','entry security',{collision:'none'}),
-        fixture(`${p}/LOBBY/DIR`,'four-floor library directory','PF-DIRECTORY',[-3.0,e,-1.95],
-          'M-SCREEN','accessible library wayfinding',{text:'1 服务 · 2 人文 · 3 数字 · 4 特藏'}),
-        fixture(`${p}/LOBBY/RET`,'book-return kiosk','PF-SELF-CHECK',[-4.25,e,-1.95],
+        fixture(`${p}/LOBBY/DIR`,'four-floor library directory','PF-DIRECTORY',[-5.40,e,1.55],
+          'M-SCREEN','accessible library wayfinding kept beside the hall threshold and outside the wide arrival camera orbit',
+          {yaw:0,text:'1 服务 · 2 人文 · 3 数字 · 4 特藏'}),
+        fixture(`${p}/LOBBY/RET`,'book-return kiosk','PF-SELF-CHECK',[-5.55,e,-1.72],
           'M-SCREEN','after-hours and staffed-hours returns kept on the south service side of the arrival',{yaw:PI}),
         fixture(`${p}/LOBBY/PORTAL-HEAD`,'oak entry portal head','PF-WALL-RUN',[-6.08,e+2.50,0],
           'M-OAK-DARK','genuine architectural head framing the glazed library entrance',
@@ -1370,9 +1490,9 @@ function buildB02() {
         fixture(`${p}/LOBBY/SIDELIGHT-N`,'north entry glass sidelight window','PF-WALL-RUN',[-6.075,e+1.38,1.72],
           'M-GLASS','laminated architectural window sidelight beside the public doors',
           {size:[.035,2.12,.58],collision:'none'}),
-        fixture(`${p}/LOBBY/ARRIVAL`,'library arrival and service display','PF-SCREEN',[-4.20,e+1.62,2.34],
-          'M-SCREEN','large face-on north-wall library identity with both side doors, security gates, AED and returns outside the lens',
-          {yaw:0,size:[2.40,1.10,.05],text:'图书馆 · 新书 · 借阅',collision:'none'}),
+        fixture(`${p}/LOBBY/ARRIVAL`,'library arrival and service display','PF-SCREEN',[-4.20,e+1.62,-2.34],
+          'M-SCREEN','large face-on south-wall library identity across a spacious mat-and-security-gate arrival, with the real west-facade public portal and the staffed-hours inner leaf recessed into its wall pocket',
+          {yaw:PI,size:[2.40,1.10,.05],text:'图书馆 · 新书 · 借阅',collision:'none'}),
         b02WallSign(`${p}/LOBBY/SIGN`,e,-2.29,-1.72,'图书馆 · LIBRARY',PI/2,1.55),
         ...b02Ceiling(`${p}/LOBBY/CEILING`,e,[[-4.25,0,2.25,.24]],3200,true),
       ]),
@@ -1380,7 +1500,11 @@ function buildB02() {
         doorway(`${p}/CIRC/D-HALL`,'north',[-.60,e,.55],1.2,`${p}/HALL`),
       ],[
         fixture(`${p}/CIRC/DESK`,'accessible circulation desk','PF-CIRC-DESK',[.64,e,-2.15],
-          'M-OAK-DARK','borrowing, returns and reader help',{yaw:PI/2,size:[2.2,1.0,.52]}),
+          'M-OAK-DARK','borrowing, returns and reader help from a marked lower open-knee position',
+          {yaw:PI/2,size:[2.2,1.0,.52],accessible:true,lowerSection:true,wheelchairSide:'west'}),
+        fixture(`${p}/CIRC/DESK-APPROACH`,'wheelchair circulation-desk position','PF-WALL-RUN',[-.22,e+.012,-2.15],
+          'M-LAB-BLUE','clear 1.20 × 0.90 m visitor position at the lower desk section',
+          {size:[1.20,.02,.90],collision:'none',accessible:true,clearBay:[1.20,.90]}),
         fixture(`${p}/CIRC/K1`,'self-check kiosk A','PF-SELF-CHECK',[-1.75,e,-1.55],
           'M-SCREEN','self-service borrowing',{yaw:PI/2}),
         fixture(`${p}/CIRC/K2`,'self-check kiosk B','PF-SELF-CHECK',[-1.75,e,-2.35],
@@ -1394,7 +1518,9 @@ function buildB02() {
           {size:[.05,2.55,2.55],collision:'none'}),
         b02WallSign(`${p}/CIRC/SIGN`,e,.45,-4.46,'借还书处 · CIRCULATION',PI,1.85),
         ...b02Ceiling(`${p}/CIRC/CEILING`,e,[[-.45,-2.15,1.55,.24]],3300,false),
-      ]),
+      ],{accessible:true,planning:{serviceApproaches:[{
+        counterId:`${p}/CIRC/DESK`,id:`${p}/CIRC/DESK-APPROACH`,clearBay:[1.20,.90],
+      }]}}),
       room(`${p}/NEW`,'新书与综合阅览',[-6.15,.9,2.65,11.6],'library',[],[
         fixture(`${p}/NEW/FACEOUT`,'wide face-out new-book display','PF-BOOKCASE',[-1.70,e,10.90],
           'M-OAK','large north-wall new and recommended book workflow presented face-on without a shelf back in the camera foreground',
@@ -1421,14 +1547,29 @@ function buildB02() {
       room(`${p}/READ`,'无障碍阅览区',[1.7,6.15,1.0,11.6],'library',[],[
         ...b02ReadingTables(`${p}/READ`,e,[[4.65,3.30,0],[4.65,5.80,0]],{
           purpose:'accessible reading with 1.2 m approaches and chair pull-back',
+          accessibleIndices:[1,2],
+          wheelchairBays:[
+            {table:1,at:[4.65,2.175],size:[.90,1.20],side:'south'},
+            {table:2,at:[4.65,6.925],size:[.90,1.20],side:'north'},
+          ],
           benches:[[5.75,10.65,-PI/2,'west',[4.65,10.65]]],
           sign:[6.11,3.8,'无障碍阅览 · ACCESSIBLE',-PI/2,1.95],
         }),
         fixture(`${p}/READ/MAG`,'screen-magnifier workstation','PF-COMPUTER-DESK',[2.75,e,10.80],
-          'M-OAK','accessible screen magnification',{accessible:true,yaw:PI/2}),
+          'M-OAK','accessible screen magnification at an open-knee east-side position',
+          {accessible:true,openLeg:true,yaw:-PI/2,wheelchairSide:'east'}),
+        fixture(`${p}/READ/MAG-APPROACH`,'wheelchair magnifier-workstation position','PF-WALL-RUN',[3.71,e+.012,10.80],
+          'M-LAB-BLUE','clear 1.20 × 0.90 m approach at the accessible magnifier workstation',
+          {size:[1.20,.02,.90],collision:'none',accessible:true,clearBay:[1.20,.90]}),
         ...b02WindowBays(`${p}/READ/WINDOWS`,e,'east',[3.25,6.45]),
         ...b02Ceiling(`${p}/READ/MAG-LIGHT`,e,[[2.75,10.8,1.1,.22]],3400,false),
-      ]),
+      ],{accessible:true,planning:{
+        wheelchairReadingPlaces:[
+          {tableId:`${p}/READ/TABLE01`,id:`${p}/READ/TABLE01/WHEELCHAIR`,side:'south',clearBay:[.90,1.20]},
+          {tableId:`${p}/READ/TABLE02`,id:`${p}/READ/TABLE02/WHEELCHAIR`,side:'north',clearBay:[.90,1.20]},
+        ],
+        workstationApproaches:[{workstationId:`${p}/READ/MAG`,id:`${p}/READ/MAG-APPROACH`,clearBay:[1.20,.90]}],
+      }}),
       room(`${p}/PROCESS`,'图书加工与办公室',[-6.15,.9,-11.6,-4.75],'office',[],[
         fixture(`${p}/PROCESS/D1`,'cataloguing workstation A','PF-OFFICE-DESK',[-4.9,e,-10.65],
           'M-OAK','cataloguing and acquisitions',{size:[1.35,.76,.70]}),
@@ -1449,18 +1590,22 @@ function buildB02() {
       ...coreRooms(level,e,p),
     ];
     floors.push(floor(level,e,3.2,rooms,[
-      {id:`${p}/HALL`,bounds:[-2.25,3.4,-.8,2.55],clearWidth:2.0,surface:'M-TERRAZZO'},
+      {id:`${p}/PUBLIC-THRESHOLD`,bounds:[-6.5,-4.1,-1.2,1.2],clearWidth:2.4,surface:'M-TERRAZZO'},
+      {id:`${p}/HALL`,bounds:[-2.05,3.4,-.8,2.55],clearWidth:2.0,surface:'M-TERRAZZO'},
       {id:`${p}/SERVICE-SPINE`,bounds:[1.1,3.4,-6.0,-.8],clearWidth:1.5,surface:'M-OAK'},
       {id:`${p}/NORTH-SPINE`,bounds:[1.7,3.4,2.4,8.55],clearWidth:1.7,surface:'M-OAK'},
       {id:`${p}/EGRESS-NW`,bounds:[-3.15,3.4,7.05,8.55],clearWidth:1.5,surface:'M-TERRAZZO'},
     ],[
-      ...safetySet(p,e,[3.2,-3.8],[-5.6,0],level,true),
+      ...safetySet(p,e,[3.2,-3.8],[-5.6,0],level,false),
+      fixture(`${p}/SAFE-AED`,'public AED','PF-AED',[-6.05,e+1.25,1.85],
+        'M-SAFETY-RED','public defibrillator mounted beside the north sidelight and outside the automatic-door orbit',
+        {yaw:-PI/2,collision:'none'}),
       b02WallSign(`${p}/HALL/SIGN`,e,3.36,1.7,'新书 · 阅览 · 借还书',-PI/2,1.8),
       ...b02Ceiling(`${p}/SPINE/CEILING`,e,[[2.25,-3.1,1.1,.22],[2.25,1.0,1.1,.22]],3400,false),
     ],{occupancy:92,visualReview:{
-      entries:[{suffix:'entry',portalId:'B02/PUBLIC',focusRoomId:`${p}/CIRC`,cameraZoneId:`${p}/CIRC`,
-        focusAt:{x:-.20,z:-2.20,yaw:PI},body:'hidden',
-        focusFixtureIds:[`${p}/CIRC/SIGN`]}],
+      entries:[{suffix:'entry',portalId:'B02/PUBLIC',focusRoomId:`${p}/LOBBY`,cameraZoneId:`${p}/LOBBY`,
+        focusAt:{x:-4.20,z:-.35,yaw:PI},body:'hidden',
+        focusFixtureIds:[`${p}/LOBBY/ARRIVAL`]}],
       programme:{roomId:`${p}/NEW`,at:{x:0,z:8.00,yaw:PI/9},
         focusFixtureIds:[`${p}/NEW/FACEOUT`,`${p}/NEW/CATALOGUE`]},
     }}));
@@ -1476,7 +1621,14 @@ function buildB02() {
       spineAccent:'M-FABRIC-SAGE',spineIdentity:'特藏阅览 · SPECIAL COLLECTIONS'},
   ]) {
     const e=(spec.level-1)*3.2,p=`B02/F${spec.level}`;
-    const identityZ=11.52,identityX=2.25,identityYaw=0,identityWallSize=[2.20,2.48,.055];
+    const identity=spec.kind==='humanities'?
+      {x:2.25,z:11.52,yaw:0,wallSize:[2.20,2.48,.055],zoneId:`${p}/SPINE`,
+        entryAt:{x:1.50,z:7.20,yaw:0}}:
+      spec.kind==='science'?
+        {x:-2.90,z:-11.45,yaw:PI,wallSize:[3.80,2.48,.055],zoneId:`${p}/SOUTH`,
+          entryAt:{x:-2.90,z:-7.10,yaw:PI}}:
+        {x:.84,z:-8.20,yaw:PI/2,wallSize:[3.70,2.48,.055],zoneId:`${p}/SOUTH`,
+          entryAt:{x:-2.85,z:-6.25,yaw:2.06}};
     const south=[-6.15,.9,-11.6,-.7],north=[-6.15,.9,-.45,11.6],east=[3.55,6.15,-.7,11.6];
     const southContents=[
       ...(spec.kind==='archive'?[fixture(`${p}/SOUTH/STACK01`,'west-wall special-collections bookcase',
@@ -1510,9 +1662,6 @@ function buildB02() {
         {yaw:0,size:[1.85,.82,.72],displayCount:4}),
       fixture(`${p}/SOUTH/SCAN`,'journal scan and discovery kiosk','PF-SELF-CHECK',[-5.65,e,-1.18],
         'M-SCREEN','scan print journals and open linked electronic holdings',{yaw:PI/2}),
-      fixture(`${p}/SOUTH/DIGITAL-WALL`,'digital-journals discovery display','PF-SCREEN',[-3.0,e+1.62,-.75],
-        'M-SCREEN','live database, dataset and electronic-journal discovery surface',
-        {yaw:PI,size:[2.45,1.05,.05],text:'数据库 · 数据集 · 电子期刊',collision:'none'}),
     );
     if(spec.kind==='archive') southContents.push(
       ...b02ReadingTables(`${p}/SOUTH/SUPERVISED`,e,[[-.35,-1.42,0]],{
@@ -1521,19 +1670,25 @@ function buildB02() {
       fixture(`${p}/SOUTH/CTRL`,'wall-mounted archive environmental monitor','PF-SCREEN',[.84,e+1.58,-2.90],
         'M-SCREEN','temperature, humidity and UV status clear of the reading aisle',
         {yaw:-PI/2,size:[1.15,.72,.05],text:'20°C · 45% RH · UV FILTER',collision:'none'}),
-      fixture(`${p}/SOUTH/VIEW`,'open supervised archive display table','PF-PREP-TABLE',[-3.0,e,-8.40],
-        'M-OAK','open-leg consultation-height display with a stainless undershelf and unobstructed sightline',
-        {yaw:0,size:[2.20,.82,.78]}),
-      fixture(`${p}/SOUTH/VIEW-FOLIO-L`,'manuscript and map folio cradle','PF-TRAY-RACK',[-3.48,e+.82,-8.40],
-        'M-FABRIC-SAND','tiered open manuscript, map and caption presentation on the archive display table',
-        {yaw:PI,size:[.62,.34,.46],collision:'none'}),
-      fixture(`${p}/SOUTH/VIEW-FOLIO-R`,'rare-book and request folio cradle','PF-TRAY-RACK',[-2.64,e+.82,-8.40],
-        'M-OAK-DARK','tiered open rare-book, request slip and handling-support presentation',
-        {yaw:PI,size:[.62,.34,.46],collision:'none'}),
-      fixture(`${p}/SOUTH/HANDLING-CART`,'archive handling and support cart','PF-TRAY-RACK',[-4.55,e,-8.40],
+      fixture(`${p}/SOUTH/VIEW`,'supervised archive consultation and cradle table','PF-READING-TABLE',[-3.0,e,-8.35],
+        'M-OAK','composed consultation table with four pull-back chairs, banker lamp, open volumes and an unobstructed staff sightline',
+        {yaw:0,size:[2.35,.80,1.15],tableLamp:true}),
+      fixture(`${p}/SOUTH/VIEW-FOLIO-L`,'low manuscript and map folio cradle','PF-PREP-TABLE',[-3.48,e+.78,-8.35],
+        'M-FABRIC-SAND','shallow angled acid-free manuscript and map support on the archive consultation table',
+        {yaw:PI,size:[.64,.16,.44],collision:'none'}),
+      fixture(`${p}/SOUTH/VIEW-FOLIO-R`,'low rare-book folio cradle','PF-PREP-TABLE',[-2.64,e+.78,-8.35],
+        'M-OAK-DARK','shallow angled rare-book support with a separate request slip on the consultation table',
+        {yaw:PI,size:[.64,.16,.44],collision:'none'}),
+      fixture(`${p}/SOUTH/VIEW-DOCUMENT-L`,'flat manuscript document inlay','PF-WALL-RUN',[-3.48,e+.965,-8.35],
+        'M-FABRIC-SAND','shallow acid-free document inlay with a contrasting caption edge',
+        {yaw:PI,size:[.50,.025,.28],collision:'none'}),
+      fixture(`${p}/SOUTH/VIEW-DOCUMENT-R`,'flat rare-book document inlay','PF-WALL-RUN',[-2.64,e+.965,-8.35],
+        'M-FABRIC-RED','shallow open-page document inlay with a restrained handling marker',
+        {yaw:PI,size:[.50,.025,.28],collision:'none'}),
+      fixture(`${p}/SOUTH/HANDLING-CART`,'archive handling and support cart','PF-TRAY-RACK',[-4.72,e,-7.28],
         'M-FABRIC-SAGE','open multi-tier foam supports, weights, gloves and request slips beside the consultation table',
         {yaw:PI,size:[.58,1.10,.44]}),
-      fixture(`${p}/SOUTH/REQUEST-KIOSK`,'supervised archive request kiosk','PF-SELF-CHECK',[-1.15,e,-8.40],
+      fixture(`${p}/SOUTH/REQUEST-KIOSK`,'supervised archive request kiosk','PF-SELF-CHECK',[-1.15,e,-8.35],
         'M-SCREEN','reader request, call-slip and handling acknowledgement beside the open display table',
         {yaw:PI,size:[.62,1.30,.46]}),
       fixture(`${p}/SOUTH/REQUEST-SCREEN`,'special-collections request display','PF-SCREEN',
@@ -1630,40 +1785,40 @@ function buildB02() {
 
     const spineArrival=spec.kind==='humanities'?[
       fixture(`${p}/SPINE/ARRIVAL-HUMANITIES`,'humanities floor arrival screen','PF-SCREEN',
-        [identityX,e+1.34,identityZ-.035],'M-SCREEN',
+        [identity.x,e+1.34,identity.z-.035],'M-SCREEN',
         'literature, history and philosophy collection map composed into the acoustic arrival wall',
-        {yaw:identityYaw,size:[2.02,1.02,.05],text:'文学 · 历史 · 哲学',collision:'none'}),
+        {yaw:identity.yaw,size:[2.02,1.02,.05],text:'文学 · 历史 · 哲学',collision:'none'}),
       fixture(`${p}/SPINE/ARRIVAL-HUMANITIES-FOLIOS`,'humanities new-reading folio rack','PF-TRAY-RACK',
-        [3.02,e+.88,identityZ-.16],'M-FABRIC-SAND',
+        [3.02,e+.88,identity.z-.16],'M-FABRIC-SAND',
         'shallow multi-tier face-out books and reading lists completing the humanities arrival wall',
-        {yaw:identityYaw,size:[.58,.72,.28],collision:'none'}),
+        {yaw:identity.yaw,size:[.58,.72,.28],collision:'none'}),
     ]:spec.kind==='science'?[
       fixture(`${p}/SPINE/ARRIVAL-DIGITAL`,'digital-journals floor arrival screen','PF-SCREEN',
-        [identityX,e+1.46,identityZ-.045],'M-SCREEN',
-        'live database, dataset and electronic-journal availability composed into the arrival wall',
-        {yaw:identityYaw,size:[1.86,1.08,.05],text:'期刊 · 数据库 · 数据集',collision:'none'}),
+        [identity.x,e+1.46,identity.z-.045],'M-SCREEN',
+        'live database, dataset and electronic-journal availability composed into the south collection threshold wall',
+        {yaw:identity.yaw,size:[2.10,1.08,.05],text:'期刊 · 数据库 · 数据集',collision:'none'}),
       fixture(`${p}/SPINE/ARRIVAL-DIGITAL-SPEAKER`,'digital-floor announcement speaker','PF-SPEAKER',
-        [3.22,e+1.46,identityZ-.12],'M-LAB-BLUE','right wall-bracketed service and closing-time audio monitor on the presented face',
-        {yaw:identityYaw,size:[.30,.58,.20],collision:'none'}),
+        [identity.x+1.22,e+1.46,identity.z-.10],'M-LAB-BLUE','right wall-bracketed service and closing-time audio monitor on the presented face',
+        {yaw:identity.yaw,size:[.30,.58,.20],collision:'none'}),
       fixture(`${p}/SPINE/ARRIVAL-DIGITAL-SPEAKER-L`,'digital-floor left monitor speaker','PF-SPEAKER',
-        [1.28,e+1.46,identityZ-.12],'M-LAB-BLUE','left wall-bracketed service and closing-time audio monitor on the presented face',
-        {yaw:identityYaw,size:[.30,.58,.20],collision:'none'}),
+        [identity.x-1.22,e+1.46,identity.z-.10],'M-LAB-BLUE','left wall-bracketed service and closing-time audio monitor on the presented face',
+        {yaw:identity.yaw,size:[.30,.58,.20],collision:'none'}),
       fixture(`${p}/SPINE/ARRIVAL-DIGITAL-TICKER`,'digital holdings availability ticker','PF-SCREEN',
-        [identityX,e+.72,identityZ-.05],'M-SCREEN',
+        [identity.x,e+.72,identity.z-.05],'M-SCREEN',
         'high-contrast database uptime, seat availability and scanning-service strip on the presented face',
-        {yaw:identityYaw,size:[1.86,.28,.04],text:'数据库在线 · 座位 18 · 扫描可用',collision:'none'}),
+        {yaw:identity.yaw,size:[2.10,.28,.04],text:'数据库在线 · 座位 18 · 扫描可用',collision:'none'}),
     ]:[
       fixture(`${p}/SPINE/ARRIVAL-ARCHIVE`,'special-collections arrival screen','PF-SCREEN',
-        [identityX,e+1.34,identityZ],'M-SCREEN',
-        'reader registration, request status and handling guidance composed into the archive arrival wall',
-        {yaw:identityYaw,size:[1.72,1.02,.05],text:'特藏 · 预约 · 阅览',collision:'none'}),
+        [identity.x-.035,e+1.34,identity.z],'M-SCREEN',
+        'reader registration, request status and handling guidance composed into the east-wall archive threshold niche',
+        {yaw:identity.yaw,size:[1.72,1.02,.05],text:'特藏 · 预约 · 阅览',collision:'none'}),
       fixture(`${p}/SPINE/ARRIVAL-ARCHIVE-KEYS`,'archive request-key cabinet','PF-KEY-CABINET',
-        [3.15,e+1.42,identityZ-.14],'M-OAK-DARK','wall-mounted numbered request-key and reader-pass cabinet',
-        {yaw:identityYaw,size:[.52,.82,.16],collision:'none'}),
+        [identity.x-.12,e+1.42,identity.z+1.24],'M-OAK-DARK','wall-mounted numbered request-key and reader-pass cabinet',
+        {yaw:identity.yaw,size:[.52,.82,.16],collision:'none'}),
       fixture(`${p}/SPINE/ARRIVAL-ARCHIVE-FOLIOS`,'archive request and handling folio rack','PF-TRAY-RACK',
-        [1.34,e+.88,identityZ-.14],'M-FABRIC-SAGE',
+        [identity.x-.14,e+.88,identity.z-1.24],'M-FABRIC-SAGE',
         'shallow face-on request slips, gloves and handling supports completing the archive arrival',
-        {yaw:identityYaw,size:[.48,.72,.26],collision:'none'}),
+        {yaw:identity.yaw,size:[.48,.72,.26],collision:'none'}),
     ];
 
     const rooms=[
@@ -1677,11 +1832,9 @@ function buildB02() {
     ];
     const entryFocus=spec.kind==='humanities'?`${p}/SPINE/ARRIVAL-HUMANITIES`:
       spec.kind==='science'?`${p}/SPINE/ARRIVAL-DIGITAL`:`${p}/SPINE/ARRIVAL-ARCHIVE`;
-    const entryPose=spec.kind==='humanities'?{x:1.50,z:7.20,yaw:0}:
-      spec.kind==='science'?{x:3.00,z:8.60,yaw:PI/36}:{x:1.50,z:8.20,yaw:PI/72};
-    const entryReview={zoneId:`${p}/SPINE`,at:entryPose,body:'hidden',
+    const entryReview={zoneId:identity.zoneId,at:identity.entryAt,body:'hidden',
       focusFixtureIds:spec.kind==='humanities'?[entryFocus,`${p}/SPINE/ARRIVAL-HUMANITIES-FOLIOS`]:
-        spec.kind==='science'?[entryFocus,`${p}/SPINE/ARRIVAL-DIGITAL-SPEAKER`]:
+        spec.kind==='science'?[entryFocus]:
           [entryFocus,`${p}/SPINE/ARRIVAL-ARCHIVE-KEYS`]};
     const programmeReview=spec.kind==='humanities'?
       {roomId:`${p}/NORTH`,at:{x:-1.85,z:4.05,yaw:PI},
@@ -1689,7 +1842,7 @@ function buildB02() {
       spec.kind==='science'?{roomId:`${p}/NORTH`,at:{x:-1.80,z:2.80,yaw:29*PI/36},
         focusFixtureIds:[`${p}/NORTH/DATA-CONSOLE`,`${p}/NORTH/DIGITAL-WORKFLOW`]}:
       {roomId:`${p}/SOUTH`,at:{x:-2.85,z:-6.25,yaw:PI},
-        focusFixtureIds:[`${p}/SOUTH/VIEW-FOLIO-L`,`${p}/SOUTH/VIEW-FOLIO-R`,`${p}/SOUTH/REQUEST-KIOSK`]};
+        focusFixtureIds:[`${p}/SOUTH/VIEW`,`${p}/SOUTH/REQUEST-KIOSK`,`${p}/SOUTH/REQUEST-SCREEN`]};
     floors.push(floor(spec.level,e,3.2,rooms,[
       {id:`${p}/SPINE`,bounds:[1.1,3.4,-5.2,11.6],clearWidth:1.5,surface:'M-OAK'},
       {id:`${p}/EGRESS-NW`,bounds:[-3.15,3.4,7.05,8.55],clearWidth:1.5,surface:'M-TERRAZZO'},
@@ -1702,12 +1855,13 @@ function buildB02() {
       b02WallSign(`${p}/SPINE/SIGN`,e,3.36,1.5,`${spec.south} · ${spec.north} · ${spec.east}`,
         -PI/2,2.0),
       fixture(`${p}/SPINE/IDENTITY-WALL`,'floor-specific quiet-spine identity lining','PF-WALL-RUN',
-        [identityX,e+1.42,identityZ],spec.spineAccent,
-        'genuine acoustic wall finish making each upper library floor legible from its arrival spine',
-        {size:identityWallSize,collision:'none'}),
+        [identity.x,e+1.42,identity.z],spec.spineAccent,
+        'genuine acoustic wall finish making each upper library floor legible from a floor-specific arrival axis',
+        {yaw:identity.yaw,size:identity.wallSize,collision:'none'}),
       fixture(`${p}/SPINE/IDENTITY`,'floor-specific quiet-spine heading','PF-ROOM-SIGN',
-        [identityX,e+2.34,identityZ],'M-SCREEN','concise collection heading above the composed arrival fixture',
-        {yaw:identityYaw,size:[1.95,.30,.045],text:spec.spineIdentity,collision:'none'}),
+        [identity.x-Math.sin(identity.yaw)*.045,e+2.34,identity.z-Math.cos(identity.yaw)*.045],
+        'M-SCREEN','concise collection heading above the composed arrival fixture',
+        {yaw:identity.yaw,size:[1.95,.30,.045],text:spec.spineIdentity,collision:'none'}),
       ...spineArrival,
       ...b02Ceiling(`${p}/SPINE/CEILING`,e,[[2.25,-2.8,1.05,.22],[2.25,3.2,1.05,.22],[2.25,9.0,1.05,.22]],3400,false),
     ],{occupancy:spec.level===4?48:72,visualReview:{
@@ -1757,30 +1911,41 @@ function buildB03() {
       'M-OAK',[.24,.10,2.02],'deep architectural sill aligned to the exterior dining window'),
   ];
   // Each dining group is a real 1.35 × .75 m table with chairs individually oriented toward it.
-  // Two groups omit the north-east chair for a .90 × 1.20 m wheelchair position adjoining an aisle.
+  // Three groups reserve a .90 × 1.20 m wheelchair position adjoining an aisle; T03/T04 use two
+  // fixed seats so neither the customer sight aisle nor the accessible transfer side is pinched.
   const diningGroup=(id,x,z,accessible=false)=>{
-    const out=[fixture(`${p}/DINING/${id}/TABLE`,accessible?'accessible four-place dining table':'four-place dining table',
-      'PF-MEETING-TABLE',[x,e,z],'M-OAK','student dining',{size:[1.35,.76,.75],accessible}),
+    const out=[fixture(`${p}/DINING/${id}/TABLE`,accessible?'accessible dining table':'four-place dining table',
+      'PF-MEETING-TABLE',[x,e,z],'M-OAK','student dining',{
+        size:[1.35,.76,.75],accessible,...(accessible?{openLeg:true,wheelchairSide:'north'}:{})}),
     fixture(`${p}/DINING/${id}/PENDANT`,'warm dining pendant','PF-PENDANT',[x,e+4.78,z],
       'M-BRASS','warm pool of light centred on the shared dining table',
       {temperatureK:3000,lumens:850,size:[.38,.34,.38]})];
     let seat=0;
     for(const side of [-1,1]) for(const dx of [-.36,.36]) {
+      // T03 is deliberately a two-seat accessible table: its clear north transfer side is
+      // part of the genuine customer aisle rather than a squeezed decorative chair row.
+      if(accessible&&id==='T03'&&side===1) continue;
+      // T04's former north-west chair sat in the review orbit and its west-end alternative
+      // would cut into the 1.20 m dining aisle.  Retain the two south seats and NE transfer bay.
+      if(accessible&&id==='T04'&&side===1&&dx<0) continue;
       if(accessible&&side===1&&dx>.3) continue;
       out.push(fixture(`${p}/DINING/${id}/C${pad(++seat)}`,'dining chair','PF-CHAIR',
         [x+dx,e,z+side*.72],seat%4===0?'M-FABRIC-RED':'M-FABRIC-BLUE','student dining seat',
         {yaw:side<0?0:PI}));
     }
     if(accessible) out.push(decor(`${p}/DINING/${id}/WHEELCHAIR`,'wheelchair dining bay',
-      [x+.36,e+.014,z+.72],'M-LAB-BLUE',[.78,.02,.92],
-      'reserved wheelchair position with the cross-aisle as manoeuvring space',{accessible:true,clearBay:[.9,1.2]}));
+      [x+.36,e+.014,z+.975],'M-LAB-BLUE',[.90,.02,1.20],
+      'full 0.90 × 1.20 m wheelchair position on the chair-omitted north side, touching but never overlapping the table edge',
+      {accessible:true,clearBay:[.90,1.20],side:'north',tableId:`${p}/DINING/${id}/TABLE`}));
     return out;
   };
   const diningRows=[-6.70,-3.50,3.50,6.70];
   const dining=[];
   let n=0;
   for(const z of diningRows) for(const x of [2.55,5.10]) {
-    const accessible=x>5&&Math.abs(z)===3.50;
+    // T03 and T04 provide two-seat wheelchair approaches at the busy servery-side row; T06 keeps
+    // three fixed seats plus its independent north-east transfer bay.
+    const accessible=(x>5&&Math.abs(z)===3.50)||(x===2.55&&z===-3.50);
     dining.push(...diningGroup(`T${pad(++n)}`,x,z,accessible));
   }
   dining.push(
@@ -1790,9 +1955,24 @@ function buildB03() {
     fixture(`${p}/DINING/TRAY-READY`,'clean-tray availability plate','PF-ROOM-SIGN',[2.15,e+1.58,-8.76],
       'M-SCREEN','face-on clean-tray and utensil status above the collection rack',
       {yaw:0,size:[1.10,.28,.04],text:'取托盘 · TRAYS READY',collision:'none'}),
-    fixture(`${p}/DINING/T04/LUNCH-TRAY`,'loaded student lunch tray','PF-TRAY-RACK',[5.10,e+.77,-3.50],
-      'M-STAINLESS','tabletop tray staged with a rice bowl, greens, tofu, chopsticks and a covered cup so the dining room reads as an active meal setting',
-      {yaw:PI/2,size:[.62,.24,.42],collision:'none',dish:'米饭 · 青菜 · 豆腐',serviceState:'dining'}),
+    fixture(`${p}/DINING/T04/LUNCH-TRAY`,'shallow loaded student meal tray','PF-PREP-TABLE',[5.10,e+.70,-3.50],
+      'M-STAINLESS','thin tabletop tray base carrying separate rice, greens, tofu, cup and chopstick pieces instead of a resized shelving unit',
+      {yaw:PI/2,size:[.62,.16,.42],collision:'none',dish:'米饭 · 青菜 · 豆腐',serviceState:'dining'}),
+    fixture(`${p}/DINING/T04/MEAL-RICE`,'covered rice bowl','PF-BIN',[4.93,e+.84,-3.57],
+      'M-WALL-WHITE','small lidded rice bowl articulated separately on the meal tray',
+      {size:[.16,.12,.16],collision:'none',dish:'米饭'}),
+    fixture(`${p}/DINING/T04/MEAL-GREENS`,'greens side dish','PF-BIN',[5.12,e+.84,-3.59],
+      'M-WALL-GREEN','small open greens portion articulated separately on the meal tray',
+      {size:[.14,.08,.14],collision:'none',dish:'青菜'}),
+    fixture(`${p}/DINING/T04/MEAL-TOFU`,'tofu side dish','PF-BIN',[5.13,e+.84,-3.40],
+      'M-FABRIC-SAND','small open tofu portion articulated separately on the meal tray',
+      {size:[.14,.08,.14],collision:'none',dish:'豆腐'}),
+    fixture(`${p}/DINING/T04/MEAL-CUP`,'covered student drink cup','PF-BIN',[5.29,e+.84,-3.43],
+      'M-LAB-BLUE','compact covered drink cup articulated separately on the meal tray',
+      {size:[.10,.18,.10],collision:'none'}),
+    fixture(`${p}/DINING/T04/MEAL-CHOPSTICKS`,'tabletop meal chopstick inlay','PF-WALL-RUN',[4.94,e+.89,-3.36],
+      'M-OAK-DARK','paired chopsticks staged as a slender tabletop service inlay beside the rice bowl',
+      {yaw:0,size:[.025,.025,.28],collision:'none'}),
     decor(`${p}/DINING/ENTRY-MAT`,'recessed ribbed entrance mat',[5.72,e+.018,0],
       'M-TILE-DARK',[1.50,.025,3.70],'clean slip-resistant arrival threshold'),
     fixture(`${p}/DINING/MENU`,'wall-mounted daily menu','PF-SCREEN',[6.48,e+2.15,-2.55],
@@ -1811,9 +1991,12 @@ function buildB03() {
     plate(`${p}/DINING/CLEAN-PLATE`,'food-waste campaign sign',[4.62,e+2.10,-8.80],
       '学生食堂 · CANTEEN','student-canteen identity on the brick dining wall',
       {yaw:PI,size:[2.25,.48,.05]}),
-    plate(`${p}/DINING/SOUP-NOTE`,'daily soup notice',[4.70,e+1.72,8.80],
+    fixture(`${p}/DINING/ARRIVAL`,'wide dining-hall arrival and service screen','PF-SCREEN',[3.25,e+2.08,8.82],
+      'M-SCREEN','large north-wall canteen identity and current meal-service status aligned to the clear centre dining aisle',
+      {yaw:0,size:[2.60,1.05,.05],text:'学生食堂 · 今日供餐',collision:'none'}),
+    plate(`${p}/DINING/SOUP-NOTE`,'daily soup notice',[5.60,e+1.72,8.80],
       '今日例汤 · DAILY SOUP','restrained daily-service notice at the dining-room north wall',
-      {yaw:0,size:[1.75,.32,.05]}),
+      {yaw:0,size:[1.50,.32,.05]}),
   );
   // Four composed exterior-aligned window bays, washable acoustic rafts and integrated linear
   // lights establish a repeatable facade/ceiling rhythm without decorative furniture blocks.
@@ -1828,38 +2011,36 @@ function buildB03() {
   const serving=[];
   // Four bays use genuinely different composed silhouettes instead of recolouring one repeated
   // counter: a guarded steam-rice counter, an open induction range under a hood, a tall monitored
-  // tofu refrigerator with a small pass, and an open-leg braise portioning table.  Every body stays
+  // monitored tofu cold-well with a compact condiment caddy, and an open-leg braise portioning table.  Every body stays
   // east of the 1.20 m staff aisle and west of the 1.50 m customer queue.
   const dishes=[
     {zh:'米饭',en:'RICE',operation:'蒸饭 · STEAM',z:-5.90,
       primary:['PF-SERVING-COUNTER','guarded steam-rice counter','M-OAK',[1.20,1.15,.86],
         'warm oak steam-rice bay with integral pans, utensils and a glazed guard']},
-    {zh:'青菜',en:'GREENS',operation:'现炒 · WOK',z:-4.00,hood:true,
+    {zh:'青菜',en:'GREENS',operation:'现炒 · WOK',z:-3.60,hood:true,
       primary:['PF-KITCHEN-RANGE','open induction greens range','M-STAINLESS',[1.30,.92,.82],
         'four-ring live-cook silhouette with controls and splashback for the vegetable bay'],
-      sidecar:['PF-SERVING-COUNTER','compact guarded greens pass','M-WALL-GREEN',[.72,1.10,.70],1.10,
+      sidecar:['PF-SERVING-COUNTER','compact guarded greens pass','M-WALL-GREEN',[.72,1.10,.70],-1.10,
         'small green-laminate guarded pass for finished vegetable portions']},
     {zh:'豆腐',en:'TOFU',operation:'温控 · HOLD',z:-1.65,
       primary:['PF-SERVING-COUNTER','low monitored tofu cold-well','M-LAB-BLUE',[1.24,1.08,.78],
         'queue-facing chilled counter with three visible tofu, garnish and sauce pans beneath a glazed guard'],
-      sidecar:['PF-TRAY-RACK','tofu bowl and condiment caddy','M-TILE-LIGHT',[.46,.78,.38],.92,
+      sidecar:['PF-TRAY-RACK','tofu bowl and condiment caddy','M-TILE-LIGHT',[.46,.78,.38],-.95,
         'open bowl, condiment and allergen-card tiers beside the chilled tofu well']},
-    {zh:'红烧肉',en:'BRAISED PORK',operation:'分切 · PORTION',z:.70,
+    {zh:'红烧肉',en:'BRAISED PORK',operation:'分切 · PORTION',z:-.10,
       primary:['PF-PREP-TABLE','open braise carving and portioning table','M-OAK-DARK',[1.40,.90,.75],
         'open-leg dark-oak portioning table with stainless undershelf and a separate red board'],
       primaryExtra:{boardColor:'red'},
-      sidecar:['PF-TRAY-RACK','braise bowl and serving-tool rack','M-FABRIC-RED',[.46,.76,.38],.95,
-        'stacked bowls, portion ladles and clean service tools beside the open carving table']},
+    },
   ];
-  const bayAccents=['M-OAK-DARK','M-WALL-GREEN','M-LAB-BLUE','M-FABRIC-RED'];
   const foodPresentations=[
     {label:'covered rice pans, bowls and paddle bank',material:'M-WALL-WHITE',at:[-.55,1.15,-5.90],size:[.84,.24,.42],
       purpose:'shallow covered rice pans, clean bowl stack and serving paddle presented on the guarded steam counter'},
-    {label:'fresh-greens pan and garnish bank',material:'M-WALL-GREEN',at:[-.55,.94,-4.00],size:[.84,.24,.42],
+    {label:'fresh-greens pan and garnish bank',material:'M-WALL-GREEN',at:[-.55,.94,-3.60],size:[.84,.24,.42],
       purpose:'shallow cooked-greens pan, fresh garnish and serving tongs presented on the induction range'},
     {label:'tofu portions, sauce and allergen bank',material:'M-WALL-WHITE',at:[-.55,1.10,-1.65],size:[.84,.24,.42],
       purpose:'shallow tofu portions, sauce pots and allergen card presented on the chilled tofu well'},
-    {label:'braised-pork tray and carving-tool bank',material:'M-FABRIC-RED',at:[-.55,.92,.70],size:[.84,.24,.42],
+    {label:'braised-pork tray and carving-tool bank',material:'M-FABRIC-RED',at:[-.55,.92,-.10],size:[.84,.24,.42],
       purpose:'shallow braised-pork tray, red carving board and clean portion tools presented on the open-leg table'},
   ];
   dishes.forEach(({zh,en,operation,z,primary,primaryExtra={},sidecar,hood},i)=>{
@@ -1869,12 +2050,10 @@ function buildB03() {
       fixture(`${p}/SERVE/C${i+1}`,primaryLabel,primaryPrefab,[-.82,e,z],
         primaryMaterial,primaryPurpose,{yaw:-PI/2,size:primarySize,
           foodDisplay:{dish:zh,allergenCard:true,batchLabel:true},...primaryExtra}),
-      fixture(`${p}/SERVE/C${i+1}-BAY-PLATE`,`${zh} queue-side serving-bay plate`,'PF-ROOM-SIGN',
-        [-.36,e+.64,z],bayAccents[i],
-        'colour-coded dish and bay number mounted directly on the working fixture',
-        {yaw:-PI/2,size:[.72,.28,.04],text:`${i+2} · ${zh}`,collision:'none'}),
       fixture(`${p}/SERVE/C${i+1}-PRICE`,'guard-mounted dish and price display','PF-SCREEN',
         [-.32,e+1.55,z-.12],'M-SCREEN','dish identity, price, batch and allergen status directly on the queue-side face',
+        // The queue is in the dining room to the east, so every customer-facing price card
+        // carries its readable face east rather than presenting its back to the service aisle.
         {yaw:-PI/2,size:[.86,.34,.035],text:`${zh} ¥${i+2}`,collision:'none'}),
       fixture(`${p}/SERVE/C${i+1}-FOOD`,food.label,'PF-TRAY-RACK',
         [food.at[0],e+food.at[1],food.at[2]],food.material,food.purpose,
@@ -1902,13 +2081,14 @@ function buildB03() {
     fixture(`${p}/SERVE/MENU-NORTH`,'tofu and braise service menu','PF-SCREEN',[-2.57,e+3.12,-.48],
       'M-SCREEN','large populated menu board above the tofu and braise bays',
       {yaw:-PI/2,size:[3.55,.68,.05],text:'豆腐 ¥4 · 红烧肉 ¥5',collision:'none'}),
-    fixture(`${p}/SERVE/CASH`,'compact cashier station','PF-CASHIER',[-.96,e,2.40],
-      'M-STAINLESS','student-card and mobile payment',{yaw:-PI/2,size:[1.0,1.05,.78]}),
-    plate(`${p}/SERVE/CASH-SIGN`,'cashier sign',[-2.57,e+2.25,2.40],'6 · 收银 · CASHIER',
+    fixture(`${p}/SERVE/CASH`,'compact cashier station','PF-CASHIER',[-.96,e,1.30],
+      'M-STAINLESS','student-card and mobile payment angled toward diners approaching from the south queue',
+      {yaw:-.15,size:[.82,1.05,.72]}),
+    plate(`${p}/SERVE/CASH-SIGN`,'cashier sign',[-2.57,e+2.25,1.30],'6 · 收银 · CASHIER',
       'checkout identity',{yaw:-PI/2,size:[1.35,.31,.05]}),
-    fixture(`${p}/SERVE/PICKUP`,'meal pickup counter','PF-SERVING-COUNTER',[-.96,e,5.15],
+    fixture(`${p}/SERVE/PICKUP`,'meal pickup counter','PF-SERVING-COUNTER',[-.96,e,2.55],
       'M-STAINLESS','completed-meal pickup beside the interaction anchor',{yaw:-PI/2,size:[1.2,1.15,.86]}),
-    plate(`${p}/SERVE/PICKUP-SIGN`,'meal pickup sign',[-2.57,e+2.25,5.15],
+    plate(`${p}/SERVE/PICKUP-SIGN`,'meal pickup sign',[-2.57,e+2.25,2.55],
       '7 · 取餐 · PICK UP','meal pickup identity',{yaw:-PI/2,size:[1.35,.31,.05]}),
     plate(`${p}/SERVE/STAFF-SIGN`,'servery staff-zone sign',[-2.57,e+3.15,-7.95],
       '员工入口 · STAFF','staff entry at the south end of the line',{yaw:-PI/2,size:[1.35,.3,.05]}),
@@ -1919,16 +2099,16 @@ function buildB03() {
       'M-SCREEN','ingredient, vegetarian and common-allergen information before pickup',
       {yaw:0,size:[2.10,.66,.05],text:'素食 · 花生 · 牛奶 · 鸡蛋',collision:'none'}),
     fixture(`${p}/SERVE/PICKUP-UTENSILS`,'pickup utensil and napkin bank','PF-TRAY-RACK',
-      [-.55,e+1.18,5.15],'M-STAINLESS',
+      [-.55,e+1.18,2.55],'M-STAINLESS',
       'composed multi-tier chopstick, spoon, napkin and condiment bank on the pickup counter',
       {yaw:-PI/2,size:[.64,.30,.38],collision:'none'}),
     decor(`${p}/SERVE/QUEUE-LINE`,'continuous queue direction line',[1.05,e+.014,-1.05],
       'M-SAFETY-YELLOW',[.08,.02,13.70],'single unobstructed guide from trays to pickup'),
     fixture(`${p}/SERVE/L1`,'south serving-line light','PF-CEILING-LIGHT',[-.96,e+5.34,-4.65],
       'M-WALL-WHITE','bright food presentation',{temperatureK:4000,size:[1.55,.06,.26]}),
-    fixture(`${p}/SERVE/L2`,'north serving-line light','PF-CEILING-LIGHT',[-.96,e+5.34,2.35],
+    fixture(`${p}/SERVE/L2`,'north serving-line light','PF-CEILING-LIGHT',[-.96,e+5.34,1.30],
       'M-WALL-WHITE','cashier and pickup illumination',{temperatureK:4000,size:[1.55,.06,.26]}),
-    fixture(`${p}/SERVE/L3`,'pickup task light','PF-CEILING-LIGHT',[-.96,e+5.34,5.12],
+    fixture(`${p}/SERVE/L3`,'pickup task light','PF-CEILING-LIGHT',[-.96,e+5.34,2.55],
       'M-WALL-WHITE','bright final pickup and allergen-check illumination',
       {temperatureK:4100,size:[1.35,.06,.26]}),
   );
@@ -2037,16 +2217,28 @@ function buildB03() {
       'M-WALL-WHITE','cold-chain thermometer and seal inspection lighting',{temperatureK:4100,size:[1.40,.06,.30]}),
   ];
   const wc=[
-    fixture(`${p}/WC/TOILET`,'accessible staff toilet','PF-TOILET',[-5.95,e,-4.40],
-      'M-CERAMIC','staff sanitary fixture',{grabRails:true}),
-    fixture(`${p}/WC/BASIN`,'staff washbasin','PF-BASIN',[-4.90,e,-4.40],
-      'M-CERAMIC','staff hand washing'),
+    fixture(`${p}/WC/TOILET`,'accessible south-wall staff toilet','PF-TOILET',[-6.15,e,-4.70],
+      'M-CERAMIC','north-facing staff sanitary fixture with a full east side-transfer bay',
+      {yaw:PI,facing:'north',grabRails:true,accessible:true}),
+    decor(`${p}/WC/TOILET-TRANSFER`,'wheelchair toilet side-transfer field',[-5.19,e+.014,-4.55],
+      'M-LAB-BLUE',[1.20,.02,.90],'clear 1.20 × 0.90 m east side-transfer space beside the accessible toilet',
+      {accessible:true,clearBay:[1.20,.90]}),
+    fixture(`${p}/WC/BASIN`,'accessible north-wall staff washbasin','PF-BASIN',[-6.18,e,-1.725],
+      'M-CERAMIC','wheelchair-height hand washing clear of the turn and entrance route',
+      {yaw:0,size:[.84,.88,.45],facing:'south',accessible:true}),
+    decor(`${p}/WC/BASIN-APPROACH`,'wheelchair basin approach field',[-6.05,e+.014,-2.40],
+      'M-LAB-BLUE',[.90,.02,.90],'independent clear approach to the accessible washbasin',
+      {accessible:true,clearBay:[.90,.90]}),
     decor(`${p}/WC/TURN`,'accessible turning zone',[-5.45,e+.014,-2.70],
-      'M-LAB-BLUE',[1.50,.02,1.50],'keep a full wheelchair turning zone clear',{accessible:true}),
-    decor(`${p}/WC/RAIL`,'contrasting toilet grab rail',[-6.48,e+.9,-4.38],
-      'M-SAFETY-YELLOW',[.05,.06,.72],'transfer support at the toilet'),
-    decor(`${p}/WC/MIRROR`,'washroom mirror',[-4.90,e+1.55,-4.95],
-      'M-GLASS',[.82,.82,.04],'mirror above the basin'),
+      'M-LAB-BLUE',[1.50,.02,1.50],'keep a full wheelchair turning zone clear between the entrance and transfer bay',
+      {accessible:true,turningDiameter:1.50}),
+    decor(`${p}/WC/ACCESS-ROUTE`,'protected staff-WC entrance route',[-5.025,e+.012,-2.60],
+      'M-RUBBER',[1.15,.02,1.00],'clear route from the east staff door into the turning field',
+      {accessible:true,clearWidth:1.00}),
+    decor(`${p}/WC/RAIL`,'contrasting toilet grab rail',[-6.15,e+.9,-4.96],
+      'M-SAFETY-YELLOW',[.72,.06,.05],'transfer support aligned beside the accessible toilet'),
+    decor(`${p}/WC/MIRROR`,'low accessible washroom mirror',[-6.18,e+1.42,-1.54],
+      'M-GLASS',[.82,.82,.04],'low mirror aligned above the accessible basin'),
     plate(`${p}/WC/SIGN`,'staff WC sign',[-6.50,e+2.1,-2.15],
       '员工卫生间 · STAFF WC','accessible staff washroom identity',{yaw:PI/2,size:[1.55,.3,.05]}),
     fixture(`${p}/WC/L1`,'washroom ceiling panel','PF-CEILING-LIGHT',[-5.45,e+5.34,-3.05],
@@ -2071,17 +2263,23 @@ function buildB03() {
       // camera-height slab that hid the arriving player, so it is intentionally not duplicated.
       doorway(`${p}/DINING/EXIT-S`,'south',[.35,e,-9.5],1.5,'campus',{emergencyOnly:true}),
       doorway(`${p}/DINING/QUEUE`,'west',[.2,e,-7.85],1.2,`${p}/QUEUE-SPINE`,{designIntent:'south queue entry'}),
-    ],dining,{capacity:32,fixedSeats:30,wheelchairPlaces:2}),
+    ],dining,{capacity:30,fixedSeats:27,wheelchairPlaces:3}),
     room(`${p}/SERVE`,'售饭区',serveB,'kitchen',[
-      doorway(`${p}/SERVE/STORE`,'west',[-2.65,e,-8.20],.9,`${p}/SERVICE-ENTRY`,{staffOnly:true}),
-      doorway(`${p}/SERVE/CLEAN-PASS`,'west',[-2.65,e,3.725],.95,`${p}/CLEAN-PASS`,{staffOnly:true}),
+      doorway(`${p}/SERVE/STORE`,'west',[-2.65,e,-8.20],.9,`${p}/SERVICE-ENTRY`,{
+        staffOnly:true,operation:'sliding-pocket',pocketSide:'north',reviewOpen:true,
+        designIntent:'active meal-service sliding-pocket pair retracts into the north pocket during staffed service hours, keeping hygienic dry and cold-stock replenishment clear of the serving queue'}),
+      doorway(`${p}/SERVE/CLEAN-PASS`,'west',[-2.65,e,3.725],.95,`${p}/CLEAN-PASS`,{
+        staffOnly:true,operation:'sliding-pocket',pocketSide:'south',reviewOpen:true,
+        designIntent:'active meal-service sliding-pocket pair retracts into the south pocket during staffed service hours, keeping the clean-pass handoff open without a swing leaf crossing the hygiene route'}),
     ],serving,{staffOnly:true}),
     room(`${p}/RETURN`,'餐具回收',returnB,'kitchen',[
       doorway(`${p}/RETURN/STAFF`,'west',[-2.65,e,8.45],.9,`${p}/DISH-STAFF`,{staffOnly:true}),
     ],returns),
     room(`${p}/KITCHEN`,'净菜与热厨',kitchenB,'kitchen',[
       doorway(`${p}/KITCHEN/SERVICE`,'west',[-7,e,3],1.2,'campus-service'),
-      doorway(`${p}/KITCHEN/CLEAN-PASS`,'east',[-2.65,e,3.725],.95,`${p}/CLEAN-PASS`,{staffOnly:true}),
+      doorway(`${p}/KITCHEN/CLEAN-PASS`,'east',[-2.65,e,3.725],.95,`${p}/CLEAN-PASS`,{
+        staffOnly:true,operation:'sliding-pocket',pocketSide:'south',reviewOpen:true,
+        designIntent:'active meal-service sliding-pocket pair retracts into the south pocket during staffed service hours, preserving the hygienic clean-pass transfer between kitchen and serving line'}),
       doorway(`${p}/KITCHEN/CHANGE`,'south',[-3.55,e,-1.5],1.2,`${p}/BOH-CLEAN`,{staffOnly:true}),
       doorway(`${p}/KITCHEN/WASH`,'north',[-5.40,e,4.7],1.2,`${p}/DIRTY`,{staffOnly:true}),
     ],kitchen,{staffOnly:true,workflow:'clean preparation → hot line → clean pass → serving bays'}),
@@ -2090,12 +2288,19 @@ function buildB03() {
       doorway(`${p}/DIRTY/RETURN`,'east',[-2.65,e,8.45],.9,`${p}/DISH-STAFF`,{staffOnly:true}),
     ],dirty,{staffOnly:true,workflow:'return aperture → dirty landing → pre-rinse → clean racks → kitchen'}),
     room(`${p}/STORE`,'冷藏与干货储藏',storeB,'service',[
-      doorway(`${p}/STORE/SERVICE`,'east',[-2.65,e,-8.20],.9,`${p}/SERVICE-ENTRY`,{staffOnly:true}),
+      doorway(`${p}/STORE/SERVICE`,'east',[-2.65,e,-8.20],.9,`${p}/SERVICE-ENTRY`,{
+        staffOnly:true,operation:'sliding-pocket',pocketSide:'north',reviewOpen:true,
+        designIntent:'active meal-service sliding-pocket pair retracts into the north pocket during staffed service hours, maintaining hygienic ingredient replenishment between store and serving line'}),
       doorway(`${p}/STORE/CHANGE`,'north',[-3.25,e,-5.0],1.2,`${p}/BOH-CLEAN`,{staffOnly:true}),
     ],stores,{staffOnly:true}),
     room(`${p}/WC`,'员工卫生间',wcB,'service',[
       doorway(`${p}/WC/CHANGE`,'east',[-4.45,e,-2.60],1.0,`${p}/BOH-CLEAN`,{staffOnly:true}),
-    ],wc,{staffOnly:true,accessible:true}),
+    ],wc,{staffOnly:true,accessible:true,planning:{
+      publicRoutes:[{id:`${p}/WC/ACCESS-ROUTE`,bounds:[-5.60,-4.45,-3.10,-2.10],width:1.00}],
+      turns:[{id:`${p}/WC/TURN`,centre:[-5.45,-2.70],diameter:1.50}],
+      toiletTransfers:[{toiletId:`${p}/WC/TOILET`,id:`${p}/WC/TOILET-TRANSFER`,side:'east',clearBay:[1.20,.90]}],
+      basinApproaches:[{basinId:`${p}/WC/BASIN`,id:`${p}/WC/BASIN-APPROACH`,clearBay:[.90,.90]}],
+    }}),
     room(`${p}/CHANGE`,'员工更衣与清洁通道',changeB,'service',[
       doorway(`${p}/CHANGE/STORE`,'south',[-3.25,e,-5.0],1.2,`${p}/BOH-CLEAN`,{staffOnly:true}),
       doorway(`${p}/CHANGE/KITCHEN`,'north',[-3.55,e,-1.5],1.2,`${p}/BOH-CLEAN`,{staffOnly:true}),
@@ -2115,17 +2320,17 @@ function buildB03() {
     portals:[{id:'B03/PUBLIC',campusAt:[-29,2.5],campusReturn:[-26.6,2.5,-PI/2],localSpawn:[5.6,0,0,-PI/2],placeKey:'campus_canteen'}],
     facadeChanges:[{id:'B03/EXIT-S','instruction':'Add a 1.50 m south emergency exit at campus (-35.65,-7.0); do not use the obstructed west delivery-screen gap as the public second exit.'}],
     facadeAlignment:{publicOpening:{side:'east',localAt:[7,0],width:4.2},deliveryDoor:{side:'west',localAt:[-7,3],width:2.1}},
-    design:'A working 32-place campus canteen with a recognisable daily rhythm: eight correctly oriented four-place tables sit on a measured 1.20 m aisle grid beneath warm pendants and washable acoustic rafts; two tables reserve wheelchair bays; deep composed window bays follow the east facade; and restrained brick, oak, blue textile and bilingual daily-service graphics give the hall an authentic student identity. A numbered 1.50 m south-to-north queue progresses from trays through four unmistakable composed silhouettes—a guarded oak steam-rice counter, open stainless induction range beneath a hood, tall monitored tofu refrigerator with a pale pass, and open-leg dark-oak braise portioning table—to payment and pickup, while the north return feeds a physically separate dirty wash room. The west back-of-house maintains continuous storage, changing, clean-prep, hot-line and wash-up routes under colour-accurate task lighting, hygiene signage and live production/temperature boards.',
+    design:'A working 30-place campus canteen with a recognisable daily rhythm: eight correctly oriented dining tables sit on a measured 1.20 m aisle grid beneath warm pendants and washable acoustic rafts; three tables provide wheelchair transfer bays without squeezing the customer sight aisle; deep composed window bays follow the east facade; and restrained brick, oak, blue textile and bilingual daily-service graphics give the hall an authentic student identity. A numbered 1.50 m south-to-north queue progresses from trays through four unmistakable composed silhouettes—a guarded oak steam-rice counter, open stainless induction range beneath a hood, low monitored tofu cold-well with a compact condiment caddy, and open-leg dark-oak braise portioning table—to payment and pickup, while the north return feeds a physically separate dirty wash room. The west back-of-house maintains continuous storage, changing, clean-prep, hot-line and wash-up routes under colour-accurate task lighting, hygiene signage and live production/temperature boards.',
     interiorCharacter:{
       publicPalette:['sealed oak tables','muted blue/red upholstery','brick identity wall','brass warm-light accents'],
       facadeWindows:{bays:4,assembly:['safety glazing','deep washable jambs','head reveal','sealed oak sill']},
       lighting:{dining:'3000 K pendants plus 3400 K integrated raft lighting',servery:'3200 K food-display pendants plus 4000–4100 K task panels',backOfHouse:'4000–4300 K washable inspection/task panels'},
-      servingBaySilhouettes:['guarded oak steam-rice counter','open induction range and extraction hood','tall monitored tofu refrigerator with pale guarded pass','open-leg dark-oak braise portioning table'],
+      servingBaySilhouettes:['guarded oak steam-rice counter','open induction range and extraction hood','low monitored tofu cold-well with compact condiment caddy','open-leg dark-oak braise portioning table'],
       serviceGraphics:['daily menu and hours','numbered food-bay sequence','guard-mounted dish/price/batch labels','allergen legend','clean-plate campaign','waste-sorting guide'],
       livedInDetails:['filtered water refill','threshold plant','daily soup notice','batch/temperature boards','sanitation release log'],
     },
     operationalClearances:{
-      seating:{tables:8,fixedChairs:30,wheelchairPlaces:2,totalPlaces:32,tableSize:[1.35,.76,.75],groupFootprint:[1.35,1.92]},
+      seating:{tables:8,fixedChairs:27,wheelchairPlaces:3,totalPlaces:30,tableSize:[1.35,.76,.75],groupFootprint:[1.35,1.92]},
       dining:{betweenColumns:1.20,betweenRows:1.28,outerWall:1.24,entryDoorApproachGap:.24},
       service:{customerQueue:1.50,staffAisle:1.20,counterBackClearance:1.26,bayGap:.35,bays:4},
       backOfHouse:{cleanKitchenAisle:1.95,dirtyWashAisle:2.10,storeAisle:2.20,dishReturnPassage:.90,staffWCTurning:1.50},
@@ -2151,16 +2356,56 @@ function buildB03() {
       {id:`${p}/WC-TURN`,bounds:[-6.20,-4.70,-3.45,-1.95],clearWidth:1.50,surface:'M-TILE-DARK'},
     ],shared,{occupancy:52,visualReview:{
       entries:[{suffix:'entry',portalId:'B03/PUBLIC',focusRoomId:`${p}/DINING`,cameraZoneId:`${p}/ENTRY`,
-        focusAt:{x:6.00,z:-4.60,yaw:35*PI/36},body:'hidden',
-        focusFixtureIds:[`${p}/DINING/CLEAN-PLATE`]}],
-      programme:{roomId:`${p}/DINING`,at:{x:4.00,z:-5.20,yaw:7*PI/12},
-        focusFixtureIds:[`${p}/DINING/T04/TABLE`,`${p}/DINING/T04/LUNCH-TRAY`]},
+        focusAt:{x:3.825,z:2.00,yaw:0},body:'hidden',
+        focusFixtureIds:[`${p}/DINING/ARRIVAL`]}],
+      // Customer-side service view: a diagonal queue-side orbit frames the live greens and tofu
+      // bodies with their readable customer cards, while active-service pocket pairs keep the
+      // separate staff hygiene thresholds safely retracted.
+      programme:{roomId:`${p}/DINING`,at:{x:2.80,z:-2.62,yaw:-1.15},
+        focusFixtureIds:[`${p}/SERVE/C2`,`${p}/SERVE/C3`,`${p}/SERVE/C2-PRICE`,`${p}/SERVE/C3-PRICE`]},
     }})],
   };
 }
 
-function dormWashRoom(prefix,e,b) {
+function dormWashRoom(prefix,e,b,accessible=false) {
   const [x0,x1,z0,z1]=b;
+  if(accessible)return [
+    fixture(`${prefix}/TURN`,'wheelchair turning field','PF-WALL-RUN',[2.75,e+.012,5.05],
+      'M-LAB-BLUE','full 1.50 m turning field reached directly from the one-metre threshold',
+      {size:[1.50,.02,1.50],collision:'none',accessible:true,turningDiameter:1.50}),
+    fixture(`${prefix}/ACCESS-ROUTE`,'accessible washroom entrance field','PF-WALL-RUN',[1.78,e+.010,5.0],
+      'M-RUBBER','0.90 m clear threshold route into the turning field',
+      {size:[1.16,.018,.90],collision:'none',accessible:true,clearWidth:.90}),
+    fixture(`${prefix}/T-ACCESS`,'accessible toilet with transfer rails','PF-TOILET',[5.45,e,7.10],
+      'M-CERAMIC','south-facing toilet with west transfer side and fixed support rails',
+      {yaw:PI,facing:'south',grabRails:true,accessible:true}),
+    fixture(`${prefix}/T-TRANSFER`,'wheelchair toilet transfer field','PF-WALL-RUN',[4.25,e+.012,6.95],
+      'M-SAFETY-YELLOW','1.20 m by 0.90 m side-transfer position kept free of sanitary fixtures',
+      {size:[1.20,.02,.90],collision:'none',accessible:true,clearBay:[1.20,.90]}),
+    fixture(`${prefix}/T-STANDARD`,'standard shared toilet','PF-TOILET',[2.40,e,7.15],
+      'M-CERAMIC','separate standard resident toilet',{yaw:PI}),
+    fixture(`${prefix}/SHOWER-ROLLIN`,'roll-in accessible shower','PF-SHOWER',[5.45,e,5.10],
+      'M-CERAMIC','flush roll-in shower with folding seat, reachable controls and support rail',
+      {yaw:PI/2,size:[1.05,2.15,1.05],accessible:true,rollIn:true,foldingSeat:true,grabRails:true}),
+    fixture(`${prefix}/SHOWER-APPROACH`,'wheelchair roll-in shower approach field','PF-WALL-RUN',
+      [4.20,e+.012,5.10],'M-SAFETY-YELLOW','1.20 m clear frontal approach to the roll-in shower',
+      {size:[1.20,.02,1.00],collision:'none',accessible:true,clearBay:[1.20,1.00]}),
+    fixture(`${prefix}/BASIN`,'accessible washbasin','PF-BASIN',[1.55,e,6.80],
+      'M-CERAMIC','side-wall basin with knee clearance, reachable tap and low mirror',
+      {yaw:-PI/2,size:[.84,.88,.45],facing:'east',accessible:true}),
+    fixture(`${prefix}/MIRROR`,'low accessible basin mirror','PF-WALL-RUN',[1.235,e+1.42,6.80],
+      'M-GLASS','lower mirror aligned to the accessible basin',{size:[.035,.82,.72],collision:'none'}),
+    fixture(`${prefix}/T-DIV`,'toilet privacy divider','PF-WALL-RUN',[3.35,e+1.05,7.50],
+      'M-TILE-LIGHT','short privacy divider outside the toilet transfer field',{size:[.055,2.0,.20],collision:'none'}),
+    fixture(`${prefix}/MAT`,'accessible wet-room anti-slip field','PF-WALL-RUN',[(x0+x1)/2,e+.018,(z0+z1)/2],
+      'M-RUBBER','continuous flush anti-slip wet-room floor',{size:[4.35,.025,2.85],collision:'none'}),
+    fixture(`${prefix}/EX`,'extract fan','PF-AC',[x1-.45,e+2.4,z1-.18],
+      'M-WALL-WHITE','wet-room extraction',{yaw:PI}),
+    fixture(`${prefix}/LIGHT1`,'wet-room ceiling light','PF-CEILING-LIGHT',
+      [2.60,e+2.65,5.10],'M-WALL-WHITE','even light over the turn and basin',{temperatureK:4000,size:[.65,.06,.65]}),
+    fixture(`${prefix}/LIGHT2`,'wet-room ceiling light','PF-CEILING-LIGHT',[4.90,e+2.65,6.45],
+      'M-WALL-WHITE','even light over the roll-in shower and toilet transfer',{temperatureK:4000,size:[.65,.06,.65]}),
+  ];
   return [
     fixture(`${prefix}/T1`,'screened toilet A','PF-TOILET',[x0+1.55,e,z0+.52],'M-CERAMIC','shared toilet'),
     fixture(`${prefix}/T2`,'screened toilet B','PF-TOILET',[x0+2.50,e,z0+.52],'M-CERAMIC','shared toilet'),
@@ -2218,7 +2463,10 @@ function dormCorridorSet(prefix,e,level) {
       {screen:[-.27,1.45,1.04,.60],floor:[.60,2.02,.38,.24],badge:[.43,1.64,.56,.28],status:[.30,1.12,.62,.20],back:[1.80,1.48],datum:[-.26,.94]},
       {screen:[.29,1.58,1.02,.52],floor:[-.60,2.02,.40,.24],badge:[-.46,1.45,.54,.32],status:[.29,1.12,.82,.20],back:[1.82,1.50],datum:[.28,.92]},
     ][level-1],
-    arrivalNorth=level===1||level===2||level>=4,
+    // Every upper-floor programme now has a north-end arrival composition.  F3 formerly placed
+    // its music identity behind the south-east stair leaf, so no honest full-frustum capture could
+    // show the display without also showing that fire door.
+    arrivalNorth=true,
     // PF-SCREEN and PF-ROOM-SIGN present on local -Z.  A north end wall therefore faces the
     // corridor at yaw 0, while a south end wall faces it at PI; the previous values exposed the
     // blank backs of every authored residence-arrival display.
@@ -2237,6 +2485,77 @@ function dormCorridorSet(prefix,e,level) {
       'PF-WALL-RUN',[x,e+.72,(z0+z1)/2],identity,
       'thin floor identity inset with a clear termination before every real doorway',
       {size:[.022,.065,z1-z0],collision:'none',segmentedAtDoorways:true}));
+  // Upper-floor arrivals now turn toward a real programme-specific side-wall tableau instead of
+  // repeating the same dead-end sign wall six times.  Every assembly has a different silhouette:
+  // tutoring ledger, acoustic music bars, face-out reading shelf, career cards, and washer states.
+  // All pieces are shallow, wall mounted and terminate between door openings, so the exact 2.00 m
+  // circulation width and every reciprocal door/threshold remain untouched.
+  const arrivalSide=[];
+  if(level===2)arrivalSide.push(
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-BACK`,'quiet-study tutoring ledger wall','PF-WALL-RUN',
+      [-1.065,e+1.48,6.38],'M-FABRIC-BLUE','portrait acoustic ledger at the lift-side arrival turn',
+      {size:[.035,1.52,1.76],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-SCREEN`,'quiet-study tutor status','PF-SCREEN',
+      [-.56,e+1.66,6.18],'M-SCREEN','hinged tutoring status angled toward the authored quiet-study arrival',
+      {yaw:.153,size:[1.06,.52,.04],text:'导师 · TUTOR',collision:'none',hudSafe:true}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-CARD`,'quiet-study appointment card','PF-ROOM-SIGN',
+      [-1.02,e+1.13,6.62],'M-FABRIC-SAGE','one offset appointment card completing the asymmetric tutoring ledger',
+      {yaw:-PI/2,size:[.72,.20,.035],text:'QUIET · 18:00',collision:'none',hudSafe:true}),
+  );
+  if(level===3)arrivalSide.push(
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-BACK`,'music-floor acoustic arrival field','PF-WALL-RUN',
+      [1.065,e+1.48,6.00],'M-FABRIC-RED','wide woven music field on the north-east solid corridor wall',
+      {size:[.035,1.54,2.04],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-SCREEN`,'music rehearsal status','PF-SCREEN',
+      [.52,e+1.66,6.00],'M-SCREEN','rehearsal booking and quiet-hours status across the north-east arrival diagonal',
+      {yaw:.35,size:[1.18,.52,.04],text:'排练 · MUSIC',collision:'none',hudSafe:true}),
+    ...[-.58,0,.58].map((dz,i)=>fixture(`${prefix}/COR/ARRIVAL-SIDE-BAR-${i+1}`,
+      'music-floor vertical acoustic bar','PF-WALL-RUN',[1.02,e+1.08,6.00+dz],
+      i===1?'M-BRASS':'M-FABRIC-SAND','three staggered absorber bars give the music arrival a genuine waveform silhouette',
+      {size:[.025,.58,i===1?.12:.18],collision:'none'})),
+  );
+  if(level===4)arrivalSide.push(
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-BACK`,'reading-floor face-out display wall','PF-WALL-RUN',
+      [1.065,e+1.46,6.28],'M-OAK','warm reading field on the east corridor wall',
+      {size:[.035,1.48,1.92],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-SCREEN`,'reading-club status','PF-SCREEN',
+      [.56,e+1.72,6.45],'M-SCREEN','hinged book-club title and current borrowing status',
+      {yaw:-.10,size:[1.10,.48,.04],text:'阅读 · READ',collision:'none',hudSafe:true}),
+    ...[-.54,-.18,.18,.54].map((dz,i)=>fixture(`${prefix}/COR/ARRIVAL-SIDE-BOOK-${i+1}`,
+      'reading-floor face-out book spine','PF-WALL-RUN',[1.02,e+1.10,6.20+dz],
+      ['M-FABRIC-RED','M-FABRIC-BLUE','M-BRASS','M-FABRIC-SAGE'][i],
+      'four shallow book spines and one shelf make the reading programme legible without floor clutter',
+      {size:[.025,.34,.16],collision:'none'})),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-SHELF`,'reading-floor display datum','PF-WALL-RUN',
+      [1.015,e+.89,6.20],'M-OAK-DARK','continuous face-out datum beneath the coloured reading spines',
+      {size:[.025,.07,1.62],collision:'none'}),
+  );
+  if(level===5)arrivalSide.push(
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-BACK`,'senior careers arrival field','PF-WALL-RUN',
+      [1.065,e+1.48,6.18],'M-FABRIC-SAND','offset careers field on the east corridor wall',
+      {size:[.035,1.50,1.86],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-SCREEN`,'senior careers briefing','PF-SCREEN',
+      [.56,e+1.68,6.02],'M-SCREEN','internship, graduation and adviser status in one concise face-readable header',
+      {yaw:.30,size:[1.10,.46,.04],text:'生涯 · CAREER',collision:'none',hudSafe:true}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-CARD-A`,'senior CV clinic card','PF-ROOM-SIGN',
+      [1.02,e+1.13,5.78],'M-FABRIC-BLUE','first staggered careers action card',
+      {yaw:PI/2,size:[.54,.22,.035],text:'CV · 16:00',collision:'none',hudSafe:true}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-CARD-B`,'senior adviser card','PF-ROOM-SIGN',
+      [1.02,e+1.08,6.53],'M-BRASS','second staggered careers action card',
+      {yaw:PI/2,size:[.66,.22,.035],text:'ADVISER · 17:30',collision:'none',hudSafe:true}),
+  );
+  if(level===6)arrivalSide.push(
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-BACK`,'laundry-floor machine-status field','PF-WALL-RUN',
+      [-1.065,e+1.47,6.30],'M-LAB-BLUE','compact top-floor service field on the solid west wall beyond the lift doorway',
+      {size:[.035,1.48,1.50],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-SCREEN`,'top-floor laundry status','PF-SCREEN',
+      [-.50,e+1.74,6.30],'M-SCREEN','hinged laundry and study-club availability header',
+      {yaw:-.35,size:[1.16,.50,.04],text:'洗衣 · LAUNDRY',collision:'none',hudSafe:true}),
+    ...[-.63,0,.63].map((dz,i)=>fixture(`${prefix}/COR/ARRIVAL-SIDE-MACHINE-${i+1}`,
+      'top-floor washer state card','PF-ROOM-SIGN',[-1.02,e+1.10,6.30+dz],
+      i===1?'M-FABRIC-SAGE':'M-SCREEN','three separated machine-state cards echo the real laundry room without copying a sign grid',
+      {yaw:-.35,size:[.48,.24,.035],text:['01 · FREE','02 · 18M','03 · FREE'][i],collision:'none',hudSafe:true})),
+  );
   return [
     // One opaque body owns the runner.  The former pale sage/sand top over a separate dark
     // underlay produced a glassy double surface whose grout-like interference read through the
@@ -2269,6 +2588,7 @@ function dormCorridorSet(prefix,e,level) {
     fixture(`${prefix}/COR/ARRIVAL-DATUM`,'lower arrival display datum','PF-WALL-RUN',
       [arrivalLayout.datum[0],e+.78,arrivalFaceZ],dormTextile(level),'wall-mounted lower edge completing the arrival vignette',
       {size:[arrivalLayout.datum[1],.07,.10],collision:'none'}),
+    ...arrivalSide,
     ...lightGrid(`${prefix}/COR`,e,[[0,-5.8],[0,-2.0],[0,2.0],[0,5.8]],3400),
   ];
 }
@@ -2315,50 +2635,62 @@ function buildB04() {
       doorway(`${p}/LIFT/TO-STAIR`,'west',[-3.05,e,4.75],1.0,`${p}/STAIR`),
       doorway(`${p}/LIFT/TO-COR`,'east',[-1.2,e,4.75],1.0,`${p}/CORRIDOR`),
     ],[
-      fixture(`${p}/LIFT/FIX`,'accessible lift with waiting vestibule','PF-LIFT',[-2.12,e,6.55],'M-STEEL','accessible vertical circulation',{size:[1.55,2.45,1.55],levels:[1,2,3,4,5,6]}),
+      fixture(`${p}/LIFT/FIX`,'accessible lift with waiting vestibule','PF-LIFT',[-2.12,e,6.55],'M-STEEL','accessible vertical circulation',{size:[1.55,2.45,1.55],levels:[1,2,3,4,5,6],accessible:true}),
       fixture(`${p}/LIFT/ELEC`,'recessed floor electrical cabinet','PF-ELECTRICAL-CABINET',[-3.01,e+1.35,6.55],'M-STEEL-DARK','electrical distribution',{yaw:PI/2,size:[.58,1.15,.16],collision:'none'}),
       fixture(`${p}/LIFT/MIRROR`,'lift-vestibule mirror','PF-WALL-RUN',[-3.0,e+1.52,5.25],'M-GLASS','last-look mirror',{yaw:PI/2,size:[.035,1.45,.72],collision:'none'}),
       fixture(`${p}/LIFT/LIGHT`,'lift-vestibule light','PF-CEILING-LIGHT',[-2.12,e+2.64,5.25],'M-WALL-WHITE','lift waiting lighting',{temperatureK:3400,size:[.72,.06,.42]}),
-    ]),
-    room(`${p}/WASH`,'公共盥洗室',[1.2,6.1,4.2,7.6],'service',[
+    ],{accessible:true,planning:{
+      publicRoutes:[{id:`${p}/LIFT/ACCESS-ROUTE`,bounds:[-2.895,-1.345,4.27,5.17],width:.90,datum:'planning-only continuous floor finish'}],
+      turns:[{id:`${p}/LIFT/TURN`,centre:[-2.12,5.02],diameter:1.50,datum:'planning-only continuous floor finish'}],
+    }}),
+    room(`${p}/WASH`,level===1?'无障碍盥洗与淋浴室':'公共盥洗室',[1.2,6.1,4.2,7.6],'service',[
       doorway(`${p}/WASH/TO-COR`,'west',[1.2,e,5.0],1.0,`${p}/CORRIDOR`)
-    ],dormWashRoom(`${p}/WASH`,e,[1.2,6.1,4.2,7.6])),
+    ],dormWashRoom(`${p}/WASH`,e,[1.2,6.1,4.2,7.6],level===1),level===1?{accessible:true,planning:{
+      publicRoutes:[{id:`${p}/WASH/ACCESS-ROUTE`,bounds:[1.20,2.36,4.55,5.45],width:.90}],
+      turns:[{id:`${p}/WASH/TURN`,centre:[2.75,5.05],diameter:1.50}],
+      toiletTransfers:[{id:`${p}/WASH/T-TRANSFER`,fixtureId:`${p}/WASH/T-ACCESS`,bounds:[3.65,4.85,6.50,7.40],width:.90,depth:1.20}],
+      showerApproaches:[{id:`${p}/WASH/SHOWER-APPROACH`,fixtureId:`${p}/WASH/SHOWER-ROLLIN`,bounds:[3.60,4.80,4.60,5.60],width:1.0,depth:1.20}],
+    }}:{}),
   ];
   // Ground floor.
   {
     const level=1,e=0,p='B04/F1',rooms=[];
     rooms.push(
-      room(`${p}/A01`,'101无障碍宿舍',west[0],'dorm',[doorway(`${p}/A01/D`,'east',[-1.2,e,-5.75],1.0,`${p}/CORRIDOR`)],furnishDormRoom(`${p}/A01`,e,west[0],'west',true),{beds:2,accessible:true}),
+      room(`${p}/A01`,'101无障碍宿舍',west[0],'dorm',[doorway(`${p}/A01/D`,'east',[-1.2,e,-5.75],1.0,`${p}/CORRIDOR`)],furnishDormRoom(`${p}/A01`,e,west[0],'west',true),{
+        beds:1,accessible:true,planning:{
+          publicRoutes:[{id:`${p}/A01/ACCESS-ROUTE`,bounds:[-2.50,-1.34,-6.20,-5.30],width:.90}],
+          turns:[{id:`${p}/A01/TURN`,centre:[-2.60,-4.95],diameter:1.50}],
+          bedTransfers:[{id:`${p}/A01/BED-TRANSFER`,fixtureId:`${p}/A01/BED1`,bounds:[-5.90,-3.90,-6.27,-5.37],width:.90,depth:2.0}],
+          deskApproaches:[{id:`${p}/A01/DESK-APPROACH`,fixtureId:`${p}/A01/DESK1`,bounds:[-2.675,-1.425,-6.74,-5.84],width:1.25,depth:.90}],
+          wardrobeApproaches:[{id:`${p}/A01/WARD-APPROACH`,fixtureId:`${p}/A01/WARD1`,bounds:[-5.15,-4.25,-5.10,-4.10],width:.90,depth:1.0}],
+        }}),
       room(`${p}/LOBBY`,'门厅与值班台',west[1],'public',[
-        doorway(`${p}/LOBBY/EXT`,'west',[-6.5,e,-1],2.6,'campus',{portal:true}),
         doorway(`${p}/LOBBY/TO-COR`,'east',[-1.2,e,-1.85],1.2,`${p}/CORRIDOR`),
       ],[
         fixture(`${p}/LOBBY/MAT`,'deep entrance mat','PF-WALL-RUN',[-5.25,e+.018,-1],'M-RUBBER','weather-protected arrival',{size:[1.35,.025,1.8],collision:'none'}),
-        fixture(`${p}/LOBBY/FEATURE`,'ribbed timber welcome wall','PF-WALL-RUN',[-2.65,e+1.35,-3.655],'M-OAK-DARK','warm residence identity in a lighter panelized bay',{size:[2.38,2.18,.035],collision:'none'}),
-        fixture(`${p}/LOBBY/WELCOME`,'welcome-home sign','PF-ROOM-SIGN',[-2.65,e+1.82,-3.63],'M-SCREEN','residence welcome',{yaw:PI,text:'欢迎回家 · WELCOME HOME',size:[1.72,.34,.04]}),
-        fixture(`${p}/LOBBY/DESK-MAIN`,'compact staffed residence duty module','PF-SERVICE-COUNTER',[-2.83,e,-3.12],
+        fixture(`${p}/LOBBY/FEATURE`,'ribbed timber welcome wall','PF-WALL-RUN',[-4.15,e+1.35,-3.655],'M-OAK-DARK','warm residence identity in a lighter panelized bay',{size:[2.38,2.18,.035],collision:'none'}),
+        fixture(`${p}/LOBBY/WELCOME`,'welcome-home sign','PF-ROOM-SIGN',[-4.15,e+1.82,-3.63],'M-SCREEN','residence welcome',{yaw:PI,text:'欢迎回家 · WELCOME HOME',size:[1.72,.34,.04]}),
+        fixture(`${p}/LOBBY/DESK-MAIN`,'compact staffed residence duty module','PF-SERVICE-COUNTER',[-4.85,e,-3.05],
           'M-OAK','rounded staffed module with integrated terminal, scanner, privacy screen and concealed storage',
-          {yaw:PI,size:[1.18,.94,.60],text:'值班 · DUTY'}),
-        fixture(`${p}/LOBBY/DESK-ACCESS`,'open-leg accessible duty-desk return','PF-MEETING-TABLE',[-1.64,e,-3.12],
-          'M-OAK','seated visitor writing and transaction surface with genuine knee clearance',{size:[.74,.74,.54]}),
-        fixture(`${p}/LOBBY/DESK-PRIVACY`,'laminated service privacy fin','PF-WALL-RUN',[-2.07,e+.64,-3.12],
+          {yaw:PI,size:[1.12,.90,.58],text:'值班 · DUTY'}),
+        fixture(`${p}/LOBBY/DESK-ACCESS`,'open-leg accessible duty-desk return','PF-MEETING-TABLE',[-3.65,e,-3.05],
+          'M-OAK','0.90 m wide seated visitor writing and transaction surface with genuine knee clearance',
+          {size:[.90,.78,.60],accessible:true,openLeg:true,wheelchairSide:'north'}),
+        fixture(`${p}/LOBBY/DESK-PRIVACY`,'laminated service privacy fin','PF-WALL-RUN',[-4.14,e+.62,-3.05],
           'M-GLASS','transparent privacy division between standing and accessible service modules',
           {size:[.035,.42,.48],collision:'none'}),
-        fixture(`${p}/LOBBY/DESK-FRONT`,'duty-module front identity','PF-ROOM-SIGN',[-2.83,e+.53,-2.805],
+        fixture(`${p}/LOBBY/DESK-FRONT`,'duty-module front identity','PF-ROOM-SIGN',[-4.85,e+.51,-2.745],
           'M-SCREEN','short resident-service identity on the staffed module',
           {yaw:PI,text:'值班 · DUTY',size:[.88,.22,.035],collision:'none'}),
-        fixture(`${p}/LOBBY/ACCESS-FRONT`,'accessible-return identity','PF-ROOM-SIGN',[-1.64,e+.48,-2.845],
+        fixture(`${p}/LOBBY/ACCESS-FRONT`,'accessible-return identity','PF-ROOM-SIGN',[-3.65,e+.47,-2.785],
           'M-SCREEN','clearly identifies the lower open-leg accessible position',
           {yaw:PI,text:'无障碍 · ACCESS',size:[.62,.18,.035],collision:'none'}),
-        fixture(`${p}/LOBBY/TIMETABLE-BACK`,'woven residence information backing','PF-WALL-RUN',[-5.18,e+1.46,-3.655],
+        fixture(`${p}/LOBBY/TIMETABLE-BACK`,'woven residence information backing','PF-WALL-RUN',[-2.05,e+1.46,-3.655],
           'M-FABRIC-BLUE','matte acoustic backing that separates the live timetable from pale plaster',
           {size:[1.48,1.10,.035],collision:'none'}),
-        fixture(`${p}/LOBBY/TIMETABLE`,'populated residence duty timetable','PF-SCREEN',[-5.18,e+1.46,-3.625],
+        fixture(`${p}/LOBBY/TIMETABLE`,'populated residence duty timetable','PF-SCREEN',[-2.05,e+1.46,-3.625],
           'M-SCREEN','today duty hours, parcel collection, repairs and quiet-hours guidance',
           {yaw:PI,text:'值班 14—22 · 邮件 18 · 报修',size:[1.18,.72,.035],collision:'none',hudSafe:true}),
-        fixture(`${p}/LOBBY/BENCH`,'upholstered visitor bench','PF-BENCH',[-4.55,e,-3.10],'M-FABRIC-BLUE','resident and visitor waiting',
-          {yaw:0,facing:'north',size:[1.50,.84,.58]}),
-        fixture(`${p}/LOBBY/PLANT1`,'waiting-area plant','PF-PLANT',[-5.75,e,-3.35],'M-PLANT','arrival greenery'),
         fixture(`${p}/LOBBY/AED`,'public AED','PF-AED',[-1.35,e+1.2,-3.2],'M-SAFETY-RED','public defibrillator',{yaw:-PI/2}),
         fixture(`${p}/LOBBY/PEND1`,'warm lobby pendant','PF-PENDANT',[-3.15,e+2.48,-1.15],'M-OAK','warm arrival lighting',{temperatureK:3000}),
         fixture(`${p}/LOBBY/PEND2`,'warm lobby pendant','PF-PENDANT',[-4.65,e+2.48,-1.15],'M-OAK','warm arrival lighting',{temperatureK:3000}),
@@ -2395,21 +2727,21 @@ function buildB04() {
         doorway(`${p}/LOUNGE-E/TO-COR`,'west',[1.2,e,2.05],1.2,`${p}/CORRIDOR`),
       ],[
         fixture(`${p}/LOUNGE-E/RUG`,'quiet-study rug','PF-WALL-RUN',[3.65,e+.018,2.0],'M-RUBBER','acoustic study zone',{size:[3.9,.025,2.8],collision:'none'}),
-        ...[[3.0,1.0,0],[4.75,1.0,0],[3.0,3.1,PI],[4.75,3.1,PI]].map(([x,z,yaw],i)=>
+        ...[[2.60,.80,0],[4.10,.80,0],[3.45,3.10,PI],[4.65,3.10,PI]].map(([x,z,yaw],i)=>
           fixture(`${p}/LOUNGE-E/D${i+1}`,'study workstation','PF-DORM-DESK',[x,e,z],'M-WOOD-DESK','shared study with pull-back clearance',{yaw})),
         fixture(`${p}/LOUNGE-E/BOOK`,'shared bookcase','PF-BOOKCASE',[5.72,e,2.0],'M-OAK-DARK','shared books',{yaw:-PI/2}),
-        fixture(`${p}/LOUNGE-E/BOARD`,'shared planning board','PF-WHITEBOARD',[3.65,e+1.52,3.84],
+        fixture(`${p}/LOUNGE-E/BOARD`,'shared planning board','PF-WHITEBOARD',[4.50,e+1.52,3.84],
           'M-WHITEBOARD','magnetic planning surface behind the separately authored live study cards',
           {yaw:0,size:[2.6,1.0,.05]}),
-        fixture(`${p}/LOUNGE-E/BOARD-AGENDA`,'quiet-study agenda header','PF-ROOM-SIGN',[3.65,e+1.91,3.79],
+        fixture(`${p}/LOUNGE-E/BOARD-AGENDA`,'quiet-study agenda header','PF-ROOM-SIGN',[4.50,e+1.91,3.79],
           'M-SCREEN','programme header held inside the visible whiteboard field rather than above the camera crop',
           {yaw:0,size:[1.54,.25,.04],text:'自习 · STUDY PLAN',collision:'none',hudSafe:true}),
         ...[-.72,0,.72].map((dx,i)=>fixture(`${p}/LOUNGE-E/BOARD-TASK-${String.fromCharCode(65+i)}`,
-          'populated quiet-study planning card','PF-ROOM-SIGN',[3.65+dx,e+1.50,3.77],
+          'populated quiet-study planning card','PF-ROOM-SIGN',[4.50+dx,e+1.50,3.77],
           'M-SCREEN','live tutoring, exam and group-booking card layered onto the planning wall',
           {yaw:0,size:[.58,.22,.035],collision:'none',
             text:['18:00 · TUTOR','EXAM · PLAN','GROUP · 4'][i],hudSafe:true})),
-        fixture(`${p}/LOUNGE-E/BOARD-STATUS`,'quiet-study availability strip','PF-ROOM-SIGN',[3.65,e+1.20,3.78],
+        fixture(`${p}/LOUNGE-E/BOARD-STATUS`,'quiet-study availability strip','PF-ROOM-SIGN',[4.50,e+1.20,3.78],
           'M-FABRIC-BLUE','short occupied/available status completing the planning wall below the task cards',
           {yaw:0,size:[1.42,.18,.035],collision:'none',text:'2 DESKS FREE · QUIET',hudSafe:true}),
         fixture(`${p}/LOUNGE-E/PLANT`,'study-room plant','PF-PLANT',[5.6,e,.55],'M-PLANT','quiet greenery'),
@@ -2417,18 +2749,20 @@ function buildB04() {
       ]),
       ...coreRooms(level,e,p),dormRemoteStair(level,e,p),
     );
-    floors.push(floor(level,e,3.0,rooms,[{id:`${p}/CORRIDOR`,bounds:[-1.0,1.0,-7.6,7.6],clearWidth:2.0,surface:'M-VINYL'},{id:`${p}/ENTRY`,bounds:[-6.5,-1.0,-2.15,.15],clearWidth:2.3,surface:'M-TERRAZZO'}],[...safetySet(p,e,[-3.15,4.4],[-5.8,-1],level,true),...dormCorridorSet(p,e,level)],{occupancy:22,
+    floors.push(floor(level,e,3.0,rooms,[{id:`${p}/CORRIDOR`,bounds:[-1.0,1.0,-7.6,7.6],clearWidth:2.0,surface:'M-VINYL'},{id:`${p}/ENTRY`,bounds:[-6.5,-1.0,-2.30,.30],clearWidth:2.6,surface:'M-TERRAZZO'}],[...safetySet(p,e,[-3.15,4.4],[-5.8,-1],level,true),...dormCorridorSet(p,e,level)],{occupancy:22,
       visualReview:{
-        entries:[{suffix:'entry',portalId:'B04/PUBLIC',focusRoomId:`${p}/LOBBY`,cameraZoneId:`${p}/ENTRY`,
-          // This oblique duty-desk composition keeps the resolved eye and focus in the lobby/entry
-          // overlap, so the hosted clearWall camera preserves the authored 1.70 m orbit exactly.
-          focusAt:{x:-3.11,z:-2.10,yaw:-2.76},body:'hidden',
+        entries:[{suffix:'entry',portalId:'B04/PUBLIC',focusRoomId:`${p}/LOBBY`,cameraZoneId:`${p}/LOBBY`,
+          // The north-east lens keeps its full two-metre rear orbit inside the entry overlap while
+          // looking squarely onto the staffed desk and welcome wall, away from both door leaves.
+          focusAt:{x:-3.62,z:-2.30,yaw:-2.559},body:'hidden',
           focusFixtureIds:[`${p}/LOBBY/DESK-MAIN`,`${p}/LOBBY/WELCOME`]}],
         // A centred north-facing lens uses the clear aisle between the four workstations.  The
         // complete planning wall is face-on and comfortably inside the native frustum rather
         // than losing its right-hand task card at the capture edge.
         programme:{roomId:`${p}/LOUNGE-E`,at:{x:4.10,z:2.20,yaw:1.05},
-          focusFixtureIds:[`${p}/LOUNGE-E/BOARD-AGENDA`,`${p}/LOUNGE-E/BOARD-TASK-B`,`${p}/LOUNGE-E/BOARD-STATUS`]},
+          focusFixtureIds:[`${p}/LOUNGE-E/BOARD-AGENDA`,`${p}/LOUNGE-E/BOARD-TASK-A`,
+            `${p}/LOUNGE-E/BOARD-TASK-B`,`${p}/LOUNGE-E/BOARD-TASK-C`,
+            `${p}/LOUNGE-E/BOARD-STATUS`]},
       }}));
   }
   // Floors 2–5: six twin rooms each.
@@ -2446,9 +2780,9 @@ function buildB04() {
       // longer become a dark near-camera corner occluder.
       2:{roomId:`${p}/201`,at:{x:-3.65,z:-6.15,yaw:-1.85},
         focusFixtureIds:[`${p}/201/LIFE-BOARD`,`${p}/201/BED1`,`${p}/201/DESK1`]},
-      3:{roomId:`${p}/305`,at:{x:3.34,z:-1.74,yaw:2.17889},
+      3:{roomId:`${p}/305`,at:{x:3.56,z:-1.70,yaw:2.179},
         focusFixtureIds:[`${p}/305/LIFE-BOARD`,`${p}/305/BED1`,`${p}/305/DESK1`]},
-      4:{roomId:`${p}/402`,at:{x:-3.60,z:-1.74,yaw:-2.18483},
+      4:{roomId:`${p}/402`,at:{x:-3.62,z:-1.82,yaw:-2.185},
         focusFixtureIds:[`${p}/402/LIFE-BOARD`,`${p}/402/BED1`,`${p}/402/DESK1`]},
       5:{roomId:`${p}/506`,at:{x:3.70,z:1.62,yaw:1.80446},
         focusFixtureIds:[`${p}/506/LIFE-BOARD`,`${p}/506/BED1`,`${p}/506/DESK1`]},
@@ -2457,14 +2791,14 @@ function buildB04() {
       // Alternating programme-specific diagonals retain a genuine 2.0 m corridor view while the
       // end-wall display and matching badge remain face-readable.  Distinct offsets prevent the
       // upper floors from reading as one cloned dead-end capture.
-      2:{zoneId:`${p}/CORRIDOR`,at:{x:-.15,z:5.70,yaw:-.25},
-        focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
-      3:{zoneId:`${p}/CORRIDOR`,at:{x:.25,z:-5.80,yaw:2.75},
-        focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
-      4:{zoneId:`${p}/CORRIDOR`,at:{x:.05,z:5.90,yaw:.20},
-        focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
-      5:{zoneId:`${p}/CORRIDOR`,at:{x:-.65,z:5.50,yaw:.10},
-        focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
+      2:{zoneId:`${p}/CORRIDOR`,at:{x:-.02,z:5.28,yaw:-.25},
+        focusFixtureIds:[`${p}/COR/ARRIVAL-SIDE-SCREEN`]},
+      3:{zoneId:`${p}/CORRIDOR`,at:{x:.30,z:6.05,yaw:.40},
+        focusFixtureIds:[`${p}/COR/ARRIVAL-SIDE-SCREEN`]},
+      4:{zoneId:`${p}/CORRIDOR`,at:{x:.28,z:5.98,yaw:-.10},
+        focusFixtureIds:[`${p}/COR/ARRIVAL-SIDE-SCREEN`]},
+      5:{zoneId:`${p}/CORRIDOR`,at:{x:-.08,z:5.68,yaw:.153},
+        focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`,`${p}/COR/ARRIVAL-SIDE-SCREEN`]},
     }[level];
     floors.push(floor(level,e,3.0,rooms,[{id:`${p}/CORRIDOR`,bounds:[-1.0,1.0,-7.6,7.6],clearWidth:2.0,surface:'M-VINYL'}],[...safetySet(p,e,[-3.15,4.4],[0,3.8],level,false),...dormCorridorSet(p,e,level)],{occupancy:26,
       visualReview:{entry:entryReview,programme:programmeReview}}));
@@ -2533,12 +2867,12 @@ function buildB04() {
     );
     floors.push(floor(level,e,3.0,rooms,[{id:`${p}/CORRIDOR`,bounds:[-1.0,1.0,-7.6,7.6],clearWidth:2.0,surface:'M-VINYL'}],[...safetySet(p,e,[-3.15,4.4],[0,3.8],level,false),...dormCorridorSet(p,e,level)],{occupancy:22,
       visualReview:{
-        entry:{zoneId:`${p}/CORRIDOR`,at:{x:.65,z:5.90,yaw:-.10},
-          focusFixtureIds:[`${p}/COR/ARRIVAL-SCREEN`]},
+        entry:{zoneId:`${p}/CORRIDOR`,at:{x:-.30,z:6.05,yaw:-.40},
+          focusFixtureIds:[`${p}/COR/ARRIVAL-SIDE-SCREEN`]},
         // The east-centre lens looks squarely across the machine-view aisle.  It keeps both the
         // status wall and centre washer readable without letting the tall north-west locker or
         // folding table enter the near frustum as an opaque foreground slab.
-        programme:{roomId:`${p}/LAUNDRY`,at:{x:-4.15,z:1.85,yaw:-1.95},
+        programme:{roomId:`${p}/LAUNDRY`,at:{x:-4.22,z:1.84,yaw:-2.038},
           focusFixtureIds:[`${p}/LAUNDRY/STATUS`,`${p}/LAUNDRY/W2`]},
       }}));
   }
@@ -2552,7 +2886,7 @@ function buildB04() {
       eastServiceWindows:{localX:6.5,localZ:[-6.2,-3,.2,3.4,6.6],levels:[2,3,4,5,6]},
       groundAccessibleRoom:{exterior:'intentionally opaque west plinth; no false interior window'},
       entrance:{side:'west',localAt:[-6.5,-1],width:2.6}},
-    design:'Six-floor, 48-bed student residence conceived as a warm lived-in home: upholstered blue headwalls, facade-aligned curtained windows in every upper twin room, layered bedside lighting, rugs and pinboards; an accessible ground-floor room whose interior honestly reflects the opaque masonry plinth; a timber-and-plant arrival lobby; continuous acoustic corridor runners and floor-color bands; properly furnished lounges, parcel room, washrooms, lift lobbies and top-floor laundry/study club. Life safety takes precedence over the former 60-bed target: the south-east twin bay is now a full-height, 1.08 m protected dog-leg stair, giving every level two independent 60-minute stairs whose anchors are 15.31 m apart.',
+    design:'Six-floor, 47-bed student residence conceived as a warm lived-in home: upholstered blue headwalls, facade-aligned curtained windows in every upper twin room, layered bedside lighting, rugs and pinboards; a genuine single-resident accessible ground-floor room with a 1.50 m turn and 0.90 m bed-transfer, desk and wardrobe approaches; a timber-and-plant arrival lobby; continuous acoustic corridor runners and floor-color bands; properly furnished lounges, parcel room, washrooms, lift lobbies and top-floor laundry/study club. Life safety and access take precedence over the former 60-bed target: the south-east twin bay is now a full-height, 1.08 m protected dog-leg stair, giving every level two independent 60-minute stairs whose anchors are 15.31 m apart.',
     floorsPlan:floors,
   };
 }
@@ -2822,13 +3156,13 @@ function plannedB05Route(id,e,bounds,material='M-TERRAZZO',purpose='clear access
   const [x0,x1,z0,z1]=bounds;
   return fixture(id,'concealed accessibility route datum','PF-WALL-RUN',[(x0+x1)/2,e-.032,(z0+z1)/2],material,
     `${purpose}; survey datum concealed below the continuous room finish so it cannot create decorative outline clutter`,
-    {size:[x1-x0,.004,z1-z0],collision:'none',clearWidth:width||x1-x0,concealedBelowFinish:true});
+    {size:[x1-x0,.004,z1-z0],collision:'none',accessible:true,clearWidth:width||x1-x0,concealedBelowFinish:true});
 }
 
 function plannedB05Turn(id,e,centre,material='M-TERRAZZO') {
   return fixture(id,'concealed 1.50 m accessible turning datum','PF-WALL-RUN',[centre[0],e-.031,centre[1]],material,
     'unobstructed 1.50 m public turning circle recorded below the continuous finish, not drawn as a floor outline',
-    {size:[1.50,.004,1.50],collision:'none',turningDiameter:1.50,concealedBelowFinish:true});
+    {size:[1.50,.004,1.50],collision:'none',accessible:true,turningDiameter:1.50,concealedBelowFinish:true});
 }
 
 function plannedB05Monitor(id,e,at,yaw,text='SERVICE READY') {
@@ -2868,7 +3202,9 @@ function plannedB05Service(prefix,e,b,label) {
     plannedB05Route(`${prefix}/ROUTE`,e,routeBounds,'M-TERRAZZO','1.20 m route from corridor door to accessible service turn',1.20),
     plannedB05Turn(`${prefix}/TURN`,e,turn,'M-TERRAZZO'),
     fixture(`${prefix}/COUNTER`,'two-position accessible service counter','PF-SERVICE-COUNTER',[-2.75,e,counterZ],
-      'M-OAK','registration and consultation at seated and standing heights',{yaw:south?PI:0,size:[2.0,1.05,.72],text:label}),
+      'M-OAK','registration and consultation at seated and standing heights',
+      {yaw:south?PI:0,size:[2.0,1.05,.72],text:label,accessible:true,lowerSection:true,
+        wheelchairSide:'east'}),
     fixture(`${prefix}/STAFF1`,'service officer chair 1','PF-CHAIR',[-3.25,e,staffZ],
       'M-FABRIC-BLUE','staff seated facing the public counter',{yaw:south?0:PI,facing:south?'north':'south'}),
     fixture(`${prefix}/STAFF2`,'service officer chair 2','PF-CHAIR',[-2.25,e,staffZ],
@@ -2904,7 +3240,8 @@ function plannedB05Lobby(prefix,e,b) {
     fixture(`${prefix}/COUNTER-MAIN`,'compact staffed reception module','PF-SERVICE-COUNTER',[1.75,e,-4.70],
       'M-OAK','rounded two-terminal visitor-triage module with storage',{yaw:PI,size:[1.38,1.02,.64],text:'总服务台 · RECEPTION'}),
     fixture(`${prefix}/COUNTER-ACCESS`,'lower accessible reception return','PF-SIDE-TABLE',[2.92,e,-4.70],
-      'M-OAK','seated transaction and document-writing surface beside the staffed module',{yaw:PI,size:[.72,.74,.58]}),
+      'M-OAK','seated transaction and open-knee document-writing surface beside the staffed module',
+      {yaw:PI,size:[.90,.78,.60],accessible:true,openLeg:true,wheelchairSide:'north'}),
     fixture(`${prefix}/COUNTER-PRIVACY`,'laminated reception privacy fin','PF-WALL-RUN',[2.50,e+.64,-4.70],
       'M-GLASS','transparent privacy separation between standing and accessible service positions',
       {size:[.035,.44,.52],collision:'none'}),
@@ -2955,7 +3292,8 @@ function plannedB05Waiting(prefix,e,b) {
         'M-FABRIC-BLUE','inward-facing visitor seat',{yaw:-PI/2,facing:'west'}),
     ]),
     fixture(`${prefix}/FORM-TABLE`,'accessible form-writing table','PF-MEETING-TABLE',[2.25,e,5.15],
-      'M-OAK','forms and document review',{size:[1.20,.74,.55]}),
+      'M-OAK','open-knee forms and document review',
+      {size:[1.20,.78,.55],accessible:true,openLeg:true,wheelchairSide:'south'}),
     fixture(`${prefix}/FORM-CHAIR1`,'form-writing chair 1','PF-CHAIR',[1.85,e,4.55],
       'M-FABRIC-BLUE','north-facing writing position',{yaw:0,facing:'north'}),
     fixture(`${prefix}/FORM-CHAIR2`,'form-writing chair 2','PF-CHAIR',[2.65,e,4.55],
@@ -2969,8 +3307,10 @@ function plannedB05Waiting(prefix,e,b) {
 }
 
 function plannedB05Office(prefix,e,b,label,accent='M-FABRIC-BLUE') {
-  const [x0,x1,z0,z1]=b,south=z1<0,wide=x1-x0>5,rows=south?[-4.55,-2.45]:[2.45,4.55];
+  const [x0,x1,z0,z1]=b,south=z1<0,wide=x1-x0>5,
+    rows=prefix==='B05/F2/C'?[2.45,4.85]:south?[-4.55,-2.45]:[2.45,4.55];
   const route=wide?[3.05,4.25,z0,z1]:[-2.35,-1.15,z0,z1];
+  const westWorkflow=prefix==='B05/F2/C';
   const workflow=label.includes('财务')?'预算 · 报销 · 学费':label.includes('人事')?'招聘 · 合同 · 培训':
     label.includes('教务')?'课程 · 成绩 · 教室':label.includes('院系')?'院系联络 · 项目进度':'综合行政 · TASK BOARD';
   const sides=wide?[
@@ -2984,13 +3324,15 @@ function plannedB05Office(prefix,e,b,label,accent='M-FABRIC-BLUE') {
     plannedB05Route(`${prefix}/ROUTE`,e,route,'M-VINYL','1.20 m central route serving every workstation',1.20),
     fixture(`${prefix}/FILES`,'department file cabinet','PF-FILE-CABINET',[x0+.38,e,south?z1-.22:z0+.22],
       'M-STEEL-DARK','labelled lockable records at the room perimeter',{yaw:south?0:PI,size:[.76,1.35,.40]}),
-    fixture(`${prefix}/COAT-RAIL`,'staff coat and visitor-bag rail','PF-COAT-RAIL',[x0+.025,e+1.36,(z0+z1)/2],
+    fixture(`${prefix}/COAT-RAIL`,'staff coat and visitor-bag rail','PF-COAT-RAIL',
+      [x0+.025,e+1.36,westWorkflow?z0+.55:(z0+z1)/2],
       'M-OAK','wall-mounted hooks between the two workstation rows',{yaw:-PI/2,size:[1.0,.38,.12],collision:'none'}),
     fixture(`${prefix}/CLOCK`,'department office clock','PF-CLOCK',[x1-.55,e+2.24,south?z1-.07:z0+.07],
       'M-WALL-WHITE','shared appointment and meeting time',{yaw:south?0:PI}),
-    fixture(`${prefix}/WORKFLOW`,'department workflow display','PF-SCREEN',[(x0+x1)/2,e+1.58,south?z0+.055:z1-.055],
+    fixture(`${prefix}/WORKFLOW`,'department workflow display','PF-SCREEN',westWorkflow?
+      [x0+.055,e+1.58,(z0+z1)/2]:[(x0+x1)/2,e+1.58,south?z0+.055:z1-.055],
       'M-SCREEN','department-specific work queue and service identity',
-      {yaw:south?0:PI,size:[2.05,.78,.04],collision:'none',text:workflow}),
+      {yaw:westWorkflow?-PI/2:south?PI:0,size:[2.05,.78,.04],collision:'none',text:workflow}),
     ...plannedB05Envelope(prefix,e,b,label,{accent,temperature:3500}),
   ];
   let n=0;
@@ -3005,7 +3347,7 @@ function plannedB05Office(prefix,e,b,label,accent='M-FABRIC-BLUE') {
     );
   }
   return {contents:out,planning:{publicRoutes:[{id:`${prefix}/ROUTE`,bounds:route,width:1.20}],
-    workAisles:[{id:'between desk rows',width:.90},{id:'central shared route',width:1.20}],staffStations:4,rowPitch:2.10}};
+    workAisles:[{id:'between desk rows',width:.90},{id:'central shared route',width:1.20}],staffStations:4,rowPitch:westWorkflow?2.40:2.10}};
 }
 
 function plannedB05Meeting(prefix,e,b,label,{formal=false,narrow=false,training=false}={}) {
@@ -3233,23 +3575,32 @@ function plannedB05CoreRooms(level,e,p) {
     doorway(`${p}/LIFT-WC/TO-COR`,'south',[-5.45,e,1.3],1.2,`${p}/CORRIDOR`),
   ],[
     plannedB05Route(`${p}/LIFT-WC/ROUTE`,e,[-6.05,-4.85,1.30,3.10],'M-TILE-LIGHT','1.20 m lift approach',1.20),
-    plannedB05Turn(`${p}/LIFT-WC/TURN`,e,[-5.45,3.10],'M-TILE-LIGHT'),
-    fixture(`${p}/LIFT-WC/LIFT`,'accessible lift','PF-LIFT',[-5.95,e,4.75],
-      'M-STEEL','four-floor accessible vertical circulation',{size:[1.30,2.45,1.55],levels:[1,2,3,4]}),
-    fixture(`${p}/LIFT-WC/TOILET`,'north-wall accessible toilet','PF-TOILET',[-4.75,e,4.75],
-      'M-CERAMIC','south-facing accessible sanitary fixture beside the lift',{yaw:0,facing:'south',grabRails:true}),
-    fixture(`${p}/LIFT-WC/BASIN`,'side-wall accessible basin','PF-BASIN',[-4.525,e,3.75],
-      'M-CERAMIC','hand washing clear of the turning circle',{yaw:PI/2}),
-    fixture(`${p}/LIFT-WC/MIRROR`,'accessible lift mirror','PF-WALL-RUN',[-4.325,e+1.48,2.90],
-      'M-GLASS','visibility while reversing from the lift',{size:[.035,1.25,.82],collision:'none'}),
+    plannedB05Turn(`${p}/LIFT-WC/TURN`,e,[-5.50,3.10],'M-TILE-LIGHT'),
+    fixture(`${p}/LIFT-WC/LIFT`,'accessible lift','PF-LIFT',[-5.95,e,4.775],
+      'M-STEEL','four-floor accessible vertical circulation with its full lift-front turn preserved',
+      {size:[1.30,2.45,1.55],levels:[1,2,3,4],accessible:true}),
+    fixture(`${p}/LIFT-WC/TOILET`,'east-wall accessible toilet','PF-TOILET',[-4.575,e,4.94],
+      'M-CERAMIC','west-facing accessible sanitary fixture with a full south side-transfer bay',
+      {yaw:PI/2,facing:'west',grabRails:true,accessible:true}),
+    fixture(`${p}/LIFT-WC/TOILET-TRANSFER`,'wheelchair toilet side-transfer field','PF-WALL-RUN',[-4.75,e+.012,3.98],
+      'M-LAB-BLUE','clear 0.90 × 1.20 m south side-transfer space beside the accessible toilet',
+      {size:[.90,.02,1.20],collision:'none',accessible:true,clearBay:[.90,1.20]}),
+    fixture(`${p}/LIFT-WC/BASIN`,'side-wall accessible basin','PF-BASIN',[-4.525,e,2.85],
+      'M-CERAMIC','wheelchair-height hand washing clear of the protected route and transfer bay',
+      {yaw:PI/2,size:[.84,.88,.45],facing:'west',accessible:true}),
+    fixture(`${p}/LIFT-WC/MIRROR`,'low accessible basin mirror','PF-WALL-RUN',[-4.325,e+1.42,2.85],
+      'M-GLASS','low mirror aligned above the accessible basin',{size:[.035,.82,.72],collision:'none'}),
     fixture(`${p}/LIFT-WC/SIGN`,'lift and accessible WC sign','PF-ROOM-SIGN',[-4.31,e+1.72,2.15],
       'M-SCREEN','lift and sanitary wayfinding',{yaw:PI/2,size:[.78,.30,.04],text:`电梯 · 无障碍卫生间 · ${level}层`}),
     fixture(`${p}/LIFT-WC/LIGHT`,'lift lobby light','PF-CEILING-LIGHT',[-5.45,e+2.75,3.10],
       'M-WALL-WHITE','accessible lift-lobby lighting',{temperatureK:3800,size:[1.0,.06,.28]}),
     fixture(`${p}/LIFT-WC/WC-LIGHT`,'accessible-WC ceiling light','PF-CEILING-LIGHT',[-4.78,e+2.75,4.78],
       'M-WALL-WHITE','separate sanitary task lighting within the combined service core',{temperatureK:4000,size:[.62,.06,.42]}),
-  ],{programme:'lift and accessible WC',planning:{publicRoutes:[{id:`${p}/LIFT-WC/ROUTE`,bounds:[-6.05,-4.85,1.30,3.10],width:1.20}],
-    turns:[{id:`${p}/LIFT-WC/TURN`,centre:[-5.45,3.10],diameter:1.50}]}});
+  ],{programme:'lift and accessible WC',accessible:true,planning:{
+    publicRoutes:[{id:`${p}/LIFT-WC/ROUTE`,bounds:[-6.05,-4.85,1.30,3.10],width:1.20}],
+    turns:[{id:`${p}/LIFT-WC/TURN`,centre:[-5.50,3.10],diameter:1.50}],
+    toiletTransfers:[{toiletId:`${p}/LIFT-WC/TOILET`,id:`${p}/LIFT-WC/TOILET-TRANSFER`,side:'south',clearBay:[.90,1.20]}],
+  }});
 
   const stairE=room(`${p}/STAIR-E`,'东侧安全楼梯',[4.0,6.6,1.3,5.6],'service',[
     doorway(`${p}/STAIR-E/TO-COR`,'south',[5.3,e,1.3],1.2,`${p}/CORRIDOR`),
@@ -3328,6 +3679,23 @@ function plannedB05Corridor(prefix,e,level,labels) {
         'wall-mounted lower edge completing the civic arrival composition',{size:[.10,.07,arrivalLayout.datum[1]],collision:'none'}),
     ]:[]),
   ];
+  if(level===2)out.push(
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-BACK`,'finance-and-records ledger wall','PF-WALL-RUN',
+      [5.25,e+1.47,-1.065],'M-OAK','shallow south-wall civic ledger fitted wholly between the finance doorway and east end wall',
+      {size:[2.18,1.48,.035],collision:'none'}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-SCREEN`,'finance and records arrival status','PF-SCREEN',
+      [5.25,e+1.68,-1.025],'M-SCREEN','finance, personnel and records status on a door-safe solid wall bay',
+      {yaw:PI,size:[1.34,.46,.04],collision:'none',text:'财务 · 人事 · RECORDS',hudSafe:true}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-CARD-A`,'finance service status card','PF-ROOM-SIGN',
+      [4.72,e+1.12,-1.02],'M-FABRIC-BLUE','offset finance action card below the main ledger',
+      {yaw:PI,size:[.68,.22,.035],collision:'none',text:'FEES · OPEN',hudSafe:true}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-CARD-B`,'records service status card','PF-ROOM-SIGN',
+      [5.72,e+1.06,-1.02],'M-BRASS','offset archive action card completing the asymmetric ledger',
+      {yaw:PI,size:[.80,.22,.035],collision:'none',text:'FILES · READY',hudSafe:true}),
+    fixture(`${prefix}/COR/ARRIVAL-SIDE-DATUM`,'finance ledger wall datum','PF-WALL-RUN',
+      [5.25,e+.86,-1.015],'M-OAK-DARK','one continuous shallow ledge grounding the civic ledger assembly',
+      {size:[1.82,.07,.08],collision:'none'}),
+  );
   signs.forEach(([x,z,yaw,text],i)=>out.push(fixture(`${prefix}/COR/SIGN${i+1}`,'compact bilingual room lintel','PF-ROOM-SIGN',
     [x,e+2.28,z],'M-SCREEN','centred above the real doorway so the corridor frame cannot crop a projecting side card',
     {yaw,size:[.72,.22,.035],text,collision:'none'})));
@@ -3460,19 +3828,19 @@ function buildB05() {
   const reviewByLevel={
     1:{
       entries:[{suffix:'entry',portalId:'B05/PUBLIC',focusRoomId:'B05/F1/B',cameraZoneId:'B05/F1/B',
-        focusAt:{x:2.80,z:-4.00,yaw:-1.85},body:'hidden',
+        focusAt:{x:2.82,z:-4.08,yaw:-1.608},body:'hidden',
         focusFixtureIds:['B05/F1/B/FLAG']}],
-      programme:{roomId:'B05/F1/B',at:{x:2.30,z:-3.60,yaw:3.15},
+      programme:{roomId:'B05/F1/B',at:{x:3.92,z:-3.58,yaw:-2.422},
         focusFixtureIds:['B05/F1/B/COUNTER-MAIN','B05/F1/B/COUNTER-ACCESS']},
     },
     2:{
-      entry:{zoneId:'B05/F2/CORRIDOR',at:{x:5.00,z:-.40,yaw:1.95},
-        focusFixtureIds:['B05/F2/COR/ARRIVAL-SCREEN']},
-      programme:{roomId:'B05/F2/D',at:{x:2.25,z:3.55,yaw:-.55},
+      entry:{zoneId:'B05/F2/C',at:{x:-2.35,z:3.55,yaw:-1.50},
+        focusFixtureIds:['B05/F2/C/WORKFLOW']},
+      programme:{roomId:'B05/F2/D',at:{x:2.67,z:3.87,yaw:.123},
         focusFixtureIds:['B05/F2/D/SCAN-STATUS','B05/F2/D/SCAN-STEPS','B05/F2/D/SCAN-MONITOR']},
     },
     3:{
-      entry:{zoneId:'B05/F3/CORRIDOR',at:{x:4.30,z:-.10,yaw:1.975},
+      entry:{zoneId:'B05/F3/CORRIDOR',at:{x:4.82,z:-.18,yaw:1.90},
         focusFixtureIds:['B05/F3/COR/ARRIVAL-SCREEN']},
       programme:{roomId:'B05/F3/A',at:{x:-1.50,z:-3.64,yaw:-2.70798},
         focusFixtureIds:['B05/F3/A/TRAINING-SIGN','B05/F3/A/TRAINING-TASK-B']},
@@ -3480,7 +3848,7 @@ function buildB05() {
     4:{
       entry:{zoneId:'B05/F4/CORRIDOR',at:{x:4.75,z:-.70,yaw:1.475},
         focusFixtureIds:['B05/F4/COR/ARRIVAL-SCREEN']},
-      programme:{roomId:'B05/F4/A',at:{x:-1.75,z:-3.50,yaw:-2.70},
+      programme:{roomId:'B05/F4/A',at:{x:-1.88,z:-3.72,yaw:-2.70},
         focusFixtureIds:['B05/F4/A/COUNCIL-CREST','B05/F4/A/COUNCIL-AGENDA']},
     },
   };
@@ -3781,15 +4149,56 @@ function b06CoreRooms(level,e,p) {
       fixture(`${p}/CORE-NE/STAIR`,'glass-tower protected stair','PF-STAIR',[5.25,e,8.35],
         'M-TERRAZZO','primary protected egress with an unobstructed west landing',{size:[2.25,3.3,4.15]}),
       fixture(`${p}/CORE-NE/LIFT`,'accessible lift','PF-LIFT',[2.15,e,9.25],
-        'M-STEEL','accessible vertical circulation',{size:[1.65,2.45,1.55],levels:[1,2,3,4]}),
-      fixture(`${p}/CORE-NE/T1`,'accessible toilet','PF-TOILET',[2.15,e,7.10],
-        'M-CERAMIC','accessible sanitary fixture',{grabRails:true}),
-      fixture(`${p}/CORE-NE/B1`,'washbasin','PF-BASIN',[3.25,e,5.35],
-        'M-CERAMIC','hand washing'),
-      fixture(`${p}/CORE-NE/ELEC`,'floor services cabinet','PF-FILE-CABINET',[6.55,e,5.25],
-        'M-STEEL-DARK','electrical and laboratory services',{size:[.65,1.8,.35]}),
-      b06Decor(`${p}/CORE-NE/WC-SCREEN`,'washroom privacy return',[3.68,e+1.35,5.55],
-        'M-WALL-WARM',[.06,2.55,1.35],'architectural privacy screen beside the washbasin'),
+        'M-STEEL','accessible vertical circulation facing a measured lift-front route and landing',
+        {size:[1.65,2.45,1.55],levels:[1,2,3,4],accessible:true}),
+      b06Decor(`${p}/CORE-NE/ENTRY-ROUTE`,'accessible core entry route',[1.85,e+.012,5.70],
+        'M-TILE-LIGHT',[1.50,.02,.90],'0.90 m clear route through the existing west core doorway',
+        {accessible:true,clearWidth:.90}),
+      b06Decor(`${p}/CORE-NE/LIFT-ROUTE`,'accessible lift approach route',[2.15,e+.014,7.075],
+        'M-TERRAZZO',[.90,.022,2.75],'continuous 0.90 m route from the core entry to the lift threshold',
+        {accessible:true,clearWidth:.90}),
+      b06Decor(`${p}/CORE-NE/LIFT-TURN`,'accessible lift-front turning field',[2.15,e+.016,7.55],
+        'M-LAB-BLUE',[1.50,.024,1.50],'full 1.50 m wheelchair turn immediately in front of the lift',
+        {accessible:true,turningDiameter:1.50}),
+      b06Decor(`${p}/CORE-NE/WC-APPROACH`,'accessible WC approach route',[3.25,e+.013,5.45],
+        'M-TILE-LIGHT',[1.30,.02,.90],'0.90 m route from the core entry to the enclosed accessible WC door',
+        {accessible:true,clearWidth:.90}),
+      // The WC uses the existing southeast core bay. Two full-height blocker runs close its
+      // north edge and split its west edge around an honest 0.90 m door; the remaining south and
+      // east sides are the unchanged room envelope. Runtime treats only walkBlocker runs as solids.
+      fixture(`${p}/CORE-NE/WC-PARTITION-N`,'full-height accessible-WC north partition','PF-WALL-RUN',
+        [5.50,e+1.35,6.25],'M-WALL-WARM','opaque sanitary enclosure separating the WC from the stair core',
+        {size:[3.20,2.70,.05],walkBlocker:true}),
+      fixture(`${p}/CORE-NE/WC-PARTITION-WS`,'full-height accessible-WC west partition south return','PF-WALL-RUN',
+        [3.90,e+1.35,4.85],'M-WALL-WARM','south jamb of the enclosed accessible-WC doorway',
+        {size:[.10,2.70,.30],walkBlocker:true}),
+      fixture(`${p}/CORE-NE/WC-PARTITION-WN`,'full-height accessible-WC west partition north return','PF-WALL-RUN',
+        [3.90,e+1.35,6.062],'M-WALL-WARM','north jamb of the enclosed accessible-WC doorway',
+        {size:[.10,2.70,.324],walkBlocker:true}),
+      fixture(`${p}/CORE-NE/WC-DOOR`,'accessible WC sliding-pocket door','PF-DOOR-SINGLE',
+        [3.90,e,5.45],'M-OAK-DARK','opaque sanitary door in the measured 0.90 m partition opening',
+        {yaw:PI/2,size:[.90,2.12,.08],accessible:true,clearWidth:.90,
+          operation:'sliding-pocket',pocketSide:'north',reviewOpen:true}),
+      b06Decor(`${p}/CORE-NE/WC-TURN`,'accessible WC turning field',[4.70,e+.016,5.46],
+        'M-LAB-BLUE',[1.50,.024,1.50],'full 1.50 m wheelchair turn inside the enclosed WC',
+        {accessible:true,turningDiameter:1.50}),
+      fixture(`${p}/CORE-NE/T1`,'north-wall accessible toilet','PF-TOILET',[6.65,e,5.925],
+        'M-CERAMIC','south-facing accessible sanitary fixture with a clear west side-transfer bay',
+        {yaw:PI,facing:'south',grabRails:true,accessible:true,transferSide:'west'}),
+      b06Decor(`${p}/CORE-NE/T1-TRANSFER`,'accessible toilet transfer field',[5.69,e+.018,5.75],
+        'M-SAFETY-YELLOW',[1.20,.025,.90],'1.20 m by 0.90 m side-transfer bay held clear beside the toilet',
+        {accessible:true,clearBay:[1.20,.90]}),
+      fixture(`${p}/CORE-NE/B1`,'east-wall accessible washbasin','PF-BASIN',[6.75,e,5.03],
+        'M-CERAMIC','wheelchair-height hand washing with a separate knee-clear approach',
+        {yaw:PI/2,size:[.84,.88,.45],facing:'west',accessible:true}),
+      b06Decor(`${p}/CORE-NE/B1-APPROACH`,'accessible basin approach field',[6.075,e+.015,5.15],
+        'M-TILE-LIGHT',[.90,.022,.90],'0.90 m knee and pull-back field at the accessible basin',
+        {accessible:true,clearBay:[.90,.90]}),
+      fixture(`${p}/CORE-NE/ELEC`,'floor services cabinet','PF-FILE-CABINET',[6.75,e,7.15],
+        'M-STEEL-DARK','electrical and laboratory services outside all accessible fields',
+        {yaw:-PI/2,size:[.65,1.8,.35]}),
+      b06Sign(`${p}/CORE-NE/WC-SIGN`,'accessible WC identity',[3.955,e+2.10,5.45],
+        '无障碍卫生间 · ACCESSIBLE WC','sanitary-room identity on the enclosed doorway',{yaw:PI/2,size:[.88,.28,.04]}),
       b06Decor(`${p}/CORE-NE/GLASS`,'full-height glass stair-tower reveal',[7.04,e+1.72,7.7],
         'M-GLASS',[.05,3.15,4.75],'daylight and a visible science-building stair'),
       b06Decor(`${p}/CORE-NE/BLUE`,'blue lift-and-stair portal',[1.16,e+1.62,8.4],
@@ -3799,7 +4208,27 @@ function b06CoreRooms(level,e,p) {
       fixture(`${p}/CORE-NE/LIGHT`,'sealed lift-and-stair core ceiling light','PF-CEILING-LIGHT',[4.15,e+3.20,7.65],
         'M-WALL-WHITE','authored illumination inside the northeast lift and protected-stair core',
         {temperatureK:4000,lumens:2100,size:[1.10,.055,.42],collision:'none'}),
-    ]),
+      fixture(`${p}/CORE-NE/WC-LIGHT`,'sealed accessible-WC ceiling light','PF-CEILING-LIGHT',[5.50,e+3.20,5.45],
+        'M-WALL-WHITE','separate authored illumination inside the enclosed accessible WC',
+        {temperatureK:4000,lumens:1500,size:[.72,.055,.42],collision:'none'}),
+    ],{accessible:true,programme:'lift, protected stair and enclosed accessible WC',planning:{
+      publicRoutes:[
+        {id:`${p}/CORE-NE/ENTRY-ROUTE`,bounds:[1.10,2.60,5.25,6.15],width:.90},
+        {id:`${p}/CORE-NE/LIFT-ROUTE`,bounds:[1.70,2.60,5.70,8.45],width:.90,fixtureId:`${p}/CORE-NE/LIFT`},
+        {id:`${p}/CORE-NE/WC-APPROACH`,bounds:[2.60,3.90,5.00,5.90],width:.90,doorId:`${p}/CORE-NE/WC-DOOR`},
+      ],
+      turns:[
+        {id:`${p}/CORE-NE/LIFT-TURN`,centre:[2.15,7.55],diameter:1.50,serves:`${p}/CORE-NE/LIFT`},
+        {id:`${p}/CORE-NE/WC-TURN`,centre:[4.70,5.46],diameter:1.50,enclosureBounds:[3.90,7.10,4.70,6.225]},
+      ],
+      internalDoors:[{id:`${p}/CORE-NE/WC-DOOR`,clearWidth:.90,opening:[5.00,5.90],operation:'sliding-pocket'}],
+      toiletTransfers:[{id:`${p}/CORE-NE/T1-TRANSFER`,fixtureId:`${p}/CORE-NE/T1`,
+        bounds:[5.09,6.29,5.30,6.20],width:.90,depth:1.20,side:'west'}],
+      basinApproaches:[{id:`${p}/CORE-NE/B1-APPROACH`,fixtureId:`${p}/CORE-NE/B1`,
+        bounds:[5.625,6.525,4.70,5.60],width:.90,depth:.90}],
+      enclosure:{bounds:[3.90,7.10,4.70,6.225],opaque:true,walkBlockerIds:[
+        `${p}/CORE-NE/WC-PARTITION-N`,`${p}/CORE-NE/WC-PARTITION-WS`,`${p}/CORE-NE/WC-PARTITION-WN`]},
+    }}),
   ];
 }
 
@@ -4392,7 +4821,7 @@ function buildB06() {
       4:{
         entry:{zoneId:`${p}/ENTRY`,at:{x:5.20,z:-1.50,yaw:1.50},body:'hidden',
           focusFixtureIds:[`${p}/ARRIVAL/IDENTITY`,`${p}/ENTRY-DISPLAY`,`${p}/ARRIVAL/ROBOT-DEMO`]},
-        programme:{roomId:`${p}/WN`,at:{x:-2.60,z:2.30,yaw:PI},
+        programme:{roomId:`${p}/WN`,at:{x:-3.60,z:2.00,yaw:2.75},
           focusFixtureIds:[`${p}/WN/ROVER`,`${p}/WN/TEST-CONSOLE`]},
       },
     }[spec.level];
@@ -4419,6 +4848,8 @@ function buildB06() {
       architecturalLayers:{deepWindowBays:7,hoodExtractionHeaders:4,sealedCeilingFields:24,
         washableWallDatums:15,colorCodedServiceTrunks:15},
       authoredCoreLights:{southwestProtectedStairs:4,northeastLiftStairCores:4},
+      accessibleCore:{floors:4,routeMinimum:.90,turningDiameter:1.50,internalWCDoor:.90,
+        toiletTransfer:[1.20,.90],basinApproach:[.90,.90],enclosure:'full-height walk-blocking partitions'},
     },
     floorsPlan:floors,
   };
@@ -4426,6 +4857,38 @@ function buildB06() {
 
 function b07Decor(id,label,at,material,size,purpose,extra={}) {
   return fixture(id,label,'PF-WALL-RUN',at,material,purpose,{size,collision:'none',...extra});
+}
+
+function b07AccessField(id,e,bounds,label,purpose,extra={}) {
+  const [x0,x1,z0,z1]=bounds,{material='M-LAB-BLUE',...fieldExtra}=extra;
+  return b07Decor(id,label,[(x0+x1)/2,e+.014,(z0+z1)/2],material,
+    [x1-x0,.022,z1-z0],purpose,{accessible:true,...fieldExtra});
+}
+
+// The protected lift room is only 2.30 m wide and has fixed doors on three sides, so a genuine
+// 1.50 m turn cannot coexist beside its car. The adjacent 2.00 m shared corridor is the honest
+// lift-front landing: its turn stays west of the fire-door body and a 0.90 m strip reaches the
+// existing 1.20 m lift-room door without crossing that body.
+function b07LiftLandingPlanning(p) {
+  return {
+    publicRoutes:[{id:`${p}/LIFT/ACCESS-ROUTE`,bounds:[2.40,3.80,-1.00,-.10],width:.90,
+      throughDoorId:`${p}/LIFT/TO-COR`,fixtureId:`${p}/LIFT/FIX`}],
+    turns:[{id:`${p}/LIFT/TURN`,centre:[2.40,0],bounds:[1.65,3.15,-.75,.75],diameter:1.50,
+      serves:`${p}/LIFT/FIX`}],
+    clampMoveProof:{bodyRadius:.30,start:[1.80,0],turnWitness:[2.40,0],doorRouteWitness:[3.35,-.55],
+      targetFixtureId:`${p}/LIFT/FIX`,method:'runtime clampMove samples on the shared movement plate'},
+  };
+}
+
+function b07LiftLandingLayer(p,e) {
+  return [
+    b07AccessField(`${p}/LIFT/TURN`,e,[1.65,3.15,-.75,.75],
+      'shared-corridor accessible lift turning field','full 1.50 m lift-front wheelchair turn clear of the protected fire door',
+      {material:'M-TERRAZZO',turningDiameter:1.50}),
+    b07AccessField(`${p}/LIFT/ACCESS-ROUTE`,e,[2.40,3.80,-1.00,-.10],
+      'protected accessible lift approach','0.90 m clear route from the shared turn through the existing lift-room door',
+      {material:'M-TERRAZZO',clearWidth:.90}),
+  ];
 }
 
 function b07Sign(id,label,at,text,purpose,extra={}) {
@@ -4494,20 +4957,19 @@ function b07CoreRooms(level,e,p) {
     ],[
       fixture(`${p}/LIFT/FIX`,'accessible lift','PF-LIFT',[5.18,e,-.72],
         'M-STEEL','accessible vertical circulation with a clear lobby turning area',
-        {size:[1.65,2.45,1.45],levels:[1,2,3],collision:'none'}),
+        {size:[1.65,2.45,1.45],levels:[1,2,3],collision:'none',accessible:true}),
       fixture(`${p}/LIFT/DIR`,'split-use directory','PF-DIRECTORY',[5.92,e,-2.0],
         'M-SCREEN','activity-centre and clinic wayfinding',
         {yaw:-PI/2,size:[.7,1.5,.1],text:'活动 ↓ · 校医 ↑',collision:'none'}),
       b07Decor(`${p}/LIFT/PORTAL`,'charcoal lift portal surround',[4.9,e+1.28,-2.30],
         'M-STEEL-DARK',[1.95,2.5,.05],'make the accessible lift immediately legible'),
-      b07Decor(`${p}/LIFT/TURN`,'accessible lift turning field',[4.62,e+.018,.02],
-        'M-BRASS',[1.5,.025,1.5],'keep the full lift-lobby wheelchair turn clear'),
       b07Sign(`${p}/LIFT/FLOOR`,'lift floor marker',[4.9,e+1.83,-2.255],
         `${level}层 · FLOOR ${level}`,'large floor confirmation at the lift',{yaw:0,size:[1.2,.36,.05]}),
       fixture(`${p}/LIFT/LIGHT`,'lift-lobby ceiling light','PF-CEILING-LIGHT',[4.72,e+2.75,-.45],
         'M-WALL-WHITE','even accessible-lobby illumination',{temperatureK:3800,size:[1.2,.06,.32]}),
       ...(level>1?b07FacadeWindow(`${p}/LIFT/WINDOW-E`,e,'east',-.50,'lift lobby') : []),
-    ]),
+    ],{accessible:true,planning:{floorSharedLanding:{turnId:`${p}/LIFT/TURN`,
+      routeId:`${p}/LIFT/ACCESS-ROUTE`,turnCentre:[2.40,0],diameter:1.50,clearRouteWidth:.90}}}),
     room(`${p}/STAIR-N`,'北安全楼梯',[3.8,6.1,1.0,5.1],'service',[
       doorway(`${p}/STAIR-N/TO-LIFT`,'south',[4.95,e,1.0],1.2,`${p}/LIFT`,{fireRated:true}),
     ],[
@@ -4592,20 +5054,17 @@ function buildB07() {
       room(`${p}/SC-COMMONS`,'社团公共区',[-6.1,-.8,-5.1,-3.25],'activity',[
         doorway(`${p}/SC-COMMONS/TO-LOBBY`,'north',[-2.65,e,-3.25],1.0,`${p}/SC-LOBBY`),
       ],[
-        fixture(`${p}/SC-COMMONS/T1`,'west four-place club table','PF-CANTEEN-TABLE',[-4.35,e,-4.58],
+        fixture(`${p}/SC-COMMONS/T1`,'west four-place club table','PF-CANTEEN-TABLE',[-5.00,e,-4.65],
           'M-OAK','club sign-up and collaborative planning clear of the long east-facing arrival sightline',
           {size:[1.35,.76,.82]}),
-        fixture(`${p}/SC-COMMONS/T2`,'east two-place club table','PF-MEETING-TABLE',[-1.40,e,-4.25],
-          'M-OAK','student project discussion',{size:[1.0,.76,.65]}),
-        fixture(`${p}/SC-COMMONS/T2-CN`,'east table south-west chair','PF-CHAIR',[-1.70,e,-4.82],
-          'M-FABRIC-BLUE','south-west club discussion seat facing north to the table and outside the arrival camera lane',{yaw:0}),
-        fixture(`${p}/SC-COMMONS/T2-CS`,'east table south-east chair','PF-CHAIR',[-1.10,e,-4.82],
-          'M-FABRIC-RED','south-east club discussion seat facing north to the table and outside the mural sightline',{yaw:0}),
-        fixture(`${p}/SC-COMMONS/CUBBIES`,'labelled club-project lockers','PF-LOCKERS',[-5.55,e,-4.84],
+        fixture(`${p}/SC-COMMONS/T2`,'east four-place collaborative club table','PF-CANTEEN-TABLE',[-1.40,e,-3.70],
+          'M-OAK','complete four-seat student project discussion setting outside the lobby-door approach and camera axis',
+          {size:[1.05,.76,.90]}),
+        fixture(`${p}/SC-COMMONS/CUBBIES`,'labelled club-project lockers','PF-LOCKERS',[-5.55,e,-3.55],
           'M-STEEL-DARK','secure active-club materials',{size:[1.0,1.85,.36]}),
-        fixture(`${p}/SC-COMMONS/MURAL`,'club calendar and work display','PF-SCREEN',[-.92,e+1.55,-4.25],
-          'M-SCREEN','live club calendar and student work pulled forward from the brick datum for a clean face-on silhouette',
-          {yaw:PI/2,size:[1.48,1.02,.05],text:'社团周 · CLUB WEEK',collision:'none'}),
+        fixture(`${p}/SC-COMMONS/MURAL`,'student-hub club calendar and work display','PF-SCREEN',[-.92,e+1.55,-4.25],
+          'M-SCREEN','large student-hub identity, live club calendar and student work pulled forward from the brick datum for a clean face-on silhouette',
+          {yaw:PI/2,size:[1.68,1.16,.05],text:'学生活动中心 · STUDENT HUB · 社团周',collision:'none'}),
         b07Decor(`${p}/SC-COMMONS/WALL`,'brick club pin-up wall',[-.815,e+1.43,-4.25],
           'M-BRICK',[.06,2.52,1.70],'durable architectural pin-up backdrop'),
         ...b07FacadeWindow(`${p}/SC-COMMONS/WINDOW-W`,e,'west',-4.10,'student commons',
@@ -4663,6 +5122,12 @@ function buildB07() {
           'M-SCREEN','film, briefing and club presentation',{yaw:0,size:[1.55,1.0,.05],text:'活动 · CLUB'}),
         fixture(`${p}/SC-MULTI/PROJECTOR`,'ceiling presentation projector','PF-PROJECTOR',[2.70,e+2.38,-1.30],
           'M-STEEL-DARK','room presentation system',{yaw:PI}),
+        b07AccessField(`${p}/SC-MULTI/ACCESS-ROUTE`,e,[2.25,3.15,-1.60,-.75],
+          'multipurpose-room accessible route','0.90 m clear route from the existing doorway into the protected turning field',
+          {material:'M-RUBBER',clearWidth:.90}),
+        b07AccessField(`${p}/SC-MULTI/TURN`,e,[1.95,3.45,-2.35,-.85],
+          'multipurpose-room accessible turning field','full 1.50 m wheelchair turn north of the movable activity setting',
+          {material:'M-RUBBER',turningDiameter:1.50}),
         b07Decor(`${p}/SC-MULTI/ACOUSTIC`,'blue acoustic wall lining',[1.86,e+1.45,-2.85],
           'M-FABRIC-BLUE',[.05,2.5,3.45],'architectural speech and rehearsal absorption'),
         b07Sign(`${p}/SC-MULTI/SIGN`,'multipurpose room sign',[2.70,e+1.75,-.81],
@@ -4673,7 +5138,11 @@ function buildB07() {
         b07TaskLight(`${p}/SC-MULTI/TASK-S`,e,2.70,-4.25,
           'dimmable activity-table and equipment lighting',3700,.78,.26),
         ...lightGrid(`${p}/SC-MULTI`,e,[[2.70,-3.10]],3600),
-      ],{capacity:5,accessible:true}),
+      ],{capacity:5,accessible:true,planning:{
+        publicRoutes:[{id:`${p}/SC-MULTI/ACCESS-ROUTE`,bounds:[2.25,3.15,-1.60,-.75],width:.90}],
+        turns:[{id:`${p}/SC-MULTI/TURN`,centre:[2.70,-1.60],diameter:1.50}],
+        furniturePolicy:'activity furniture remains movable; the north door-and-turn field remains fixed clear space',
+      }}),
       room(`${p}/CL-WAIT`,'校医院候诊',[-6.1,-2.2,.75,5.1],'clinic',[
         doorway(`${p}/CL-WAIT/EXT`,'west',[-6.5,e,2.5],2.2,'campus',{portal:true}),
         doorway(`${p}/CL-WAIT/TO-COR`,'south',[-2.80,e,.75],1.2,`${p}/DUAL-COR`),
@@ -4681,7 +5150,7 @@ function buildB07() {
       ],[
         fixture(`${p}/CL-WAIT/REC`,'accessible clinic registration counter','PF-SERVICE-COUNTER',[-4.90,e,4.10],
           'M-CLINIC','private registration and triage point beneath the clinical dashboard, with a deep buffer from the exterior leaf',
-          {yaw:0,size:[.90,1.00,.58],accessible:true}),
+          {yaw:0,size:[.90,1.00,.58],accessible:true,wheelchairSide:'south'}),
         fixture(`${p}/CL-WAIT/W-S`,'south three-place waiting row','PF-WAIT-CHAIRS',[-4.35,e,1.05],
           'M-FABRIC-BLUE','short north-facing patient waiting row contained inside the south bay and clear of the exterior leaf',
           {yaw:0,size:[1.50,.84,.42]}),
@@ -4696,8 +5165,29 @@ function buildB07() {
           'M-SCREEN','queue number without patient names',{yaw:0,size:[1.15,.78,.05],text:'A12'}),
         fixture(`${p}/CL-WAIT/AED`,'clinic AED','PF-AED',[-2.28,e+1.2,1.15],
           'M-SAFETY-RED','public defibrillator',{yaw:-PI/2}),
-        b07Decor(`${p}/CL-WAIT/ACCESS`,'wheelchair waiting and turning field',[-4.10,e+.018,3.55],
-          'M-LAB-BLUE',[1.50,.025,1.50],'full accessible waiting and turning position'),
+        b07AccessField(`${p}/CL-WAIT/ACCESS`,e,[-4.90,-3.40,1.50,3.00],
+          'wheelchair waiting and turning field','full 1.50 m accessible waiting turn clear of registration and both waiting rows',
+          {turningDiameter:1.50}),
+        b07AccessField(`${p}/CL-WAIT/ENTRY-ROUTE`,e,[-6.10,-4.90,1.95,3.05],
+          'clinic-entry accessible route','1.10 m clear route from the separate clinic entrance into the waiting turn',
+          {material:'M-VINYL',clearWidth:1.10}),
+        b07AccessField(`${p}/CL-WAIT/COR-ROUTE`,e,[-3.40,-2.50,.75,2.25],
+          'clinic-corridor accessible route','0.90 m clear route between the waiting turn and shared corridor doorway',
+          {material:'M-VINYL',clearWidth:.90}),
+        b07AccessField(`${p}/CL-WAIT/TREAT-ROUTE-W`,e,[-4.60,-3.50,2.35,3.25],
+          'treatment privacy-vestibule west route','1.10 m clear route west of the opaque privacy return',
+          {material:'M-VINYL',clearWidth:1.10}),
+        b07AccessField(`${p}/CL-WAIT/TREAT-ROUTE-N`,e,[-4.40,-2.20,3.25,4.35],
+          'treatment privacy-vestibule north route','1.10 m clear route north of the opaque return into the treatment doorway',
+          {material:'M-VINYL',clearWidth:1.10}),
+        b07AccessField(`${p}/CL-WAIT/REC-APPROACH`,e,[-5.35,-4.45,2.61,3.81],
+          'accessible registration-counter approach','0.90 m by 1.20 m seated registration and pull-back field',
+          {material:'M-VINYL',clearBay:[.90,1.20]}),
+        fixture(`${p}/CL-WAIT/TREAT-PRIVACY-RETURN`,'full-height opaque treatment privacy return','PF-WALL-RUN',
+          [-2.85,e+1.35,3.10],'M-WALL-GREEN',
+          '1.30 m full-height return screening the internal treatment leaf from the registration arrival while retaining a 1.10 m accessible dog-leg',
+          {size:[1.30,2.70,.10],walkBlocker:true,architecturalOccluder:true,privacy:true,
+            screensDoorId:`${p}/CL-WAIT/TO-TREAT`,witnessPose:{x:-4.10,z:3.50,yaw:-.32}}),
         b07Decor(`${p}/CL-WAIT/WALL`,'pale-green clinic identity wall',[-4.15,e+1.43,5.02],
           'M-WALL-GREEN',[3.35,2.52,.06],'calm washable architectural backdrop'),
         b07Decor(`${p}/CL-WAIT/DASHBOARD-S`,'pale-green clinic dashboard wall',[-2.235,e+1.43,2.00],
@@ -4731,7 +5221,20 @@ function buildB07() {
         b07Pendant(`${p}/CL-WAIT/PENDANT-N`,e,-4.20,4.05,
           'soft low-glare waiting light beside the privacy-protected facade bay','M-BRASS',3200,560),
         ...lightGrid(`${p}/CL-WAIT`,e,[[-4.75,1.30],[-4.20,4.05]],3900),
-      ],{capacity:8,accessible:true}),
+      ],{capacity:8,accessible:true,planning:{
+        publicRoutes:[
+          {id:`${p}/CL-WAIT/ENTRY-ROUTE`,bounds:[-6.10,-4.90,1.95,3.05],width:1.10,fromDoorId:`${p}/CL-WAIT/EXT`},
+          {id:`${p}/CL-WAIT/COR-ROUTE`,bounds:[-3.40,-2.50,.75,2.25],width:.90,toDoorId:`${p}/CL-WAIT/TO-COR`},
+          {id:`${p}/CL-WAIT/TREAT-ROUTE-W`,bounds:[-4.60,-3.50,2.35,3.25],width:1.10},
+          {id:`${p}/CL-WAIT/TREAT-ROUTE-N`,bounds:[-4.40,-2.20,3.25,4.35],width:1.10,toDoorId:`${p}/CL-WAIT/TO-TREAT`},
+        ],
+        turns:[{id:`${p}/CL-WAIT/ACCESS`,centre:[-4.15,2.25],diameter:1.50,wheelchairWaiting:true}],
+        counterApproaches:[{id:`${p}/CL-WAIT/REC-APPROACH`,fixtureId:`${p}/CL-WAIT/REC`,
+          bounds:[-5.35,-4.45,2.61,3.81],width:.90,depth:1.20}],
+        privacyVestibules:[{id:`${p}/CL-WAIT/TREAT-PRIVACY-RETURN`,doorId:`${p}/CL-WAIT/TO-TREAT`,
+          bounds:[-3.50,-2.20,3.05,3.15],opaque:true,fullHeight:2.70,clearRouteWidth:1.10,
+          witnessPose:{x:-4.10,z:3.50,yaw:-.32}}],
+      }}),
       room(`${p}/CL-EXAM`,'校医诊室',[-2.0,1.55,.75,2.55],'clinic',[
         doorway(`${p}/CL-EXAM/TO-COR`,'south',[-.30,e,.75],1.0,`${p}/DUAL-COR`),
       ],[
@@ -4783,16 +5286,14 @@ function buildB07() {
       room(`${p}/CL-PHARM`,'校内药房',[1.75,3.6,.75,5.1],'clinic',[
         doorway(`${p}/CL-PHARM/TO-COR`,'south',[2.65,e,.75],1.2,`${p}/DUAL-COR`),
       ],[
-        fixture(`${p}/CL-PHARM/COUNTER`,'composed dispensing counter','PF-PHARMACY',[2.10,e,2.70],
-          'M-CLINIC','east-facing private medicine dispensing point with a clear staff-entry sightline',{yaw:PI/2,size:[1.40,1.05,.65]}),
+        fixture(`${p}/CL-PHARM/COUNTER`,'composed dispensing counter','PF-PHARMACY',[3.22,e,3.00],
+          'M-CLINIC','west-facing private medicine dispensing point on the east wall, clear of the north stock-wall sightline',
+          {yaw:PI/2,size:[1.40,1.05,.65]}),
         fixture(`${p}/CL-PHARM/FRIDGE`,'locked medicine refrigerator','PF-MED-FRIDGE',[2.08,e,4.78],
           'M-CLINIC','temperature-controlled medicine',{size:[.60,1.80,.60]}),
-        fixture(`${p}/CL-PHARM/S1`,'north medicine shelving','PF-SHELF',[2.08,e,4.22],
-          'M-CLINIC','labelled locked medicine stock',{size:[.55,1.85,.36]}),
-        fixture(`${p}/CL-PHARM/S2`,'west medicine shelving','PF-SHELF',[2.15,e,3.75],
-          'M-CLINIC','dispensing stock consolidated beyond the counter and outside the east camera lane',{yaw:0,size:[.75,1.85,.36]}),
-        b07Decor(`${p}/CL-PHARM/WALL`,'washable pale-green pharmacy wall',[3.52,e+1.42,3.35],
-          'M-WALL-GREEN',[.05,2.50,3.20],'architectural pharmacy identity wall'),
+        fixture(`${p}/CL-PHARM/S1`,'east medicine shelving','PF-SHELF',[3.37,e,4.22],
+          'M-CLINIC','labelled locked medicine stock on the east wall, outside the dispensing-display sightline',
+          {yaw:PI/2,size:[.55,1.85,.36]}),
         b07Decor(`${p}/CL-PHARM/PRIVACY-LINE`,'pharmacy privacy floor line',[2.65,e+.018,1.94],
           'M-SAFETY-YELLOW',[1.50,.025,.12],'one-metre conversation setback'),
         fixture(`${p}/CL-PHARM/TEMP`,'medicine temperature and dispensing log','PF-SCREEN',[2.65,e+1.28,4.98],
@@ -4811,22 +5312,25 @@ function buildB07() {
     ];
     floors.push(floor(level,e,3.0,rooms,[
       {id:`${p}/DUAL-COR`,bounds:[-6.1,3.8,-.65,.65],clearWidth:1.30,surface:'M-TERRAZZO'},
+      {id:`${p}/LIFT/ACCESS-ROUTE`,bounds:[2.40,3.80,-1.00,-.10],clearWidth:.90,
+        surface:'M-TERRAZZO',accessible:true,designIntent:'explicit lift route cuts the false east room-wall return'},
     ],[
       ...safetySet(p,e,[3.55,-2.45],[-5.80,-1.50],level,true),
       fixture(`${p}/FIRE-SEP`,'self-closing clinic fire-separation door','PF-DOOR-SINGLE',[3.70,e,0],
         'M-STEEL','protected separation before the shared lift lobby',{yaw:0,selfClosing:true}),
       ...corridorLayer(p,e,'活动 ↓','校医 ↑'),
-    ],{occupancy:54,visualReview:{
+      ...b07LiftLandingLayer(p,e),
+    ],{occupancy:54,planning:b07LiftLandingPlanning(p),visualReview:{
       entries:[
         {suffix:'entry',portalId:'B07/STUDENT',focusRoomId:`${p}/SC-COMMONS`,cameraZoneId:`${p}/SC-COMMONS`,
-          focusAt:{x:-2.55,z:-3.62,yaw:1.48},body:'hidden',
+          focusAt:{x:-2.40,z:-4.30,yaw:1.78},body:'hidden',
           focusFixtureIds:[`${p}/SC-COMMONS/MURAL`,`${p}/SC-COMMONS/T2`]},
-        {suffix:'clinic-entry',portalId:'B07/CLINIC',focusRoomId:`${p}/CL-PHARM`,cameraZoneId:`${p}/CL-PHARM`,
-          focusAt:{x:2.70,z:3.30,yaw:-.15},body:'hidden',
-          focusFixtureIds:[`${p}/CL-PHARM/HEADER`,`${p}/CL-PHARM/TEMP`]},
+        {suffix:'clinic-entry',portalId:'B07/CLINIC',focusRoomId:`${p}/CL-WAIT`,cameraZoneId:`${p}/CL-WAIT`,
+          focusAt:{x:-4.10,z:3.50,yaw:-.32},body:'hidden',
+          focusFixtureIds:[`${p}/CL-WAIT/REC`,`${p}/CL-WAIT/STATUS`]},
       ],
-      programme:{roomId:`${p}/CL-TREAT`,at:{x:0,z:4.175,yaw:1.04},
-        focusFixtureIds:[`${p}/CL-TREAT/MON`,`${p}/CL-TREAT/COUCH`]},
+      programme:{roomId:`${p}/CL-PHARM`,at:{x:2.27,z:3.30,yaw:.17},
+        focusFixtureIds:[`${p}/CL-PHARM/HEADER`,`${p}/CL-PHARM/TEMP`]},
     }}));
   }
 
@@ -4839,8 +5343,8 @@ function buildB07() {
           {operation:'sliding-pocket',pocketSide:'west',reviewOpen:true,
             designIntent:'permanently open recessed studio arrival pocket; no exposed panel in the shared landing'}),
         doorway(`${p}/DANCE/TO-COR-E`,'north',[2.70,e,-1.1],1.2,`${p}/DUAL-COR`,
-          {operation:'sliding-pocket',pocketSide:'east',reviewOpen:true,
-            designIntent:'permanently open recessed studio arrival pocket; no exposed panel in the shared landing'}),
+          {operation:'sliding-pocket',pocketSide:'west',reviewOpen:true,
+            designIntent:'permanently open studio arrival panel recesses into the ample west wall pocket; no exposed panel or false cavity beside the lift'}),
       ],[
         fixture(`${p}/DANCE/M1`,'east dance mirror and barre A','PF-DANCE-MIRROR',[3.52,e+1.45,-4.12],
           'M-GLASS','south safety-backed rehearsal mirror and continuous timber barre',
@@ -4866,6 +5370,12 @@ function buildB07() {
           'M-OAK','composed wall rail for jackets and light rehearsal bags',{yaw:PI,collision:'none'}),
         b07Decor(`${p}/DANCE/FLOOR`,'sprung oak dance floor',[-1.05,e+.018,-3.25],
           'M-OAK',[7.70,.025,2.65],'resilient architectural rehearsal floor with clear movement perimeter'),
+        b07AccessField(`${p}/DANCE/ACCESS-ROUTE`,e,[2.10,3.00,-2.05,-1.10],
+          'dance-studio accessible route','0.90 m clear route from the east studio doorway to the rehearsal turning field',
+          {material:'M-OAK',clearWidth:.90}),
+        b07AccessField(`${p}/DANCE/TURN`,e,[1.80,3.30,-2.80,-1.30],
+          'dance-studio accessible turning field','full 1.50 m wheelchair turn on the clear sprung-floor perimeter',
+          {material:'M-OAK',turningDiameter:1.50}),
         ...[-3.35,-2.20,-1.05,.10,1.25].map((x,i)=>b07Decor(
           `${p}/DANCE/SPACING-${pad(i+1)}`,'rehearsal spacing floor marker',[x,e+.034,-3.25],
           'M-BRASS',[.16,.018,.045],
@@ -4893,26 +5403,46 @@ function buildB07() {
         b07TaskLight(`${p}/DANCE/WALL-WASH-E`,e,1.95,-4.62,
           'dimmable warm wall wash for informal rehearsal and performances',3400,1.0,.20),
         ...lightGrid(`${p}/DANCE`,e,[[-3.50,-3.15],[-.50,-3.15],[2.45,-3.15]],3800),
-      ],{capacity:20,accessible:true}),
+      ],{capacity:20,accessible:true,planning:{
+        publicRoutes:[{id:`${p}/DANCE/ACCESS-ROUTE`,bounds:[2.10,3.00,-2.05,-1.10],width:.90,
+          fromDoorId:`${p}/DANCE/TO-COR-E`}],
+        turns:[{id:`${p}/DANCE/TURN`,centre:[2.55,-2.05],diameter:1.50}],
+        clearFloorPolicy:'sprung-floor access route and turn stay outside audio, storage, bench and hydration fixtures',
+      }}),
       room(`${p}/SC-WC`,'活动中心无障碍卫生间',[-6.1,-3.8,-.9,.8],'service',[
         doorway(`${p}/SC-WC/TO-COR`,'east',[-3.8,e,0],1.0,`${p}/DUAL-COR`),
       ],[
         fixture(`${p}/SC-WC/T`,'accessible toilet','PF-TOILET',[-5.72,e,-.48],
-          'M-CERAMIC','accessible sanitary fixture',{grabRails:true}),
-        fixture(`${p}/SC-WC/B`,'accessible washbasin','PF-BASIN',[-5.72,e,.48],
-          'M-CERAMIC','wheelchair-height hand washing'),
-        b07Decor(`${p}/SC-WC/TURN`,'accessible turning-circle floor field',[-4.60,e+.018,0],
-          'M-LAB-BLUE',[1.50,.025,1.50],'full wheelchair turning zone connected to the door'),
+          'M-CERAMIC','accessible sanitary fixture with a clear east side-transfer bay',
+          {grabRails:true,accessible:true,transferSide:'east'}),
+        fixture(`${p}/SC-WC/B`,'accessible west-wall washbasin','PF-BASIN',[-5.85,e,.38],
+          'M-CERAMIC','wheelchair-height hand washing clear of the turning field',
+          {yaw:PI/2,size:[.84,.88,.45],facing:'west',accessible:true}),
+        b07AccessField(`${p}/SC-WC/ACCESS-ROUTE`,e,[-4.70,-3.80,-.45,.45],
+          'accessible-WC door route','0.90 m clear route from the existing doorway into the turning field',
+          {material:'M-TILE-DARK',clearWidth:.90}),
+        b07AccessField(`${p}/SC-WC/TURN`,e,[-5.35,-3.85,-.75,.75],
+          'accessible turning-circle floor field','full 1.50 m wheelchair turning zone connected to the door',
+          {turningDiameter:1.50}),
+        b07AccessField(`${p}/SC-WC/T-TRANSFER`,e,[-5.35,-4.15,-.88,.02],
+          'accessible toilet transfer field','1.20 m by 0.90 m east side-transfer bay held clear beside the toilet',
+          {material:'M-SAFETY-YELLOW',clearBay:[1.20,.90]}),
         b07Decor(`${p}/SC-WC/RAIL`,'contrasting wall-mounted grab rail',[-6.02,e+.88,-.48],
           'M-SAFETY-YELLOW',[.05,.06,.70],'architectural transfer support'),
-        b07Decor(`${p}/SC-WC/MIRROR`,'accessible washbasin mirror',[-5.72,e+1.55,.76],
-          'M-GLASS',[.82,.82,.04],'wall-mounted accessible mirror'),
+        b07Decor(`${p}/SC-WC/MIRROR`,'accessible washbasin mirror',[-6.065,e+1.55,.38],
+          'M-GLASS',[.82,.82,.04],'west-wall mirror aligned above the accessible basin',{yaw:PI/2}),
         ...b07FacadeWindow(`${p}/SC-WC/WINDOW-W`,e,'west',.30,'accessible washroom',
           {privacy:true,filmHeight:.88,filmY:1.10}),
         b07Sign(`${p}/SC-WC/SIGN`,'accessible WC sign',[-4.45,e+1.62,.76],
           '无障碍卫生间 · ACCESSIBLE WC','facility identification',{yaw:PI,size:[1.15,.28,.04]}),
         ...lightGrid(`${p}/SC-WC`,e,[[-4.85,0]],4100),
-      ],{accessible:true}),
+      ],{accessible:true,planning:{
+        publicRoutes:[{id:`${p}/SC-WC/ACCESS-ROUTE`,bounds:[-4.70,-3.80,-.45,.45],width:.90,
+          fromDoorId:`${p}/SC-WC/TO-COR`}],
+        turns:[{id:`${p}/SC-WC/TURN`,centre:[-4.60,0],diameter:1.50}],
+        toiletTransfers:[{id:`${p}/SC-WC/T-TRANSFER`,fixtureId:`${p}/SC-WC/T`,
+          bounds:[-5.35,-4.15,-.88,.02],width:.90,depth:1.20,side:'east'}],
+      }}),
       room(`${p}/COUNSEL1`,'心理咨询一',[-6.1,-3.2,1.1,5.1],'clinic',[
         doorway(`${p}/COUNSEL1/TO-SUITE`,'east',[-3.2,e,1.72],1.0,`${p}/COUNSEL-SUITE`),
       ],[
@@ -5012,12 +5542,15 @@ function buildB07() {
     floors.push(floor(level,e,3.0,rooms,[
       {id:`${p}/DUAL-COR`,bounds:[-3.8,3.8,-1.0,1.0],clearWidth:2.0,surface:'M-TERRAZZO'},
       {id:`${p}/COUNSEL-SUITE`,bounds:[-3.0,-.1,1.10,2.30],clearWidth:1.20,surface:'M-VINYL'},
+      {id:`${p}/LIFT/ACCESS-ROUTE`,bounds:[2.40,3.80,-1.00,-.10],clearWidth:.90,
+        surface:'M-TERRAZZO',accessible:true,designIntent:'explicit protected route into the lift-room door'},
     ],[
       ...safetySet(p,e,[3.55,-2.45],[3.55,-1],level,false),
       fixture(`${p}/FIRE-SEP`,'self-closing care-suite fire door','PF-DOOR-SINGLE',[3.70,e,0],
         'M-STEEL','protected separation before the shared lift lobby',{yaw:0,selfClosing:true}),
       ...corridorLayer(p,e,'舞蹈 ↓','咨询 ↑'),
-    ],{occupancy:36,visualReview:{
+      ...b07LiftLandingLayer(p,e),
+    ],{occupancy:36,planning:b07LiftLandingPlanning(p),visualReview:{
       entry:{zoneId:`${p}/DANCE`,at:{x:-2.42,z:-3.82,yaw:-2.15},body:'evidence',
         focusFixtureIds:[`${p}/DANCE/TITLE`]},
       programme:{roomId:`${p}/DANCE`,at:{x:-1.70,z:-3.40,yaw:2.18},
@@ -5093,6 +5626,12 @@ function buildB07() {
           'M-STEEL-DARK','completed prototypes and materials',{yaw:PI/2,size:[.85,1.85,.38]}),
         fixture(`${p}/PROJECT/BOARD`,'maker planning whiteboard','PF-WHITEBOARD',[1.15,e+1.48,-1.18],
           'M-WHITEBOARD','club briefs, measurements and task board',{yaw:PI,size:[2.7,.92,.05]}),
+        b07AccessField(`${p}/PROJECT/ACCESS-ROUTE`,e,[2.25,3.15,-1.90,-1.10],
+          'project-room accessible route','0.90 m clear route from the existing doorway into the protected project-room turn',
+          {material:'M-RUBBER',clearWidth:.90}),
+        b07AccessField(`${p}/PROJECT/TURN`,e,[1.80,3.30,-2.65,-1.15],
+          'project-room accessible turning field','full 1.50 m wheelchair turn north of both making tables',
+          {material:'M-RUBBER',turningDiameter:1.50}),
         b07Decor(`${p}/PROJECT/FLOOR-GRID`,'maker safety floor grid',[1.05,e+.018,-3.70],
           'M-SAFETY-YELLOW',[3.70,.025,.10],'architectural separation between two making bays'),
         b07Decor(`${p}/PROJECT/WALL-W`,'oak maker pin-up wall',[-.20,e+1.45,-5.02],
@@ -5107,7 +5646,12 @@ function buildB07() {
         b07Pendant(`${p}/PROJECT/PENDANT-E`,e,2.10,-3.70,
           'warm high-colour-rendering light over the east project table','M-BRASS',3300,780),
         ...lightGrid(`${p}/PROJECT`,e,[[-.10,-3.70],[2.10,-3.70]],3800),
-      ],{capacity:6,accessible:true}),
+      ],{capacity:6,accessible:true,planning:{
+        publicRoutes:[{id:`${p}/PROJECT/ACCESS-ROUTE`,bounds:[2.25,3.15,-1.90,-1.10],width:.90,
+          fromDoorId:`${p}/PROJECT/TO-COR`}],
+        turns:[{id:`${p}/PROJECT/TURN`,centre:[2.55,-1.90],diameter:1.50}],
+        makerClearancePolicy:'door-side turn remains north of both table-and-chair work bays',
+      }}),
       room(`${p}/HEALTH`,'健康教育室',[-6.1,-.8,1.1,5.1],'clinic',[
         doorway(`${p}/HEALTH/TO-COR`,'south',[-1.55,e,1.1],1.2,`${p}/DUAL-COR`,
           {operation:'sliding-pocket',pocketSide:'west',reviewOpen:true,
@@ -5137,8 +5681,18 @@ function buildB07() {
         b07Decor(`${p}/HEALTH/TEACHING-WALL`,'pale-green health-demonstration wall',[-.835,e+1.43,3.20],
           'M-WALL-GREEN',[.05,2.50,3.60],
           'washable architectural teaching datum tying together the screen, CPR kit and AED trainer'),
-        b07Decor(`${p}/HEALTH/ACCESS`,'accessible learning and turning field',[-1.55,e+.018,2.70],
-          'M-LAB-BLUE',[1.50,.025,1.50],'wheelchair learning position with a full turn'),
+        b07AccessField(`${p}/HEALTH/ACCESS-ROUTE`,e,[-3.75,-1.10,1.10,2.00],
+          'health-learning accessible route','0.90 m clear east-west route from the open pocket doorway into the learning turn',
+          {material:'M-VINYL',clearWidth:.90}),
+        b07AccessField(`${p}/HEALTH/DEMO-ROUTE`,e,[-2.00,-1.10,1.55,2.45],
+          'health-demonstration accessible branch','0.90 m clear branch from the main route to the CPR learning position',
+          {material:'M-VINYL',clearWidth:.90}),
+        b07AccessField(`${p}/HEALTH/ACCESS`,e,[-4.50,-3.00,1.20,2.70],
+          'accessible learning and turning field','full 1.50 m wheelchair learning turn west of the CPR couch',
+          {turningDiameter:1.50}),
+        b07AccessField(`${p}/HEALTH/DEMO-APPROACH`,e,[-2.21,-1.01,2.45,3.35],
+          'accessible CPR learning position','1.20 m by 0.90 m side approach beside the CPR practice couch',
+          {material:'M-VINYL',clearBay:[1.20,.90]}),
         ...b07FacadeWindow(`${p}/HEALTH/WINDOW-W`,e,'west',4.50,'health education room'),
         ...b07FacadeWindow(`${p}/HEALTH/WINDOW-N1`,e,'north',-4.70,'health education room',
           {privacy:true,filmHeight:.60,filmY:.88}),
@@ -5149,7 +5703,16 @@ function buildB07() {
         b07TaskLight(`${p}/HEALTH/DEMO-LIGHT`,e,-2.15,3.25,
           'high-rendering demonstration light for CPR and first-aid teaching',4200,.82,.28),
         ...lightGrid(`${p}/HEALTH`,e,[[-4.60,3.35],[-2.60,3.35]],4000),
-      ],{capacity:9,accessible:true}),
+      ],{capacity:9,accessible:true,planning:{
+        publicRoutes:[
+          {id:`${p}/HEALTH/ACCESS-ROUTE`,bounds:[-3.75,-1.10,1.10,2.00],width:.90,fromDoorId:`${p}/HEALTH/TO-COR`},
+          {id:`${p}/HEALTH/DEMO-ROUTE`,bounds:[-2.00,-1.10,1.55,2.45],width:.90,toFixtureId:`${p}/HEALTH/DEMO`},
+        ],
+        turns:[{id:`${p}/HEALTH/ACCESS`,centre:[-3.75,1.95],diameter:1.50,wheelchairLearning:true}],
+        learningPositions:[{id:`${p}/HEALTH/DEMO-APPROACH`,fixtureId:`${p}/HEALTH/DEMO`,
+          bounds:[-2.21,-1.01,2.45,3.35],width:.90,depth:1.20,side:'east'}],
+        movableFixtures:[`${p}/HEALTH/DEMO-STOOL`],
+      }}),
       room(`${p}/ADMIN`,'校医院办公室',[-.6,1.7,1.1,5.1],'office',[
         doorway(`${p}/ADMIN/TO-COR`,'south',[.55,e,1.1],1.0,`${p}/DUAL-COR`),
       ],[
@@ -5204,6 +5767,8 @@ function buildB07() {
     ];
     floors.push(floor(level,e,3.0,rooms,[
       {id:`${p}/DUAL-COR`,bounds:[-3.8,3.8,-1.0,1.0],clearWidth:2.0,surface:'M-TERRAZZO'},
+      {id:`${p}/LIFT/ACCESS-ROUTE`,bounds:[2.40,3.80,-1.00,-.10],clearWidth:.90,
+        surface:'M-TERRAZZO',accessible:true,designIntent:'explicit protected route into the lift-room door'},
     ],[
       ...safetySet(p,e,[3.55,-2.45],[3.55,-1],level,false),
       fixture(`${p}/FIRE-SEP`,'self-closing clinic fire-separation door','PF-DOOR-SINGLE',[3.70,e,0],
@@ -5211,10 +5776,11 @@ function buildB07() {
       ...corridorLayer(p,e,'媒体 ↓','健康 ↑',
         {signX:-1.20,signSize:[1.45,.30,.05],signYaw:-PI/2}),
       ...b07FacadeWindow(`${p}/COR/WINDOW-W`,e,'west',.30,'shared upper-floor landing'),
-    ],{occupancy:36,visualReview:{
+      ...b07LiftLandingLayer(p,e),
+    ],{occupancy:36,planning:b07LiftLandingPlanning(p),visualReview:{
       entry:{zoneId:`${p}/DUAL-COR`,at:{x:-1.85,z:-.55,yaw:-1.58},body:'hidden',
         focusFixtureIds:[`${p}/COR/SC-SIGN`,`${p}/COR/CL-SIGN`]},
-      programme:{roomId:`${p}/HEALTH`,at:{x:-4.17,z:3.06,yaw:.90},
+      programme:{roomId:`${p}/HEALTH`,at:{x:-3.26,z:3.58,yaw:.90},
         focusFixtureIds:[`${p}/HEALTH/DEMO`,`${p}/HEALTH/D2`]},
     }}));
   }
@@ -5243,8 +5809,12 @@ function buildB07() {
     planningMetrics:{
       publicRoutes:{groundDualIdentity:1.30,upperShared:2.0,counsellingPrivacyVestibule:1.20},
       accessibleTurns:{liftLobbies:1.50,studentWC:1.50,clinicWaiting:1.50,healthEducation:1.50},
+      accessibility:{routeMinimum:.90,turningDiameter:1.50,toiletTransfer:[1.20,.90],
+        liftLandingLocation:'shared corridor immediately west of each protected lift-room door',
+        plannedRooms:['F1/SC-MULTI','F1/CL-WAIT','F2/DANCE','F2/SC-WC','F3/PROJECT','F3/HEALTH']},
       doors:{studentEntrance:2.20,clinicEntrance:2.20,programmeMinimum:1.0,protectedCore:1.20},
-      privacy:{pharmacySetback:1.0,counsellingBuffer:1.20,observationAisle:1.63},
+      privacy:{pharmacySetback:1.0,counsellingBuffer:1.20,observationAisle:1.63,
+        treatmentArrivalReturn:{width:.10,length:1.30,height:2.70,clearDogLeg:1.10,architecturalOccluder:true}},
       clinicalWorkflow:['separate clinic entry','private registration','exam handwash','treatment handwash','observation clean threshold','locked pharmacy'],
       studentWorkflow:['club check-in','commons','flex events','dance rehearsal','media production','project making'],
       facadeDaylight:{groundAlignedBays:2,upperProgrammeBays:15,upperProtectedCoreBays:10,privacyLayers:7},
@@ -5291,8 +5861,8 @@ function buildB08() {
       fixture(`${p}/WORK/NOTICE`,'shift briefing and emergency map','PF-WHITEBOARD',[-2.36,e+1.55,2.335],'M-WHITEBOARD','compact shift notes and emergency map beside the north command datum',{yaw:0,size:[.70,.78,.04]}),
       fixture(`${p}/WORK/FIRST`,'first-aid cabinet','PF-FIRST-AID',[1.08,e+1.25,-.45],
         'M-CLINIC','first aid at the staffed east service wall, clear of both authored camera envelopes',{yaw:PI/2}),
-      fixture(`${p}/WORK/WATER`,'thermos and water station','PF-WATER',[-2.58,e,-1.75],'M-STEEL','guard drinks in the southwest service bay',{yaw:-PI/2}),
-      fixture(`${p}/WORK/LOCK`,'guard locker bank','PF-LOCKERS',[-2.57,e,-1.00],'M-STEEL-DARK','guard clothing and cleaning kit consolidated in the west service bay between drinking water and the visitor counter',{yaw:-PI/2,size:[.90,1.9,.42]}),
+      fixture(`${p}/WORK/WATER`,'thermos and water station','PF-WATER',[.82,e,-1.75],'M-STEEL','guard drinks on the east service wall, behind both authored camera envelopes',{yaw:PI/2}),
+      fixture(`${p}/WORK/LOCK`,'guard locker bank','PF-LOCKERS',[-2.57,e,-1.55],'M-STEEL-DARK','guard clothing and cleaning kit consolidated in the southwest service bay behind both authored camera envelopes',{yaw:-PI/2,size:[.90,1.9,.42]}),
       fixture(`${p}/WORK/CLOCK`,'wall clock','PF-CLOCK',[-2.785,e+2.45,-1.55],'M-WALL-WHITE','shift time on the solid west-wall service bay',{yaw:-PI/2}),
       fixture(`${p}/WORK/AC`,'wall air conditioner','PF-AC',[1.08,e+2.48,-1.35],'M-WALL-WHITE','guardhouse climate unit on the solid east wall above the locker bank and clear of glazing',{yaw:PI/2}),
       fixture(`${p}/WORK/PENDANT`,'visitor-counter pendant','PF-PENDANT',[-2.52,e+2.72,.20],'M-BRASS','warm task light centred over the public service point',{temperatureK:3000}),
@@ -5372,10 +5942,10 @@ function buildB08() {
       fixture(`${p}/BRAND`,'university security crest wall','PF-ROOM-SIGN',[-2.63,e+2.38,1.72],'M-BRASS','institutional identity at the visitor window',{yaw:-PI/2,size:[1.30,.30,.04],text:'校园安全'}),
     ],{occupancy:4,visualReview:{
       entries:[{suffix:'entry',portalId:'B08/STAFF',focusRoomId:`${p}/WORK`,cameraZoneId:`${p}/WORK`,
-        focusAt:{x:-1.60,z:0,yaw:-.40},body:'hidden',
-        focusFixtureIds:[`${p}/WORK/CCTV-CAM01`,`${p}/WORK/CCTV-CAM03`,`${p}/WORK/CONSOLE`]}],
-      programme:{roomId:`${p}/WORK`,at:{x:-1.00,z:-1.20,yaw:-1.20},
-        focusFixtureIds:[`${p}/WORK/COUNTER`,`${p}/WORK/LOCK`,`${p}/WORK/WATER`]},
+        focusAt:{x:-1.30,z:-1.00,yaw:-1.20},body:'hidden',
+        focusFixtureIds:[`${p}/WORK/COUNTER`,`${p}/WORK/WINDOW`]}],
+      programme:{roomId:`${p}/WORK`,at:{x:-1.70,z:.20,yaw:-.30},
+        focusFixtureIds:[`${p}/WORK/CONSOLE`,`${p}/WORK/CCTV-CAM01`]},
     }})],
   };
 }
@@ -5755,6 +6325,8 @@ function serviceOffice(prefix,e,b,label,waiting=6) {
 function furnishDormRoom(prefix,e,b,side='west',accessible=false) {
   const [x0,x1,z0,z1]=b,cz=(z0+z1)/2;
   const level=Number((prefix.match(/\/F(\d+)\//)||[])[1])||1,identity=dormTextile(level),
+    residentNumber=Number((prefix.split('/').pop().match(/\d+/)||[])[0])||level,
+    residentFlip=residentNumber%2?1:-1,
     secondary=['M-FABRIC-SAND','M-FABRIC-BLUE','M-FABRIC-RED','M-WALL-GREEN','M-BRASS','M-LAB-BLUE'][level-1],
     roomStory=['无障碍生活','安静学习','社群与音乐','阅读与植物','高年级交流','顶层学习'][level-1],
     lifeBoard=['入住支援 · 报修','安静时段 · STUDY PLAN','社群活动 · MUSIC','读书会 · PLANT CARE','实习 · GRADUATION','顶层自习 · LAUNDRY'][level-1],
@@ -5766,6 +6338,70 @@ function furnishDormRoom(prefix,e,b,side='west',accessible=false) {
   const deskX=side==='west'?x0+3.10:x1-3.10;
   const wardrobeX=side==='west'?x1-.38:x0+.38;
   const innerWall=side==='west'?x1-.035:x0+.035,outerWall=side==='west'?x0+.035:x1-.035;
+  if(accessible){
+    // The ground accessible room is intentionally a spacious single, not the ordinary twin room
+    // with an accessibility label.  All clear fields are authored as flush non-colliding floor
+    // layers and are independently checked against the real furniture footprints.
+    const bedAt=[x0+1.20,e,z0+.75],turnAt=[x1-1.40,e+.012,z1-1.05],
+      transferAt=[x0+1.20,e+.012,z0+1.78],deskAt=[x1-.85,e,z0+.50],
+      deskApproachAt=[x1-.85,e+.012,z0+1.31],wardAt=[x0+.45,e,z1-.35],
+      wardApproachAt=[x0+1.40,e+.012,z1-.70];
+    return [
+      fixture(`${prefix}/BED1`,'accessible single bed','PF-BED',bedAt,identity,
+        'single resident bed with a full-length wheelchair transfer side',{yaw:0,size:[2.0,.58,1.02],accessible:true}),
+      fixture(`${prefix}/HEAD1`,'upholstered accessible bed headboard','PF-WALL-RUN',
+        [bedAt[0],e+.82,z0+.035],identity,'acoustic headwall kept outside the transfer side',
+        {size:[2.08,1.35,.035],collision:'none'}),
+      fixture(`${prefix}/BED-TRANSFER`,'wheelchair transfer clear field','PF-WALL-RUN',transferAt,
+        'M-LAB-BLUE','full 0.90 m clear transfer bay along the complete bed side',
+        {size:[2.0,.02,.90],collision:'none',accessible:true,clearBay:[2.0,.90],clearWidth:.90}),
+      fixture(`${prefix}/TURN`,'wheelchair turning field','PF-WALL-RUN',turnAt,'M-RUBBER',
+        'full 1.50 m by 1.50 m turning field connected directly to the room threshold',
+        {size:[1.50,.02,1.50],collision:'none',accessible:true,turningDiameter:1.50}),
+      fixture(`${prefix}/ACCESS-ROUTE`,'accessible room entrance route','PF-WALL-RUN',
+        [x1-.72,e+.010,-5.75],'M-VINYL','0.90 m clear route from the one-metre threshold into the turning field',
+        {size:[1.16,.018,.90],collision:'none',accessible:true,clearWidth:.90}),
+      fixture(`${prefix}/DESK1`,'open-leg accessible study desk','PF-MEETING-TABLE',deskAt,
+        'M-WOOD-DESK','single open-leg study surface with wheelchair knee and pull-back clearance',
+        {yaw:PI,size:[1.25,.78,.62],accessible:true,wheelchairSide:'north'}),
+      fixture(`${prefix}/DESK-APPROACH`,'wheelchair study approach field','PF-WALL-RUN',deskApproachAt,
+        'M-FABRIC-SAND','0.90 m clear frontal approach to the open-leg desk',
+        {size:[1.25,.02,.90],collision:'none',accessible:true,clearBay:[1.25,.90]}),
+      fixture(`${prefix}/WARD1`,'accessible-height wardrobe','PF-WARDROBE',wardAt,'M-OAK-DARK',
+        'single wardrobe with low rail and an independent clear approach',{yaw:0,size:[.90,2.05,.56],accessible:true}),
+      fixture(`${prefix}/WARD-APPROACH`,'wheelchair wardrobe approach bay','PF-WALL-RUN',wardApproachAt,
+        'M-FABRIC-SAND','0.90 m clear frontal approach to the low wardrobe rail',
+        {size:[.90,.02,1.00],collision:'none',accessible:true,clearBay:[.90,1.00]}),
+      fixture(`${prefix}/OPAQUE-WALL`,'ground-floor residence identity wall panel','PF-WALL-RUN',
+        [outerWall+(side==='west'?.025:-.025),e+1.52,cz],identity,
+        'warm internal wall datum on the intentionally opaque ground-floor masonry facade',
+        {size:[.045,1.35,1.45],collision:'none'}),
+      fixture(`${prefix}/LIFE-BOARD`,'accessible resident support board','PF-SCREEN',
+        [outerWall+(side==='west'?.060:-.060),e+1.46,z1-.72],'M-SCREEN',
+        'repairs, resident support and accessible assistance in concise bilingual copy',
+        {yaw:side==='west'?-PI/2:PI/2,text:'入住支援 · ACCESS',size:[.76,.48,.04],collision:'none',hudSafe:true}),
+      fixture(`${prefix}/PIN1`,'accessible study pinboard','PF-WALL-RUN',
+        [deskAt[0],e+1.55,z0+.04],'M-OAK','weekly study and resident-support notes above the desk',
+        {size:[1.18,.72,.035],collision:'none'}),
+      fixture(`${prefix}/PIN1-CARD`,'accessible resident study card','PF-ROOM-SIGN',
+        [deskAt[0],e+1.55,z0+.066],'M-SCREEN','short populated weekly note',
+        {yaw:PI,text:'本周 · WEEK',size:[.52,.22,.03],collision:'none'}),
+      fixture(`${prefix}/PEND1`,'accessible bedside pendant','PF-PENDANT',
+        [bedAt[0],e+2.43,bedAt[2]],'M-OAK','warm bedside light',{temperatureK:2900,size:[.30,.22,.30]}),
+      fixture(`${prefix}/COAT-RAIL`,'low resident coat and bag rail','PF-COAT-RAIL',
+        [innerWall-.025,e+1.28,z1-.55],'M-OAK','reachable wall-mounted storage outside the doorway and turn',
+        {yaw:PI/2,size:[.82,.34,.10],collision:'none',accessible:true}),
+      fixture(`${prefix}/AC`,'wall air conditioner','PF-AC',[innerWall,e+2.35,z0+.62],
+        'M-WALL-WHITE','room cooling above the desk wall',{yaw:-PI/2}),
+      fixture(`${prefix}/BIN`,'waste bin','PF-BIN',[x0+.45,e,z1-1.10],
+        'M-STEEL','room waste held outside every clear field'),
+      fixture(`${prefix}/LIGHT`,'ceiling light','PF-CEILING-LIGHT',[(x0+x1)/2,e+2.68,cz],
+        'M-WALL-WHITE','even accessible-room lighting',{temperatureK:3200,lumens:1800,size:[.65,.06,.65]}),
+      fixture(`${prefix}/SIGN`,'accessible room number plate','PF-ROOM-SIGN',
+        [x1-.06,e+2.18,-5.03],'M-SCREEN','room identification beside the one-metre threshold',
+        {yaw:PI/2,text:'A01 · 无障碍',size:[.72,.20,.035]}),
+    ];
+  }
   const zRows=[z0+.62,z1-.62],bedYaw=side==='west'?0:PI,deskYaw=side==='west'?0:PI;
   const out=[];
   // Match the real exterior bays instead of centring a generic fake window in every room.  The
@@ -5849,6 +6485,20 @@ function furnishDormRoom(prefix,e,b,side='west',accessible=false) {
     fixture(`${prefix}/LIFE-DATUM`,'resident life-board reading rail','PF-WALL-RUN',
       [outerWall+(side==='west'?.068:-.068),e+.92,focalZ],'M-BRASS','slender lower edge completing the board without a floating rectangle',
       {size:[.06,.035,.78],collision:'none'}),
+    ...[-.34,0,.34].map((dx,i)=>fixture(`${prefix}/PIN1-LIFE-${i+1}`,
+      'asymmetric resident photo and timetable card','PF-ROOM-SIGN',
+      [deskX+dx,e+1.55,z0+.072],['M-FABRIC-SAND','M-SCREEN',identity][(i+residentNumber)%3],
+      'three deliberately uneven personal cards break the paired-room showroom symmetry',
+      {yaw:PI,size:[i===1?.24:.20,i===1?.16:.20,.025],collision:'none',
+        text:['周课 · WEEK','照片 · HOME','社群 · CLUB'][(i+residentNumber)%3]})),
+    fixture(`${prefix}/PIN2-CALENDAR`,'resident two compact monthly calendar','PF-ROOM-SIGN',
+      [deskX+residentFlip*.24,e+1.56,z1-.072],'M-FABRIC-SAGE',
+      'single offset calendar gives the second study position a different lived-in rhythm',
+      {yaw:0,size:[.46,.28,.025],collision:'none',text:'AUG · 08'}),
+    fixture(`${prefix}/COAT-RAIL`,'resident coat and bag rail','PF-COAT-RAIL',
+      [innerWall+(side==='west'?-.025:.025),e+1.52,cz+residentFlip*1.02],'M-OAK',
+      'wall-mounted personal storage held clear of the real room doorway',
+      {yaw:side==='west'?PI/2:-PI/2,size:[.82,.34,.10],collision:'none'}),
     fixture(`${prefix}/AC`,'wall air conditioner','PF-AC',[innerWall,e+2.35,cz],'M-WALL-WHITE','room cooling above the entrance',{yaw:side==='west'?-PI/2:PI/2}),
     fixture(`${prefix}/BIN`,'waste bin','PF-BIN',[deskX,e,z1-.32],'M-STEEL','room waste'),
     fixture(`${prefix}/LIGHT`,'ceiling light','PF-CEILING-LIGHT',[(x0+x1)/2,e+2.68,cz],'M-WALL-WHITE','room lighting',{temperatureK:3200,lumens:1800,size:[.65,.06,.65]}),
