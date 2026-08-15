@@ -1,0 +1,66 @@
+[
+  {
+    "building": "B01",
+    "artifactPresent": true,
+    "captureOutcome": "success",
+    "complete": true,
+    "views": 10,
+    "fatal": null
+  },
+  {
+    "building": "B02",
+    "artifactPresent": true,
+    "captureOutcome": "success",
+    "complete": true,
+    "views": 8,
+    "fatal": null
+  },
+  {
+    "building": "B03",
+    "artifactPresent": true,
+    "captureOutcome": "success",
+    "complete": true,
+    "views": 2,
+    "fatal": null
+  },
+  {
+    "building": "B04",
+    "artifactPresent": true,
+    "captureOutcome": "success",
+    "complete": true,
+    "views": 12,
+    "fatal": null
+  },
+  {
+    "building": "B05",
+    "artifactPresent": true,
+    "captureOutcome": "success",
+    "complete": true,
+    "views": 8,
+    "fatal": null
+  },
+  {
+    "building": "B06",
+    "artifactPresent": true,
+    "captureOutcome": "success",
+    "complete": true,
+    "views": 8,
+    "fatal": null
+  },
+  {
+    "building": "B07",
+    "artifactPresent": true,
+    "captureOutcome": "success",
+    "complete": true,
+    "views": 7,
+    "fatal": null
+  },
+  {
+    "building": "B08",
+    "artifactPresent": true,
+    "captureOutcome": "success",
+    "complete": true,
+    "views": 2,
+    "fatal": null
+  }
+]
