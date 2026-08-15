@@ -1268,15 +1268,22 @@ function initNPC(n, i) {
   // in the hutong until there were rooms to be in; that remains the fallback for old roster rows.
   n.place = n.place || 'street';
   // Two places per person. `n.place` is where they belong: authored, constant, and part of the
-  // save key. `n.curPlace` is where they are right now, and only an authored spot naming another
-  // room ever moves it. `n.roams` records whether any spot does, so every roster row written before
-  // this field existed takes exactly the code path it took before. CITY-LIFE.md 3.1.
+  // save key. `n.curPlace` says where they are instead, and is **absent** for everybody who is
+  // where they belong — which is everybody who has no spot naming another room, and everybody who
+  // does but is currently home. `n.roams` records who can ever leave, so a row written before this
+  // existed takes exactly the code path it took before. CITY-LIFE.md 3.1.
   //
-  // Not `n.here`: `courier.here` is a shipped boolean with readers in three harnesses and a setter
-  // in .audit.js, and an NPC field of that name overloads it into a permanently truthy place
+  // Absent rather than equal-to-`place` is the whole point, and it is not tidiness. Wave 1 set it
+  // here unconditionally, so `npcRoom` never fell through to `n.place` again — and `.audit.js`
+  // isolates a figure for a portrait by writing `q.place='audit-away'` on everybody else at 23
+  // sites. Those writes stopped moving anyone. The harness still exited 0 with `errors: []` and
+  // produced a shot with six figures in it instead of one, which is the worst failure shape there
+  // is: green, and useless. A field that shadows `place` has to be empty in the common case.
+  //
+  // Not `n.here` either: `courier.here` is a shipped boolean with readers in three harnesses and a
+  // setter in .audit.js, and an NPC field of that name overloads it into a permanently truthy place
   // string. Wave 1 did rename the courier's flag instead and put two harnesses red — the failure is
   // silent rather than an error, which is exactly why the new field is the one that moves.
-  n.curPlace = n.place;
   n.roams = !!(n.spots && n.spots.some(s => s.place && s.place !== n.place));
   // An animal has no face, no wardrobe and no age in its hair — everything `makeLook` derives is
   // about being a person, and none of it has an answer for a penguin. `makeAnimal` is the same
@@ -4664,10 +4671,14 @@ function mallCrowdState() {
     afterHours:awake.filter(n=>n.mallAfterHours).map(n=>({role:n.mallAfterHours,
       held:npcHeldItem(n),x:+n.x.toFixed(2),z:+n.z.toFixed(2)})),shops};
 }
-// Where this person is standing this minute. Identical to `n.place` for everybody who never
-// leaves it, which is everybody who has no spot naming another room — so every gate below reads
-// the same value it always read for every row written before CITY-LIFE.md 3.1.
-function npcRoom(n) { return n.curPlace || n.place; }
+// Where this person is standing this minute. `n.place` for everybody who is where they belong, so
+// every gate below reads exactly the value it always read.
+//
+// `curPlaceOf` records which authored `place` the settle was made against, and it is what keeps
+// `n.place` authoritative: anything that reassigns `place` at runtime — `.audit.js` isolating one
+// figure, a future harness doing the same — invalidates the override rather than being silently
+// ignored by it. Without that pair the shadow is permanent and the write does nothing.
+function npcRoom(n) { return (n.curPlace && n.curPlaceOf === n.place) ? n.curPlace : n.place; }
 
 function npcAwake(n) {
   // Item 334. Twelve floors share one footprint and one NPC list, so a resident authored for the
@@ -5117,7 +5128,9 @@ function syncCampusStaticNPCs() {
 function settleResident(n, sp = spotNow(n)) {
   const from = npcRoom(n), to = sp.place || n.place;
   if (to !== from) {
-    n.curPlace = to;
+    // Cleared, not set to `n.place`, when they are home again: see the note in initNPC.
+    n.curPlace = to === n.place ? undefined : to;
+    n.curPlaceOf = n.place;
     if (to === 'mall') n.mallFloor = sp.mallFloor || n.mallFloor || 1;
     if (n.th) {
       n.th.mallFloor = to === 'mall' ? (n.mallFloor || 1) : undefined;

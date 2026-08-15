@@ -88,10 +88,22 @@ const homeCastDRAWBUDGET = homeCastCAP * homeCastDRAWS;   // 399
 // and fails on the first hour a room is over its number.
 //
 // Each figure is the same 57 draws budgeted above, so a cap is a draw budget written as people:
-// the default 10 is 570 draws. The numbers are set roughly a quarter above the measured peak of
-// the founding roster, which is room for a wave of itineraries and not room for a crowd. Raising
-// one is allowed with a frame-rate measurement behind it and not otherwise; `.homecastcheck.js`
-// still owns 'home', so that entry is the same number rather than a second copy of it.
+// the default 10 is 570 draws. `.homecastcheck.js` still owns 'home', so that entry is the same
+// number rather than a second copy of it.
+//
+// **These numbers are NOT derived from a frame measurement, and should not be read as if they
+// were.** They are the founding roster's own measured peak per room plus headroom, and the
+// headroom is uneven because the peaks are: mall and zoo sit at 22 of 24 (+9%), street 15 of 18
+// (+20%), airport 11 of 14 (+27%), diner 9 of 12 (+33%), park 5 of 8 (+60%), and every room on the
+// default has a peak of 3 or less. So a cap here says "no more than a little above what this room
+// already holds", which is a real bound on a wave-2 itinerary lane and is not a statement about
+// what 16.7 ms can afford.
+//
+// Deriving them properly needs the marginal frame cost of one more body, per room, on the hardware
+// path — and that measurement could not be taken: `.fpscheck.js` refused to certify its own run
+// with `NOT QUIET — 1-minute load average 23.65 on 8 cores`. Until it is taken, raising one of
+// these is a judgement call, not an arithmetic one, and 'home' is the only entry with an owner's
+// number behind it.
 const cityCastCAP = {
   '*': 10,
   home: homeCastCAP,
