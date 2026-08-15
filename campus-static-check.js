@@ -90,6 +90,26 @@ check('prop ceiling', scene.props.length <= 3200, scene.props.length);
 const colorCalls = scene.batches.length + scene.loose.length;
 check('submitted color-call ceiling', colorCalls <= 220, colorCalls);
 
+// Campus trees used to be seven identical spheres on one ring.  Metadata belongs only to these
+// visual crowns and lets this browser-free gate protect the directional silhouette without
+// coupling the check to source formatting or to the authored planting coordinates.
+const crownProps=scene.props.filter(prop=>prop.treePart==='crown'&&Number.isInteger(prop.campusTree));
+const crownGroups=new Map();
+for(const prop of crownProps){
+  if(!crownGroups.has(prop.campusTree))crownGroups.set(prop.campusTree,[]);
+  crownGroups.get(prop.campusTree).push(prop);
+}
+const colorKey=prop=>prop.color.map(value=>value.toFixed(5)).join(',');
+const centres=rows=>new Set(rows.map(prop=>`${prop.ob.x.toFixed(3)},${prop.ob.z.toFixed(3)}`));
+check('22 scheduled campus trees own seven crown lobes each',crownGroups.size===22&&
+  [...crownGroups.values()].every(rows=>rows.length===7),
+  `${crownGroups.size} trees / ${crownProps.length} crown props`);
+check('every campus crown is offset, four-tone and horizontally irregular',
+  [...crownGroups.values()].every(rows=>centres(rows).size===7&&
+    new Set(rows.map(colorKey)).size===4&&rows.filter(prop=>
+      Math.abs(prop.ob.sx-prop.ob.sz)>.04*Math.max(prop.ob.sx,prop.ob.sz)).length>=5&&
+    rows.every(prop=>prop.ob.sy<.86*Math.max(prop.ob.sx,prop.ob.sz))));
+
 const requiredThings = [
   '教学楼', '教室', '书桌', '打印', '图书馆', '食堂', '售货机', '煎饼', '大学',
   '自行车', '布告板', '篮球场', '宿舍', '地铁站', '校园地图', '学生服务中心',
