@@ -672,10 +672,10 @@ const Hotel6Fit = Object.freeze({ floor:'hotel6', api:1 });
     // The wall-integrated chassis keeps its dispensing face at the original plane while extending
     // to the north wall; there is no decorative but body-width-inaccessible slot behind it.
     box(6.78,.06,13.87,1.38,.12,1.72,c.walnutD,{gloss:.27,tag:'制冰机'});
-    box(6.78,1.15,13.87,1.46,2.18,1.66,c.steel,{mode:7,gloss:.48,tag:'制冰机'});
+    box(6.78,1.15,13.87,1.46,2.18,1.66,c.steel,{gloss:.48,tag:'制冰机'});
     box(6.78,1.37,13.00,1.08,.70,.035,c.ink,{...MAT.stone,hard:true,mode:7,gloss:.33,tag:'制冰机'});
     box(6.78,1.27,12.96,.76,.42,.03,c.night,{hard:true,mode:1,gloss:.58,tag:'制冰机'});
-    box(6.78,.91,12.91,.92,.08,.55,c.steel,{mode:7,gloss:.54,tag:'制冰机'});
+    box(6.78,.91,12.91,.92,.08,.55,c.steel,{gloss:.54,tag:'制冰机'});
     taper(6.78,1.02,12.85,.28,.34,.28,c.white,{...MAT.stone,mode:7,gloss:.26,tag:'冰桶'});
     cyl(6.78,1.25,12.85,.022,.46,c.bronzeD,{rz:Math.PI/2,gloss:.63,tag:'冰桶'});
     box(6.78,2.02,13.01,.92,.24,.035,c.ink,{...MAT.stone,hard:true,mode:7,gloss:.36,tag:'制冰机'});
@@ -958,7 +958,7 @@ const Hotel6Fit = Object.freeze({ floor:'hotel6', api:1 });
     // Work bench with a tool board, vice and grounded frame.
     box(14.70,.06,-9.30,2.60,.12,.86,c.walnutD,{hard:true,gloss:.27,tag});
     box(14.70,.50,-9.30,2.74,.88,.80,c.walnut,{...MAT.timber,hard:true,mode:7,gloss:.30,tag});
-    box(14.70,.99,-9.30,2.90,.10,.94,c.steel,{hard:true,mode:7,gloss:.50,tag:'工具'});
+    box(14.70,.99,-9.30,2.90,.10,.94,c.steel,{hard:true,gloss:.50,tag:'工具'});
     for(let i=0;i<3;i++){
       box(13.85+i*.85,.52,-9.70,.68,.56,.025,i%2?c.celadonL:c.walnutL,
         {...MAT.cloth,hard:true,mode:7,gloss:.14,tag});
@@ -1436,7 +1436,8 @@ const Hotel6Fit = Object.freeze({ floor:'hotel6', api:1 });
       spots:[
         {h0:7,h1:12,at:[-8.41,8.10],face:-Math.PI/5,act:'play',held:null},
         {h0:12,h1:18,at:[-4.55,11.40],face:-Math.PI*5/6,act:'read'},
-        {h0:18,h1:22.5,at:[8.35,-11.35],face:Math.PI,act:'sit'},
+        // This is the 75 cm mattress, not the 57 cm structural layer beneath it.
+        {h0:18,h1:22.5,at:[8.35,-11.35],face:Math.PI,act:'sit',seatY:.75},
       ],
       lines:[
         ['小火车会一直绕着桌子跑。','The little train goes all the way around the table.'],

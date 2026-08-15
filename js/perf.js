@@ -11,6 +11,127 @@
 // separate thresholds for dropping and raising, several bad windows before a drop, more good
 // ones before a climb, and a hard rule that a single very long frame is a stall (a place
 // change, a garbage collection, the tab coming back) and not a frame rate at all.
+// ---------------------------------------------------------------------------------------------
+// CONTRACT — read this instead of the file.
+//
+// One global, `Perf`. js/game.js drives it: `Perf.init(fn)` once (game.js:21), `Perf.tick(now, ms)`
+// at the top of every frame (game.js:16528), `Perf.forget()` and `Perf.setPlace(name)` on every
+// room change (game.js:14073-14076). Everything else reads `Perf.q`.
+//
+//   READ      q  fps  frameMs  level  auto  stalls  floorMs  raiseMs  levels  label  place
+//             blocked -> { level, fails, until, msLeft }      why the ladder stopped climbing
+//             log     -> [{ at, level, reason, avg, blocked, sinceRaise }]   every level change
+//             hitches -> see below                                          every long frame
+//   WRITE     init(fn)  tick(now, ms)  setPlace(name)  forget()  cycle()  setLevel(i)
+//             setAuto(v)  setHold(v)          setHold pins the level for the screenshot harness
+//             setHitchLog(v)                  the ONLY switch for the hitch log; off in release
+//
+// THE HITCH LOG. Off unless a harness calls `Perf.setHitchLog(true)` — nothing in the game calls
+// it, so a released build registers no observer, installs no shim and runs one boolean test per
+// frame. On, it records every frame over `HITCH_MS` (40) into a 64-deep ring.
+//
+// What it costs when on, measured in the page (ANGLE Metal, M3) against an empty loop of the same
+// shape: `performance.now()` 108 ns, the MessageChannel reply 2,945 ns of main-thread dispatch, and
+// the heap read **3,696 ns at load average 8, 4,726 ns at load average 10**. Roughly **7 µs a
+// frame**, 0.04% of a 16.7 ms budget, of which the heap read is half. Occupancy figures, not
+// latency — the round-trip time of the message is not a cost and must not be quoted as one.
+//
+// Two traps in measuring that, both of which have already produced wrong numbers here:
+//   * `performance.memory` builds a fresh snapshot object on every property read. Timed on a
+//     CACHED MemoryInfo the field costs 2 ns; timed through `performance` it costs ~3,700, and
+//     reading the object alone and discarding it costs the same 3,740 — so the price is the
+//     snapshot, not the field. A 17 ns reading of this is a cached object and is not what this
+//     file does.
+//   * `performance.now()` in this page is clamped to ~100 µs, so timing ONE call of anything
+//     returns 0 or 100 µs and nothing in between. Only loop averages mean anything. A per-frame
+//     timing of the heap read taken that way came back as 24,583 ns, which is quantisation.
+//
+// A GPU-side timer would answer what the dark time is doing, and is NOT added here.
+// `EXT_disjoint_timer_query_webgl2` is present on this platform. Cost if a later lane wants it:
+// two GL calls a frame plus a result poll, and the result cannot be read on the frame that made it
+// without stalling the pipeline — it lands one to three frames later and can come back disjoint.
+// It also times GPU *execution* of submitted work, not presentation or the vsync wait, so it
+// cannot by itself explain a frame that is long with an idle main thread. It needs the context,
+// which lives in js/gl.js, not here.
+//
+//   Perf.hitches -> { on, overMs, seen, lost, list: [record] }
+//   record       -> { at, w0,        window of the frame: previous and current tick entry,
+//                                    both performance.now()
+//                     wallMs,        at - w0. The frame as this file measured it, and the ONLY
+//                                    denominator jsMs may be divided by
+//                     ms,            the frame as the ladder measured it — see the warning below
+//                     level, place,  what the game was rendering at the time
+//                     tags: [],      see the vocabulary below
+//                     jsMs,          main-thread time from tick entry until the frame's task was
+//                                    drained; -1 = not measurable that frame
+//                     gapMs,          wallMs - jsMs: the dark time, end of one callback to the
+//                                    start of the next. -1 when jsMs is
+//                     loafMs,        Chrome's own long-animation-frame duration for this frame:
+//                                    frame start to the end of its rendering work. 0 = the browser
+//                                    did not report one (frames under 50 ms never are)
+//                     preMs,         of loafMs, before the rendering steps: other tasks in the frame
+//                     rafMs,         of loafMs, the animation-frame callbacks — the game's own work
+//                     styleMs,       of loafMs, style, layout and paint
+//                     scriptMs,      the browser's own attribution summed over scripts[]. Overlaps
+//                                    preMs and rafMs — never add it to them
+//                     blockMs,       the entry's blockingDuration
+//                     taskMs,        longest overlapping 'longtask' entry, 0 if none
+//                     tex, mesh,     R.texture / R.mesh+R.skinMesh calls made during the frame
+//                     meshes: [],    up to 4 mesh names, e.g. "rig:xiaochen:lod2#12"
+//                     assets: [],    up to 4 files whose fetch finished inside the frame
+//                     heapMb }       signed JS heap change across the frame
+//   `seen` counts every hitch including those the ring dropped; `lost` counts the dropped ones.
+//   `list` is a shallow copy — the records are live and a late observer entry can still add a tag,
+//   so read it once, at the end of a run.
+//
+// THE INVARIANT, because two of these are not the same clock and one consumer has already been
+// caught by it:
+//
+//     -1 <= jsMs <= wallMs        ALWAYS. Both start at the previous tick entry, on
+//                                 performance.now(); a reply that had not arrived by this tick
+//                                 reports -1 rather than a number spanning two frames.
+//     jsMs + gapMs === wallMs     ALWAYS, exactly: both are cut from the one interval [w0, at]
+//                                 on the one clock. gapMs is -1 whenever jsMs is.
+//                                 `gapMs` is a LOWER BOUND on the dark time — jsMs runs to the
+//                                 reply task, so any unrelated task in between is charged to jsMs.
+//                                 A big gapMs is solid; a small one does not prove the browser was
+//                                 busy in our code.
+//     loafMs vs wallMs            NOT nested and NOT comparable as a share. The browser's frame and
+//                                 this file's tick-to-tick interval start at different instants,
+//                                 and loafMs stops when the frame's rendering work ends, before
+//                                 presentation. `loafMs > wallMs` and `loafMs === 0` are both
+//                                 ordinary. Use it to split a frame, never to measure one.
+//     preMs + rafMs + styleMs === loafMs   exactly, when the entry was reported: three adjacent
+//                                 spans cut from the browser's own four timestamps. `scriptMs` is
+//                                 an attribution that overlaps the first two and must never be
+//                                 added to them.
+//     jsMs vs ms                  NOT COMPARABLE. Never form jsMs / ms; `jsMs > ms` is ordinary
+//                                 and means nothing is wrong. `ms` is the difference between two
+//                                 rAF *timestamps* — vsync-aligned frame starts, which precede the
+//                                 callback by however late it was dispatched — and js/game.js
+//                                 rebases it to 0 on a backwards or >60 s sample (game.js:396-401),
+//                                 so `ms` can even be 0 on a frame that genuinely took a second.
+//                                 Measured live on 2026-08-14: jsMs 86 on an ms 83.2 frame.
+//     wallMs vs ms                the same frame through two clocks, and NEITHER BOUNDS THE OTHER.
+//                                 Measured both ways inside one run on 2026-08-14: ms 50 with
+//                                 wallMs 52.1, and ms 51.9 with wallMs 43.9. The difference is the
+//                                 rAF dispatch delay, which moves from frame to frame. Use wallMs
+//                                 for anything about this file's own measurements, `ms` for
+//                                 anything about the ladder, and do not convert between them.
+//   A hitch is recorded when EITHER exceeds the threshold, so neither clock's blind spot hides one.
+//
+// TAG VOCABULARY, and the evidence behind each. Nothing here is inferred from frame time alone.
+//   task          jsMs took at least half of wallMs, or a 'longtask' entry overlapped the frame.
+//   texture/mesh  the upload shim counted a call to R.texture / R.mesh / R.skinMesh.
+//   asset         a 'resource' timing entry finished inside the frame; `assets` names the files.
+//   gc            the heap shrank by more than a megabyte across the frame.
+//   unattributed  none of the above AND jsMs was measured and small: the time went somewhere the
+//                 page cannot see. With `jsMs: -1` it means "not proven" and nothing more.
+// Not tagged, and why: shader first-use compile (every program links in gl.js init, so there is
+// none after boot; driver-side pipeline specialisation is invisible to JS and lands under
+// `unattributed`), and batch rebuild (built in js/game.js, which exposes no counter — it currently
+// shows up as `task`).
+// ---------------------------------------------------------------------------------------------
 const Perf = (() => {
   // ---- the ladder. 0 is everything on; each step down gives back roughly a third of the
   // frame. `scale` is a multiplier on the canvas resolution, which is by far the biggest lever.
@@ -89,13 +210,13 @@ const Perf = (() => {
     // character geometry, texture choice, pose or same-identity LOD selection.
     { name: '高',  en: 'high',   scale: 0.90, shadow: 1280, shadowHalf: 24, bloom: 0.62, ao: 0.55,
       npcFar: 62, lod0: 4.5, lod1: 11, smallFar: 999, smallR: 0, rain: 1.00,
-      minPx: 1.4, dynamicMinPx: 1.4, shadowMinR: 0.10, glyphAssist: 1 },
+      minPx: 1.4, dynamicMinPx: 1.4, shadowMinR: 0.10, glyphAssist: 1, aniso: 4 },
     { name: '中',  en: 'medium', scale: 0.84, shadow: 1024, shadowHalf: 20, bloom: 0.55, ao: 0.40,
       npcFar: 52, lod0: 3.5, lod1: 8, smallFar: 999, smallR: 0, rain: 0.80,
-      minPx: 1.6, dynamicMinPx: 1.6, shadowMinR: 0.15, glyphAssist: 1 },
+      minPx: 1.6, dynamicMinPx: 1.6, shadowMinR: 0.15, glyphAssist: 1, aniso: 4 },
     { name: '低',  en: 'low',    scale: 0.70, shadow: 768,  shadowHalf: 16, bloom: 0,    ao: 0,
       npcFar: 40, lod0: 2.5, lod1: 6, smallFar: 48, smallR: 0.32, rain: 0.55,
-      minPx: 4.2, dynamicMinPx: 2.4, shadowMinR: 0.26, glyphAssist: 0 },
+      minPx: 4.2, dynamicMinPx: 2.4, shadowMinR: 0.26, glyphAssist: 0, aniso: 2 },
     // The fallback tier is the 60 Hz safety net, not a different cast. It keeps every nearby
     // resident/vehicle and the same authored character assets, but uses the validated far mesh
     // sooner and stops submitting sub-pixel street fittings. Half-resolution on a Retina canvas
@@ -103,7 +224,7 @@ const Perf = (() => {
     // machine had already proved that it could not meet the frame budget at the fuller tiers.
     { name: '最低', en: 'basic',  scale: 0.50, shadow: 0,    shadowHalf: 0,  bloom: 0,    ao: 0,
       npcFar: 30, lod0: 2.0, lod1: 4.5, smallFar: 18, smallR: 0.85, rain: 0.20,
-      minPx: 18.0, dynamicMinPx: 2.5, shadowMinR: 0.40, glyphAssist: 0 },
+      minPx: 18.0, dynamicMinPx: 2.5, shadowMinR: 0.40, glyphAssist: 0, aniso: 1 },
   ];
 
   // ---- how small is too small, indoors. APARTMENT-TODO item 422.
@@ -183,22 +304,63 @@ const Perf = (() => {
   const stallMs = () => Math.max(STALL_FLOOR, floorMs * STALL_FRAMES);
   const WARMUP_MS = 2000;             // shaders compile and worlds build in the first frames
 
-  let level = 0, auto = true, hold = false;
+  const AUTO_TIER_KEY = 'bjlife.perf-tier.v1';
+  function initialAutoLevel() {
+    try {
+      const saved = Number(localStorage.getItem(AUTO_TIER_KEY));
+      if (Number.isSafeInteger(saved) && saved >= 0 && saved < LEVELS.length)
+        return Math.min(2, saved); // never cold-start at the emergency tier
+    } catch (_) {}
+    const coarse = typeof matchMedia === 'function' && matchMedia('(any-pointer:coarse)').matches;
+    const memory = typeof navigator !== 'undefined' ? Number(navigator.deviceMemory) : 0;
+    const pixels = typeof innerWidth === 'number' && typeof innerHeight === 'number'
+      ? innerWidth * innerHeight * Math.min(2, Number(devicePixelRatio) || 1) ** 2 : 0;
+    return coarse || (memory > 0 && memory <= 4) || pixels > 3500000 ? 1 : 0;
+  }
+  let level = initialAutoLevel(), auto = true, hold = false;
   let fps = 60, frameMs = 16.7;       // both smoothed, for display
   let winStart = 0, winFrames = 0, winMs = 0, badRun = 0, goodRun = 0;
-  let started = 0, stalls = 0, changed = 0;
+  // ---- ONE CLOCK. `tick(now, ms)` is not handed `performance.now()`: js/game.js passes `frameNow`,
+  // a virtual accumulator seeded at game.js:402 and advanced by `frameNow + rawMs` at :16724, where
+  // `rawMs` is zero on a non-finite, backwards or over-60-s sample. It therefore only ever falls
+  // BEHIND the wall clock, and the lag is permanent — background the tab for ten minutes and
+  // `frameNow` is ten minutes behind for the rest of the session.
+  //
+  // So every ladder timestamp must come from the same clock the ladder is compared against, and
+  // none of them may be read from `performance.now()`. Doing that gives `now - started` a large
+  // negative value, which reads as "still warming up" and stops the ladder judging anything at all
+  // — the failure is silent, permanent, and looks like the ladder having no effect. `started` is
+  // armed with the sentinel -1 instead: the next tick stamps it from `now`, which is both correct
+  // and shorter than passing a clock in. `tnow` is that same clock for the callers that are not
+  // inside tick(). The hitch log below is a different instrument and deliberately keeps
+  // `performance.now()`: it measures wall time and says so (`wallMs`).
+  let started = -1, stalls = 0, changed = 0, tnow = 0;
   let onChange = null;
   // A level that was tried and could not be held. Without this, a machine sitting right on the
   // boundary raises, fails, drops, waits, raises again — visible as the picture and the shadows
   // pulsing every few seconds, which is worse than simply staying one level down.
-  let raisedTo = -1, raisedAt = -1e9, blockedLevel = -1, blockedUntil = -1e9;
+  //
+  // ONE ENTRY PER LEVEL, not one scalar. `blockedLevel`/`blockedUntil` used to be single values,
+  // and a single value can remember one blocked tier: block a second and the first is gone,
+  // including a tier the ladder had given up on permanently. Reproduced against the previous
+  // source — three failures at 高 set `{level:0, fails:3, until:Infinity}`, one later failure at 中
+  // overwrote it with `{level:1, fails:1}`, and the ladder climbed back into 高 27 s afterwards
+  // with no room change and no tab return. The backoff was lost with it: `fails` reset to 1, so
+  // GIVE_UP_AFTER could never be reached while two tiers were failing alternately.
+  let raisedTo = -1, raisedAt = -1e9;
+  const blockedUntil = LEVELS.map(() => -1e9);
   // And how long to leave it before trying that level again, tripling every time the same level
   // fails. A machine that sits right on the boundary between two levels will fail the one above
   // every time it is offered, and a fixed wait means the picture and the shadows keep pulsing for
   // as long as the game is open. Backing off converges: twenty seconds, a minute, three minutes,
-  // and then it has effectively accepted where it is. The first failure at a *different* level
-  // starts the count again, because moving to a quiet room genuinely does change the answer.
-  let blockedFor = 20000, blockedFails = 0;
+  // and then it has effectively accepted where it is. Per level, so a failure at one tier no longer
+  // restarts another tier's count — that reset is what let two tiers failing alternately keep each
+  // other at twenty seconds for ever, and it is the one place `blocked.fails` now reads differently
+  // from the scalar version it replaced. `lastBlocked` is for the readout only: it is the level most
+  // recently blocked, expired or not, which is what `blocked` reported before and what
+  // .fpscheck.js:1274 stores on every census row.
+  const blockedFor = LEVELS.map(() => 0), blockedFails = LEVELS.map(() => 0);
+  let lastBlocked = -1;
   const BLOCK_MIN = 20000, BLOCK_MAX = 300000, GIVE_UP_AFTER = 3;
 
   // Why the ladder is where it is. "Settled at 最低" is the same observation whether the room truly
@@ -218,18 +380,277 @@ const Perf = (() => {
     return Math.min(DROP_MS * 0.95, Math.max(RAISE_MS, floorMs * RAISE_OF_FLOOR));
   }
 
+  // ---- the hitch log: what was actually happening during a frame that took 40 ms.
+  //
+  // The ladder above judges 500 ms windows, and a window average hides the thing that made the
+  // player notice: one frame of 125 ms among 599 good ones reads as 16.9 ms average and as a
+  // dropped tier. So this records the individual long frames and, more to the point, what
+  // evidence exists for what ran during each of them.
+  //
+  // Every tag below is something the browser or the renderer can be asked directly. Nothing is
+  // inferred from frame time alone, because a tag that is really a guess is worse than no tag —
+  // it sends the next lane to rewrite a system that was innocent.
+  //
+  //   task   the frame's own main-thread task took at least half of the frame. Measured directly:
+  //          a message is posted to a MessageChannel at tick entry, and the reply cannot run until
+  //          the task holding the animation-frame callbacks — the game's whole update and draw —
+  //          has finished. `jsMs` is that length, on every hitch, whether or not it earned the tag.
+  //          A PerformanceObserver 'longtask' entry overlapping the frame also sets it and raises
+  //          `taskMs`, but is not relied on: Chrome only reports tasks over 50 ms, so longtask
+  //          alone cannot see a 40–49 ms hitch — exactly the band this campaign is hunting. That
+  //          gap is why `jsMs` exists; an independent 77.6 ms busy-wait was reported
+  //          `unattributed` by the longtask-only version of this file on 2026-08-14.
+  //   asset  a 'resource' entry finished inside the frame — a rig, a texture, a glTF, audio.
+  //          `assets` holds the file names, so "which rig" is answered, not just "an asset".
+  //   texture / mesh   R.texture / R.mesh / R.skinMesh were called during the frame (counted by
+  //          a shim installed only while the log is on). This is the GPU upload itself, which is
+  //          the half of "asset arrival" that costs the frame rather than the network half.
+  //   gc     the JS heap is smaller at the end of the frame than at the start, by more than a
+  //          megabyte. Only a collection does that. `heapMb` carries the signed delta.
+  //          Chrome-only (performance.memory) and quantised, so treat it as presence evidence.
+  //   unattributed   a long frame with none of the above, which now means something specific:
+  //          `jsMs` was measured and the frame's own JS task did NOT dominate it, no upload, no
+  //          asset, no collection. The time went somewhere the page cannot see — driver-side
+  //          pipeline specialisation on first sight of a state combination, the compositor, or the
+  //          GPU. Read `jsMs` on the record before believing that: `jsMs: -1` means the measurement
+  //          itself was unavailable that frame, and then `unattributed` only means "not proven",
+  //          which is a weaker claim and must not be counted as evidence of a GPU cause.
+  //
+  // Two named candidates are NOT here, deliberately:
+  //   * material/shader first-use compile — every program in gl.js is created and linked inside
+  //     init (gl.js:3134, 3186, 3198, 3235, 3265). There is no lazy compile to observe after
+  //     boot. What can still cost a frame is the driver specialising a pipeline the first time a
+  //     state combination is drawn, and that is invisible to JS; it lands under `unattributed`.
+  //   * batch rebuild — the batches are built and refilled in js/game.js, which this lane does
+  //     not own and which exposes no counter. Attributing it needs one line there; until then a
+  //     rebuild shows up as `task` (it is main-thread JS) with no finer breakdown.
+  const HITCH_MS = 40;          // a frame longer than this is an event, not a frame rate
+  const HITCH_KEEP = 64;        // ring buffer: newest kept, `lost` counts what fell off
+  const EVIDENCE_KEEP = 32;     // observer entries retained; a frame only ever looks at recent ones
+  const GC_DROP = 1 << 20;      // heap shrinking by a megabyte across one frame
+  const HITCHES = [];
+  let hitchOn = false, hitchSeen = 0, hitchLost = 0, hitchAt = 0, hitchHeap = 0;
+  const tasks = [], loads = [], loafs = [], observers = [];
+  let upTex = 0, upMesh = 0, upNames = [], hasMem = false, wrapped = false, loafOK = false;
+  // `performance.memory` hands back a fresh snapshot object on every property read, and the numbers
+  // inside one are frozen when it is made. Holding a reference to it therefore reports the same heap
+  // size forever — measured on 2026-08-14 as a heap delta of exactly 0.00 MB across 800 MB of
+  // deliberate allocation. Read it through `performance` every time, or do not read it at all.
+  const heapNow = () => (hasMem ? performance.memory.usedJSHeapSize : 0);
+
+  // ---- how long the frame's own JS took, without a hook at the end of the frame.
+  //
+  // A message posted to a MessageChannel is a task, and a task cannot start until the running one
+  // finishes. Post one at tick entry and its reply lands the moment the animation-frame callback —
+  // the game's entire update and draw — has returned, so `jsEnd - jsStart` is the length of that
+  // task. It is the only way to separate "our JS was slow" from "the frame was long for a reason
+  // outside our JS" from inside this file, and unlike 'longtask' it has no 50 ms floor.
+  // `jsSeq` guards it: a reply that never arrived, or arrived for an older frame, reports -1 rather
+  // than a number made of two unrelated timestamps.
+  let jsPort = null, jsStart = 0, jsEnd = 0, jsSeq = 0, jsAck = -1;
+  function jsTimerOn() {
+    if (jsPort || typeof MessageChannel !== 'function') return;
+    const ch = new MessageChannel();
+    ch.port1.onmessage = e => { if (e.data === jsSeq) { jsEnd = performance.now(); jsAck = e.data; } };
+    jsPort = ch.port2;
+  }
+
+  function observe(type, into) {
+    const types = (typeof PerformanceObserver === 'function'
+      && PerformanceObserver.supportedEntryTypes) || [];
+    if (types.indexOf(type) < 0) return false;
+    try {
+      // Held in `observers` on purpose: an observer nothing references is allowed to be collected.
+      const po = new PerformanceObserver(list => {
+        for (const e of list.getEntries()) {
+          into.push(e);
+          if (into.length > EVIDENCE_KEEP) into.shift();
+          patch(e, type);
+        }
+      });
+      po.observe({ type, buffered: false });
+      observers.push(po);
+      return true;
+    } catch (_) { return false; }
+  }
+
+  // Count GPU uploads by wrapping the three renderer entry points that make them. Rare calls, so
+  // the shim costs nothing per frame; it is installed only when the log is turned on, and each
+  // wrapper is inert again the moment it is turned off.
+  function wrapUploads() {
+    if (wrapped) return true;
+    let gfx = null;
+    try { gfx = R; } catch (_) { return false; }   // typeof throws on a const not yet evaluated
+    if (!gfx) return false;
+    const hook = (name, bump) => {
+      const fn = gfx[name];
+      if (typeof fn !== 'function') return;
+      gfx[name] = function () {
+        if (hitchOn) bump(arguments[0]);
+        return fn.apply(this, arguments);
+      };
+    };
+    hook('texture', () => { upTex++; });
+    hook('mesh', n => { upMesh++; if (upNames.length < 4) upNames.push(String(n)); });
+    hook('skinMesh', n => { upMesh++; if (upNames.length < 4) upNames.push(String(n)); });
+    wrapped = true;
+    return true;
+  }
+
+  const shortName = n => {
+    const s = String(n);
+    return s.slice(s.lastIndexOf('/') + 1, s.lastIndexOf('/') + 41);
+  };
+
+  function tagHitch(h, name) {
+    if (h.tags.indexOf(name) >= 0) return false;
+    const u = h.tags.indexOf('unattributed');
+    if (u >= 0) h.tags.splice(u, 1);
+    h.tags.push(name);
+    return true;
+  }
+
+  // A PerformanceObserver hands its entries over in a task of its own, and that task is not
+  // guaranteed to run before the next animation frame. Measured 2026-08-14: a fetch issued inside
+  // a deliberately long frame produced its 'resource' entry *after* the frame had already been
+  // recorded, so the hitch it belongs to was logged as `unattributed` while the evidence for it sat
+  // one task away. Entries are therefore matched in both directions — the ring below covers early
+  // delivery, and this covers late. Only the last few hitches are candidates; an entry cannot be
+  // more than a frame or two behind.
+  function patch(e, type) {
+    const asset = type === 'resource';
+    const t0 = asset ? e.responseEnd : e.startTime;
+    const t1 = asset ? e.responseEnd : e.startTime + e.duration;
+    for (let i = HITCHES.length - 1, n = 0; i >= 0 && n < 3; i--, n++) {
+      const h = HITCHES[i];
+      if (!(t1 > h.w0 && t0 < h.at)) continue;
+      if (asset) { if (h.assets.length < 4) h.assets.push(shortName(e.name)); tagHitch(h, 'asset'); }
+      else if (type === 'long-animation-frame') { if (h.loafMs <= 0) putLoaf(h, e); }
+      else { h.taskMs = Math.max(h.taskMs, +e.duration.toFixed(1)); tagHitch(h, 'task'); }
+      return;
+    }
+  }
+
+  // Chrome's long-animation-frame entry: the only thing on this platform that splits a frame from
+  // the inside. Four timestamps, so three spans that add up exactly:
+  //
+  //   startTime ......... the frame began
+  //   renderStart ....... the rendering steps began. Everything before it is other tasks that ran
+  //                       in this frame -> `preMs`
+  //   styleAndLayoutStart the animation-frame callbacks are done. renderStart to here is the
+  //                       game's own rAF work -> `rafMs`, which should track this file's `jsMs`
+  //   startTime+duration  the frame's work ended -> `styleMs` is style, layout and paint
+  //
+  // `scriptMs` is the browser's own attribution summed over `scripts[]` and is NOT a fourth span —
+  // it overlaps preMs and rafMs, so it must never be added to them. An earlier version of this
+  // function called the whole renderStart-to-end span `renderMs` and produced scriptMs 120 +
+  // renderMs 122.7 inside a loafMs of 136.3, which is what a wrong decomposition looks like.
+  // Frames under 50 ms are never reported, so `loafMs: 0` means "not reported", never "no work".
+  function putLoaf(h, e) {
+    const end = e.startTime + e.duration, rs = e.renderStart || 0, ss = e.styleAndLayoutStart || 0;
+    h.loafMs = +e.duration.toFixed(1);
+    h.preMs = rs > 0 ? +(rs - e.startTime).toFixed(1) : 0;
+    h.rafMs = rs > 0 && ss > 0 ? +(ss - rs).toFixed(1) : 0;
+    h.styleMs = ss > 0 ? +(end - ss).toFixed(1) : 0;
+    h.blockMs = +(e.blockingDuration || 0).toFixed(1);
+    let sc = 0;
+    for (const x of (e.scripts || [])) sc += x.duration;
+    h.scriptMs = +sc.toFixed(1);
+  }
+
+  // Called first thing in tick() when the log is on, with the frame time the ladder was given.
+  // `ms` is the interval between this tick and the previous one, so everything compared here is
+  // sampled at tick entry and differenced over exactly that interval.
+  function hitchFrame(ms) {
+    const t = performance.now(), from = hitchAt || t - ms;
+    hitchAt = t;
+    const heap = heapNow(), heapWas = hitchHeap;
+    hitchHeap = heap;
+    const tex = upTex, meshes = upMesh, names = upNames;
+    if (tex || meshes) { upTex = 0; upMesh = 0; upNames = []; }  // per-frame, never cumulative
+    // ---- `wall` is the denominator, and `ms` is NOT.
+    //
+    // `ms` is the ladder's number: game.js hands tick() the difference between two rAF *timestamps*
+    // (game.js:16521), which are vsync-aligned frame start times, then rebases it to 0 on any
+    // sample that is non-finite, backwards, or more than MAX_FRAME_FORWARD_GAP ahead
+    // (game.js:396-401). `jsMs` is wall clock from this file's own tick entry. Different origins:
+    // an rAF callback runs at or after its timestamp, so the two are offset by however late the
+    // callback was dispatched, and `jsMs > ms` is a perfectly ordinary reading — measured live by
+    // the .fpscheck.js lane as `jsMs 86` on an `ms 83.2` frame, which is not a defect in either
+    // number and is a defect in comparing them.
+    //
+    // `wall` fixes that by measuring the same interval `jsMs` starts from: previous tick entry to
+    // this one, both `performance.now()`. `jsMs <= wall` then holds by construction rather than by
+    // luck — `jsStart` IS the previous tick entry, and a reply that had not arrived by this tick
+    // reports -1 instead of a number.
+    const wall = t - from;
+    const jsMs = jsPort ? (jsAck === jsSeq && jsEnd > jsStart ? jsEnd - jsStart : -1) : -1;
+    if (jsPort) { jsStart = t; jsSeq = (jsSeq + 1) & 0xffff; jsPort.postMessage(jsSeq); }
+    // Either clock may see a hitch the other misses: `ms` is 0 on a frame longer than
+    // MAX_FRAME_FORWARD_GAP or on a backwards timestamp, and `wall` includes dispatch delay the
+    // ladder never judges. Record on either, and carry both.
+    if (!(wall > HITCH_MS || ms > HITCH_MS)) return;
+
+    let taskMs = 0;
+    for (const e of tasks)
+      if (e.startTime < t && e.startTime + e.duration > from) taskMs = Math.max(taskMs, e.duration);
+    const assets = [];
+    for (const e of loads)
+      if (e.responseEnd > from && e.responseEnd <= t && assets.length < 4) assets.push(shortName(e.name));
+
+    const tags = [];
+    // Half the frame is the line between "the frame was long because our JS was" and "our JS ran
+    // inside a frame that was long for another reason". A 44 ms frame with 43 ms of JS is the first;
+    // a 44 ms frame with 5 ms of JS is the second, and calling both `task` would hide the split the
+    // census needs. Against `wall`, never against `ms` — see the note above.
+    if (taskMs || jsMs > wall * 0.5) tags.push('task');
+    if (tex) tags.push('texture');
+    if (meshes) tags.push('mesh');
+    if (assets.length) tags.push('asset');
+    if (heapWas && heap < heapWas - GC_DROP) tags.push('gc');
+    if (!tags.length) tags.push('unattributed');
+
+    hitchSeen++;
+    // ---- the dark time. Milestone 3.
+    //
+    // `jsMs` covers tick entry to the end of that frame's task. `gapMs` is everything else in the
+    // same window and the same clock: end of one callback to the start of the next — vsync wait,
+    // compositing, GPU submission, or the tab simply not being scheduled. Exact by construction,
+    // `jsMs + gapMs === wallMs`, because both are cut from the one interval [w0, at].
+    // It is a floor on the true dark time, not an estimate of it: `jsMs` is measured to the reply
+    // task, so any other task the browser ran in between is counted as ours, which makes `gapMs`
+    // the smaller of the two. A large `gapMs` is therefore trustworthy; a small one is not
+    // evidence that the browser was idle.
+    const gapMs = jsMs < 0 ? -1 : Math.max(0, wall - jsMs);
+    // `w0`/`at` are the frame's own window, kept so a late-arriving observer entry can find the
+    // frame it belongs to (see patch above).
+    const rec = { at: t, w0: from, ms: +ms.toFixed(1), wallMs: +wall.toFixed(1),
+                  level, place, tags,
+                  jsMs: jsMs < 0 ? -1 : +jsMs.toFixed(1),
+                  gapMs: gapMs < 0 ? -1 : +gapMs.toFixed(1),
+                  loafMs: 0, preMs: 0, rafMs: 0, styleMs: 0, scriptMs: 0, blockMs: 0,
+                  taskMs: +taskMs.toFixed(1), tex, mesh: meshes, assets,
+                  meshes: names.length ? names : undefined,
+                  heapMb: heapWas ? +((heap - heapWas) / 1048576).toFixed(2) : 0 };
+    HITCHES.push(rec);
+    for (const e of loafs)
+      if (e.startTime + e.duration > from && e.startTime < t) { putLoaf(rec, e); break; }
+    if (HITCHES.length > HITCH_KEEP) { HITCHES.shift(); hitchLost++; }
+  }
+
   function apply(reason) {
-    changed = performance.now();
+    changed = tnow;                    // the ladder's clock, never performance.now() — see `tnow`
     if (LOG.length >= 32) LOG.shift();
     LOG.push({ at: Math.round(changed), level, reason, avg: +lastAvg.toFixed(2),
-               blocked: blockedLevel, sinceRaise: Math.round(changed - raisedAt) });
+               blocked: lastBlocked, sinceRaise: Math.round(changed - raisedAt) });
+    if (auto) try { localStorage.setItem(AUTO_TIER_KEY, String(level)); } catch (_) {}
     if (onChange) onChange(quality(), level, reason);
   }
 
   return {
     // Called once, with the function that pushes the settings into the renderer and the game.
     init(fn) {
-      onChange = fn; started = performance.now(); winStart = started; apply('init');
+      onChange = fn; started = -1; apply('init');
       // Coming back to a tab that has been in the background: the timestamps are stale, the first
       // frames are cold, and judging them drops the quality of a game nobody was looking at. Same
       // treatment as a fresh start, and a level that was written off gets another chance — a
@@ -237,14 +658,21 @@ const Perf = (() => {
       // was in the foreground, is genuinely a different machine from the one that failed.
       if (typeof document !== 'undefined') document.addEventListener('visibilitychange', () => {
         if (document.visibilityState !== 'visible') return;
-        started = performance.now(); winStart = started;
-        winFrames = 0; winMs = 0; badRun = goodRun = 0;
-        if (blockedUntil === Infinity) { blockedUntil = started + BLOCK_MAX; blockedFails = 0; }
+        started = -1; badRun = goodRun = 0;
+        for (let i = 0; i < blockedUntil.length; i++)
+          if (blockedUntil[i] === Infinity) { blockedUntil[i] = tnow + BLOCK_MAX; blockedFails[i] = 0; }
       });
     },
 
     // Called at the top of every frame with the timestamp rAF was given.
     tick(now, ms) {
+      if (hitchOn) hitchFrame(ms);
+      // The one place the ladder's clock is read. Arming here rather than in the four callers is
+      // what makes a cross-clock comparison impossible to write by accident: nothing outside this
+      // line ever stamps a ladder timestamp, and a warmup armed while the page is not rendering
+      // starts when the frames do, which is what "warm up" means.
+      tnow = now;
+      if (started < 0) { started = now; winStart = now; winFrames = 0; winMs = 0; }
       // Smoothed for the readout. Two different time constants: the number settles quickly
       // enough to be useful and slowly enough to be readable.
       // One smoothed quantity, and the frame rate derived from it. Smoothing the two separately
@@ -333,18 +761,18 @@ const Perf = (() => {
         // Failing this soon after climbing means the level above is out of reach on this machine
         // with this view. Remember it rather than trying again in six windows' time.
         if (now - raisedAt < 4000 && raisedTo >= 0) {
-          const again = blockedLevel === raisedTo;
-          blockedFor = again ? Math.min(BLOCK_MAX, blockedFor * 3) : BLOCK_MIN;
-          blockedFails = again ? blockedFails + 1 : 1;
-          blockedLevel = raisedTo;
+          const lv = raisedTo;
+          blockedFor[lv] = blockedFails[lv] ? Math.min(BLOCK_MAX, blockedFor[lv] * 3) : BLOCK_MIN;
+          blockedFails[lv]++;
           // Three failures at the same level is an answer, not a coincidence. Stop asking until
           // something happens that could change it — which is what forget() is for, and what a walk
-          // into a different room is.
-          blockedUntil = blockedFails >= GIVE_UP_AFTER ? Infinity : now + blockedFor;
+          // into a different room is. Per level, so a failure at one tier cannot cancel another's.
+          blockedUntil[lv] = blockedFails[lv] >= GIVE_UP_AFTER ? Infinity : now + blockedFor[lv];
+          lastBlocked = lv;
         }
         level++; badRun = 0; apply('slow');
       } else if (goodRun >= GOOD_RUN && level > 0) {
-        if (level - 1 === blockedLevel && now < blockedUntil) { goodRun = 0; return; }
+        if (now < blockedUntil[level - 1]) { goodRun = 0; return; }
         level--; goodRun = 0;
         raisedTo = level; raisedAt = now;
         apply('fast');
@@ -382,15 +810,61 @@ const Perf = (() => {
     // "this room genuinely cannot do better" from "the ladder tried once, was unlucky, and stopped
     // asking" — which look identical from outside and want opposite fixes. `until: Infinity` means
     // it has stopped asking entirely until forget() or a room change.
+    // The level most recently blocked, expired or not — the same four values, with the same
+    // meanings, that this returned before the bookkeeping went per level. An expired block is still
+    // the answer to "why did the ladder sit there", so it keeps being reported with `msLeft: 0`
+    // rather than disappearing. The one value that legitimately differs from the scalar version is
+    // `fails`, which no longer resets when a *different* tier fails: that reset was the defect.
     get blocked() {
-      return { level: blockedLevel, fails: blockedFails, until: blockedUntil,
-               msLeft: blockedUntil === Infinity ? Infinity
-                     : Math.max(0, blockedUntil - performance.now()) };
+      const i = lastBlocked;
+      const until = i < 0 ? -1e9 : blockedUntil[i];
+      return { level: i, fails: i < 0 ? 0 : blockedFails[i], until,
+               msLeft: i < 0 ? 0 : until === Infinity ? Infinity : Math.max(0, until - tnow) };
     },
     // Every level change this session, oldest first: when, to what, why, the window average that
     // caused it, and how long after the last climb it happened. `sinceRaise` under 4000 on a 'slow'
     // row is the signature of a climb being judged on its own cost.
     get log() { return LOG.slice(); },
+
+    // Every frame over HITCH_MS since the log was turned on, with what the page could prove was
+    // running during it. Same shape as `blocked` above — a plain object a harness can read in one
+    // eval — and `seen` is the count that survives the ring buffer, so a census can report how many
+    // hitches happened even when more than HITCH_KEEP of them did.
+    //   `Perf.hitches` -> { on, overMs, seen, lost, list: [{ at, ms, level, place, tags, taskMs,
+    //                       tex, mesh, assets, meshes, heapMb }] }
+    get hitches() {
+      return { on: hitchOn, overMs: HITCH_MS, seen: hitchSeen, lost: hitchLost,
+               // Whether Chrome is reporting long-animation-frame here. Without it every `loafMs`
+               // is 0 and that 0 means "unavailable", not "no render work" — a consumer that
+               // cannot tell those apart will read a platform gap as a measurement.
+               loaf: loafOK,
+               list: HITCHES.slice() };
+    },
+    // Off in release: a released game logs nothing and installs neither observer nor shim, so the
+    // whole instrument is one boolean test at the top of tick(). A harness turns it on the same way
+    // it pins a level — one call through the page, `Perf.setHitchLog(true)`, after the game boots.
+    // Returns whether it is on. It stays on without PerformanceObserver — the frame times, the
+    // upload counts and the heap delta still record; only the `task` and `asset` tags go missing.
+    setHitchLog(v) {
+      const on = !!v;
+      hitchOn = on;
+      if (!on) return false;
+      // Turning it on twice is deliberately allowed and is not a reset of the log: perf.js loads
+      // before gl.js (index.html:1991), so an enable that happens before the renderer exists gets
+      // no upload shim, and the only way back from that is to ask again.
+      hitchAt = performance.now();
+      hasMem = typeof performance !== 'undefined' && !!performance.memory;
+      hitchHeap = heapNow();
+      upTex = 0; upMesh = 0; upNames = [];
+      if (!observers.length) {
+        observe('longtask', tasks); observe('resource', loads);
+        // Chrome's own per-frame breakdown. Free — the browser is already timing this.
+        loafOK = observe('long-animation-frame', loafs);
+      }
+      jsTimerOn();
+      wrapUploads();
+      return hitchOn;
+    },
 
     // Cycling goes auto → high → medium → low → basic → auto, so the reading is always
     // honest about whether the game or the player chose the current level.
@@ -410,7 +884,17 @@ const Perf = (() => {
     // a half thousand, so a level that could not be held out there may be easy indoors. Called on
     // every place change, and the reason walking inside makes the picture sharpen.
     forget() {
-      blockedLevel = -1; blockedUntil = -1e9; blockedFor = BLOCK_MIN; blockedFails = 0;
+      // Re-arm the warmup, exactly as coming back to a visible tab does above and as setAuto does
+      // below, and for the same stated reason: do not judge the frames a change costs. A place
+      // change is the largest change in the game — the scene builds, rigs stream, and the first
+      // frames after it are 40-250 ms, which is under stallMs() and therefore counted at full
+      // weight into the window average. Two such windows is a tier, the room then sits in the dead
+      // band between the raise and drop thresholds, and the tier never comes back for that visit.
+      // That made an identical entry settle at a different tier each time it was measured: 10 of
+      // 21 places disagreed across three cold entries (.reports/ladder-analysis.md). The three
+      // callers of this statement must stay identical; .laddercheck.js is the check.
+      started = -1;
+      blockedUntil.fill(-1e9); blockedFor.fill(0); blockedFails.fill(0); lastBlocked = -1;
       badRun = goodRun = 0;
       // And re-learn what the display can do, rather than carrying a number that may be wrong
       // forever. Corroboration above makes a poisoned floor unlikely, not impossible — it takes two
@@ -434,8 +918,8 @@ const Perf = (() => {
       auto = !!v;
       badRun = goodRun = 0;
       if (!auto) return;
-      level = 0;
-      started = performance.now();     // re-arm the warmup: do not judge the frames a change costs
+      level = initialAutoLevel();
+      started = -1;                    // re-arm the warmup: do not judge the frames a change costs
       apply('auto');
     },
     get levels() { return LEVELS.map(l => ({ name: l.name, en: l.en })); },

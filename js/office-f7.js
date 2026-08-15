@@ -23,7 +23,7 @@
   OfficeFit.register(KEY, A => {
     const {
       box,cyl,ball,capsule,taper,flat,glyphs,solid,shade,light,thing,luminous,onTick,room,
-      RX,RZ,H,C,accent,state,
+      groupCamera,dollhouseCeiling,RX,RZ,H,C,accent,state,
     } = A;
 
     const P = {
@@ -41,6 +41,43 @@
       blue:C('#486d91'), red:C('#9a3f38'), amber:C('#c48a3f'), warm:C('#ffe2ab'),
     };
     const wallT=.15, doorH=2.32;
+    const cameraFixture=(id,build)=>{
+      const at=A.B.props.length,value=build();
+      groupCamera(id,A.B.props.slice(at));
+      return value;
+    };
+    const cameraSpanFixture=(id,axis,build)=>{
+      const at=A.B.props.length,value=build(),props=A.B.props.slice(at);
+      const sizeKey=axis==='x'?'sx':'sz',sweepKey=axis==='x'?'cameraSweepX':'cameraSweepZ';
+      for(const p of props) {
+        const b=p.cameraOb||p.ob,size=b&&b[sizeKey];
+        if(!b||!Number.isFinite(size)||size<=2.68) continue;
+        p.cameraOb={...b,[sizeKey]:2.68};
+        p[sweepKey]=Math.max(p[sweepKey]||0,(size-2.68)/2);
+      }
+      groupCamera(id,props);
+      return value;
+    };
+    const localizeCameraGroup=(props,x,z,span=2.68)=>{
+      const half=span/2;
+      for(const p of props) {
+        const source=p.cameraOb||p.ob;
+        if(!source) continue;
+        const b={...source};
+        for(const [axis,sizeKey,sweepKey,centre] of [
+          ['x','sx','cameraSweepX',x],['z','sz','cameraSweepZ',z],
+        ]) {
+          const oldSize=b[sizeKey],oldCentre=b[axis];
+          if(!Number.isFinite(oldSize)||!Number.isFinite(oldCentre)) continue;
+          const size=Math.min(oldSize,span);
+          const next=Math.max(centre-half+size/2,Math.min(centre+half-size/2,oldCentre));
+          p[sweepKey]=Math.max(p[sweepKey]||0,Math.abs(oldCentre-next)+(oldSize-size)/2);
+          b[sizeKey]=size; b[axis]=next;
+        }
+        p.cameraOb=b;
+      }
+      return props;
+    };
 
     // `tag` defaults to the player-facing name but is separable, because the tag is interaction
     // wiring, not a label: Build.pick (js/build.js:439) resolves a clicked prop to the thing
@@ -55,6 +92,9 @@
       return q;
     };
 
+    // Room-front runs abut on the partition axes. Retain one brass/black mullion pair at each
+    // shared coordinate; two exact opaque copies create needless depth contention and draw work.
+    const paneWallZMullions=new Set(),paneWallXMullions=new Set();
     function paneWallZ(z,x0,x1,doors=[],tag='木框玻璃隔墙') {
       const cuts=doors.map(([c,w])=>[Math.max(x0,c-w/2),Math.min(x1,c+w/2)])
         .sort((a,b)=>a[0]-b[0]);
@@ -62,27 +102,39 @@
       const pane=(a,b)=>{
         if(b-a<.08)return;
         const w=b-a,x=(a+b)/2;
-        box(x,.16,z,w,.32,.18,P.walnutD,{hard:true,mode:6,gloss:.22,tag});
-        box(x,1.58,z,w-.07,2.42,.035,P.glass,
-          {hard:true,mode:1,alpha:.20,gloss:.82,tag});
-        box(x,H-.12,z,w,.22,.18,P.walnutD,{hard:true,mode:6,gloss:.22,tag});
+        cameraSpanFixture(`pane-z:${tag}:${a.toFixed(2)}:${b.toFixed(2)}`,'x',()=>{
+          box(x,.16,z,w,.32,.18,P.walnutD,{hard:true,mode:6,gloss:.22,tag});
+          A.partitionElement(1.58,2.42,(yc,hh,dh)=>
+            box(x,yc,z,w-.07,hh,.035,P.glass,
+              {hard:true,mode:1,alpha:.20,gloss:.82,tag,...dh}));
+          box(x,H-.12,z,w,.22,.18,P.walnutD,
+            {hard:true,mode:6,gloss:.22,tag,partition:true});
+          A.partitionElement(1.20,.38,(yc,hh,dh)=>
+            box(x,yc,z-.024,w-.16,hh,.016,P.glassL,
+              {hard:true,mode:1,alpha:.19,gloss:.44,tag,...dh}));
+        });
         for(const px of [a,b]) {
-          box(px,1.62,z,.055,2.88,.11,P.brass,{hard:true,gloss:.58,tag});
-          box(px,1.62,z-.035,.020,2.75,.025,P.black,{hard:true,tag});
+          const key=px.toFixed(3)+':'+z.toFixed(3);
+          if(paneWallZMullions.has(key))continue;
+          paneWallZMullions.add(key);
+          cameraFixture(`pane-z-post:${tag}:${px.toFixed(2)}`,()=>{
+            A.partitionElement(1.62,2.88,(yc,hh,dh)=>
+              box(px,yc,z,.055,hh,.11,P.brass,{hard:true,gloss:.58,tag,...dh}));
+            A.partitionElement(1.62,2.75,(yc,hh,dh)=>
+              box(px,yc,z-.035,.020,hh,.025,P.black,{hard:true,tag,...dh}));
+          });
         }
-        // A pale privacy band keeps each office composed while retaining long sightlines.
-        box(x,1.20,z-.024,w-.16,.38,.016,P.glassL,
-          {hard:true,mode:1,alpha:.19,gloss:.44,tag});
         solid(a,b,z-.065,z+.065);
-        A.blocker(a,b,z-.065,z+.065,A.H);
+        A.blocker(a,b,z-.065,z+.065,A.H,{pad:.08});
       };
       for(const [a,b] of cuts) {
         pane(at,a);
         box((a+b)/2,(doorH+H)/2,z,b-a,H-doorH,.17,P.walnutD,
-          {hard:true,mode:6,tag});
+          {hard:true,mode:6,tag,partition:true});
         // Recessed jambs and a slim brass threshold make each opening intentional.
-        for(const x of [a,b])box(x,1.23,z,.10,2.45,.20,P.walnut,
-          {hard:true,mode:6,gloss:.24,tag});
+        for(const x of [a,b])A.partitionElement(1.23,2.45,(yc,hh,dh)=>
+          box(x,yc,z,.10,hh,.20,P.walnut,
+            {hard:true,mode:6,gloss:.24,tag,...dh}));
         flat((a+b)/2,.030,z,b-a,.20,P.brass,{mode:1,gloss:.62,tag});
         at=b;
       }
@@ -96,40 +148,57 @@
       const pane=(a,b)=>{
         if(b-a<.08)return;
         const d=b-a,z=(a+b)/2;
-        box(x,.16,z,.18,.32,d,P.walnutD,{hard:true,mode:6,gloss:.22,tag});
-        box(x,1.58,z,.035,2.42,d-.07,P.glass,
-          {hard:true,mode:1,alpha:.20,gloss:.82,tag});
-        box(x,H-.12,z,.18,.22,d,P.walnutD,{hard:true,mode:6,gloss:.22,tag});
+        cameraSpanFixture(`pane-x:${tag}:${a.toFixed(2)}:${b.toFixed(2)}`,'z',()=>{
+          box(x,.16,z,.18,.32,d,P.walnutD,{hard:true,mode:6,gloss:.22,tag});
+          A.partitionElement(1.58,2.42,(yc,hh,dh)=>
+            box(x,yc,z,.035,hh,d-.07,P.glass,
+              {hard:true,mode:1,alpha:.20,gloss:.82,tag,...dh}));
+          box(x,H-.12,z,.18,.22,d,P.walnutD,
+            {hard:true,mode:6,gloss:.22,tag,partition:true});
+          A.partitionElement(1.20,.38,(yc,hh,dh)=>
+            box(x+.024,yc,z,.016,hh,d-.16,P.glassL,
+              {hard:true,mode:1,alpha:.19,gloss:.44,tag,...dh}));
+        });
         for(const pz of [a,b]) {
-          box(x,1.62,pz,.11,2.88,.055,P.brass,{hard:true,gloss:.58,tag});
-          box(x+.035,1.62,pz,.025,2.75,.020,P.black,{hard:true,tag});
+          const key=x.toFixed(3)+':'+pz.toFixed(3);
+          if(paneWallXMullions.has(key))continue;
+          paneWallXMullions.add(key);
+          cameraFixture(`pane-x-post:${tag}:${pz.toFixed(2)}`,()=>{
+            A.partitionElement(1.62,2.88,(yc,hh,dh)=>
+              box(x,yc,pz,.11,hh,.055,P.brass,{hard:true,gloss:.58,tag,...dh}));
+            A.partitionElement(1.62,2.75,(yc,hh,dh)=>
+              box(x+.035,yc,pz,.025,hh,.020,P.black,{hard:true,tag,...dh}));
+          });
         }
-        box(x+.024,1.20,z,.016,.38,d-.16,P.glassL,
-          {hard:true,mode:1,alpha:.19,gloss:.44,tag});
         solid(x-.065,x+.065,a,b);
-        A.blocker(x-.065,x+.065,a,b,A.H);
+        A.blocker(x-.065,x+.065,a,b,A.H,{pad:.08});
       };
       for(const [a,b] of cuts) {
         pane(at,a);
         box(x,(doorH+H)/2,(a+b)/2,.17,H-doorH,b-a,P.walnutD,
-          {hard:true,mode:6,tag});
-        for(const z of [a,b])box(x,1.23,z,.20,2.45,.10,P.walnut,
-          {hard:true,mode:6,gloss:.24,tag});
+          {hard:true,mode:6,tag,partition:true});
+        for(const z of [a,b])A.partitionElement(1.23,2.45,(yc,hh,dh)=>
+          box(x,yc,z,.20,hh,.10,P.walnut,
+            {hard:true,mode:6,gloss:.24,tag,...dh}));
         at=b;
       }
       pane(at,z1);
     }
 
-    function plateZ(x,y,z,w,text,color=accent,tag=text) {
-      box(x,y,z,w,.36,.050,P.walnutD,{hard:true,mode:6,gloss:.24,tag});
-      box(x,y,z-.030,w-.08,.28,.018,color,{hard:true,mode:1,glow:.025,tag});
-      glyphs(x,y,z-.046,Math.PI,text,{size:Math.min(.13,(w-.34)/Math.max(2,[...text].length)),
-        gap:.030,color:P.white,mode:1,lift:.008,tag});
-      glyphs(x,y,z+.046,0,text,{size:Math.min(.13,(w-.34)/Math.max(2,[...text].length)),
-        gap:.030,color:P.white,mode:1,lift:.008,tag});
+    function plateZ(x,y,z,w,text,color=accent,tag=text,opts={}) {
+      return cameraSpanFixture(`plate:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,'x',()=>{
+        box(x,y,z,w,.36,.050,P.walnutD,{hard:true,mode:6,gloss:.24,tag});
+        box(x,y,z-.030,w-.08,.28,.018,color,{hard:true,mode:1,glow:.025,tag});
+        if(opts.twoSided!==false)
+          glyphs(x,y,z-.046,Math.PI,text,{size:Math.min(.13,(w-.34)/Math.max(2,[...text].length)),
+            gap:.030,color:P.white,mode:1,lift:.008,tag});
+        glyphs(x,y,z+.046,0,text,{size:Math.min(.13,(w-.34)/Math.max(2,[...text].length)),
+          gap:.030,color:P.white,mode:1,lift:.008,tag});
+      });
     }
 
     function executiveChair(x,z,yaw=0,color=P.leather,tag='行政座椅') {
+      const at=A.B.props.length;
       const fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);
       ball(x,.48,z,.34,.13,.34,color,{mode:7,gloss:.035,ry:yaw,tag});
       ball(x-fx*.22,.79,z-fz*.22,.36,.34,.14,color,{mode:7,gloss:.035,ry:yaw,tag});
@@ -158,9 +227,11 @@
       solid(x-.28,x-.025,z-.28,z+.28);
       solid(x+.025,x+.28,z-.28,z+.28);
       solid(x-.020,x+.020,z-.020,z+.020);
+      groupCamera(`executive-chair:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
     }
 
     function visitorChair(x,z,yaw=0,color=P.fabric,tag='访客椅') {
+      const at=A.B.props.length;
       const fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);
       box(x,.45,z,.58,.12,.58,color,{round:.18,mode:7,ry:yaw,gloss:.025,tag});
       box(x-fx*.24,.72,z-fz*.24,.56,.50,.14,color,
@@ -170,16 +241,20 @@
       const hx=Math.abs(rx)*.31+Math.abs(fx)*.30;
       const hz=Math.abs(rz)*.31+Math.abs(fz)*.30;
       solid(x-hx,x+hx,z-hz,z+hz);
+      groupCamera(`visitor-chair:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
     }
 
     function phone(x,z,yaw=0,tag='电话') {
+      const at=A.B.props.length;
       box(x,.84,z,.38,.075,.24,P.black,{round:.05,hard:true,ry:yaw,tag});
       capsule(x,.91,z,.060,.34,.060,P.ink,{rz:Math.PI/2,ry:yaw,tag});
       for(let i=0;i<6;i++)cyl(x-.11+(i%3)*.11,.89,z-.035+Math.floor(i/3)*.07,.012,.010,
         P.steel,{mode:1,glow:.015,tag});
+      groupCamera(`phone:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
     }
 
     function monitor(x,z,yaw=0,tag='显示器',wide=.72) {
+      const at=A.B.props.length;
       box(x,1.23,z,wide,.46,.055,P.black,{round:.055,hard:true,ry:yaw,tag});
       const fx=Math.sin(yaw),fz=Math.cos(yaw);
       const s=luminous(box(x+fx*.032,1.23,z+fz*.032,wide-.10,.36,.014,P.screen,
@@ -188,10 +263,16 @@
       box(x,.80,z,.38,.025,.19,P.steelD,{hard:true,round:.04,tag});
       for(let i=0;i<4;i++)box(x-.20+i*.13,1.31-i*.06,z+fz*.043,.24-i*.035,.015,.010,
         i===0?P.blue:P.glassL,{hard:true,mode:1,glow:.022,ry:yaw,tag});
+      groupCamera(`monitor:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
       return s;
     }
 
     function executiveDesk(x,z,w=2.65,d=1.02,color=P.walnut,tag='办公桌',dual=false) {
+      const at=A.B.props.length;
+      // Only the general manager's purpose-built dashboard tablet carries the manage-company
+      // action.  Structural desk parts, monitor backs and phone housings remain descriptive desk
+      // geometry; clicking a trestle or the back of a screen should never trigger a decision task.
+      const dashboardTag=tag==='办公桌'?'总经理仪表板':tag;
       box(x,.78,z,w,.13,d,color,{round:.16,hard:true,mode:6,gloss:.26,
         mat:'wood',matScale:.78,matAmt:.20,tag});
       box(x,.835,z,w-.16,.025,d-.13,P.leather,{round:.12,hard:true,mode:7,gloss:.035,tag});
@@ -203,7 +284,9 @@
       box(x,.48,z+d*.435,w-.62,.055,.022,P.brassL,{hard:true,gloss:.68,tag});
       const count=dual?2:1;
       for(let i=0;i<count;i++)monitor(x+(i-(count-1)/2)*.68,z-.18,Math.PI,tag,dual?.62:.76);
-      box(x-.15,.86,z+.06,.70,.022,.26,P.black,{round:.04,hard:true,tag});
+      luminous(box(x-.15,.86,z+.06,.70,.022,.26,tag==='办公桌'?P.screen:P.black,
+        {round:.04,hard:true,mode:tag==='办公桌'?1:0,glow:tag==='办公桌'?.055:0,
+          tag:dashboardTag}),.015,tag==='办公桌'?.08:0);
       // Contract folio, fountain pen, phone, intercom and a small award all remain individually
       // readable at player height.
       // These three desk fittings are repeated on all four executive desks, so a literal tag put
@@ -222,15 +305,39 @@
       taper(x+w*.42,.97,z-.16,.10,.27,.055,P.brassL,{gloss:.66,tag:tag+'·奖杯'});
       ball(x+w*.42,1.16,z-.16,.075,.075,.075,P.glassL,
         {mode:1,alpha:.58,gloss:.62,tag:tag+'·奖杯'});
+      // Monitors and the phone already own their local groups.  The remaining desk skin is kept
+      // cohesive around a 2.68 m camera focus; the sweep preserves the full wide desktop as a
+      // camera obstacle, while end pedestals/trophy remain honest local sub-fixtures.
+      const centre=[],west=[],east=[];
+      for(const p of A.B.props.slice(at)) {
+        if(p.cameraGroup) continue;
+        const b=p.cameraOb||p.ob;
+        if(!b) { centre.push(p); continue; }
+        if(b.sx>2.68) {
+          p.cameraOb={...b,sx:2.68};
+          p.cameraSweepX=Math.max(p.cameraSweepX||0,(b.sx-2.68)/2);
+        }
+        const dx=b.x-x;
+        (dx < -1.22 ? west : dx > 1.22 ? east : centre).push(p);
+      }
+      groupCamera(`executive-desk:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,centre);
+      // The monitor's low plinth is physically flush with the desktop, not self-supporting at
+      // the display panel forty centimetres above it, so it follows the desk skin on a cut.
+      const monitorFeet=A.B.props.slice(at).filter(p=>p.tag===tag&&p.ob&&
+        Math.abs(p.ob.y-.80)<.001&&Math.abs(p.ob.sy-.025)<.001&&Math.abs(p.ob.sz-.19)<.001);
+      groupCamera(`executive-desk:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,monitorFeet);
+      groupCamera(`executive-desk-west:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,west);
+      groupCamera(`executive-desk-east:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,east);
       solid(x-w/2-.02,x+w/2+.02,z-d/2-.03,z+d/2+.03);
       shade(x,z,w+.18,d+.20,.25);
     }
 
     function displayShelfZ(x,z,w=2.20,h=2.05,tag='书架') {
-      box(x,h/2,z,w,h,.34,P.walnutD,{hard:true,mode:6,gloss:.20,tag});
-      box(x,h/2,z+.18,w-.14,h-.14,.035,P.wallD,{hard:true,tag});
-      for(const y of [.18,.65,1.12,1.59,2.02])box(x,y,z+.23,w-.05,.055,.44,P.walnutL,
-        {hard:true,mode:6,gloss:.22,tag});
+      const shelfCamera=[];
+      shelfCamera.push(box(x,h/2,z,w,h,.34,P.walnutD,{hard:true,mode:6,gloss:.20,tag}));
+      shelfCamera.push(box(x,h/2,z+.18,w-.14,h-.14,.035,P.wallD,{hard:true,tag}));
+      for(const y of [.18,.65,1.12,1.59,2.02])shelfCamera.push(box(x,y,z+.23,w-.05,.055,.44,
+        P.walnutL,{hard:true,mode:6,gloss:.22,tag}));
       // Same again for the four display shelves: 112 books under one tag spanned 22.16 m.
       const bookColors=[P.blue,P.red,P.sage,P.cream,P.leatherL];
       for(let row=0;row<4;row++)for(let i=0;i<7;i++) {
@@ -239,16 +346,22 @@
           bookColors[(i+row)%bookColors.length],{hard:true,rz:(i%3-1)*.025,tag:tag+'·书'});
       }
       // Awards, framed photograph and a brass architectural model occupy the display shelf.
-      taper(x-w*.27,1.75,z+.47,.10,.30,.055,P.brassL,{gloss:.62,tag:tag+'·奖杯'});
-      ball(x-w*.27,1.96,z+.47,.075,.075,.075,P.glassL,{mode:1,alpha:.58,tag:tag+'·奖杯'});
-      box(x+.10,1.81,z+.46,.34,.30,.025,P.black,{round:.035,hard:true,tag:tag+'·照片'});
-      box(x+.10,1.81,z+.48,.27,.23,.012,P.paper,{hard:true,tag:tag+'·照片'});
-      for(const sx of [-.13,.13]) capsule(x+w*.32+sx,1.77,z+.47,.020,.32,.020,P.brass,
-        {rz:sx*.9,gloss:.64,tag:tag+'·模型'});
+      shelfCamera.push(taper(x-w*.27,1.75,z+.47,.10,.30,.055,P.brassL,
+        {gloss:.62,tag:tag+'·奖杯'}));
+      shelfCamera.push(ball(x-w*.27,1.96,z+.47,.075,.075,.075,P.glassL,
+        {mode:1,alpha:.58,tag:tag+'·奖杯'}));
+      shelfCamera.push(box(x+.10,1.81,z+.46,.34,.30,.025,P.black,
+        {round:.035,hard:true,tag:tag+'·照片'}));
+      shelfCamera.push(box(x+.10,1.81,z+.48,.27,.23,.012,P.paper,
+        {hard:true,tag:tag+'·照片'}));
+      for(const sx of [-.13,.13]) shelfCamera.push(capsule(x+w*.32+sx,1.77,z+.47,
+        .020,.32,.020,P.brass,{rz:sx*.9,gloss:.64,tag:tag+'·模型'}));
+      groupCamera(`display-shelf:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,shelfCamera);
       solid(x-w/2-.02,x+w/2+.02,z-.20,z+.50);
     }
 
     function plant(x,z,s=.75,tag='绿植') {
+      const at=A.B.props.length;
       taper(x,.28,z,.33*s,.50*s,.25*s,P.cream,{gloss:.18,tag});
       capsule(x,.70*s,z,.040*s,.82*s,.040*s,P.greenD,{tag});
       for(let i=0;i<10;i++) {
@@ -257,9 +370,11 @@
           .21*s,.075*s,.14*s,i%3?P.green:P.greenL,{mode:15,ry:a,rz:(i%3-1)*.28,tag});
       }
       solid(x-.30*s,x+.30*s,z-.30*s,z+.30*s);
+      groupCamera(`plant:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
     }
 
     function floorLamp(x,z,yaw=0,tag='落地灯') {
+      const at=A.B.props.length;
       cyl(x,.055,z,.26,.055,P.walnutD,{gloss:.20,tag});
       capsule(x,1.05,z,.025,1.92,.025,P.brass,{gloss:.62,tag});
       const fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);
@@ -273,9 +388,11 @@
       capsule(x+fx*.35+rx*.12,1.70,z+fz*.35+rz*.12,.009,.28,.009,P.black,{tag});
       ball(x+fx*.35+rx*.12,1.54,z+fz*.35+rz*.12,.025,.035,.025,P.brassL,{tag});
       solid(x-.24,x+.24,z-.24,z+.24);
+      groupCamera(`floor-lamp:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
     }
 
     function curvedSofa(x,z,yaw=0,color=P.fabric,tag='等候沙发') {
+      const at=A.B.props.length;
       const fx=Math.sin(yaw),fz=Math.cos(yaw),rx=Math.cos(yaw),rz=-Math.sin(yaw);
       for(const s of [-1,0,1]) {
         const syaw=yaw-s*.15;
@@ -291,21 +408,28 @@
       const sx=Math.abs(Math.sin(yaw))>.5?.48:1.38,sz=Math.abs(Math.sin(yaw))>.5?1.38:.48;
       solid(x-sx,x+sx,z-sz,z+sz);
       shade(x,z,sx*2+.20,sz*2+.20,.22);
+      groupCamera(`curved-sofa:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
     }
 
     function roundTable(x,z,r=.48,tag='茶几') {
+      const at=A.B.props.length;
       cyl(x,.48,z,r,.075,P.walnutL,{mode:6,gloss:.27,tag});
-      cyl(x,.25,z,.085,.43,P.brass,{gloss:.64,tag});
-      cyl(x,.055,z,.30,.055,P.walnutD,{gloss:.22,tag});
+      // The pedestal and plinth are furniture structure, not a usable tea surface.  Keeping their
+      // own tag means a low click beside a nearby chair cannot masquerade as a tabletop action.
+      const baseTag=tag+'·底座';
+      cyl(x,.25,z,.085,.43,P.brass,{gloss:.64,tag:baseTag});
+      cyl(x,.055,z,.30,.055,P.walnutD,{gloss:.22,tag:baseTag});
       // The worst group on the floor: the lounge tea table and the general manager's window table
       // are 11.6 m apart, so '杂志' was judged from a point 6.93 m from the nearest magazine —
       // a point in the middle of an office neither table is in.
       box(x-.10,.55,z,.34,.025,.24,P.paper,{hard:true,rz:.10,tag:tag+'·杂志'});
       cyl(x+.20,.58,z-.04,.065,.12,P.white,{gloss:.18,tag:tag+'·茶杯'});
       solid(x-r-.03,x+r+.03,z-r-.03,z+r+.03);
+      groupCamera(`round-table:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
     }
 
     function pendantRing(x,z,r=1.05,tag='吊灯') {
+      const at=A.B.props.length;
       for(let i=0;i<18;i++) {
         const a=i*Math.PI*2/18,px=x+Math.sin(a)*r,pz=z+Math.cos(a)*r;
         luminous(ball(px,2.78,pz,.045,.035,.045,P.warm,
@@ -316,19 +440,24 @@
         capsule(px,3.02,pz,.010,.42,.010,P.brass,{tag});
       }
       light(x,2.60,z,[1,.84,.66],.18,4.0);
+      groupCamera(`pendant:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
     }
 
     function strategyChair(x,z,yaw=0,tag='会议椅') {
+      const at=A.B.props.length;
       box(x,.45,z,.50,.10,.50,P.leatherL,{round:.16,mode:7,ry:yaw,tag});
       const fx=Math.sin(yaw),fz=Math.cos(yaw);
       box(x-fx*.22,.72,z-fz*.22,.48,.47,.12,P.leather,
         {round:.17,mode:7,ry:yaw,tag});
       capsule(x,.23,z,.028,.40,.028,P.brass,{gloss:.60,tag});
       solid(x-.27,x+.27,z-.27,z+.27);
+      groupCamera(`strategy-chair:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,A.B.props.slice(at));
     }
 
     function dashboard(x,z,w=3.25,tag='投影') {
-      box(x,1.73,z,w,1.52,.075,P.black,{hard:true,round:.07,tag});
+      const at=A.B.props.length,focusW=Math.min(w,2.68);
+      box(x,1.73,z,w,1.52,.075,P.black,{hard:true,round:.07,tag,
+        cameraOb:{x,y:1.73,z,sx:focusW,sy:1.52,sz:.075,ry:0},cameraSweepX:(w-focusW)/2});
       // The screen lives on the +z face: the board table and its chairs are at z -1.10 … +0.80,
       // south of this wall, so a screen on the -z face is showing the leadership dashboard to the
       // finance director's back wall and presenting its own black case to the room it belongs to.
@@ -344,8 +473,13 @@
           {rx:Math.PI/2,mode:1,glow:.035,tag}),.008,.05);
       }
       // Camera bar, room microphone and side status lamps complete the conference system.
-      box(x,2.58,z+.01,.82,.12,.13,P.black,{round:.04,hard:true,tag});
-      ball(x,2.58,z+.085,.055,.055,.025,P.glassL,{mode:1,glow:.025,tag});
+      // Integrate the camera bar into the top of the dashboard case.  At y=2.58 it floated above
+      // the screen and physically buried the finance-door lettering on the opposite wall face.
+      box(x,2.51,z+.01,.82,.12,.13,P.black,{round:.04,hard:true,tag});
+      ball(x,2.51,z+.085,.055,.055,.025,P.glassL,{mode:1,glow:.025,tag});
+      const dashboardCamera=A.B.props.slice(at);
+      localizeCameraGroup(dashboardCamera,x,z);
+      groupCamera(`dashboard:${tag}:${x.toFixed(2)}:${z.toFixed(2)}`,dashboardCamera);
       onTick(t=>{p.glow=.060+(.5+.5*Math.sin(t*.75))*.025;});
       return p;
     }
@@ -394,6 +528,11 @@
     // the one thing a strategy room must not be. This closes it with its own door onto the spine,
     // stopping at z 2.165 so the protected circulation band (z 2.20 … 4.00) is untouched.
     paneWallZ(2.10,4.72,RX,[[6.30,1.30]],'战略室南墙');
+    // The operations side-wall terminal is the physical mullion shared with the manager's front
+    // pane.  Give that exact T-junction to the front pane so a moving cut cannot retain the side
+    // trim for one frame after its backing disappears.
+    groupCamera('pane-z:总经理办公室隔墙:-2.35:0.40',A.B.props.filter(p=>p.tag==='运营办公室侧墙'&&
+      p.ob&&Math.abs(p.ob.x+2.35)<.05&&Math.abs(p.ob.z+3.03)<.001));
 
     // Every one of these focus points used to sit in the middle of the room's own desk or table:
     // -9.45,-5.65 is inside the HR desk, 1.18,-5.60 inside the general manager's, .30,.25 inside
@@ -408,13 +547,13 @@
     room('office7-strategy',4.82,11.72,-2.86,2.14,5.60,0);
 
     plateZ(-1.0,3.03,2.09,5.35,'七楼 · 高层管理与战略',accent,'楼层牌');
-    plateZ(-9.45,2.70,-2.87,2.70,'人力资源总监',P.sage,'人力资源总监办公室');
-    plateZ(-4.72,2.70,-2.87,2.30,'运营总监',P.blue,'运营总监办公室');
+    plateZ(-9.45,2.70,-2.87,2.70,'人力资源总监',P.sage,'人力资源总监办公室',{twoSided:false});
+    plateZ(-4.72,2.70,-2.87,2.30,'运营总监',P.blue,'运营总监办公室',{twoSided:false});
     // Its own tag, not the room's: the room tag is also worn by the ceiling raft and its fins at
     // z -5.58, and one group holding both put the judged point at z -4.22, in the open floor
     // between them and inside neither.
-    plateZ(1.18,2.74,-2.87,3.15,'总经理办公室',P.brass,'总经理办公室门牌');
-    plateZ(8.30,2.70,-2.87,2.70,'财务总监',P.leatherL,'财务总监办公室');
+    plateZ(1.18,2.74,-2.87,3.15,'总经理办公室',P.brass,'总经理办公室门牌',{twoSided:false});
+    plateZ(8.30,2.70,-2.87,2.70,'财务总监',P.leatherL,'财务总监办公室',{twoSided:false});
     box(4.68,2.72,.92,.050,.36,1.55,P.walnutD,
       {hard:true,mode:6,gloss:.24,tag:'战略会议室'});
     box(4.645,2.72,.92,.018,.28,1.47,P.blue,
@@ -425,29 +564,39 @@
     // A layered walnut/brass privacy screen defines the waiting lounge without closing it off
     // from the assistant.  Fluted glass softens movement at reception, while the two open ends
     // remain generous routes into the lounge.
-    box(-4.575,1.47,-.40,.025,2.22,3.72,P.glassL,
-      {hard:true,mode:1,alpha:.10,gloss:.62,tag:'等候区屏风'});
+    const waitingScreen=[];
+    waitingScreen.push(box(-4.575,1.47,-.40,.025,2.22,3.72,P.glassL,
+      {hard:true,mode:1,alpha:.10,gloss:.62,tag:'等候区屏风',
+        cameraOb:{x:-4.575,y:1.47,z:-.40,sx:.025,sy:2.22,sz:2.68,ry:0},cameraSweepZ:.52}));
     for(let z=-2.35,i=0;z<=1.55;z+=.40,i++) {
-      box(-4.55,1.52,z,.085,2.62,.075,i%3===0?P.walnutD:P.walnutL,
-        {hard:true,mode:6,gloss:.20,tag:'等候区屏风'});
-      box(-4.505,.53,z,.022,.76,.025,P.brass,{hard:true,gloss:.62,tag:'等候区屏风'});
+      const flute=[box(-4.55,1.52,z,.085,2.62,.075,i%3===0?P.walnutD:P.walnutL,
+        {hard:true,mode:6,gloss:.20,tag:'等候区屏风'}),
+        box(-4.505,.53,z,.022,.76,.025,P.brass,{hard:true,gloss:.62,tag:'等候区屏风'})];
+      if(z>=-1.55&&z<=.95) waitingScreen.push(...flute);
+      else groupCamera(`waiting-screen-flute:${z.toFixed(2)}`,flute);
     }
-    for(const y of [.22,2.88])box(-4.55,y,-.40,.14,.18,4.18,P.walnutD,
-      {hard:true,mode:6,gloss:.22,tag:'等候区屏风'});
+    for(const y of [.22,2.88]) waitingScreen.push(box(-4.55,y,-.40,.14,.18,4.18,P.walnutD,
+      {hard:true,mode:6,gloss:.22,tag:'等候区屏风',
+        cameraOb:{x:-4.55,y,z:-.40,sx:.14,sy:.18,sz:2.68,ry:0},cameraSweepZ:.75}));
+    groupCamera('waiting-screen',waitingScreen);
     // A short planted trough makes the privacy threshold feel deliberate without sealing either
     // end. Its 1.6 m run leaves clear north and south approaches around the screen.
-    box(-4.82,.27,-.36,.46,.46,1.58,P.walnutD,
-      {round:.12,mode:6,gloss:.18,tag:'等候区屏风'});
-    box(-4.82,.49,-.36,.39,.08,1.46,P.stoneD,
-      {round:.09,mode:7,gloss:.10,tag:'等候区屏风'});
+    const waitingTrough=[box(-4.82,.27,-.36,.46,.46,1.58,P.walnutD,
+      {round:.12,mode:6,gloss:.18,tag:'等候区屏风'}),
+      box(-4.82,.49,-.36,.39,.08,1.46,P.stoneD,
+        {round:.09,mode:7,gloss:.10,tag:'等候区屏风'})];
     for(let z=-.94,i=0;z<=.22;z+=.29,i++) {
-      capsule(-4.82,.81+(i%2)*.10,z,.020,.58+(i%3)*.10,.020,P.greenD,{tag:'等候区绿植'});
-      for(const s of [-1,1])ball(-4.82+s*.13,.88+(i%2)*.11,z+s*.035,.18,.055,.12,
-        i%3?P.green:P.greenL,{mode:15,ry:s*.65,rz:s*.30,tag:'等候区绿植'});
+      waitingTrough.push(capsule(-4.82,.81+(i%2)*.10,z,.020,.58+(i%3)*.10,.020,
+        P.greenD,{tag:'等候区绿植'}));
+      for(const s of [-1,1])waitingTrough.push(ball(-4.82+s*.13,.88+(i%2)*.11,z+s*.035,
+        .18,.055,.12,i%3?P.green:P.greenL,
+        {mode:15,ry:s*.65,rz:s*.30,tag:'等候区绿植'}));
     }
+    groupCamera('waiting-trough',waitingTrough);
     solid(-5.06,-4.58,-1.17,.45);
 
     // ---------------------------------------------------------------- executive assistant and reception
+    const receptionAt=A.B.props.length;
     box(1.12,.68,.52,3.20,1.05,.78,P.walnutL,
       {round:.28,mode:6,gloss:.24,hard:true,mat:'wood',matScale:.75,matAmt:.18,tag:'前台'});
     box(1.12,1.22,.52,3.08,.11,.70,P.stoneL,{round:.25,hard:true,gloss:.24,tag:'前台'});
@@ -463,26 +612,43 @@
       {mode:1,glow:.03,tag:'对讲机'}),.006,.04);
     box(-.10,1.31,.42,.46,.025,.32,P.paper,{hard:true,rz:-.05,tag:'来访预约'});
     capsule(-.12,1.35,.42,.012,.28,.012,P.brass,{rz:Math.PI/2,tag:'来访预约'});
+    const receptionCamera=A.B.props.slice(receptionAt)
+      .filter(p=>!p.cameraGroup||p.tag==='前台显示器');
+    localizeCameraGroup(receptionCamera,1.12,.52);
+    groupCamera('reception-counter',receptionCamera);
     executiveChair(.62,-.18,0,P.leatherL,'行政助理座椅');
     solid(-.56,2.80,.10,.96);
     pendantRing(1.10,.35,.86,'行政前台吊灯');
-    interactive('前台',1.12,1.24,.52,
+    const receptionPublic=interactive('前台',1.12,1.24,.52,
       '核对总经理今天的日程、来访预约和会议室安排。',
       'Check the general manager\'s calendar, visitors, and meeting-room schedule.',
       '行政助理 coordinates executives, visitors, documents, and meeting logistics.',
-      [-.92,1.18],2.35,'manage-executive-calendar','executive-support');
+      // Centre the customer-side focus on the counter instead of two metres beyond its west end.
+      // The whole curved frontage is now within reach from one genuinely standable position.
+      [1.12,1.35],2.40,'manage-executive-calendar','executive-support');
+    receptionPublic.labelGroup='前台';
+    // The assistant side is real circulation too.  A second local focus makes the rear worktop
+    // operate from beside the chair instead of resolving every visible click through the counter
+    // to the visitor-side focus nearly two metres away.
+    const receptionStaff=interactive('前台',1.12,1.24,.32,
+      '核对总经理今天的日程、来访预约和会议室安排。',
+      'Check the general manager\'s calendar, visitors, and meeting-room schedule.',
+      '行政助理 coordinates executives, visitors, documents, and meeting logistics.',
+      [1.40,-.30],2.40,'manage-executive-calendar','executive-support');
+    receptionStaff.labelGroup='前台';
 
     // ---------------------------------------------------------------- executive waiting lounge
     // A warm acoustic canopy lowers the perceived scale of the waiting room without becoming a
     // dropped solid ceiling. Alternating timber fins and felt rafts keep the visual rhythm light.
     for(let x=-11.05,i=0;x<=-5.35;x+=.48,i++)
-      box(x,H-.235,-.25,.22,.060,3.62,i%4===0?P.walnutD:P.walnutL,
-        {hard:true,mode:6,gloss:.17,tag:'等候区吸音天花'});
+      dollhouseCeiling(box(x,H-.235,-.25,.22,.060,3.62,
+        i%4===0?P.walnutD:P.walnutL,
+        {hard:true,mode:6,gloss:.17,tag:'等候区吸音天花'}));
     for(const x of [-10.30,-8.25,-6.20]) {
-      box(x,H-.285,-.25,1.12,.035,2.92,P.carpetD,
-        {hard:true,mode:7,gloss:.025,tag:'等候区吸音天花'});
-      luminous(box(x,H-.315,-.25,.035,.014,2.62,P.warm,
-        {hard:true,mode:1,glow:.09,tag:'等候区照明'}),.035,.16);
+      dollhouseCeiling(box(x,H-.285,-.25,1.12,.035,2.92,P.carpetD,
+        {hard:true,mode:7,gloss:.025,tag:'等候区吸音天花'}));
+      dollhouseCeiling(luminous(box(x,H-.315,-.25,.035,.014,2.62,P.warm,
+        {hard:true,mode:1,glow:.09,tag:'等候区照明'}),.035,.16));
       light(x,H-.40,-.25,[1,.80,.60],.12,3.05);
     }
     // Rounded acoustic wall fields on the west edge absorb sound from the open reception area.
@@ -495,6 +661,10 @@
         {round:.05,hard:true,gloss:.62,tag:'等候区吸音墙'});
     }
     curvedSofa(-10.62,-.25,Math.PI/2,P.fabric,'等候沙发');
+    // The sofa back is well under a body width from the acoustic wall: too narrow to use, but wide
+    // enough to leave a long, unreachable camera/collision sliver.  Join those two fitted elements
+    // in the collision plan so the wall reads as the sofa's backing instead of concealing a false aisle.
+    solid(-11.90,-11.08,-1.63,1.13);
     // Continuous plinth, discreet brass feet and restrained lumbar cushions enrich the sofa
     // without turning the room into a hotel lobby.
     box(-10.62,.24,-.25,.62,.11,2.70,P.walnutD,
@@ -514,33 +684,41 @@
     box(-7.96,.566,.54,.24,.020,.20,P.black,{round:.055,hard:true,tag:'充电板'});
     luminous(cyl(-7.86,.586,.63,.014,.010,P.green,{mode:1,glow:.045,tag:'充电板'}),.008,.055);
     capsule(-7.88,.545,.70,.009,.34,.009,P.steelD,{rz:Math.PI/2,ry:.18,tag:'充电线'});
+    groupCamera('round-table:等候茶几:-8.25:0.45',A.B.props.slice(-5));
     floorLamp(-11.25,1.15,-.85,'等候落地灯');
     plant(-5.25,1.34,.70,'等候区东绿植');
-    plant(-10.95,-2.30,.84,'等候区北绿植');
+    // Four centimetres toward the perimeter closes the last tangent radius-.30 probe row between
+    // pot and wall. The visual pot, foliage, and collider share this authored centre.
+    plant(-10.99,-2.30,.84,'等候区北绿植');
     // Refined tea and water point, kept against the north-east edge and away from both approaches.
-    box(-5.82,.56,-2.42,1.62,.88,.48,P.walnutD,
+    // Keep the whole service point west of the operations-office jamb.  Its former east edge at
+    // x=-4.94 occupied 0.43 m of that doorway and left a 0.76 m body-width turn; this 0.48 m shift
+    // preserves the lounge composition while restoring the full office approach.
+    const teaAt=A.B.props.length;
+    box(-6.30,.56,-2.42,1.62,.88,.48,P.walnutD,
       {round:.12,mode:6,gloss:.20,tag:'茶水台'});
-    box(-5.82,1.03,-2.42,1.70,.075,.54,P.stoneL,
+    box(-6.30,1.03,-2.42,1.70,.075,.54,P.stoneL,
       {round:.10,hard:true,gloss:.22,tag:'茶水台'});
-    box(-5.82,.48,-2.17,1.32,.52,.030,P.walnutL,
+    box(-6.30,.48,-2.17,1.32,.52,.030,P.walnutL,
       {round:.10,hard:true,mode:6,tag:'茶水台'});
-    box(-5.82,.49,-2.145,.92,.030,.016,P.brassL,
+    box(-6.30,.49,-2.145,.92,.030,.016,P.brassL,
       {hard:true,mode:1,glow:.018,tag:'茶水台'});
     // Glass carafe, porcelain pot, cups, tea tray and a compact filtered-water spout.
-    cyl(-6.38,1.17,-2.38,.085,.25,P.glassL,
+    cyl(-6.86,1.17,-2.38,.085,.25,P.glassL,
       {mode:1,alpha:.38,gloss:.52,tag:'水壶'});
-    taper(-6.38,1.34,-2.38,.058,.09,.035,P.brass,{gloss:.62,tag:'水壶'});
-    taper(-5.92,1.15,-2.38,.12,.20,.09,P.cream,{gloss:.16,tag:'茶壶'});
-    capsule(-5.76,1.18,-2.38,.018,.22,.018,P.brass,{rz:Math.PI/2,tag:'茶壶'});
-    box(-5.68,1.08,-2.36,.66,.028,.30,P.walnutL,
+    taper(-6.86,1.34,-2.38,.058,.09,.035,P.brass,{gloss:.62,tag:'水壶'});
+    taper(-6.40,1.15,-2.38,.12,.20,.09,P.cream,{gloss:.16,tag:'茶壶'});
+    capsule(-6.24,1.18,-2.38,.018,.22,.018,P.brass,{rz:Math.PI/2,tag:'茶壶'});
+    box(-6.16,1.08,-2.36,.66,.028,.30,P.walnutL,
       {round:.07,hard:true,mode:6,tag:'茶盘'});
-    for(const x of [-5.84,-5.56])cyl(x,1.17,-2.34,.052,.12,P.white,{gloss:.18,tag:'茶水台·茶杯'});
-    capsule(-5.20,1.37,-2.44,.024,.54,.024,P.brass,{tag:'饮水机'});
-    capsule(-5.12,1.54,-2.44,.018,.22,.018,P.brass,
+    for(const x of [-6.32,-6.04])cyl(x,1.17,-2.34,.052,.12,P.white,{gloss:.18,tag:'茶水台·茶杯'});
+    capsule(-5.68,1.37,-2.44,.024,.54,.024,P.brass,{tag:'饮水机'});
+    capsule(-5.60,1.54,-2.44,.018,.22,.018,P.brass,
       {rz:Math.PI/2,tag:'饮水机'});
-    luminous(cyl(-5.03,1.55,-2.44,.018,.012,P.green,
+    luminous(cyl(-5.51,1.55,-2.44,.018,.012,P.green,
       {mode:1,glow:.045,tag:'饮水机'}),.008,.055);
-    solid(-6.70,-4.94,-2.72,-2.12);
+    groupCamera('waiting-tea-service',A.B.props.slice(teaAt));
+    solid(-7.18,-5.42,-2.72,-2.12);
     // Three small pendants pool warm light over the tea table rather than washing the room flat.
     for(const [x,z,y] of [[-8.56,.28,2.62],[-8.18,.48,2.50],[-7.86,.24,2.66]]) {
       capsule(x,(y+H-.18)/2,z,.010,H-.18-y,.010,P.brass,{tag:'等候区吊灯'});
@@ -549,22 +727,39 @@
         {mode:1,glow:.12,tag:'等候区吊灯'}),.035,.16);
     }
     light(-8.22,2.02,.36,[1,.78,.56],.18,2.80);
-    box(-8.25,2.22,-2.82,3.45,.82,.045,P.walnutD,{hard:true,mode:6,tag:'公司荣誉'});
-    glyphs(-8.25,2.43,-2.786,Math.PI,'公司荣誉',{size:.17,gap:.042,color:P.brassL,
+    const honorAt=A.B.props.length;
+    // Two exact abutting bays preserve the 3.45 m visual union while keeping each certificate and
+    // title course owned by the local backing that physically carries it through a camera cut.
+    box(-9.1125,2.22,-2.82,1.725,.82,.045,P.walnutD,{hard:true,mode:6,tag:'公司荣誉'});
+    box(-7.3875,2.22,-2.82,1.725,.82,.045,P.walnutD,{hard:true,mode:6,tag:'公司荣誉'});
+    glyphs(-8.25,2.43,-2.786,0,'公司荣誉',{size:.17,gap:.042,color:P.brassL,
       mode:1,lift:.008,tag:'公司荣誉'});
     for(const x of [-9.43,-8.65,-7.87,-7.09]) {
       box(x,2.03,-2.78,.56,.36,.018,P.paper,{hard:true,mode:1,tag:'奖状'});
       box(x,2.03,-2.795,.62,.42,.025,P.brass,{hard:true,gloss:.58,tag:'奖状'});
       luminous(cyl(x,2.03,-2.755,.055,.018,P.red,{rx:Math.PI/2,mode:1,glow:.025,tag:'奖状'}),.005,.035);
     }
-    interactive('等候区',-8.25,.64,.45,
+    const honorParts=A.B.props.slice(honorAt),honorX=p=>p.ob?p.ob.x:p.m[12];
+    groupCamera('honor-wall:west',honorParts.filter(p=>honorX(p)<-8.25));
+    groupCamera('honor-wall:east',honorParts.filter(p=>honorX(p)>=-8.25));
+    const waitingNorth=interactive('等候区',-8.25,.64,.45,
       '在高层等候区坐下，行政助理会通知来访对象。',
       'Sit in the executive waiting area; the assistant will notify your host.',
       // Tagged to the tea table it already stands on. Nothing wore '等候区' — every prop in the
       // lounge is '等候沙发', '等候茶几', '等候区屏风' and so on — so this station was another
       // label with no clickable object behind it.
-      '等候 means to wait; 来访 is a business visit.',[-6.98,1.12],1.85,
+      // The use point sits on the open north side of the table.  The former point was 1.27 m east
+      // of the table centre, so ordinary west/south seats saw a clickable table but selected a
+      // point 2.11–2.18 m away.
+      '等候 means to wait; 来访 is a business visit.',[-8.25,1.30],1.80,
       'wait-for-executive','executive-support','等候茶几');
+    waitingNorth.labelGroup='等候茶几';
+    const waitingSouth=interactive('等候区',-8.25,.64,.10,
+      '在高层等候区坐下，行政助理会通知来访对象。',
+      'Sit in the executive waiting area; the assistant will notify your host.',
+      '等候 means to wait; 来访 is a business visit.',[-8.25,-1.35],1.35,
+      'wait-for-executive','executive-support','等候茶几');
+    waitingSouth.labelGroup='等候茶几';
 
     // ---------------------------------------------------------------- HR director office
     executiveDesk(-9.45,-5.62,2.35,.92,P.walnutL,'人力资源办公桌',false);
@@ -573,12 +768,26 @@
     visitorChair(-8.70,-4.45,Math.PI,P.fabricL,'人力资源访客椅');
     displayShelfZ(-10.45,-8.55,1.90,2.05,'人才资料书架');
     plant(-7.62,-8.08,.72,'人力资源办公室绿植');
-    floorLamp(-11.10,-3.62,.15,'办公室落地灯');
+    // A wall-mounted reading light preserves the warm layer at the records bay without putting a
+    // floor base in its circulation loop.  Even the relocated floor lamp at (-11.10,-7.20) joined
+    // the chair, shelf and records table into a closed ring at a 0.40 m body radius, trapping a
+    // 1.20 m² pocket behind the desk.  The articulated sconce makes the same corner useful while
+    // leaving a continuous west-side route to the shelf.
+    box(-11.57,1.62,-7.20,.08,.38,.28,P.walnutD,
+      {hard:true,round:.04,mode:6,tag:'办公室壁灯'});
+    capsule(-11.36,1.66,-7.20,.024,.40,.024,P.brass,
+      {rz:Math.PI/2,gloss:.62,tag:'办公室壁灯'});
+    taper(-11.12,1.66,-7.20,.18,.30,.10,P.cream,
+      {rx:Math.PI/2,gloss:.12,tag:'办公室壁灯'});
+    luminous(ball(-11.04,1.66,-7.20,.085,.075,.085,P.warm,
+      {mode:1,glow:.12,tag:'办公室壁灯'}),.035,.16);
+    light(-10.98,1.60,-7.20,[1,.82,.62],.14,2.35);
     // Talent-plan folios and confidential file caddy.
     box(-8.08,.72,-7.65,.82,1.28,.48,P.walnutD,{hard:true,round:.08,mode:6,tag:'资料台'});
     for(let i=0;i<5;i++)box(-8.08,.40+i*.19,-7.38,.58,.10,.025,
       i===4?P.red:P.paper,{hard:true,tag:'保密文件'});
-    glyphs(-8.08,1.43,-7.36,0,'人才计划',{size:.12,gap:.028,color:P.white,mode:1,lift:.008,tag:'资料台'});
+    // Keep the title on the cabinet face, below its top edge and just above the highest folio.
+    glyphs(-8.08,1.29,-7.397,0,'人才计划',{size:.12,gap:.028,color:P.white,mode:1,lift:.008,tag:'资料台'});
     solid(-8.54,-7.62,-7.96,-7.30);
     interactive('资料台',-8.08,1.12,-7.65,
       '审阅招聘、晋升和继任计划，并标出需要总经理决定的事项。',
@@ -589,8 +798,11 @@
     // ---------------------------------------------------------------- deputy / operations director office
     executiveDesk(-4.72,-5.62,2.30,.92,P.walnut,'运营办公桌',true);
     executiveChair(-4.72,-6.47,0,P.leather,'运营总监座椅');
-    visitorChair(-5.42,-4.45,Math.PI,P.fabric,'运营访客椅');
-    visitorChair(-4.02,-4.45,Math.PI,P.fabric,'运营访客椅');
+    // Set the visitor pair 0.17 m deeper into the office.  At z=-4.45 their front collision band
+    // met the doorway's 0.80 m approach sweep and reduced the otherwise-clear 1.30 m opening to a
+    // 0.76 m turn.  They still sit clear of the desk while the entry now accepts a 0.42 m radius.
+    visitorChair(-5.42,-4.62,Math.PI,P.fabric,'运营访客椅');
+    visitorChair(-4.02,-4.62,Math.PI,P.fabric,'运营访客椅');
     displayShelfZ(-5.87,-8.55,1.72,2.05,'运营资料书架');
     plant(-2.82,-8.05,.72,'运营办公室绿植');
     // Standing operations wall with real status cards, magnetic markers and a slim shelf.
@@ -600,7 +812,8 @@
     glyphs(-3.62,2.15,-7.64,0,'经营数据',{size:.13,gap:.032,color:P.white,mode:1,lift:.008,tag:'项目墙'});
     for(let i=0;i<5;i++) {
       box(-4.30,1.94-i*.15,-7.63,.48+i*.20,.045,.012,
-        i<3?P.blue:i===3?P.amber:P.green,{hard:true,mode:1,glow:.025,tag:'项目墙'});
+        i<3?P.blue:i===3?P.amber:P.green,
+        {hard:true,mode:1,glow:.025,cameraOccluder:true,tag:'项目墙'});
       cyl(-2.88,1.94-i*.15,-7.63,.030,.012,i===4?P.red:P.green,
         {rx:Math.PI/2,mode:1,glow:.035,tag:'项目墙'});
     }
@@ -608,15 +821,17 @@
     interactive('项目墙',-3.62,1.78,-7.72,
       '检查本周经营数据、风险事项和跨部门行动清单。',
       'Review this week\'s operating figures, risks, and cross-department action list.',
-      '经营数据 are operating metrics; 行动清单 is an action list.',[-3.62,-6.72],1.62,
+      '经营数据 are operating metrics; 行动清单 is an action list.',[-3.62,-6.72],2.00,
       'review-operations','operations-leadership');
 
     // ---------------------------------------------------------------- general manager office — centrepiece
     // A layered walnut ceiling raft and halo mark the room without enclosing it or lowering the
     // walkable volume.
-    box(1.18,H-.20,-5.58,4.95,.10,2.55,P.walnutD,{hard:true,mode:6,gloss:.20,tag:'总经理办公室'});
-    for(let x=-.95;x<=3.31;x+=.43)box(x,H-.27,-5.58,.08,.075,2.36,P.walnutL,
-      {hard:true,mode:6,gloss:.18,tag:'总经理办公室'});
+    dollhouseCeiling(box(1.18,H-.20,-5.58,4.95,.10,2.55,P.walnutD,
+      {hard:true,mode:6,gloss:.20,tag:'总经理办公室'}));
+    for(let x=-.95;x<=3.31;x+=.43)dollhouseCeiling(
+      box(x,H-.27,-5.58,.08,.075,2.36,P.walnutL,
+        {hard:true,mode:6,gloss:.18,tag:'总经理办公室'}));
     pendantRing(1.18,-5.30,1.02,'总经理办公室吊灯');
     executiveDesk(1.18,-5.48,3.35,1.10,P.walnut,'办公桌',true);
     executiveChair(1.18,-6.45,0,P.leather,'总经理座椅');
@@ -644,17 +859,30 @@
     taper(4.30,1.02,-3.50,.12,.35,.06,P.brassL,{gloss:.66,tag:'总经理奖杯台'});
     ball(4.30,1.29,-3.50,.12,.12,.12,P.glassL,{mode:1,alpha:.62,gloss:.72,tag:'总经理奖杯台'});
     solid(3.93,4.67,-3.86,-3.14);
-    interactive('办公桌',1.18,1.18,-5.48,
+    // Manage-company belongs to the dedicated glowing dashboard tablet, not to every structural
+    // face and monitor back on a 3.35 m desk.  The player-facing name remains 办公桌 while the
+    // pick tag states exactly which visible control owns the action.
+    const dashboardNorth=interactive('办公桌',1.03,.88,-5.36,
       '查看总经理仪表板，决定今天最重要的三项工作。',
       'Review the general manager dashboard and choose today\'s three highest priorities.',
-      '总经理 is the general manager; 优先事项 are priorities.',[1.18,-4.50],1.82,
-      'manage-company','executive-leadership');
+      '总经理 is the general manager; 优先事项 are priorities.',[1.50,-4.50],2.55,
+      'manage-company','executive-leadership','总经理仪表板');
+    dashboardNorth.labelGroup='办公桌';
+    // The manager-chair side remains visible through the open west bay.  This second focus sits
+    // in that bay, so a south-face click resolves locally instead of reaching through the desk to
+    // the visitor-side doorway point.
+    const dashboardSouth=interactive('办公桌',1.03,.88,-5.50,
+      '查看总经理仪表板，决定今天最重要的三项工作。',
+      'Review the general manager dashboard and choose today\'s three highest priorities.',
+      '总经理 is the general manager; 优先事项 are priorities.',[.20,-6.60],1.55,
+      'manage-company','executive-leadership','总经理仪表板');
+    dashboardSouth.labelGroup='办公桌';
     interactive('合同审阅台',2.12,.93,-5.30,
       '核对合同金额、责任和批准流程，然后签字。',
       'Check the contract value, responsibilities, and approval path, then sign.',
       // [2.35,-4.40] was inside the east visitor chair. The folio is on the desk at x 2.12, so
       // the door lane reaches it comfortably within the same 1.58 m.
-      '签字 means to sign; 批准流程 is an approval path.',[1.55,-4.50],1.58,
+      '签字 means to sign; 批准流程 is an approval path.',[1.55,-4.50],2.00,
       'sign-executive-contract','executive-leadership','办公桌·合同');
 
     // City-view corner. The old group formed a closed ring in mid-floor: the second chair alone
@@ -666,7 +894,9 @@
     visitorChair(2.75,-8.10,1.30,P.sage,'景观椅');
     visitorChair(4.35,-8.10,-1.30,P.fabricL,'景观椅');
     roundTable(3.60,-8.10,.36,'景观茶几');
-    floorLamp(2.10,-7.30,1.30,'景观灯');
+    // Against the east wall, aimed back into the seating group.  At (2.10,-7.30) the lamp, boss
+    // chair, desk and first view chair enclosed a body-sized pocket with no body-width entrance.
+    floorLamp(4.35,-6.65,-1.30,'景观灯');
     // The telescope has moved to the west light bay, where there is standing room in front of the
     // glass, and it now has a footprint: it used to be a 1.55 m brass mast a body walked through.
     capsule(2.05,1.16,-8.55,.030,1.55,.030,P.brass,{gloss:.62,tag:'望远镜'});
@@ -691,47 +921,72 @@
     displayShelfZ(10.45,-8.55,2.05,2.05,'财务资料书架');
     plant(5.35,-8.02,.74,'财务办公室绿植');
     // Budget tray, secure approval token and payment checklist.
-    box(6.15,.70,-7.42,.94,1.24,.52,P.walnutD,{hard:true,round:.08,mode:6,tag:'预算桌'});
-    box(6.15,1.34,-7.42,.88,.055,.48,P.stoneL,{hard:true,round:.05,tag:'预算桌'});
-    for(let i=0;i<4;i++)box(6.15,1.39+i*.020,-7.42+i*.025,.66,.016,.34,
-      i===3?P.blue:P.paper,{hard:true,rz:(i-1.5)*.02,tag:'预算表'});
-    luminous(cyl(6.48,1.46,-7.23,.035,.018,P.green,{mode:1,glow:.05,tag:'审批令牌'}),.01,.07);
+    cameraFixture('budget-table',()=>{
+      box(6.15,.70,-7.42,.94,1.24,.52,P.walnutD,
+        {hard:true,round:.08,mode:6,tag:'预算桌'});
+      box(6.15,1.34,-7.42,.88,.055,.48,P.stoneL,{hard:true,round:.05,tag:'预算桌'});
+      for(let i=0;i<4;i++)box(6.15,1.39+i*.020,-7.42+i*.025,.66,.016,.34,
+        i===3?P.blue:P.paper,{hard:true,rz:(i-1.5)*.02,tag:'预算表'});
+      luminous(cyl(6.48,1.46,-7.23,.035,.018,P.green,
+        {mode:1,glow:.05,tag:'审批令牌'}),.01,.07);
+    });
     solid(5.63,6.67,-7.74,-7.10);
     interactive('预算桌',6.15,1.38,-7.42,
       '比较预算、现金流和付款清单，再提交最终审批。',
       'Compare the budget, cash flow, and payment checklist before final approval.',
-      '预算 is a budget; 现金流 is cash flow; 审批 is formal approval.',[6.18,-6.58],1.48,
+      '预算 is a budget; 现金流 is cash flow; 审批 is formal approval.',[6.18,-6.58],1.55,
       'approve-executive-budget','finance-leadership');
 
     // ---------------------------------------------------------------- compact strategy / leadership room
-    box(8.24,.75,-.15,3.55,.13,1.28,P.walnut,
-      {hard:true,round:.30,mode:6,gloss:.27,mat:'wood',matScale:.78,matAmt:.20,tag:'会议桌'});
-    box(8.24,.82,-.15,3.30,.025,1.08,P.leather,
-      {hard:true,round:.26,mode:7,gloss:.035,tag:'会议桌'});
-    box(8.24,.70,-.15,2.95,.035,.08,P.brassL,{hard:true,gloss:.68,tag:'会议桌'});
+    const strategyTableCamera=[];
+    strategyTableCamera.push(box(8.24,.75,-.15,3.55,.13,1.28,P.walnut,
+      {hard:true,round:.30,mode:6,gloss:.27,mat:'wood',matScale:.78,matAmt:.20,tag:'会议桌'}));
+    strategyTableCamera.push(box(8.24,.82,-.15,3.30,.025,1.08,P.leather,
+      {hard:true,round:.26,mode:7,gloss:.035,tag:'会议桌'}));
+    strategyTableCamera.push(box(8.24,.70,-.15,2.95,.035,.08,P.brassL,
+      {hard:true,gloss:.68,tag:'会议桌'}));
+    // The trestles are table structure rather than meeting controls; keeping them decorative
+    // prevents a click on the far end of a leg from promising an action on the opposite aisle.
     for(const x of [6.88,9.60]) taper(x,.37,-.15,.18,.70,.14,P.walnutD,
-      {mode:6,gloss:.20,tag:'会议桌'});
+      {mode:6,gloss:.20,tag:'会议桌支架'});
     solid(6.42,10.06,-.84,.54);
     for(const x of [7.05,8.24,9.43]) {
       strategyChair(x,-1.10,0,'会议椅');
       strategyChair(x,.80,Math.PI,'会议椅');
-      capsule(x,.90,-.15,.015,.30,.015,P.steelD,{rz:Math.PI/2,tag:'会议麦克风'});
-      luminous(cyl(x+.16,.91,-.15,.022,.014,P.red,{mode:1,glow:.03,tag:'会议麦克风'}),.006,.045);
+      strategyTableCamera.push(capsule(x,.90,-.15,.015,.30,.015,P.steelD,
+        {rz:Math.PI/2,tag:'会议麦克风'}));
+      strategyTableCamera.push(luminous(cyl(x+.16,.91,-.15,.022,.014,P.red,
+        {mode:1,glow:.03,tag:'会议麦克风'}),.006,.045));
     }
+    localizeCameraGroup(strategyTableCamera,8.24,-.15);
+    groupCamera('strategy-table',strategyTableCamera);
     dashboard(8.24,-2.77,3.35,'投影');
     pendantRing(8.24,-.15,.82,'战略室吊灯');
     // Cabinet contains conferencing remote, spare cables and a water service.
-    box(11.02,.63,1.28,1.05,1.06,.50,P.walnutD,{hard:true,round:.07,mode:6,tag:'会议柜'});
-    box(11.02,1.18,1.28,1.08,.055,.52,P.stoneL,{hard:true,round:.05,tag:'会议柜'});
-    for(const x of [10.72,10.98])cyl(x,1.29,1.28,.055,.16,P.glassL,
-      {mode:1,alpha:.40,gloss:.48,tag:'水杯'});
-    box(11.28,1.28,1.28,.22,.040,.34,P.black,{round:.04,hard:true,tag:'会议遥控器'});
+    cameraFixture('strategy-cabinet',()=>{
+      box(11.02,.63,1.28,1.05,1.06,.50,P.walnutD,
+        {hard:true,round:.07,mode:6,tag:'会议柜'});
+      box(11.02,1.18,1.28,1.08,.055,.52,P.stoneL,{hard:true,round:.05,tag:'会议柜'});
+      for(const x of [10.72,10.98])cyl(x,1.29,1.28,.055,.16,P.glassL,
+        {mode:1,alpha:.40,gloss:.48,tag:'水杯'});
+      box(11.28,1.28,1.28,.22,.040,.34,P.black,
+        {round:.04,hard:true,tag:'会议遥控器'});
+    });
     solid(10.43,11.61,.98,1.62);
-    interactive('会议桌',8.24,.96,-.15,
-      '召集高层管理团队，讨论战略选择、风险和下一步行动。',
-      'Bring the executive team together to discuss strategic choices, risks, and next actions.',
-      '战略 is strategy; 高层管理团队 is the executive leadership team.',[5.58,.30],2.80,
-      'hold-strategy-session','executive-leadership');
+    // Four side-specific stations cover the complete strategy table.  The former three north-only
+    // controls left its west end and south edge visibly clickable while selecting a point up to
+    // 1.82 m away.  These are real open positions at each cardinal side of the table.
+    for(const [x,z,focusX,focusZ] of [
+      [6.50,-.15,6.08,-.15],[9.98,-.15,10.39,-.15],
+      [8.24,.43,8.24,1.39],[8.24,-.73,8.24,-2.10],
+    ]) {
+      const strategyStation=interactive('会议桌',x,.96,z,
+        '召集高层管理团队，讨论战略选择、风险和下一步行动。',
+        'Bring the executive team together to discuss strategic choices, risks, and next actions.',
+        '战略 is strategy; 高层管理团队 is the executive leadership team.',[focusX,focusZ],1.85,
+        'hold-strategy-session','executive-leadership');
+      strategyStation.labelGroup='会议桌';
+    }
     interactive('投影',8.24,1.84,-2.77,
       '把经营数据和三种方案切到领导层屏幕。',
       'Put the operating figures and three options on the leadership display.',
@@ -742,8 +997,12 @@
       'present-leadership-dashboard','executive-leadership');
 
     // Soft wayfinding and plants finish the public edge without narrowing the lift route.
-    glyphs(-1.0,2.20,2.07,0,'行政前台 · 来访请先登记',
+    const receptionPlaqueAt=A.B.props.length;
+    box(-1.0,2.20,2.09,2.10,.30,.055,P.cream,
+      {hard:true,mode:1,tag:'行政前台'});
+    glyphs(-1.0,2.20,2.052,Math.PI,'行政前台 · 来访请先登记',
       {size:.105,gap:.024,color:P.ink,mode:1,lift:.008,tag:'行政前台'});
+    groupCamera('reception-wayfinding',A.B.props.slice(receptionPlaqueAt));
     // Moved off the strategy-room door approach: at x 3.94 its footprint reached x 4.444, and the
     // door in the glass wall at x 4.72 needs body centres up to x 4.355, so the only way in was a
     // 0.37 m slot at the south end of the opening.

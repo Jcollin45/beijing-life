@@ -185,7 +185,7 @@ const Mall = Lazy('Mall', () => {
     stone:   {mat:'concrete', matScale:1.85, matAmt:.15, nrm:null}, // concourse and deck plates
     slab:    {mat:'concrete', matScale:1.15, matAmt:.16, nrmAmt:.24}, // solid stone props
     shopTile:{mat:'tile',     matScale:1.20, matAmt:.17, nrm:null}, // large-format shop flooring
-    plaster: {mat:'plaster',  matScale:2.40, matAmt:.28, nrm:null}, // walls, soffits, columns
+    plaster: {mat:'plaster',  matScale:.62,  matAmt:.12, nrm:null}, // walls, soffits, columns
     metal:   {mat:'metal',    matScale:.50,  matAmt:.30, nrmAmt:.30}, // rails, escalator skirts, lift frames
     tile:    {mat:'tile',     matScale:.34,  matAmt:.30},  // toilets and the food-court stalls
     timber:  {mat:'wood',     matScale:.90,  matAmt:.30},  // shopfit joinery and benches
@@ -305,7 +305,7 @@ const Mall = Lazy('Mall', () => {
   }
   // Every chair the food court builds, in world coordinates, with the way it is turned. The chairs
   // are placed off a hash of the table's own position, so their positions cannot be worked out from
-  // outside — and a food court with eighty-four chairs and nobody on any of them is the one thing
+  // outside — and a food court with eighty-two chairs and nobody on any of them is the one thing
   // that made the hall read as a furniture showroom. game.js seats its diners off this list, which
   // means a diner is always on a chair that actually exists, however the layout is rearranged.
   const foodSeats=[], foodStaff=[], foodTableStates=[], foodCounterEmitters=[],
@@ -532,14 +532,22 @@ const Mall = Lazy('Mall', () => {
       // are the chairs somebody has stood up from, and putting a diner on one seats them a third of
       // a metre from their own food.
       if(!out) foodSeats.push({x:sx,z:sz,yaw:a+Math.PI,y0,tag});
-      box(sx,y0+.44,sz,.44,.12,.44,cc,{ry:a,gloss:.18,tag});
-      // The back goes on the far side of the seat from the table. It used to be offset by
-      // -sin/-cos, which is *towards* the centre — so the backrest sat between the seat and the
-      // table and every chair in the building had its back to the food.
-      box(sx+Math.sin(a)*.20,y0+.70,sz+Math.cos(a)*.20,.44,.50,.10,cc,{ry:a,mode:7,round:.06,tag});
-      for(const [ox,oz] of [[-.16,-.16],[.16,-.16],[-.16,.16],[.16,.16]])
-        box(sx+ox*Math.cos(a)+oz*Math.sin(a),y0+.19,sz-ox*Math.sin(a)+oz*Math.cos(a),
-          .045,.38,.045,col.steelD,{gloss:.4});
+      const nativeChair=()=>{
+        box(sx,y0+.44,sz,.44,.12,.44,cc,{ry:a,gloss:.18,tag});
+        // The back goes on the far side of the seat from the table. It used to be offset by
+        // -sin/-cos, which is *towards* the centre — so the backrest sat between the seat and the
+        // table and every chair in the building had its back to the food.
+        box(sx+Math.sin(a)*.20,y0+.70,sz+Math.cos(a)*.20,.44,.50,.10,cc,{ry:a,mode:7,round:.06,tag});
+        for(const [ox,oz] of [[-.16,-.16],[.16,-.16],[-.16,.16],[.16,.16]])
+          box(sx+ox*Math.cos(a)+oz*Math.sin(a),y0+.19,sz-ox*Math.sin(a)+oz*Math.cos(a),
+            .045,.38,.045,col.steelD,{gloss:.4});
+      };
+      // The seventy 2-/4-top seats share the streamed moulded chair already used in hospitals.
+      // Keep the twelve compact six-top seats native: the larger model would overlap at that pitch.
+      if(tag==='美食广场'&&seats!==6)
+        B.modelOr('plastic_monobloc_chair',sx,y0,sz,1.05,
+          {ry:a+Math.PI,color:cc,gloss:.18,tag},nativeChair);
+      else nativeChair();
     }
     // What is on the table. A food court where every table is bare reads as a furniture showroom,
     // and one where every table is fully laid reads as a photograph taken before opening — so
@@ -1482,6 +1490,12 @@ const Mall = Lazy('Mall', () => {
     // Round shapes and furniture in the shop's own frame, so a shelf of jars or a table of four
     // reads the same whichever of the four walls the tenant is on.
     const api={at,dim,put,rect,th,y0,yaw:S.yaw,tag,acc,f,len,
+      // Generated tenant fixtures use the same local (a,b,y) frame as every authored helper.
+      // Only their visible mesh is optional: the callback retains the tenant's exact procedural
+      // fallback, while stops and Things stay in the tenant module outside this branch.
+      modelOr:(name,a,b,y,s,o={},fallback)=>{const p=at(a,b);
+        return B.modelOr(name,p[0],y0+y,p[1],s,
+          {...o,ry:S.yaw+(o.ry||0),tag:o.tag||tag},fallback);},
       stop:(a0,a1,b0,b1)=>{const r=rect(a0,a1,b0,b1);stop(f,r[0],r[1],r[2],r[3]);},
       block:(r)=>stop(f,r[0],r[1],r[2],r[3]),
       // (a, b, y, r, h, colour, opts) and friends — depth, offset, height, then the shape's own.
@@ -2241,8 +2255,11 @@ const Mall = Lazy('Mall', () => {
         phase:i*1.7,kind:'umbrella'});
     }
     solid(UX-.58,UX+1.18,UZ-.55,UZ+.55);
-    thing('雨伞套',UX,1.62,UZ-.15,'下雨天先给雨伞套上袋子。','Bag your umbrella on rainy days.',
-      '雨伞 umbrella + 套 sleeve.',{focus:[UX,UZ+1.15],reach:1.7});
+    // The compound on the machine is still its pick tag, while the learnable headword is the
+    // existing 雨伞 entry.  Registering 雨伞套 as the headword left this rainy-day fixture outside
+    // the dictionary and could break the near-object prompt at the main entrance.
+    thing('雨伞',UX,1.62,UZ-.15,'下雨天先给雨伞套上袋子。','Bag your umbrella on rainy days.',
+      '雨伞 umbrella + 套 sleeve.',{tag:'雨伞套',focus:[UX,UZ+1.15],reach:1.7});
 
     // A compact A-frame warning appears with the wet floor. It is translucent when inactive just
     // like the event kit below, so the dry-day entrance stays uncluttered.
@@ -4515,7 +4532,7 @@ const Mall = Lazy('Mall', () => {
     for(const [tx,tz,n,r] of TABLES) {
       // Four chair colours, warm-led. The comment that used to sit here described "a warm yellow
       // with a leaf green" and the code under it passed fcTeal and fcSage — two greens a shade
-      // apart. Eighty-four chairs in one mint colour is the single loudest thing in this room and
+      // apart. Eighty-two chairs in one mint colour is the single loudest thing in this room and
       // it reads as a school canteen: a food hall gets its life from the seating being mixed,
       // because the tenants fitted it at different times and nobody ever re-chairs the whole floor.
       //

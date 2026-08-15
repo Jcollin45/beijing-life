@@ -21,8 +21,9 @@
 const Assets = (() => {
   const BASE = 'assets/models/';
 
-  // What is available, and where it lives. Poly Haven ships a .gltf, a .bin beside it and its
-  // textures in a subfolder; the loader follows the URIs rather than assuming that shape.
+  // What is available to the runtime, and where it lives. Poly Haven ships a .gltf, a .bin beside
+  // it and its textures in a subfolder; the loader follows the URIs rather than assuming that
+  // shape. Legally attributed reference sources may remain staged on disk without appearing here.
   const MANIFEST = {
     chinese_stool:            'chinese_stool/chinese_stool_1k.gltf',
     chinese_tea_table:        'chinese_tea_table/chinese_tea_table_1k.gltf',
@@ -30,6 +31,9 @@ const Assets = (() => {
     metal_stool_01:           'metal_stool_01/metal_stool_01_1k.gltf',
     folding_wooden_stool:     'folding_wooden_stool/folding_wooden_stool_1k.gltf',
     plastic_monobloc_chair:   'plastic_monobloc_chair_01/plastic_monobloc_chair_01_1k.gltf',
+    green_chair_01:           'GreenChair_01/GreenChair_01_1k.gltf',
+    classic_nightstand_01:    'ClassicNightstand_01/ClassicNightstand_01_1k.gltf',
+    arm_chair_01:             'ArmChair_01/ArmChair_01_1k.gltf',
     potted_plant_01:          'potted_plant_01/potted_plant_01_1k.gltf',
     potted_plant_02:          'potted_plant_02/potted_plant_02_1k.gltf',
     pachira:                  'pachira_aquatica_01/pachira_aquatica_01_1k.gltf',
@@ -40,7 +44,7 @@ const Assets = (() => {
     electric_stove:           'electric_stove/electric_stove_1k.gltf',
     wooden_cutting_board:     'wooden_cutting_board/wooden_cutting_board_1k.gltf',
 
-    // Not Poly Haven. These two are CC BY from Sketchfab, reworked to the same shape as
+    // Not Poly Haven. These entries are CC BY from Sketchfab, reworked to the same shape as
     // everything above — see assets/models/ATTRIBUTION.md, which carries the credit line the
     // licence requires and lists what was changed. Anything CC BY added here must go in there
     // too, or the build ships out of compliance.
@@ -51,7 +55,6 @@ const Assets = (() => {
     // The wok ships as two files, not one. Its lid is a separate mesh because the kitchen rests a
     // spatula inside the open pan, and because 做饭 will want to lift it the way `potlid` already
     // lifts the soup pot's. A single glTF would have welded it shut.
-    rice_cooker:              'RiceCooker_01/RiceCooker_01_1k.gltf',
     wok:                      'Wok_01/Wok_01_1k.gltf',
     wok_lid:                  'Wok_01_lid/Wok_01_lid_1k.gltf',
   };
@@ -97,6 +100,30 @@ const Assets = (() => {
   const matTex = {};                         // name -> GL texture, made on first use
   const matNrmImg = {}, matNrmTex = {};      // and the same for their normal maps
   const matMean = {};                        // name -> mean linear luminance, measured at load
+
+  // ImageBitmap owns decoded pixel memory outside the ordinary JavaScript heap. Once R.texture
+  // has synchronously copied those pixels into WebGL, retaining the bitmap keeps a second complete
+  // copy of the material alive for the rest of the session. The eleven eager colour/normal pairs
+  // are 16 MiB decoded even after their deliberately small 512 px repack; the seven unique
+  // textured runtime models add another 22 MiB. Close only after a successful upload, and
+  // clear the owning slot at that instant so no later code mistakes a released bitmap for retry data.
+  function releaseBitmap(owner, key) {
+    const bmp = owner[key];
+    if (!bmp) return;
+    if (typeof bmp.close === 'function') bmp.close();
+    delete owner[key];
+  }
+
+  // Static model geometry has a single authoritative GPU copy after upload. Build.model keeps
+  // only the stable uploaded descriptors plus the model bounds below, and WebGL context restore
+  // reloads the page rather than rebuilding buffers in place. Drop the parsed vertex/index copy
+  // only after every part has uploaded successfully; a thrown/partial upload must retain it so
+  // the existing retry path can register the model again.
+  function releaseStaticGeometry(model) {
+    for (const part of model && model.parts || []) {
+      part.pos = null; part.nor = null; part.uv = null; part.idx = null;
+    }
+  }
 
   // ---------------------------------------------------------------- how bright a material is
   //
@@ -155,47 +182,82 @@ const Assets = (() => {
   // eighteen files that only add up when it is too late.
   const ROOMS = {
     Diner: ['chinese_stool', 'wall_clock'],
-    // 'wok' and 'rice_cooker' added 2026-08-08. js/home-kitchen.js:311 and :360 have placed both
-    // since 2026-08-07 and neither was declared, so `Assets.get` returned nothing and
-    // js/build.js:73-75 returned null without a word. Flat 202's kitchen has been shipping with a
-    // spatula resting in mid-air over an absent wok and a lit red LED floating where the rice
-    // cooker should be, at every boot since.
-    //
-    // BOOT COST, measured rather than asserted, because this list is a contract with one:
-    //   Wok_01          40,784 B .bin +  1,396 B .gltf =  44 KB, no textures of its own
-    //   RiceCooker_01  317,940 B .bin +  5,068 B .gltf + textures = 588 KB
-    //   added total    632 KB, against 2,124 KB for the potted_plant_02 already in this row.
-    // World is in BOOT_ROOMS below, so this is fetched and decoded before the first game script
-    // runs. 632 KB is a fortieth of the 73 MB that broke the boot and about a quarter of the whole
-    // game; it is the price of the room having the two appliances it is built around.
+    // Night Market reuses Diner's boot-resident stool mesh and maps. Declaring the ownership here
+    // costs no additional fetch or residency, while retaining the market's exact native fallback.
+    NightMarket: ['chinese_stool'],
+    // The 336 KB curved chair is streamed only when the station is first entered and replaces
+    // dozens of block-built seat/back/leg primitives across the occupied rooms. `wall_clock` is
+    // already boot-loaded for Diner, so reusing it here adds no fetch while removing a ring made
+    // from dozens of micro-primitives.
+    FireStation: ['plastic_monobloc_chair', 'wall_clock'],
+    // Only the 34 standalone clinic/desk chairs use this shared moulded model. The 101 linked
+    // waiting-bank seats remain native so their authored common beam and legs are not duplicated.
+    Hospital: ['plastic_monobloc_chair'], Hospital2: ['plastic_monobloc_chair'],
+    Hospital3: ['plastic_monobloc_chair'], Hospital4: ['plastic_monobloc_chair'],
+    // Formal visitor, meeting and reading chairs on the legal floor share the existing Chinese
+    // armchair. Its workstation task chairs deliberately remain native and visually distinct.
+    Office3: ['chinese_armchair'],
+    // Seventy 2-/4-top food-court seats share the resident moulded chair; the twelve tightly
+    // pitched six-top seats remain native. Mall itself stays room-streamed rather than boot-loaded.
+    Mall: ['plastic_monobloc_chair'],
+    // B01/F1 and F2 reuse the same moulded shell for their well-spaced classroom and lecture seats.
+    // Compact waiting banks and F2's desk-integrated task chairs remain native.
+    CampusInteriorB01F1: ['plastic_monobloc_chair'],
+    CampusInteriorB01F2: ['plastic_monobloc_chair'],
+    // F7 reuses the same room-streamed Chinese chair as F9. Sixteen one-part instances replace
+    // 208 block-built chair pieces without adding another unique texture or mesh allocation.
+    Hotel7: ['chinese_armchair'],
+    // Eleven guest-room bedside cabinets share one compact CC0 PBR nightstand. These floors also
+    // reuse the already-proven Chinese armchair for their guest seating; lamps, shadows and
+    // interactions stay native.
+    Hotel5: ['classic_nightstand_01', 'chinese_armchair'],
+    Hotel8: ['classic_nightstand_01', 'chinese_armchair'],
+    Hotel11: ['classic_nightstand_01', 'chinese_armchair'],
+    // Hotel F9 repeats this compact CC0 chair twenty-four times. Streaming one shared mesh and
+    // three 512 px PBR maps when the floor is first entered replaces hundreds of chair
+    // primitives without adding anything to boot; the authored procedural chair remains the
+    // final fallback if loading or upload fails.
+    Hotel9: ['chinese_armchair'],
+    // Hotel F10's thirteen club chairs share one compact CC0 armchair, while its guest-room chairs
+    // reuse the Chinese armchair. Both stream only on first arrival and retain authored fallbacks.
+    Hotel10: ['arm_chair_01', 'chinese_armchair'],
+    // Thirty-two terrace/private-dining chairs share one carved dark-wood/celadon PBR source;
+    // guest-room chairs reuse the Chinese armchair. Both stream only on first arrival and retain
+    // their authored fallbacks.
+    Hotel12: ['green_chair_01', 'chinese_armchair'],
+    // Flat 202's wok is the only downloaded kitchen appliance. Its 44 KB geometry is declared
+    // here because World is in BOOT_ROOMS. The rice cooker beside it is now code-native geometry:
+    // the separately staged licensed source stays on disk with its legal attribution, but is
+    // deliberately absent from this runtime catalogue so its real-brand texture cannot load.
     //
     // 'wok_lid' is deliberately NOT declared. It exists in the manifest above and nothing places
     // it — js/home-kitchen.js:309 says so outright, the spatula rests in the open pan — so
     // declaring it would be 76 KB of boot fetched for a mesh that is never drawn. Item 472 asserts
     // that every mesh a home module PLACES is declared, which is the right direction; the reverse
     // is not owed.
-    World: ['wok', 'rice_cooker'],
+    World: ['wok'],
     // ---- five declarations deleted 2026-08-08 (APARTMENT-TODO item 412), and this note is the
     // record of what they were, because "nothing places it" is a fact about today's scenes and a
     // scene may want one of them back tomorrow. Re-declaring is one line; the cost is below.
     //
-    // A sweep of every `model('name'` call in js/ finds exactly FOUR distinct names placed
-    // anywhere in the game — `chinese_stool` (js/diner.js:590), `wall_clock` (js/diner.js:855),
-    // `wok` (js/home-kitchen.js:317), `rice_cooker` (js/home-kitchen.js:489). Item 413 says five;
-    // it is four. Nothing else in the 18-entry manifest is placed by any scene.
+    // A sweep of every literal `model('name'` call in js/ finds exactly EIGHT non-TRELLIS names
+    // placed anywhere in the game — `chinese_stool`, `wall_clock`,
+    // `plastic_monobloc_chair`, `chinese_armchair`, `green_chair_01`,
+    // `classic_nightstand_01`, `arm_chair_01`, and `wok`. Nothing else in the catalogue is placed
+    // by a scene.
     //
     // These five were declared and never placed, so every one of them was fetched, decoded and
     // held in memory for a mesh no frame ever drew:
     //   potted_plant_02      2,124 KB  (World  — BOOT, blocked the first game script)
     //   exterior_aircon_unit 1,356 KB  (Street — BOOT)
     //   ceiling_fan            640 KB  (Diner  — BOOT)
-    //   potted_plant_01      5,612 KB  (Office — not a boot room; warm() only)
-    //   steel_frame_shelves    ~1 MB   (Shop   — not a boot room; warm() only)
+    //   potted_plant_01      5,612 KB  (Office — formerly title-background traffic)
+    //   steel_frame_shelves    ~1 MB   (Shop   — formerly title-background traffic)
     //
     // BOOT saving, which is the number that matters because `preload()` is awaited before the
     // first game script runs: eager was 5,268 KB across seven names, of which 4,120 KB (78%) was
-    // these three. It is now 1,148 KB across four names. That is a 4.6x cut to the blocking fetch,
-    // and it removes more than three times what adding the wok and the rice cooker cost.
+    // these three. Removing the branded cooker's 588 KB fetch takes it to about 560 KB across
+    // three names, a 9.4x cut to the blocking fetch.
     //
     // Street/Shop/Office keys are gone entirely rather than left empty: `ROOMS[r] || []` in
     // preload/roomReady/loadRoom already handles a room with no models, and `BOOT_ROOMS` names
@@ -216,10 +278,7 @@ const Assets = (() => {
   // Empty on purpose. No floor module places a `model()` today; this is the gate that has to exist
   // *before* one does, so that the first floor to want a mesh has somewhere to put it that is not
   // the boot list. Adding a row costs a fetch on first arrival at that floor and nothing at boot.
-  const DECK_ROOMS = {
-    // 2: ['rice_cooker'],   ← shape only. Flat 202's models live in World with the rest of the
-    //                          flat's fit-out, because deck 2 is built with the scene.
-  };
+  const DECK_ROOMS = {};
   // The rooms built during boot, whose models therefore cannot arrive late (game.js:PLACES).
   const BOOT_ROOMS = ['World', 'Street', 'Diner', 'Metro'];
 
@@ -353,7 +412,6 @@ const Assets = (() => {
   const parsed = {};
   const uploaded = {};                       // name -> [{ mesh, color }], filled on first draw
   const inflight = {};                       // room -> promise, so a prefetch is never doubled
-  let warming = null;
   let failures = [];
 
   // ---------------------------------------------------------------- glTF, the parts we use
@@ -521,6 +579,10 @@ const Assets = (() => {
       parts.push({
         pos: new Float32Array(G.pos), nor: new Float32Array(G.nor),
         uv: new Float32Array(G.uv), idx: new Uint32Array(G.idx),
+        // Keep the real submitted work beside the geometry. Static scene budgets cannot infer a
+        // downloaded mesh's cost from its generated name, and treating every glTF part as a
+        // 36-index box would let a high-poly replacement pass unnoticed.
+        indexCount: G.idx.length,
         color: [bc[0], bc[1], bc[2]],
         uri: imgUri(pbr && pbr.baseColorTexture), img: null, tex: null,
         nrmUri: imgUri(m && m.normalTexture), nrmImg: null, nrm: null,
@@ -573,12 +635,13 @@ const Assets = (() => {
   function rigCpuBytes(r) {
     if (!r) return 0;
     let bytes=0;
-    const arrays=new Set(), bitmaps=new Set();
+    const arrays=new Set(), bitmaps=new Set(), blobs=new Set();
     const addArray=a=>{ if(a&&ArrayBuffer.isView(a)&&!arrays.has(a)){arrays.add(a);bytes+=a.byteLength;} };
     const addBitmap=b=>{
       if(!b||bitmaps.has(b)) return;
       bitmaps.add(b); bytes+=Math.max(0,(Number(b.width)||0)*(Number(b.height)||0)*4);
     };
+    const addBlob=b=>{if(b&&typeof b.size==='number'&&!blobs.has(b)){blobs.add(b);bytes+=b.size;}};
     addArray(r.parent); addArray(r._out);
     for(const a of r.local||[]) addArray(a);
     for(const a of r.ibm||[]) addArray(a);
@@ -587,6 +650,7 @@ const Assets = (() => {
       addArray(p.pos); addArray(p.nor); addArray(p.uv); addArray(p.joint);
       addArray(p.weight); addArray(p.idx); addBitmap(p.img);
     }
+    if(r.imageBlobs)for(const blob of r.imageBlobs.values())addBlob(blob);
     return bytes;
   }
 
@@ -625,10 +689,18 @@ const Assets = (() => {
       p.img=p.tex=null; p.pos=p.nor=p.uv=p.joint=p.weight=p.idx=null;
     }
     if(r.textureByImage) r.textureByImage.clear();
+    if(r.imageBlobs)r.imageBlobs.clear();
+    if(r.previewImageInfo)r.previewImageInfo.clear();
+    if(r.previewDemandByLod)r.previewDemandByLod.clear();
+    r.previewCancelled=true;
+    if(r.previewInflight)r.previewInflight.clear();
+    if(r.previewRetryAt)r.previewRetryAt.clear();
     if(r.meshIds) r.meshIds.clear();
     r.parts=[]; r.joints=[]; r.parent=null; r.local=[]; r.ibm=[]; r.names=[];
     r.skins=[]; r.dropped=[]; r.lods=[]; r.axis=null;
-    r.textureByImage=null; r.meshIds=null;
+    r.textureByImage=null; r.meshIds=null;r.imageBlobs=null;r.previewImageInfo=null;
+    r.previewDemandByLod=null;
+    r.previewInflight=r.previewRetryAt=null;
     r._world=r._out=r._zones=r._roles=r._order=null;
   }
 
@@ -648,6 +720,13 @@ const Assets = (() => {
     }
     if (!json) throw new Error('glb has no json chunk');
     return { json, bin };
+  }
+
+  function previewMipBytes(source){
+    let w=Math.max(1,Number(source&&source.width)||0)|0,
+      h=Math.max(1,Number(source&&source.height)||0)|0,bytes=0;
+    for(;;){bytes+=w*h*4;if(w===1&&h===1)return bytes;
+      w=Math.max(1,w>>1);h=Math.max(1,h>>1);}
   }
 
   // A 4x4 identity, fresh each call: these end up stored per joint and must not alias.
@@ -886,11 +965,17 @@ const Assets = (() => {
     if (!parts.length) throw new Error('no skinned primitives survived skin selection');
 
     const bitmaps = new Map();
+    // ImageBitmaps still close immediately after WebGL upload. An opt-in WebGPU session retains
+    // only the compressed source Blob so an owner evicted from the smaller comparison cache can
+    // be decoded again without refetching the GLB or keeping decoded pixels alive.
+    const keepImageBlobs=typeof WebGPUPreview!=='undefined'&&WebGPUPreview.requested;
+    const imageBlobs=keepImageBlobs?new Map():null;
     const dir = RIGBASE + path.replace(/[^/]+$/, '');
     await Promise.all([...blobs].map(async ([ix, b]) => {
       try {
         const blob = typeof b === 'string'
           ? await (await fetch(dir + b, { cache: 'no-store', signal })).blob() : b;
+        if(imageBlobs)imageBlobs.set(ix,blob);
         bitmaps.set(ix, await createImageBitmap(blob));
       } catch (e) { if(!(signal&&signal.aborted)) { /* a character without its map still has a body */ } }
     }));
@@ -899,8 +984,13 @@ const Assets = (() => {
       throw abortError();
     }
     for (const p of parts) if (p.imgIx !== null) p.img = bitmaps.get(p.imgIx) || null;
+    const previewImageInfo=keepImageBlobs?new Map():null;
+    if(previewImageInfo)for(const p of parts)
+      if(p.imgIx!==null&&p.img&&!previewImageInfo.has(p.imgIx))
+        previewImageInfo.set(p.imgIx,previewMipBytes(p.img));
 
-    const built = { name, parts, joints, parent, local, ibm, bones: joints.length,
+    const built = { name, parts, joints, parent, local, ibm, bones: joints.length,imageBlobs,
+                    previewImageInfo,previewDemandByLod:keepImageBlobs?new Map():null,
                     lods: [...new Set(parts.map(p => p.lod))].sort((a, b) => a - b),
                     // Which local axis bends a limb on this skeleton. A property of the asset,
                     // not of the poses: a downloaded rig's bones point wherever the artist left
@@ -950,9 +1040,236 @@ const Assets = (() => {
     return built;
   }
 
+  // ---------------------------------------------------------------- static-model residency ledger
+  // This is accounting only, not an eviction policy. Static props live in `parsed` for the life of
+  // the page today, but keeping their real ownership and byte costs in one report makes a future
+  // room/deck release policy measurable before it becomes destructive. Rigs and tiling materials
+  // have separate stores/reports and are deliberately absent here.
+  function modelCpuStats(model) {
+    let typedArrayBytes = 0, decodedBitmapBytes = 0;
+    const arrays = new Set(), bitmaps = new Set();
+    const addArray = value => {
+      if (!value || !ArrayBuffer.isView(value) || arrays.has(value)) return;
+      arrays.add(value); typedArrayBytes += value.byteLength;
+    };
+    const addBitmap = value => {
+      if (!value || bitmaps.has(value)) return;
+      bitmaps.add(value);
+      decodedBitmapBytes += Math.max(0,
+        (Number(value.width) || 0) * (Number(value.height) || 0) * 4);
+    };
+    for (const part of model && model.parts || []) {
+      addArray(part.pos); addArray(part.nor); addArray(part.uv); addArray(part.idx);
+      addBitmap(part.img); addBitmap(part.nrmImg); addBitmap(part.armImg);
+    }
+    return { typedArrayBytes, decodedBitmapBytes };
+  }
+
+  function modelGpuStats(parts) {
+    let meshBytes = 0, textureBytes = 0;
+    const meshes = new Set(), textures = new Set();
+    if (typeof R === 'undefined') return { meshBytes, textureBytes };
+    for (const part of parts || []) {
+      if (part.mesh && !meshes.has(part.mesh)) {
+        meshes.add(part.mesh);
+        meshBytes += typeof R.meshBytes === 'function'
+          ? R.meshBytes(part.mesh) : (part.meshBytes || 0);
+      }
+      for (const texture of [part.tex, part.nrm]) {
+        if (!texture || textures.has(texture)) continue;
+        textures.add(texture);
+        textureBytes += typeof R.textureBytes === 'function'
+          ? R.textureBytes(texture) : (part.textureBytes || 0);
+      }
+    }
+    return { meshBytes, textureBytes };
+  }
+
+  function modelOwnership(name) {
+    const rooms = Object.keys(ROOMS).filter(room => (ROOMS[room] || []).includes(name)).sort();
+    const decks = Object.keys(DECK_ROOMS).filter(deck => (DECK_ROOMS[deck] || []).includes(name))
+      .map(deck => Number.isFinite(Number(deck)) ? Number(deck) : deck)
+      .sort((a, b) => typeof a === 'number' && typeof b === 'number'
+        ? a - b : String(a).localeCompare(String(b)));
+    const bootRooms = rooms.filter(room => BOOT_ROOMS.includes(room));
+    return { rooms, decks, bootRooms };
+  }
+
+  function resourceStats() {
+    const models = Object.keys(MANIFEST).sort().map(name => {
+      const model = parsed[name] || null, uploadedParts = uploaded[name] || null;
+      const cpu = modelCpuStats(model), gpu = modelGpuStats(uploadedParts);
+      const partCount = model ? model.parts.length : 0;
+      const indexCount = model ? model.parts.reduce((sum, part) =>
+        sum + (part.indexCount === undefined ? (part.idx ? part.idx.length : 0) : part.indexCount), 0) : 0;
+      return {
+        name, manifestPath: MANIFEST[name], parsed: !!model, uploaded: !!uploadedParts,
+        partCount, indexCount,
+        cpuTypedArrayBytes: cpu.typedArrayBytes,
+        decodedBitmapBytes: cpu.decodedBitmapBytes,
+        cpuBytes: cpu.typedArrayBytes + cpu.decodedBitmapBytes,
+        gpuMeshBytes: gpu.meshBytes, gpuTextureBytes: gpu.textureBytes,
+        gpuBytes: gpu.meshBytes + gpu.textureBytes,
+        ownership: modelOwnership(name),
+      };
+    });
+    const totals = {
+      models: models.length,
+      parsedModels: models.filter(row => row.parsed).length,
+      uploadedModels: models.filter(row => row.uploaded).length,
+      partCount: 0, indexCount: 0,
+      cpuTypedArrayBytes: 0, decodedBitmapBytes: 0, cpuBytes: 0,
+      gpuMeshBytes: 0, gpuTextureBytes: 0, gpuBytes: 0,
+    };
+    for (const row of models) for (const key of [
+      'partCount', 'indexCount', 'cpuTypedArrayBytes', 'decodedBitmapBytes', 'cpuBytes',
+      'gpuMeshBytes', 'gpuTextureBytes', 'gpuBytes',
+    ]) totals[key] += row[key];
+    return { totals, models };
+  }
+
+  // ---- how much of a frame may be spent handing meshes and textures to WebGL.
+  //
+  // A rig tier used to be uploaded entirely inside whichever frame first needed the person: one
+  // R.skinMesh per part plus a texImage2D and a generateMipmap per image (gl.js:3333), all
+  // synchronous. The hitch log has caught that directly — `wallMs 86, tex 6, mesh 6` on a cold
+  // walk into the mall — and it is the same shape as the settle hitches STATE.md is hunting.
+  //
+  // ponytail: the frame boundary is inferred from a 2 ms gap between uploads. This file has no
+  // frame counter and deliberately no dependencies (see the header), and the loop runs at vsync,
+  // so consecutive frames are ~16 ms apart while parts within one frame are microseconds apart.
+  // Swap in a real frame number if one ever reaches here.
+  const UPLOAD_MS = 4;
+  let uploadSpent = 0, uploadLast = 0;
+  const uploadClock = () => typeof performance !== 'undefined' ? performance.now() : Date.now();
+  function uploadBudgetLeft() {
+    const t = uploadClock();
+    if (t - uploadLast > 2) uploadSpent = 0;
+    uploadLast = t;
+    return uploadSpent < UPLOAD_MS;
+  }
+  function uploadCharge(t0) {
+    const t = uploadClock();
+    uploadSpent += t - t0;
+    uploadLast = t;
+  }
+
+  const PREVIEW_RETRY_MS=1000;
+  const rigPreviewOwner=r=>String(r&&r.name||'')+'@'+String(r&&r.generation||0);
+  function previewDemandForRig(r,lod){
+    if(!r||!r.previewImageInfo||!r.previewDemandByLod)return null;lod=Number(lod);
+    const cache=r.previewDemandByLod||(r.previewDemandByLod=new Map());
+    if(cache.has(lod))return cache.get(lod);
+    let meshBytes=0,supported=true,partCount=0;
+    const textures=[],seenImages=new Set();
+    for(const p of r.parts||[]){
+      if((p.lod||0)!==lod)continue;partCount++;
+      let maxIndex=0;
+      for(let i=0;i<p.idx.length;i++)if(p.idx[i]>maxIndex)maxIndex=p.idx[i];
+      meshBytes+=(p.pos.length+p.nor.length+p.uv.length+p.joint.length+p.weight.length)*4+
+        p.idx.length*(maxIndex>65535?4:2);
+      const id=p.imgIx;
+      if(id===null||id===undefined||!r.previewImageInfo||!r.previewImageInfo.has(id)){
+        supported=false;continue;
+      }
+      if(!seenImages.has(id)){
+        seenImages.add(id);textures.push({id,bytes:r.previewImageInfo.get(id)});
+      }
+    }
+    if(!partCount||partCount>9||!meshBytes||!textures.length||textures.length>9)supported=false;
+    const demand={owner:rigPreviewOwner(r),lod,meshBytes,textures,supported};
+    cache.set(lod,demand);return demand;
+  }
+  function rigPreviewManifest(r,lod,sources){
+    if(!r||!Array.isArray(r.parts))return null;
+    const meshes=[],textures=[],seenTextures=new Set();
+    for(let i=0;i<r.parts.length;i++){
+      const p=r.parts[i];
+      if((p.lod||0)!==lod)continue;
+      meshes.push({key:'rig:'+r.name+':lod'+lod+'#'+i,
+        pos:p.pos,nor:p.nor,uv:p.uv,joint:p.joint,weight:p.weight,idx:p.idx});
+      if(!p.tex)return null;
+      if(seenTextures.has(p.tex))continue;
+      const imageKey=p.imgIx===null||p.imgIx===undefined?'part'+i:p.imgIx;
+      const source=sources&&sources.get(imageKey)||p.img;
+      if(!source)return null;
+      seenTextures.add(p.tex);textures.push({key:p.tex,id:imageKey,source});
+    }
+    return meshes.length&&textures.length?{meshes,textures}:null;
+  }
+  function captureRigPreview(r,lod,sources){
+    if(!r||r.previewCancelled||typeof R==='undefined'||
+        typeof R.captureSkinBundle!=='function')return false;
+    if(typeof R.skinBundleState==='function'){
+      const state=R.skinBundleState(rigPreviewOwner(r),lod);
+      if(state==='ready')return true;
+      // A decode can finish after its rig has left the current visible working set. That is a
+      // deferral, not a failed upload: do not leave the one-second failure backoff behind or a
+      // character that immediately re-enters view flashes through WebGL for no useful reason.
+      if(state!=='missing'){
+        if(state==='deferred'&&r.previewRetryAt)r.previewRetryAt.delete(lod);
+        return false;
+      }
+    }
+    const manifest=rigPreviewManifest(r,lod,sources);
+    if(!manifest)return false;
+    const ok=!!R.captureSkinBundle(rigPreviewOwner(r),lod,manifest);
+    const retries=r.previewRetryAt||(r.previewRetryAt=new Map());
+    if(ok)retries.delete(lod);else retries.set(lod,rigNow()+PREVIEW_RETRY_MS);
+    return ok;
+  }
+  function ensureRigPreview(r,lod){
+    if(!r||r.previewCancelled||!r.imageBlobs||typeof R==='undefined'||
+        typeof R.skinBundleState!=='function'||typeof createImageBitmap!=='function')return false;
+    const owner=rigPreviewOwner(r),state=R.skinBundleState(owner,lod);
+    if(state==='ready')return true;
+    if(state!=='missing')return false;
+    const retries=r.previewRetryAt||(r.previewRetryAt=new Map());
+    if((retries.get(lod)||0)>rigNow())return false;
+    const inflight=r.previewInflight||(r.previewInflight=new Map());
+    if(inflight.has(lod))return false;
+    const generation=r.generation;
+    retries.set(lod,rigNow()+PREVIEW_RETRY_MS);
+    const task=(async()=>{
+      const decoded=new Map();
+      try{
+        const keys=[];
+        for(let i=0;i<r.parts.length;i++){
+          const p=r.parts[i];if((p.lod||0)!==lod||!p.tex)continue;
+          const key=p.imgIx===null||p.imgIx===undefined?'part'+i:p.imgIx;
+          if(!decoded.has(key)&&!keys.includes(key))keys.push(key);
+        }
+        let decodeError=null;
+        await Promise.all(keys.map(async key=>{
+          try{
+            const blob=r.imageBlobs&&r.imageBlobs.get(key);
+            if(!blob)throw new Error('skin preview source unavailable');
+            decoded.set(key,await createImageBitmap(blob));
+          }catch(err){if(!decodeError)decodeError=err;}
+        }));
+        // Await every sibling even after one fails: each successful bitmap must reach the finally
+        // below, including a decode that completed later than the first rejection.
+        if(decodeError)throw decodeError;
+        if(r.previewCancelled||rigs[r.name]!==r||r.generation!==generation)return false;
+        return captureRigPreview(r,lod,decoded);
+      }catch(_){return false;}
+      finally{
+        for(const bitmap of decoded.values())if(bitmap&&typeof bitmap.close==='function')
+          {try{bitmap.close();}catch(_) {}}
+      }
+    })();
+    inflight.set(lod,task);
+    task.finally(()=>{if(r.previewInflight&&r.previewInflight.get(lod)===task)
+      r.previewInflight.delete(lod);});
+    return false;
+  }
+
   function disposeRig(name) {
     const r=rigs[name];
     if(!r || rigPins.has(name) || rigInflight[name]) return false;
+    r.previewCancelled=true;
+    if(typeof R!=='undefined'&&typeof R.releaseSkinBundle==='function')
+      {try{R.releaseSkinBundle(rigPreviewOwner(r));}catch(_) {}}
     const meshes=new Set(), textures=new Set(), closed=new Set();
     if(r.meshIds) for(const id of r.meshIds) if(id) meshes.add(id);
     for(const tier of Object.values(r.uploadedByLod||{})) for(const p of tier||[]) {
@@ -1025,8 +1342,8 @@ const Assets = (() => {
     // falls back to whatever the scene said to draw instead. A missing chair should not be a
     // black screen.
     async preload(names, mats) {
-      // Only what the rooms built during boot need. Everything else arrives behind the title
-      // screen via warm() below, which is why this stays small however large the library gets.
+      // Only what the rooms built during boot need. Every other room loads through setPlace's
+      // demand gate, which keeps this blocking list small however large the catalogue gets.
       const want = names ||
         [...new Set(BOOT_ROOMS.flatMap(r => ROOMS[r] || []))].filter(n => MANIFEST[n]);
       failures = [];
@@ -1061,12 +1378,23 @@ const Assets = (() => {
       // The shader uses this measured mean to add surface variation without changing the
       // brightness the scene authored. The old fixed 0.22 reference made pale photographs such
       // as metal and tile lift already-white interiors by more than fourfold.
-      return (matTex[name] = R.texture(matImg[name], { mean: matMean[name] || 0.22 }));
+      const texture = R.texture(matImg[name], {
+        mean: matMean[name] || 0.22,
+        // The opt-in WebGPU comparison mirrors this colour sheet; materialNormal below publishes
+        // the matching NormalGL sheet so mode 0 can retain the same three-axis whiteout relief.
+        preview:'tiling',
+      });
+      matTex[name] = texture;
+      releaseBitmap(matImg, name);
+      return texture;
     },
     materialNormal(name) {
       if (matNrmTex[name]) return matNrmTex[name];
       if (!matNrmImg[name]) return null;
-      return (matNrmTex[name] = R.texture(matNrmImg[name]));
+      const texture = R.texture(matNrmImg[name], { preview:'tiling-normal' });
+      matNrmTex[name] = texture;
+      releaseBitmap(matNrmImg, name);
+      return texture;
     },
     materials: () => Object.keys(MATERIALS),
     // The measured mean linear luminance of a material's colour map, and what the shader's
@@ -1083,6 +1411,7 @@ const Assets = (() => {
     get: name => parsed[name] || null,
     failures: () => failures.slice(),
     names: () => Object.keys(MANIFEST),
+    resourceStats,
 
     // ---------------------------------------------------------------- rigs
     //
@@ -1119,6 +1448,9 @@ const Assets = (() => {
       return true;
     },
     rig: name => rigs[name] || null,
+    rigPreviewDemand(name,lod) {
+      const r=rigs[name];return r?previewDemandForRig(r,lod):null;
+    },
     rigNames: () => Object.keys(RIGS),
     touchRig(name, frame) {
       const r=rigs[name]; if(!r) return false;
@@ -1138,7 +1470,11 @@ const Assets = (() => {
 
     // Hand a rig's geometry to WebGL. Separate from upload() because a skinned mesh carries two
     // extra attributes and must not be merged with anything.
-    uploadRig(name, wantedLod = 0) {
+    // `opt.whole` ignores the frame budget and uploads the tier in one call. It exists for the
+    // offline harnesses, which ask for three tiers inside one page evaluation and are measuring
+    // identity and materials rather than frame pacing. Nothing in the game may pass it: doing so
+    // is exactly the burst this budget exists to break up.
+    uploadRig(name, wantedLod = 0, opt) {
       const r = rigs[name];
       if (!r) return null;
       const lods = r.lods && r.lods.length ? r.lods : [0];
@@ -1148,24 +1484,41 @@ const Assets = (() => {
       for (const candidate of lods)
         if (Math.abs(candidate - wantedLod) < Math.abs(lod - wantedLod)) lod = candidate;
       const cached = r.uploadedByLod || (r.uploadedByLod = {});
-      if (cached[lod]) return cached[lod];
-      const out = [];
+      if (cached[lod]) {
+        // WebGL owns this tier for the rig's lifetime. WebGPU's bounded preview cache may have
+        // evicted it, so rehydrate that exact generation/LOD from retained compressed sources.
+        if(r.imageBlobs)ensureRigPreview(r,lod);
+        return cached[lod];
+      }
+      // Spread across frames on the UPLOAD_MS budget above. Until the tier is whole this returns
+      // null, which `draw` at rig.js:892 already handles by falling back to the procedural figure
+      // — "a correct picture of a person" — rather than by drawing half a body.
+      const partial = r.uploadPartial || (r.uploadPartial = {});
+      const done = r.uploadDone || (r.uploadDone = {});
+      const out = partial[lod] || (partial[lod] = []);
+      const seen = done[lod] || (done[lod] = new Set());
       // One GPU texture per source image, not per part. A ten-part avatar whose two eyes share a
       // material would otherwise upload that sheet twice, and Soldier's body and visor materials
       // both name the same diffuse map.
       // Shared across all tiers: three meshes, one identity texture in GPU memory.
       const byImage = r.textureByImage || (r.textureByImage = new Map());
-      r.parts.forEach((p, i) => {
-        if ((p.lod || 0) !== lod) return;
+      for (let i = 0; i < r.parts.length; i++) {
+        const p = r.parts[i];
+        if ((p.lod || 0) !== lod || seen.has(i)) continue;
+        if (!(opt && opt.whole) && !uploadBudgetLeft()) return null;
+        const spentFrom = uploadClock();
         const id = 'rig:' + name + ':lod' + lod + '#' + i;
-        const mesh=R.skinMesh(id, p.pos, p.nor, p.uv, p.joint, p.weight, p.idx);
+        const mesh=R.skinMesh(id,p.pos,p.nor,p.uv,p.joint,p.weight,p.idx,
+          r.imageBlobs?{preview:'bundle'}:undefined);
         (r.meshIds||(r.meshIds=new Set())).add(id);
         // Clamped: a character's UVs are one fixed layout on one sheet, and wrapping would drag
         // a neighbouring island's pixels across a seam in the middle of a face.
         const key = p.imgIx === null || p.imgIx === undefined ? 'part' + i : p.imgIx;
         if (!p.tex && byImage.has(key)) p.tex = byImage.get(key);
         else if (p.img && !p.tex) {
-          byImage.set(key, R.texture(p.img, { clamp: true })); p.tex = byImage.get(key);
+          byImage.set(key,R.texture(p.img,r.imageBlobs
+            ?{clamp:true,preview:'skin-bundle'}:{clamp:true}));
+          p.tex = byImage.get(key);
         }
         // Imported people need the same surface vocabulary as the procedural cast. Skin uses the
         // shader's wrapped, per-channel light transport (mode 19); wet eyes get a tight highlight;
@@ -1185,10 +1538,19 @@ const Assets = (() => {
           alphaCutoff: p.alphaCutoff || 0,
           doubleSided: !!(p.doubleSided && p.alphaCutoff > 0),
           gloss, mode: skin ? 19 : 0 });
-      });
+        seen.add(i);
+        uploadCharge(spentFrom);
+      }
       // Every tier has the same material parts, so its first upload has uploaded every source
       // image.  Share those handles with the other tiers and release the decoded CPU bitmaps;
       // otherwise visiting a busy floor can retain tens of megabytes per resident twice.
+      // Publish the complete WebGL tier first, then offer the corresponding WebGPU owner/LOD as
+      // one transaction while the decoded images are still live. Offscreen preloads are simply
+      // ignored by the preview; a later visible cached-tier draw rehydrates from imageBlobs.
+      if (lod === 0) r.uploaded = out;
+      delete partial[lod]; delete done[lod];
+      cached[lod] = out;
+      if(r.imageBlobs)captureRigPreview(r,lod,null);
       const closed = new Set();
       r.parts.forEach((p, i) => {
         const key = p.imgIx === null || p.imgIx === undefined ? 'part' + i : p.imgIx;
@@ -1198,9 +1560,7 @@ const Assets = (() => {
         }
         p.img = null;
       });
-      // Preserve the old diagnostic field for tools that inspect the default close tier.
-      if (lod === 0) r.uploaded = out;
-      return (cached[lod] = out);
+      return out;
     },
 
     // ---------------------------------------------------------------- rooms, after boot
@@ -1233,31 +1593,11 @@ const Assets = (() => {
         .catch(e => { failures.push(x + ': ' + e.message); }))).then(() => {}));
     },
 
-    // What some room actually asks for, fetched quietly in the background once the game is
-    // running. NOT the whole manifest — that was 18 meshes and about 15 MB of background traffic
-    // for a game in which four names are ever placed (APARTMENT-TODO item 413).
-    //
-    // The manifest deliberately keeps all 18. It is the catalogue of what is staged on disk, and
-    // deleting a name from it does not merely stop a fetch: `Assets.get` then returns nothing and
-    // js/build.js:73-75 returns null *without a word*, which is precisely the silent failure that
-    // left the kitchen with a floating spatula for a day (item 411). A name nobody declares now
-    // costs nothing; a name deleted from the catalogue costs the next author an afternoon.
-    //
-    // So the cost lives where the cost is: this list is the union of ROOMS and DECK_ROOMS, i.e.
-    // everything some room has said it wants. Four names, ~1.1 MB, down from 18 and ~15 MB.
-    //
-    // This is what makes the gate in setPlace a formality rather than a stall: nobody reaches a
-    // second room in the time the title screen is up, so in practice a room's models are always
-    // there before anyone opens its door. The gate stays because "in practice" is not "always".
-    warm() {
-      if (warming) return warming;
-      const declared = new Set([
-        ...Object.values(ROOMS).flat(),
-        ...Object.values(DECK_ROOMS).flat(),
-      ]);
-      const want = [...declared].filter(n => MANIFEST[n] && !parsed[n]);
-      return (warming = Promise.all(want.map(n => one(n, MANIFEST[n])
-        .catch(e => { failures.push(n + ': ' + e.message); }))).then(() => {}));
+    // Compatibility prefetch, deliberately scoped to one Lazy room key. A no-argument call is a
+    // no-op: expanding every ROOMS/DECK_ROOMS declaration here made the title screen download and
+    // retain the whole catalogue. Normal travel uses the same loadRoom path through setPlace.
+    warm(room) {
+      return room === undefined ? Promise.resolve() : this.loadRoom(room);
     },
 
     // Hands the geometry to WebGL, once, on first use. Registration is deferred because
@@ -1274,16 +1614,35 @@ const Assets = (() => {
         // one would drag a neighbouring island's pixels across a seam.
         const armOpt = { arm: p.armImg, armAO: p.armAO,
           roughness: p.roughness, metallic: p.metallic };
-        // Prefer the normal texture as the metadata carrier. The wall clock's glass is the one
-        // imported material with ARM but no normal, so its albedo carries the same metadata.
-        if (p.img && !p.tex) p.tex = R.texture(p.img,
-          { clamp: true, ...(p.nrmImg ? {} : armOpt) });
+        // Prefer the normal texture as the metadata carrier. A future base-textured material with
+        // ARM but no normal can attach that private companion to its albedo in WebGL; textureless
+        // constant-colour materials (including the wall-clock glass) have no carrier to upload.
+        if (p.img && !p.tex) {
+          p.tex = R.texture(p.img, { clamp: true, preview:'albedo',
+            ...(p.nrmImg ? {} : armOpt) });
+        }
+        // Also covers a successful earlier/partial upload whose decoded source survived an
+        // interrupted caller. Once the handle exists the GPU copy is authoritative.
+        if (p.tex) releaseBitmap(p, 'img');
+        if (p.tex && !p.nrmImg) releaseBitmap(p, 'armImg');
         if (p.nrmImg && !p.nrm) p.nrm = R.texture(p.nrmImg, {
-          clamp: true, ...armOpt,
+          clamp: true, preview:'pbr', ...armOpt,
         });
-        out.push({ mesh: id, color: p.color, tex: p.tex, nrm: p.nrm });
+        if (p.nrm) {
+          releaseBitmap(p, 'nrmImg');
+          releaseBitmap(p, 'armImg');
+        }
+        // A textureless material cannot use a packed surface map in the current shader. Do not
+        // retain a decoded image forever merely because there was no carrier to upload it with.
+        if (!p.img && !p.nrmImg) releaseBitmap(p, 'armImg');
+        out.push({ mesh: id, color: p.color, tex: p.tex, nrm: p.nrm,
+          indexCount: p.indexCount || p.idx.length });
       });
-      return (uploaded[name] = out);
+      // Publish the complete descriptor set before releasing its redundant CPU source. Nothing
+      // is released on the throwing path above, so a partial texture or mesh upload can retry.
+      uploaded[name] = out;
+      releaseStaticGeometry(m);
+      return out;
     },
   };
 })();

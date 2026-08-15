@@ -5,16 +5,13 @@
 // may be written in floor-relative y — a room that ignores A.y0 gets built in the lobby, and that
 // is the single most common failure in this codebase.
 //
-// WHAT THE SHELL GIVES DECK 10, WHICH IS NOTHING.
+// WHAT THE SHARED SHELL GIVES DECK 10.
 //
-// `buildShell` in js/world.js pours a floor, a ceiling and four walls for deck 0 and deck 2 and
-// for no other deck; `buildShafts` runs its landing loop as `for (const f of [0, 2])`, so decks
-// 3..12 get no doors, no surround, no indicator, no call panel and no shaft walls either. That is
-// the Tower Surgeon's to generalise (see the tickets at the foot of this file). Until it lands,
-// this file is the whole envelope of floor 10: slab, soffit, four perimeter walls, the wall
-// between the landing and the flat, and a box around the two shafts. All of it is built so that a
-// per-deck landing can arrive later without touching a plane this file owns — see `the lift
-// landing` below, which deliberately leaves the door opening and every shell landing plane clear.
+// `buildShell` still leaves upper-deck slabs, ceilings and perimeter walls to their floor modules,
+// so this file owns that envelope and the wall between landing and flat. `buildShafts`, however,
+// now supplies both shafts, moving landing leaves, call panel and arrived-car zone on every served
+// deck. The protection boarding below is floor-specific dressing placed in front of that working
+// hardware, with the real 0.80 m opening left clear.
 //
 // WHY THIS FLOOR LOOKS THE WAY IT DOES.
 //
@@ -59,8 +56,8 @@ HomeF10.RENO_HOURS = {
 
 // Is the crew drilling right now? `minutes` is minutes-of-day and `day` the game day, both the
 // way js/game.js keeps them. Returns 0 when the site is quiet and 1 when it is not — F9 and F11
-// read this for their own notices, and it is the one line js/game.js needs to make the drill
-// audible from the floors either side (see the ticket at the foot of this file).
+// read this for their own notices, and the home's slow fixture tick uses the same answer to carry
+// the drill to the floors either side.
 //
 // Cheap on purpose: two comparisons and no allocation, so a caller may poll it per second without
 // thinking about it. Nothing here ticks; there is no state to advance.
@@ -257,9 +254,8 @@ FlatFit['f10'] = A => {
 
   // ==================================================================== the lift landing
   //
-  // The shell builds no landing on this deck, and this file must not build one either — the doors,
-  // the surround, the indicator and the call panel are the shell's on every deck, and two sets of
-  // them would be two sheets of steel fighting for one plane.
+  // The shell builds the working landing on this deck, and this file must not build a second one —
+  // two sets of doors, surround, indicator and call panel would fight for the same plane.
   //
   // What is built here instead is the thing that genuinely belongs to floor 10 and not to the
   // shell: 电梯保护, the plywood the 物业 make you screw over the landing before a single bag of
@@ -479,9 +475,8 @@ FlatFit['f10'] = A => {
   //
   // Every collider stays exactly as it was. These are the doors that must not open.
   //
-  // The residual hazard is `pick`'s 2-D tie-break, which is item 5 in the ticket list at the foot
-  // of this file and not fixable from here: 门 is now contested across decks the same way 邻居
-  // already was. It is the shared row's price and it is the shared row's to solve.
+  // Shared selection filters candidates by deck before this tag is resolved, so identically placed
+  // doors upstairs and downstairs no longer compete for the same interaction.
   function frontDoor(cx, num, o = {}) {
     const F = d => ZN - d, W = 1.00, HT = 2.06, LW = W - .05, LH = HT - .04;
     const hinge = o.hinge === undefined ? -1 : o.hinge;
@@ -1042,11 +1037,9 @@ FlatFit['f10'] = A => {
   stop(2.48, 2.92, 2.15, 3.20);
   stop(4.90, 5.30, 2.10, 2.50);
 
-  // ---- dust in the air. Four faint slabs standing across the beam were tried here and taken out
-  // again, and the reason is worth keeping: every translucent prop in this building is drawn over
-  // every deck of it (see ticket 4 at the foot of this file), so a 1.3 m emissive haze panel on
-  // floor 10 is also a 1.3 m haze panel across floors 3 and 11. The dust is carried by the pool on
-  // the floor and by the drifts on the landing instead, both of which are opaque.
+  // ---- dust in the air. Four faint slabs standing across the beam were tried and taken out: a
+  // stack of emissive sheets flattened the room into fog and hid the very depth the low work lamp
+  // is meant to reveal. Dust stays legible in the floor pool and opaque landing drifts instead.
   //
   // What does stand in the beam is real: the flex, the tripod legs and the ladder, all of which
   // throw a hard shadow off a single low source, which is what this floor is lit for.
@@ -1156,11 +1149,10 @@ FlatFit['f10'] = A => {
 
   // ==================================================================== the crew, and the clock
   //
-  // 装修队. Every trace of a crew was already on this floor — the runner, the permit, the 500 W
-  // lamp, the scaffold, the ladder — and no crew, which made 231 draws of worksite read as an
-  // abandoned one. Two men actually standing here are lane 8's roster rows to add and mine to make
-  // room for; what belongs in a scene file is everything the two of them put down when they
-  // stopped for lunch, and that is what this is.
+  // 装修队. The runner, permit, 500 W lamp, scaffold and ladder need a human-scale break spot or
+  // the site reads abandoned. The shared cast has no permanent deck-10 figures, so this scene is
+  // staged at the moment the two workers have stepped away: jackets, boots, lunch and the radio
+  // remain without pretending static props are people.
   //
   // All of it is inside the flat, off the walking lane, and none of it is a collider except the
   // bench: a player who cannot walk through a worksite cannot see the worksite.
@@ -1226,16 +1218,16 @@ FlatFit['f10'] = A => {
     cap(KX + .44, ST + .395, KZ + .22, .006, .30, .006, C('#3f5f9b'),
         { rz: PI / 2, ry: .8, gloss: .10 });
     ball(KX + .40, ST + .40, KZ + .30, .028, .026, .028, C('#c7c1ae'), { gloss: .16 });
-    thing('工人', KX, Y + .62, KZ + .34, '装修队的师傅在这儿吃饭。',
-      'The renovation crew eat their lunch here.',
+    thing('工人', KX, Y + .62, KZ + .34, '装修队的师傅刚离开休息的地方。',
+      'The renovation crew have just stepped away from their break spot.',
       '工人 gōngrén — a worker. 师傅 shīfu is what you actually call one to his face.',
       { focus: [KX, KZ + .95], reach: 2.0, tag: '工人' });
   })();
 
   // ---- 电钻 the drill, on the floor by the chase it cut, with its case open beside it. This is
-  // the object the whole floor is heard as: `HomeF10.noiseAt(minutes, day)` at the top of this file
-  // answers whether it is running, F9 and F11 render their notices off the same call, and one line
-  // in js/game.js's fixture block turns it into a sound (ticket 6 at the foot of this file).
+  // the object the whole floor is heard as: `HomeF10.noiseAt(minutes, day)` at the top answers
+  // whether it is running, F9 and F11 render their notices from the same schedule, and the home's
+  // slow fixture tick carries the sound to the adjacent floors.
   (function drill() {
     const RX = -4.10, RZ = -0.90;
     box(RX, ST + .075, RZ, .21, .15, .30, C('#2f3236'), { hard: true, gloss: .30, ry: .34 });
@@ -1338,7 +1330,10 @@ FlatFit['f10'] = A => {
   // never walk through it. `setFloor(10)` refuses this deck outright if none of these is here.
   A.zone({ id: 'f10corr', x0: X0, x1: X1, z0: ZM, z1: ZN, light: [0.60, Y + H - .34, 4.10] });
   A.zone({ id: 'f10', x0: X0, x1: X1, z0: ZS, z1: ZM, light: [LX + .20, Y + LY + .10, LZ + .20] });
-  A.zone({ id: 'f10door', x0: DL, x1: DR, z0: ZM - .70, z1: ZM + .70,
+  // Extend the bridge into both neighbours far enough to overlap their radius-inset interiors at
+  // r=.40. The former ±.70 bounds connected at the shipped r=.30 but left a 10 cm zone gap under
+  // the stricter comfort envelope, making the open construction doorway a logical wall.
+  A.zone({ id: 'f10door', x0: DL, x1: DR, z0: ZM - .90, z1: ZM + .90,
            light: [DX, Y + H - .40, ZM] });
   // The room box `R.setRoom` measures ambient and the camera's wall clearance against. Left alone
   // it would be the flat's on deck 2 — 5.70 — which is twenty-two metres below this floor, and the
@@ -1389,12 +1384,9 @@ FlatFit['f10'] = A => {
      '许可证 is a permit: 许可 to permit + 证 certificate.', NX, 3.85, 1.8);
   TH('通知', NX + .52, Y + 1.50, PN + .04, '邻居贴了一张通知。', 'A neighbour has put up a notice.',
      '通 to pass through + 知 to know: to inform.', 5.50, 3.90, 1.9);
-  // 门牌 rather than 邻居. `pick` resolves a tag to the nearest *thing* wearing it and the
-  // comparison is 2-D only, so with twelve decks stacked on one footprint every floor that
-  // teaches 邻居 at its own neighbours' doors is contesting the same three square metres —
-  // measured, there are three other 邻居 within a metre of this spot in x/z, on decks 2, 7
-  // and 9. The plate screwed to the leaf is a word this floor can own outright, and it is the
-  // one that actually says which flat you are looking at.
+  // 门牌 rather than 邻居: the plate is the object that actually says which flat this is. Shared
+  // selection now filters things by deck, so this wording is a content choice rather than an old
+  // cross-storey picking workaround.
   TH('楼梯', X1 - .10, Y + 1.10, SZ, '楼梯在东头，装修的东西都从这儿搬上来。',
      'The stairs are at the east end; everything for the works comes up them.',
      '楼 storey + 梯 ladder. The lift is boarded, so the crew use these.', 5.30, 4.30, 2.1);
@@ -1414,10 +1406,8 @@ FlatFit['f10'] = A => {
   const ROW = ['你们晚上八点还在敲，楼下真没法睡觉！',
                '师傅，说好了六点收工的，怎么又拖到现在？',
                '我上夜班，白天就指望这点觉，行行好吧。'];
-  // Headword 吵, not 争吵. `.towercheck.js:339` requires a js/vocab.js row for every registered
-  // headword and neither 争吵 nor 吵架 has one — 吵 does (js/vocab.js:2018, tagged home). js/vocab.js
-  // belongs to the data lane, so the rows for 争吵 and 吵架 are QUEUED rather than written here;
-  // both words are in the gloss below, which is where the player meets them anyway.
+  // Headword 吵, not 争吵: every registered headword needs a dictionary row and 吵 is the existing
+  // teachable form. The longer compounds remain in the gloss, where their relationship is useful.
   TH('吵', 4.62, Y + 1.42, ZN - .16, ROW[new Date().getDay() % ROW.length],
      'Two voices are going at it behind the door — neither is slowing down for you.',
      '吵 chǎo is noisy, and as a verb it is to make a row. 吵架 chǎojià is to have one; ' +
@@ -1432,50 +1422,3 @@ FlatFit['f10'] = A => {
   HomeF10.built = true;
   return HomeF10;
 };
-
-// ---------------------------------------------------------------------------------------------
-// FIVE THINGS FOR THE SHELL AND THE HUB, kept here rather than in a report that will be lost.
-// The first three are js/world.js; 4 and 5 are js/game.js and js/build.js, and both of them are
-// the whole tower's problem rather than this floor's — every floor builder will hit them.
-//
-// 1. THERE IS NO LIFT LANDING ON ANY DECK EXCEPT 0 AND 2. `buildShafts` runs its landing loop as
-//    `for (const f of [0, 2])`, so decks 3..12 get no doors, no surround, no floor indicator, no
-//    call panel, no shaft walls and no `doorStops` entry. `goFloor(10)` and the ride itself are
-//    fully generalised and do work — the car arrives at deck 10 and its own leaves open — but they
-//    open onto a hole in a wall nobody built. TOWER.md's Wave 0 lists "generates one landing per
-//    deck in buildShell", and it is the one item of that wave which has not landed.
-//    This file leaves the whole of that geometry free: the boarding it builds stands at
-//    LIFT.z0 - .06 and the opening in it is x 2.06 .. 2.94 by 2.14 high, which clears the shell's
-//    jambs (z 4.90 .. 5.02), its steel surround (4.865 .. 4.915) and its leaves (5.1075) with at
-//    least 25 mm to spare. Adding the landing needs no edit here.
-//
-// 2. `carZone` IS ONLY PUSHED INTO ZONE[0] AND ZONE[2] (js/world.js:1056 and 1066). On every other
-//    deck the body that steps out of the car is clamped by that deck's own zones instead. It
-//    happens to work here, because this floor's landing zone spans the shaft footprint — but it
-//    means the camera framing and the room lamp treat the inside of the car as corridor on decks
-//    3..12. One line: push `carZone` into every deck that has a landing.
-//
-// 3. `rideFloor(dir, finished)` (js/world.js:311) is still the two-stop version — 'up' answers 2
-//    and 'down' answers 0 whatever deck you are standing on. Nothing here touches it, but any
-//    caller using it rather than `goFloor` lands on the wrong floor from up here.
-//
-// 4. EVERY DECK'S PROPS ARE SUBMITTED ON EVERY DECK. `hiddenProp`/`hiddenAt` in js/game.js cull
-//    on x and z only — they are the wall cutaway and they have no y or deck test — so `paintScene`
-//    walks all twelve decks' geometry on every frame. Measured standing on deck 10 with all twelve
-//    floors built: 822 props on this deck, 15,136 elsewhere in the same draw list. Every render of
-//    this floor carries a pale second image of other floors over it. It reads as a translucent
-//    overlay but it is not a transparency-sort bug: of those 15,136, zero are translucent, so
-//    whatever is coming through is opaque geometry that the depth buffer is not keeping out.
-//    Whoever owns js/game.js should give `hiddenAt` the deck test it never needed with two floors:
-//    hide anything whose y is more than a storey from `World.deckY(World.level())`. That is also
-//    twelve times less geometry per frame, which this renderer will feel.
-//
-// 5. `pick` RESOLVES A TAG TO THE NEAREST THING IN TWO DIMENSIONS (js/build.js). With twelve decks
-//    stacked on one 12 × 11 m footprint, every word that more than one floor teaches is contested
-//    by whichever floor happens to have put its focus nearest in x/z — and floors naturally agree
-//    about where things go, because they share a plan. Measured from deck 10 at various points in
-//    the build: 邻居 within 0.21 m of another deck's 邻居, 窗户 within 0.32, 门帘 within 0.30,
-//    门牌 within 1.31. Standing on floor 10 and clicking a neighbour's door can answer with floor
-//    7's sentence. This floor dodges the worst of it by teaching 门牌 rather than 邻居, but that is
-//    a workaround and it costs the tower a word. The fix is one line in `pick`'s tie-break: rank
-//    candidates by 3-D distance from the hit, or drop any whose y is more than a storey away.

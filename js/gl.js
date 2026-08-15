@@ -2,6 +2,7 @@
 // A small shared mesh library keeps silhouettes consistent: hard boxes for architecture,
 // rounded boxes for furniture, capsules for people, and tapered forms for shades/pots.
 const R = (() => {
+  const MAX_FOLIAGE_WIND = Math.fround(1.05 * 1.17);
   let gl, prog, U = {}, meshes = {}, proj = M.ident(), view = M.ident(), vp = new Float32Array(16);
   let room = [3.5, 2.72, 2.75];
   // The world y of the floor you are standing on. Zero everywhere except the twelve-floor block,
@@ -9,7 +10,8 @@ const R = (() => {
   // and the mode 4 plaster, both of which were reading world height and so gave every floor above
   // the second no contact darkening and a saturated wall gradient.
   let deckY = 0;
-  let bulb = [0, 2.4, -0.2], bulbOn = 1;
+  const bulb = new Float32Array([0, 2.4, -0.2]);
+  let bulbOn = 1;
   // The opening daylight comes through, used to shape the sunbeam. `winPos`/`winHalf` are the
   // *active* one — whichever the shader is shading this frame — and `winN`/`winU` are its plane:
   // the outward normal, and the horizontal axis of the rectangle. Both are computed on the CPU so
@@ -37,6 +39,11 @@ const R = (() => {
   // Daylight: direction, colour and strength. Driven by the in-game clock.
   let sun = [-0.16, 0.46, -1.0], sunCol = [1.00, 0.94, 0.84], sunAmt = 1.55;
   let skyCol = [0.35, 0.39, 0.48], groundCol = [0.20, 0.14, 0.10];
+  // The actual dome endpoints are separate from ambient sky light. Glass reflects these two
+  // colours, so they belong to the frame rather than to the optional outdoor dome draw: retained
+  // batches and interiors otherwise inherit zero or whatever outdoor place happened to run last.
+  let skyZenith = [0.55, 0.70, 0.84], skyHorizon = [0.87, 0.89, 0.85];
+  const moonSky = new Float32Array(3);
   // Indoors the room shades itself and the window shapes the sun. Outdoors neither applies,
   // and distance haze takes over instead.
   let indoor = 1, winOn = 1, fogNear = 0, fogD = 0, fogCol = [0.5, 0.5, 0.5], now = 0;
@@ -44,7 +51,7 @@ const R = (() => {
   // Neutral unless a scene asks for a grade. Kept as three linear multipliers rather than a
   // colour-temperature number so art direction can correct green fluorescent interiors as well
   // as warm/cool light. setEnv accepts `white` or `whiteBalance`; old callers remain neutral.
-  let whiteBal = [1, 1, 1];
+  const whiteBal = new Float32Array([1, 1, 1]);
   // [wet, snow], and the season's tint on every leaf. Neutral until the game says otherwise, so a
   // harness that never sets them renders exactly what it always did.
   const weather = new Float32Array([0, 0, 0]);
@@ -64,6 +71,14 @@ const R = (() => {
   let instOK = false, instFail = '';
   // The canvas's CSS size, kept by a ResizeObserver rather than read from layout. See `cssSize`.
   let cssW = 0, cssH = 0, cssObs = null;
+  const cssSizeOut = [0, 0];
+  let maxTargetSize = 4096, renderPixelBudget = 3200000;
+  function targetPixelBudget() {
+    const coarse = typeof matchMedia === 'function' && matchMedia('(any-pointer:coarse)').matches;
+    const memory = typeof navigator !== 'undefined' ? Number(navigator.deviceMemory) : 0;
+    if ((memory > 0 && memory <= 4)) return 1800000;
+    return coarse ? 2200000 : 3200000;
+  }
   // The skinned program. Same rule: unavailable is a game without characters, not a black screen.
   let kprog = null, kU = {};
   let skinOK = false, skinFail = '';
@@ -79,7 +94,7 @@ const R = (() => {
   let skinInstTotalStats = { groups:0, calls:0, instances:0 };
   // The skinned shader's scene uniforms are frame state, not character or material state. They
   // are uploaded on the first authored person in a frame and remain valid for every one after it.
-  let skinFrameReady = false, skinCharacterOpen = false;
+  let skinFrameReady = false, skinCharacterOpen = false, webgpuDirectSkin = null;
   const SKIN_UNIT_SCALE = new Float32Array([1, 1, 1]);
   // Kept from begin(), because the skinned program is only bound while a character is being
   // drawn and so is not present for the once-a-frame uniform upload the other two get.
@@ -93,7 +108,7 @@ const R = (() => {
   // Texture anisotropy is optional even in WebGL2. When present it is the inexpensive fix for
   // floor, road and sign textures turning to mush at the shallow angles this third-person camera
   // sees most often; when absent every texture keeps ordinary trilinear filtering.
-  let anisoExt = null, maxAniso = 1;
+  let anisoExt = null, maxAniso = 1, surfaceAniso = 4;
 
   // How far the geometry buffer's packed distance reaches, in metres. Interpolated into both the
   // scene shader that writes it and the post shader that reads it, because a mismatch between the
@@ -507,12 +522,17 @@ const R = (() => {
     return clamp(y, 0.0, 0.985);
   }
 
-  // Beijing haze. Everything far off washes toward the colour of the horizon, which is what
-  // gives the district depth and hides where the built world stops.
+  // Beijing haze. Low view rays collect denser horizon smog, while raised silhouettes fade
+  // toward the cooler zenith. One flat fog colour made tower tops, tree crowns and street-level
+  // facades collapse into the same grey plane instead of giving the district aerial depth.
   vec3 haze(vec3 c, vec3 p){
     if (uFogD <= 0.0) return c;
-    float d = max(0.0, length(uEye - p) - uFogNear);
-    return mix(c, uFogCol, 1.0 - exp(-d * uFogD));
+    vec3 ray = p - uEye;
+    float viewD = length(ray);
+    float d = max(0.0, viewD - uFogNear);
+    float lift = clamp((ray.y + 0.50) * 0.09, 0.0, 0.72);
+    vec3 fog = mix(uFogCol, uSkyA, lift);
+    return mix(c, fog, 1.0 - exp(-d * uFogD));
   }
 
   float openness(vec3 p, vec3 n){
@@ -745,7 +765,7 @@ const R = (() => {
         if (h > 0.9715) {
           // Somewhere inside its own cell, so they are not on a lattice.
           vec2 at = vec2(hash(id + 3.71), hash(id + 9.13));
-          float star = smoothstep(0.14, 0.0, length(fr - at));
+          float star = 1.0 - smoothstep(0.0, 0.14, length(fr - at));
           // Air is never still, and a star that does not move reads as a dead pixel.
           float tw = 0.62 + 0.38 * sin(uTime * 0.0021 + h * 91.0);
           // Cooler or warmer by star, and thinned out toward the horizon haze.
@@ -1215,8 +1235,10 @@ const R = (() => {
       float dist = length(d);
       vec3 dir = d / max(dist, 0.001);
       float r = max(uLRad[i], 0.001);
+      // GLSL leaves smoothstep undefined when edge0 is greater than edge1. Express the same
+      // descending shoulder with ordered edges so point-light falloff is identical across GPUs.
       float att = (1.0 / (1.0 + (dist * dist) / (r * r)))
-                * smoothstep(r * 2.4, r * 0.55, dist);
+                * (1.0 - smoothstep(r * 0.55, r * 2.4, dist));
       lSum += uLCol[i] * WRAP(dir) * att;
       float nl = max(dot(n, dir), 0.0);
       // The renderer's 0.12 default is intentionally matte. Skip the expensive lobe there; real
@@ -1251,6 +1273,18 @@ const R = (() => {
     float rim = pow(1.0 - max(dot(n, v), 0.0), 3.4);
     lit += base * rim * ao * (0.14 + 0.55 * max(uSunAmt * 0.35, 0.22))
            * mix(uSky, uSunCol, 0.45) * (0.35 + 0.65 * up);
+
+    // Imported PBR surfaces carry real roughness/metalness maps, so give those pixels a cheap
+    // two-colour environment reflection. The branch is uniform per draw: procedural geometry
+    // keeps its existing lighting path, while curved wood, upholstery and metal no longer fall
+    // flat between direct highlights. No cubemap, sampler, pass or extra uniform is involved.
+    if (uArmOn > 0.5) {
+      vec3 envRay = reflect(-v, n);
+      vec3 envCol = mix(uGround, uSky, clamp(envRay.y * 0.5 + 0.5, 0.0, 1.0));
+      vec3 envF = specF0 + (1.0 - specF0) * rim;
+      float envGain = mix(0.045, 0.20, gloss) * ao;
+      lit += envCol * envF * envGain;
+    }
 
     // Wet ground takes over the gloss rather than adding to it: asphalt is authored nearly matte
     // and stays matte in the dry, and what a soaked road does is become the shiniest thing in the
@@ -1427,12 +1461,26 @@ const R = (() => {
     gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER, ib);
     gl.bufferData(gl.ELEMENT_ARRAY_BUFFER, data, gl.STATIC_DRAW);
     gl.bindVertexArray(null);
-    return { vao, count: idx.length, type, bPos: keep.pos, bNor: keep.nor, bUv: keep.uv, ib,
+    const out = { vao, count: idx.length, type, bPos: keep.pos, bNor: keep.nor, bUv: keep.uv, ib,
       // The driver may add alignment of its own, but these are the bytes this renderer asked it
       // to allocate. Keeping the number beside the handles makes deletion and memory reports
       // deterministic instead of trying to infer allocation sizes from a VAO later.
       bytes: (pos.byteLength || pos.length * 4) + (nor.byteLength || nor.length * 4) +
              (uv.byteLength || uv.length * 4) + data.byteLength };
+    // The WebGPU pilot shares the real mesh authoring stream instead of rebuilding a second set
+    // of primitives. Keep these CPU arrays only long enough to hand them across; the pilot either
+    // uploads them asynchronously or discards them, and ordinary WebGL sessions never retain them.
+    if (typeof WebGPUPreview !== 'undefined' && WebGPUPreview.requested)
+      out.webgpuSource = { pos, nor, uv, idx:data };
+    return out;
+  }
+
+  function previewMesh(name, made) {
+    const source = made && made.webgpuSource;
+    if (source && typeof WebGPUPreview !== 'undefined')
+      WebGPUPreview.captureMesh(name, source.pos, source.nor, source.idx, source.uv);
+    if (made) delete made.webgpuSource;
+    return made;
   }
 
   // Each face as [outward normal, in-plane axis for the grid's x, in-plane axis for its y].
@@ -2255,8 +2303,11 @@ const R = (() => {
     // through the air in front of a dark corner is not itself in the corner.
     vec3 c = srgb2lin(texture(uSrc, vUv).rgb);
     if (uAoOn > 0.5) {
-      float ao = texture(uAoMap, vUv).r;
-      c *= 1.0 - (1.0 - ao) * uAoAmt;
+      float contact = clamp(1.0 - texture(uAoMap, vUv).r, 0.0, 1.0);
+      // Trim the bilateral blur's faint grey tail while strengthening true contact cores.
+      // Zero, half and full occlusion stay fixed, so uAoAmt remains the authored strength cap.
+      contact = contact * contact * (3.0 - 2.0 * contact);
+      c *= 1.0 - contact * uAoAmt;
     }
     // Bloom was extracted and blurred in linear light. A screen-style composite lets it lift a
     // dark wall around a lamp while asymptotically approaching display white on an already-bright
@@ -2321,6 +2372,14 @@ const R = (() => {
   // texture() while the source dimensions are still available. The map is also the ownership
   // ledger used by deleteTexture; entries disappear at the same instant as their GL handles.
   const textureResources = new Map();
+  // A public surface handle can own a private packed AO/roughness/metalness companion. Keep byte
+  // reporting and deletion on the same ownership walk so the residency ledger cannot count only
+  // the carrier while deleteTexture releases both GPU allocations.
+  const ownedSurfaceTextures = texture => {
+    const info = texture && surfaceInfo.get(texture);
+    const arm = info && info.arm && info.arm !== texture ? info.arm : null;
+    return arm ? [texture, arm] : [texture];
+  };
   function mipBytes(source) {
     let w = Math.max(1, Number(source && (source.width || source.videoWidth)) || 1) | 0;
     let h = Math.max(1, Number(source && (source.height || source.videoHeight)) || 1) | 0;
@@ -2557,13 +2616,16 @@ const R = (() => {
     gl.uniform1f(Uu.uBulbOn,bulbOn);
     gl.uniform1i(Uu.uNL,lightN);
     if (lightN) {
-      gl.uniform3fv(Uu.uLPos,lightPos.subarray(0,lightN*3));
-      gl.uniform3fv(Uu.uLCol,lightCol.subarray(0,lightN*3));
-      gl.uniform1fv(Uu.uLRad,lightRad.subarray(0,lightN));
+      // WebGL2's source-range overload uploads directly from the fixed buffers. Creating three
+      // subarray views here allocated six short-lived objects per frame when both programs ran.
+      gl.uniform3fv(Uu.uLPos,lightPos,0,lightN*3);
+      gl.uniform3fv(Uu.uLCol,lightCol,0,lightN*3);
+      gl.uniform1fv(Uu.uLRad,lightRad,0,lightN);
     }
     gl.uniform3fv(Uu.uSun,sun); gl.uniform3fv(Uu.uSunCol,sunCol);
     gl.uniform1f(Uu.uSunAmt,sunAmt);
     gl.uniform3fv(Uu.uSky,skyCol); gl.uniform3fv(Uu.uGround,groundCol);
+    gl.uniform3fv(Uu.uSkyA,skyZenith); gl.uniform3fv(Uu.uSkyB,skyHorizon);
     const aw = pickWindow(eye);
     gl.uniform3fv(Uu.uWinPos, aw ? aw.p : winPos); gl.uniform2fv(Uu.uWinHalf, aw ? aw.h : winHalf);
     gl.uniform3fv(Uu.uWinN, aw ? aw.n : winN); gl.uniform3fv(Uu.uWinU, aw ? aw.u : winU);
@@ -2674,6 +2736,199 @@ const R = (() => {
   // colour it had" — so honour it here instead of trusting the caller.
   const asTex = t => (t && typeof WebGLTexture !== 'undefined' && t instanceof WebGLTexture) ? t : null;
 
+  // Renderer-neutral identity exists only in an explicit WebGPU session: index.html does not even
+  // load the registry for the default WebGL route. Keep every access guarded so the production
+  // renderer performs no lookup or allocation, and so a partial preview deployment cannot turn a
+  // successful WebGL upload into a game failure.
+  let previewDepthWrite=true,previewAdditive=false,previewCullNone=false;
+  const renderResourceId = handle => {
+    if(!handle||typeof RenderResources==='undefined'||
+        typeof RenderResources.id!=='function')return 0;
+    try{return RenderResources.id(handle)||0;}catch(_){return 0;}
+  };
+  const ordinaryPreviewKind = kind => kind==='albedo'||kind==='pbr'||kind==='tiling'||
+    kind==='tiling-normal';
+  function claimRenderTexture(handle,kind){
+    if(!ordinaryPreviewKind(kind)||typeof RenderResources==='undefined'||
+        typeof RenderResources.claim!=='function')return 0;
+    try{return RenderResources.claim(handle,'texture','ordinary:'+kind)||0;}catch(_){return 0;}
+  }
+  function retireRenderTexture(handle){
+    if(!handle||typeof RenderResources==='undefined'||
+        typeof RenderResources.retire!=='function')return 0;
+    try{return RenderResources.retire(handle)||0;}catch(_){return 0;}
+  }
+  // This is the sole temporary compatibility boundary while Build still carries WebGLTexture
+  // objects. WebGPU receives only positive ids. If a texture was never published or has already
+  // retired, skip the optional mirror rather than accidentally drawing an untextured prop.
+  function previewDrawOptions(opt){
+    try{
+      const out={...opt};
+      for(const slot of ['tex','mat','nrm']){
+        const handle=asTex(opt[slot]);
+        if(!handle)continue;
+        const id=renderResourceId(handle);
+        if(!id)return null;
+        out[slot]=id;
+      }
+      out.previewDepthWrite=previewDepthWrite;
+      out.previewAdditive=previewAdditive;
+      out.previewCull=previewCullNone?'none':'back';
+      return out;
+    }catch(_){return null;}
+  }
+
+  // An opt-in renderer-neutral mirror. This records only after WebGL has submitted each ordinary
+  // colour command, then hands the immutable packet straight back to WebGL at present(). It is
+  // evidence for a later authority switch, not the switch itself: shadows, skin palettes and the
+  // post graph are intentionally reported as out-of-band until they have packet contracts too.
+  let framePacketId=0,framePacketDepthWrite=true,framePacketAdditive=false,
+    framePacketCullNone=false;
+  let framePacketFrame={mode:'off',scope:'ordinary-color',authority:'webgl2',frameId:0,
+    outcome:'idle',reason:'',commands:0,batches:0,direct:0,instances:0,floats:0,
+    omitted:[],features:{}};
+  const framePacketRequested=()=>typeof WebGPUPreview!=='undefined'&&
+    WebGPUPreview.packetRecordRequested&&typeof FramePacket!=='undefined';
+  function framePacketOmit(reason){
+    if(!framePacketId||!reason||framePacketFrame.omitted.includes(reason)||
+        framePacketFrame.omitted.length>=12)return;
+    framePacketFrame.omitted.push(reason);
+  }
+  function framePacketState(){
+    let neutral=null;
+    try{if(typeof FramePacket!=='undefined')neutral=FramePacket.status();}catch(_){}
+    return {...framePacketFrame,omitted:framePacketFrame.omitted.slice(),
+      features:{...framePacketFrame.features},neutral};
+  }
+  function beginFramePacket(clear,eye){
+    if(!framePacketRequested())return false;
+    framePacketDepthWrite=true;framePacketAdditive=false;framePacketCullNone=false;
+    // The packet owns the ordinary colour stream only. A shadow pass is reported separately in
+    // `omitted`; declaring it here would falsely imply its depth commands were packet-owned.
+    const features={shadow:false,post:!!postOn,
+      ao:!!(postOn&&aoWant&&geFbo&&aFbo[0]),
+      weatherParticles:!indoor&&!!(weather[0]||weather[1]||weather[2]),
+      transparent:true,additive:true};
+    framePacketFrame={mode:'record',scope:'ordinary-color',authority:'webgl2',frameId:0,
+      outcome:'aborted',reason:'',commands:0,batches:0,direct:0,instances:0,floats:0,
+      omitted:[],features};
+    try{
+      framePacketId=FramePacket.begin({vp,clear,eye,
+        sun:{dir:sun,color:sunCol,amount:sunAmt},sky:skyCol,ground:groundCol,
+        skyA:skyZenith,skyB:skyHorizon,indoor:!!indoor,bulb,bulbOn,
+        lights:{count:lightN,positions:lightPos,colors:lightCol,radii:lightRad},
+        white:whiteBal,expose,fog:{near:fogNear,density:fogD,color:fogCol},
+        deckY,glyphAssist:!!glyphAssist,time:now,weather,leaf:leafTint,features})||0;
+      framePacketFrame.frameId=framePacketId;
+      framePacketFrame.outcome=framePacketId?'open':'aborted';
+      if(!framePacketId)framePacketFrame.reason=FramePacket.status().reason||'packet-begin-failed';
+      return !!framePacketId;
+    }catch(err){
+      framePacketId=0;framePacketFrame.reason=String(err&&err.message||'packet-begin-failed').slice(0,160);
+      try{FramePacket.abort(framePacketFrame.reason);}catch(_){}
+      return false;
+    }
+  }
+  function framePacketResource(value,slot){
+    if(value===undefined||value===null)return null;
+    const handle=asTex(value);
+    if(!handle)throw new Error('unresolved-'+slot);
+    const id=renderResourceId(handle);
+    if(!id)throw new Error('unresolved-'+slot+'-id');
+    return id;
+  }
+  function framePacketMaterial(name,opt,alpha){
+    const textureId=framePacketResource(opt.tex,'texture'),
+      materialId=framePacketResource(opt.mat,'material'),
+      normalId=framePacketResource(opt.nrm,'normal');
+    if(textureId&&materialId)throw new Error('conflicting-surface-resources');
+    if(normalId&&!textureId&&!materialId)throw new Error('orphan-normal-resource');
+    const mode=Number(opt.mode||0),soft=name==='softBox',
+      bevelMode=mode===0||mode===3||mode===4||mode===6||mode===7,
+      cull=framePacketCullNone?'none':'back';
+    return {mode,
+      round:soft?(opt.round===undefined?(mode===7?.055:.022):opt.round):0,
+      bevel:name==='box'&&bevelMode?(opt.bevel===undefined?.013:opt.bevel):0,
+      doubleSided:cull==='none',cull,
+      textureId,materialId,normalId,
+      matScale:opt.matScale||1,matAmount:opt.matAmt===undefined?.7:opt.matAmt,
+      normalAmount:opt.nrmAmt===undefined?1:opt.nrmAmt,
+      depthWrite:framePacketDepthWrite,
+      // Mode 2 has procedural edge coverage even when every authored instance alpha is one, so its
+      // blend state is a material fact rather than something that can be inferred from the payload.
+      blend:framePacketAdditive?'additive':mode===2||alpha<1?'alpha':'opaque'};
+  }
+  function framePacketFailed(err){
+    const reason=String(err&&err.message||'packet-command-failed').slice(0,160);
+    framePacketFrame.outcome='aborted';framePacketFrame.reason=reason;
+    framePacketOmit(reason);
+    try{FramePacket.abort(reason);}catch(_){}
+  }
+  function recordFramePacketBatch(name,data,count,opt){
+    if(!framePacketId||FramePacket.status().state!=='open')return false;
+    try{
+      let alpha=1;
+      for(let i=0;i<count;i++)if(Number(data[i*26+20])<1){alpha=Number(data[i*26+20]);break;}
+      const sequence=FramePacket.batch(name,data,count,framePacketMaterial(name,opt,alpha));
+      if(sequence<0)throw new Error(FramePacket.status().reason||'packet-batch-rejected');
+      framePacketFrame.commands++;framePacketFrame.batches++;
+      framePacketFrame.instances+=count;framePacketFrame.floats+=count*26;
+      return true;
+    }catch(err){framePacketFailed(err);return false;}
+  }
+  function recordFramePacketDraw(name,model,color,opt){
+    if(!framePacketId||FramePacket.status().state!=='open')return false;
+    try{
+      const alpha=opt.alpha===undefined?1:Number(opt.alpha),
+        material=framePacketMaterial(name,opt,alpha);
+      material.gloss=opt.gloss===undefined?.12:opt.gloss;
+      material.alpha=alpha;material.glow=opt.glow||0;
+      if(opt.rect!==undefined&&opt.rect!==null)material.rect=opt.rect;
+      const sequence=FramePacket.draw(name,model,color,material);
+      if(sequence<0)throw new Error(FramePacket.status().reason||'packet-draw-rejected');
+      framePacketFrame.commands++;framePacketFrame.direct++;
+      framePacketFrame.instances++;framePacketFrame.floats+=26;
+      return true;
+    }catch(err){framePacketFailed(err);return false;}
+  }
+  function finishFramePacket(){
+    if(!framePacketId)return false;
+    const id=framePacketId;framePacketId=0;
+    try{
+      if(FramePacket.status().state!=='open'){
+        framePacketFrame.outcome='aborted';
+        framePacketFrame.reason=FramePacket.status().reason||framePacketFrame.reason||'packet-not-open';
+        return false;
+      }
+      const packet=FramePacket.seal(id);
+      if(!packet)throw new Error(FramePacket.status().reason||'packet-seal-failed');
+      framePacketFrame.commands=packet.commands.length;
+      framePacketFrame.direct=packet.commands.filter(command=>command.direct).length;
+      framePacketFrame.batches=packet.commands.length-framePacketFrame.direct;
+      framePacketFrame.instances=packet.instances;framePacketFrame.floats=packet.floats;
+      // Resolve the complete immutable ordinary stream while it is still the registry's current
+      // sealed packet. This canary is deliberately disposable: it submits nothing, suppresses no
+      // GL work, and is isolated from packet ownership so even an unexpected preview exception
+      // cannot strand a sealed record before WebGL claims and consumes it below.
+      if(typeof WebGPUPreview!=='undefined'&&
+          typeof WebGPUPreview.preparePacket==='function'){
+        let prepared=null;
+        try{prepared=WebGPUPreview.preparePacket(packet);}catch(_){}
+        if(prepared&&typeof WebGPUPreview.discardPreparedPacket==='function')
+          try{WebGPUPreview.discardPreparedPacket(prepared);}catch(_){}
+      }
+      if(FramePacket.claim(id,'webgl2')!==packet){
+        FramePacket.drop(id,'packet-claim-failed');throw new Error('packet-claim-failed');
+      }
+      if(!FramePacket.consume(id,'webgl2')){
+        FramePacket.release(id,'webgl2');FramePacket.drop(id,'packet-consume-failed');
+        throw new Error('packet-consume-failed');
+      }
+      framePacketFrame.outcome='mirrored';framePacketFrame.reason='';
+      return true;
+    }catch(err){framePacketFailed(err);return false;}
+  }
+
   function bindArm(Uu, surfaceTexture) {
     const i = surfaceTexture && surfaceInfo.get(surfaceTexture);
     if (!i || !i.arm) {
@@ -2702,8 +2957,9 @@ const R = (() => {
   }
   function applyAnisotropy(target, requested) {
     if (!anisoExt || maxAniso <= 1) return;
+    const value = Number.isFinite(requested) ? requested : surfaceAniso;
     gl.texParameterf(target, anisoExt.TEXTURE_MAX_ANISOTROPY_EXT,
-      Math.min(maxAniso, requested === undefined ? 4 : requested));
+      Math.min(maxAniso, Math.max(1, value)));
   }
   const MAXLIGHTS = 8;
   const lightPos = new Float32Array(MAXLIGHTS * 3);
@@ -2721,26 +2977,134 @@ const R = (() => {
     gl.texParameteri(gl.TEXTURE_2D, gl.TEXTURE_WRAP_T, gl.CLAMP_TO_EDGE);
     return t;
   }
+  // Release the complete post chain as one ownership unit. A low quality tier does not merely
+  // stop drawing bloom/AO: it is the memory-pressure fallback too, so retaining the old high-DPI
+  // multisample targets there defeats half of the tier. At 2560x1440 the colour/light/depth pair,
+  // resolves and blur targets occupy tens of megabytes even with AO disabled. Deleting a texture
+  // while it is still bound only marks it for deletion, so clear the post units first and restore
+  // the atlas/unit-0 invariant the forward renderer expects.
+  function dropPostTargets() {
+    if (!gl) return;
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+    for (const unit of [2, 3, 4, PP_SCRATCH]) {
+      gl.activeTexture(gl.TEXTURE0 + unit);
+      gl.bindTexture(gl.TEXTURE_2D, null);
+    }
+    boundArm = null;
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, atlas);
+    for (const f of [msFbo, reFbo, liFbo, geFbo, ...bFbo, ...aFbo])
+      if (f) gl.deleteFramebuffer(f);
+    for (const r of [msCol, msLit, msGeo, msDep]) if (r) gl.deleteRenderbuffer(r);
+    for (const t of [reTex, liTex, geTex, ...bTex, ...aTex]) if (t) gl.deleteTexture(t);
+    msFbo = reFbo = liFbo = geFbo = null;
+    msCol = msLit = msGeo = msDep = null;
+    reTex = liTex = geTex = null;
+    for (let i = 0; i < 2; i++) {
+      bFbo[i] = bTex[i] = aFbo[i] = aTex[i] = null;
+    }
+    pW = pH = bW = bH = 0;
+    postOn = 0;
+  }
+  // Every one of these buffers is freshly allocated storage, and freshly allocated storage holds
+  // whatever the driver last had in that memory. Nothing here is supposed to be read before it is
+  // written, but "supposed to" is doing a lot of work in a chain of six targets at three sizes: the
+  // frame after a rebuild came out with a soft, structured ghost of something else laid over the
+  // whole picture, and this rebuild happens in ordinary play every time the quality ladder changes
+  // a level or the window is resized. Cleared to what each buffer means when it means nothing:
+  // black for light and glow, white for occlusion — white is *unoccluded* — and far away for the
+  // distance map, so an unwritten pixel can never read as something standing right in front.
+  function clearPostTargets() {
+    for (const f of [reFbo, liFbo, bFbo[0], bFbo[1]]) {
+      if (!f) continue;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+      gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+    for (const f of [aFbo[0], aFbo[1]]) {
+      if (!f) continue;
+      gl.bindFramebuffer(gl.FRAMEBUFFER, f);
+      gl.clearColor(1, 1, 1, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+    if (geFbo) {
+      gl.bindFramebuffer(gl.FRAMEBUFFER, geFbo);
+      gl.clearColor(1, 1, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
+    }
+    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+  }
+  // What the chain's completeness depends on, apart from its size: which attachments exist, and how
+  // many samples they carry. Both are quality-tier decisions, not size ones.
+  const postShapeNow = () => aoWant + '|' + msaa;
+  // The shape that has been built and validated. '' until one has.
+  let postShape = '';
+  // The largest area the chain has ever successfully held, in pixels. Growing past it is the only
+  // place a re-specification can meet GL_OUT_OF_MEMORY; see postResize.
+  let postPeakPx = 0;
+  // The same chain at a different size. Only the storage behind the attachments changes, so nothing
+  // is created, nothing is deleted, and no framebuffer is re-assembled — which means completeness
+  // cannot have changed either, and the eight `checkFramebufferStatus` calls the full build makes
+  // can be skipped. That matters far more than the allocation does: each of those is a synchronous
+  // round trip to the GPU process, measured at 0.6-0.9 ms in the zoo and 9.7-16.4 ms in the street,
+  // against under 0.2 ms for every allocation in the whole rebuild put together. Not deleting the
+  // old storage also means the driver is never asked to retire a buffer the display pipeline may
+  // still be holding.
+  //
+  // Size cannot make a complete framebuffer incomplete here: `resize` has already clamped both
+  // dimensions to the driver's own limit and to the device pixel budget before calling in, and the
+  // half-size buffers are smaller again. A shape change — AO switching on or off, or a different
+  // sample count — does not come through this path; `postSize` sends that to the full build.
+  function postResize(w, h) {
+    pW = w; pH = h; bW = Math.max(1, w >> 1); bH = Math.max(1, h >> 1);
+    for (const rb of [msCol, msLit, msGeo]) {
+      if (!rb) continue;
+      gl.bindRenderbuffer(gl.RENDERBUFFER, rb);
+      gl.renderbufferStorageMultisample(gl.RENDERBUFFER, msaa, gl.RGBA8, w, h);
+    }
+    if (msDep) {
+      gl.bindRenderbuffer(gl.RENDERBUFFER, msDep);
+      gl.renderbufferStorageMultisample(gl.RENDERBUFFER, msaa, gl.DEPTH_COMPONENT24, w, h);
+    }
+    gl.bindRenderbuffer(gl.RENDERBUFFER, null);
+    // Filtering and wrap live on the texture object and survive a re-specification, so only the
+    // image itself is replaced. geTex is RGBA8/NEAREST like the rest; see the full build.
+    gl.activeTexture(gl.TEXTURE0 + PP_SCRATCH);
+    for (const [t, tw, th] of [[reTex, w, h], [liTex, w, h], [geTex, w, h],
+                               [bTex[0], bW, bH], [bTex[1], bW, bH],
+                               [aTex[0], bW, bH], [aTex[1], bW, bH]]) {
+      if (!t) continue;
+      gl.bindTexture(gl.TEXTURE_2D, t);
+      gl.texImage2D(gl.TEXTURE_2D, 0, gl.RGBA8, tw, th, 0, gl.RGBA, gl.UNSIGNED_BYTE, null);
+    }
+    gl.bindTexture(gl.TEXTURE_2D, null);
+    // Unit 0 is the glyph atlas and it is expected to stay bound for the life of the program.
+    gl.activeTexture(gl.TEXTURE0);
+    gl.bindTexture(gl.TEXTURE_2D, atlas);
+    // This path never re-assembles a framebuffer, so nothing is ever asked whether it is complete —
+    // which is what makes it cheap, and which also means a failed allocation would go unnoticed and
+    // render black, the thing this file calls a far worse bug than no bloom. The dimension clamps in
+    // `resize` rule out an illegal size; they cannot rule out GL_OUT_OF_MEMORY at a legal one. So
+    // ask, once, and only while growing past every size the chain has already held: a size the
+    // driver has found room for before is not where memory runs out, and the ladder spends its life
+    // moving between sizes it has already used. Failure is handed back to the full build rather than
+    // handled here — that is the only code in this file that knows how to give up properly.
+    const px = w * h;
+    if (px > postPeakPx && gl.getError() === gl.OUT_OF_MEMORY) return false;
+    if (px > postPeakPx) postPeakPx = px;
+    clearPostTargets();
+    postOn = postWant ? 1 : 0;
+    return true;
+  }
   // Everything the chain needs at this size, rebuilt when the window changes. Any of it failing
   // turns the chain off rather than leaving a half-built one: a broken post pass is a black screen,
   // which is a far worse bug than no bloom.
   function postSize(w, h) {
     if (!ppProg || postFail) return false;
     if (msFbo && pW === w && pH === h) return true;
+    // Same attachments, same samples, different size: re-specify the storage rather than tearing
+    // the whole graph down and building an identical one. See postResize.
+    if (msFbo && postShape && postShape === postShapeNow() && postResize(w, h)) return true;
+    dropPostTargets();
     pW = w; pH = h; bW = Math.max(1, w >> 1); bH = Math.max(1, h >> 1);
-    if (msFbo) {
-      gl.deleteFramebuffer(msFbo); gl.deleteRenderbuffer(msCol); gl.deleteRenderbuffer(msDep);
-      gl.deleteRenderbuffer(msLit);
-      if (msGeo) gl.deleteRenderbuffer(msGeo);
-      gl.deleteFramebuffer(reFbo); gl.deleteTexture(reTex);
-      gl.deleteFramebuffer(liFbo); gl.deleteTexture(liTex);
-      if (geFbo) { gl.deleteFramebuffer(geFbo); gl.deleteTexture(geTex); }
-      for (let i = 0; i < 2; i++) {
-        gl.deleteFramebuffer(bFbo[i]); gl.deleteTexture(bTex[i]);
-        if (aFbo[i]) { gl.deleteFramebuffer(aFbo[i]); gl.deleteTexture(aTex[i]); }
-      }
-      msGeo = null; geFbo = null; aFbo[0] = aFbo[1] = null;
-    }
     // the scene, multisampled, so the antialiasing this context was made for survives the detour
     msCol = gl.createRenderbuffer();
     gl.bindRenderbuffer(gl.RENDERBUFFER, msCol);
@@ -2812,35 +3176,22 @@ const R = (() => {
         ok = ok && gl.checkFramebufferStatus(gl.FRAMEBUFFER) === gl.FRAMEBUFFER_COMPLETE;
       }
     }
-    // Every one of those is freshly allocated, and a freshly allocated texture holds whatever the
-    // driver last had in that memory. Nothing here is supposed to be read before it is written, but
-    // "supposed to" is doing a lot of work in a chain of six targets at three sizes: the frame after
-    // a rebuild came out with a soft, structured ghost of something else laid over the whole
-    // picture, and this rebuild happens in ordinary play every time the quality ladder changes a
-    // level or the window is resized. Cleared to what each buffer means when it means nothing:
-    // black for light and glow, white for occlusion — white is *unoccluded* — and far away for the
-    // distance map, so an unwritten pixel can never read as something standing right in front.
-    for (const f of [reFbo, liFbo, bFbo[0], bFbo[1]]) {
-      if (!f) continue;
-      gl.bindFramebuffer(gl.FRAMEBUFFER, f);
-      gl.clearColor(0, 0, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
-    }
-    for (const f of [aFbo[0], aFbo[1]]) {
-      if (!f) continue;
-      gl.bindFramebuffer(gl.FRAMEBUFFER, f);
-      gl.clearColor(1, 1, 1, 1); gl.clear(gl.COLOR_BUFFER_BIT);
-    }
-    if (geFbo) {
-      gl.bindFramebuffer(gl.FRAMEBUFFER, geFbo);
-      gl.clearColor(1, 1, 0, 1); gl.clear(gl.COLOR_BUFFER_BIT);
-    }
-    gl.bindFramebuffer(gl.FRAMEBUFFER, null);
+    // Freshly allocated storage holds whatever the driver last had in that memory; see
+    // clearPostTargets for what each buffer is cleared to and the ghost it was hiding.
+    clearPostTargets();
     // Unit 0 is the glyph atlas and it is expected to stay bound for the life of the program.
     gl.activeTexture(gl.TEXTURE0 + PP_SCRATCH);
     gl.bindTexture(gl.TEXTURE_2D, null);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, atlas);
-    if (!ok) { postFail = 'the post framebuffers would not build'; msFbo = null; }
+    // Validated at this shape and this size, so a later change of size alone can go through
+    // postResize, and this size is now one the driver has proved it has room for.
+    postShape = ok ? postShapeNow() : '';
+    if (ok && w * h > postPeakPx) postPeakPx = w * h;
+    if (!ok) {
+      postFail = 'the post framebuffers would not build';
+      dropPostTargets();
+    }
     // Live from here, not from the next begin(): the shadow pass runs before begin and puts the
     // target back itself, so on the very first frame it has to know where the scene is going.
     postOn = ok && postWant ? 1 : 0;
@@ -2868,8 +3219,9 @@ const R = (() => {
   // same view, lights, model matrix and 52-bone palette between every pair of shoes and eyebrows.
   // A production rig currently has eight material parts; doing this work once rather than eight
   // times is important when a mall floor contains a couple of dozen distinct people.
-  function skinBegin(model, bones) {
+  function skinBegin(model, bones, previewMeta) {
     if (!skinOK || skinCharacterOpen || !bones) return false;
+    framePacketOmit('skinned-direct-out-of-band');
     gl.useProgram(kprog);
     if (!skinFrameReady) {
       frameU(kprog, kU, lastEye);
@@ -2886,13 +3238,24 @@ const R = (() => {
     gl.uniform1f(kU.uNrmOn, 0);
     bindArm(kU, null);
     skinCharacterOpen = true;
+    webgpuDirectSkin=null;
+    if(typeof WebGPUPreview!=='undefined'&&WebGPUPreview.requested){
+      try{webgpuDirectSkin={model,bones,boneCount:n,parts:[],valid:true,meta:previewMeta};}catch(_){
+        webgpuDirectSkin=null;
+        if(typeof WebGPUPreview.invalidateSkinFrame==='function')
+          WebGPUPreview.invalidateSkinFrame('skin-direct-begin');
+      }
+    }
     return true;
   }
 
   function skinPart(name, color, opt = {}) {
     if (!skinCharacterOpen) return false;
     const m = meshes[name];
-    if (!m || !m.skinned) return false;
+    if (!m || !m.skinned) {
+      if(webgpuDirectSkin)webgpuDirectSkin.valid=false;
+      return false;
+    }
     gl.uniform3fv(kU.uColor, color);
     gl.uniform1i(kU.uMode, opt.mode || 0);
     gl.uniform1f(kU.uAlpha, opt.alpha === undefined ? 1 : opt.alpha);
@@ -2920,14 +3283,32 @@ const R = (() => {
     if (restoreCull) gl.disable(gl.CULL_FACE);
     gl.drawElements(gl.TRIANGLES, m.count, m.type, 0);
     if (restoreCull) gl.enable(gl.CULL_FACE);
+    if(webgpuDirectSkin){
+      try{webgpuDirectSkin.parts.push({mesh:name,color,opt});}
+      catch(_){webgpuDirectSkin.valid=false;}
+    }
     return true;
   }
 
   function skinEnd() {
     if (!skinCharacterOpen) return;
+    const preview=webgpuDirectSkin;webgpuDirectSkin=null;
     skinCharacterOpen = false;
     gl.bindVertexArray(null);
     gl.useProgram(prog);
+    if(preview&&preview.valid&&preview.parts.length&&typeof WebGPUPreview!=='undefined'){
+      try{
+        const palette=preview.bones.subarray
+          ?preview.bones.subarray(0,preview.boneCount*16)
+          :Array.prototype.slice.call(preview.bones,0,preview.boneCount*16);
+        WebGPUPreview.captureSkinnedGroup(preview.parts,preview.model,palette,
+          preview.boneCount,1,preview.meta);
+      }catch(_){if(typeof WebGPUPreview.invalidateSkinFrame==='function')
+        WebGPUPreview.invalidateSkinFrame('skin-direct-capture');}
+    }else if(preview&&!preview.valid&&typeof WebGPUPreview!=='undefined'&&
+      typeof WebGPUPreview.invalidateSkinFrame==='function'){
+      WebGPUPreview.invalidateSkinFrame('skin-direct-incomplete');
+    }
   }
 
   // Draw one exact rig/LOD shared by `count` people. `parts` contains `{mesh,color,opt}` records;
@@ -2935,7 +3316,7 @@ const R = (() => {
   // person. A colour may be one RGB triplet or a flat RGB array with one triplet per instance.
   // Returning zero is a hard promise that no partial character was submitted, so Rig can safely
   // use its direct path for every member of the group.
-  function skinMany(parts, models, bones, boneCount, count) {
+  function skinMany(parts, models, bones, boneCount, count, previewMeta) {
     count |= 0; boneCount |= 0;
     if (!skinInstOK || skinCharacterOpen || !parts || !parts.length || count < 1 ||
         !models || models.length < count * 16 || !bones || bones.length < count * boneCount * 16)
@@ -3018,17 +3399,26 @@ const R = (() => {
       gl.useProgram(prog);
     }
     if (!calls) return 0;
+    framePacketOmit('skinned-instanced-out-of-band');
     skinInstFrameStats.groups++;
     skinInstFrameStats.calls += calls;
     skinInstFrameStats.instances += count;
     skinInstTotalStats.groups++;
     skinInstTotalStats.calls += calls;
     skinInstTotalStats.instances += count;
+    if(typeof WebGPUPreview!=='undefined'&&WebGPUPreview.requested){
+      try{WebGPUPreview.captureSkinnedGroup(parts,models,bones,boneCount,count,previewMeta);}catch(_){
+        if(typeof WebGPUPreview.invalidateSkinFrame==='function')
+          WebGPUPreview.invalidateSkinFrame('skin-instanced-capture');
+      }
+    }
     return count;
   }
 
   return {
     get gl(){ return gl; },
+    resourceId(handle){ return renderResourceId(handle); },
+    get framePacketStats(){ return framePacketState(); },
     init(canvas){
       // high-performance asks a dual-GPU laptop for the discrete part rather than the integrated
       // one it defaults to; preserveDrawingBuffer keeps the frame readable after the swap, which is
@@ -3045,6 +3435,9 @@ const R = (() => {
       maxAniso = anisoExt
         ? Math.max(1, gl.getParameter(anisoExt.MAX_TEXTURE_MAX_ANISOTROPY_EXT) || 1) : 1;
       skinInstMaxTexture = gl.getParameter(gl.MAX_TEXTURE_SIZE) || 0;
+      maxTargetSize = Math.max(1024, Math.min(skinInstMaxTexture || 4096,
+        gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) || 4096));
+      renderPixelBudget = targetPixelBudget();
       skinInstVertexTextures = gl.getParameter(gl.MAX_VERTEX_TEXTURE_IMAGE_UNITS) || 0;
       // A GPU context is not forever. A laptop switching graphics chips, a driver reset, a tab
       // left in the background too long — any of them takes the context away, and every buffer,
@@ -3070,28 +3463,28 @@ const R = (() => {
       if(!gl.getProgramParameter(prog,gl.LINK_STATUS)) throw new Error(gl.getProgramInfoLog(prog));
       gl.useProgram(prog);
       for(const k of UNIFORMS) U[k]=gl.getUniformLocation(prog,k);
-      meshes.box=makeBox();
-      meshes.softBox=makeRoundedBox();
-      meshes.cyl=makeCyl();
-      meshes.ball=makeSphere();
-      meshes.capsule=makeCapsule();
-      meshes.ring=makeRing();
-      meshes.body=makeBody();
-      meshes.limb=makeLimb();
+      meshes.box=previewMesh('box',makeBox());
+      meshes.softBox=previewMesh('softBox',makeRoundedBox());
+      meshes.cyl=previewMesh('cyl',makeCyl());
+      meshes.ball=previewMesh('ball',makeSphere());
+      meshes.capsule=previewMesh('capsule',makeCapsule());
+      meshes.ring=previewMesh('ring',makeRing());
+      meshes.body=previewMesh('body',makeBody());
+      meshes.limb=previewMesh('limb',makeLimb());
       // Two of them: the arm at negative x in figure.js takes `hand`, the one at positive x
       // takes `handMirror`. Using one for both puts the ball of the thumb on the wrong edge of
       // one hand, which is subtle but wrong; using `hand` alone is still far better than a box.
-      meshes.hand=makeHand(20,16,1);
-      meshes.handMirror=makeHand(20,16,-1);
-      meshes.head=makeHead();
-      meshes.hair=makeHair();
+      meshes.hand=previewMesh('hand',makeHand(20,16,1));
+      meshes.handMirror=previewMesh('handMirror',makeHand(20,16,-1));
+      meshes.head=previewMesh('head',makeHead());
+      meshes.hair=previewMesh('hair',makeHair());
       // Three beards rather than one scaled one: how much of the cheek is covered is a contour
       // across the surface, not a size, so it cannot be had from a scale the way a hat's can.
-      meshes.beard=makeBeard(48,64,1);
-      meshes.goatee=makeBeard(48,64,.30);
-      meshes.tache=makeBeard(48,64,0);
-      meshes.taper=makeTaper();
-      meshes.quad=makeQuad();
+      meshes.beard=previewMesh('beard',makeBeard(48,64,1));
+      meshes.goatee=previewMesh('goatee',makeBeard(48,64,.30));
+      meshes.tache=previewMesh('tache',makeBeard(48,64,0));
+      meshes.taper=previewMesh('taper',makeTaper());
+      meshes.quad=previewMesh('quad',makeQuad());
       postInit();
       gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.enable(gl.BLEND);
       gl.blendFunc(gl.SRC_ALPHA,gl.ONE_MINUS_SRC_ALPHA);
@@ -3266,6 +3659,7 @@ const R = (() => {
       gl.generateMipmap(gl.TEXTURE_2D);
       gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR_MIPMAP_LINEAR);
       applyAnisotropy(gl.TEXTURE_2D, 4);
+      if(typeof WebGPUPreview!=='undefined')WebGPUPreview.captureAtlas(source);
     },
     // Register geometry from outside this file under a name `draw` can ask for. The fifteen
     // primitives below are built at init; a downloaded model is handed over here instead, on
@@ -3273,7 +3667,7 @@ const R = (() => {
     // Re-registering a name is ignored rather than leaking a second VAO for it.
     mesh(name,pos,nor,uv,idx){
       if (meshes[name]) return meshes[name];
-      return (meshes[name]=mesh(pos,nor,uv,idx));
+      return (meshes[name]=previewMesh(name,mesh(pos,nor,uv,idx)));
     },
     hasMesh(name){ return !!meshes[name]; },
     get skinning(){ return {
@@ -3284,8 +3678,40 @@ const R = (() => {
         frame: { ...skinInstFrameStats }, total: { ...skinInstTotalStats }
       }
     }; },
+    // Renderer-neutral residency seam for authored characters. WebGL owns the authoritative
+    // handles above; every call here is contained so a missing/lost optional preview can never
+    // change its upload, draw or disposal result.
+    wantSkinBundles(entries){
+      if(typeof WebGPUPreview==='undefined'||!WebGPUPreview.requested||
+          typeof WebGPUPreview.wantSkinBundles!=='function')return 0;
+      try{return WebGPUPreview.wantSkinBundles(entries);}catch(_){return 0;}
+    },
+    captureSkinBundle(owner,lod,bundle){
+      if(typeof WebGPUPreview==='undefined'||!WebGPUPreview.requested||
+          typeof WebGPUPreview.captureSkinBundle!=='function')return false;
+      try{return WebGPUPreview.captureSkinBundle(owner,lod,bundle);}catch(_){
+        if(typeof WebGPUPreview.invalidateSkinFrame==='function')
+          WebGPUPreview.invalidateSkinFrame('skin-bundle-forward');
+        return false;
+      }
+    },
+    releaseSkinBundle(owner){
+      if(typeof WebGPUPreview==='undefined'||typeof WebGPUPreview.releaseSkinBundle!=='function')
+        return false;
+      try{return WebGPUPreview.releaseSkinBundle(owner);}catch(_){return false;}
+    },
+    skinBundleState(owner,lod){
+      if(typeof WebGPUPreview==='undefined'||typeof WebGPUPreview.skinBundleState!=='function')
+        return'disabled';
+      try{return WebGPUPreview.skinBundleState(owner,lod);}catch(_){return'disabled';}
+    },
+    skinBundleReady(owner,lod){
+      if(typeof WebGPUPreview==='undefined'||typeof WebGPUPreview.skinBundleReady!=='function')
+        return false;
+      try{return WebGPUPreview.skinBundleReady(owner,lod);}catch(_){return false;}
+    },
     // Skinned geometry: the usual three attributes plus a joint index set and a weight set.
-    skinMesh(name,pos,nor,uv,joint,weight,idx){
+    skinMesh(name,pos,nor,uv,joint,weight,idx,previewOpt){
       if (meshes[name]) return meshes[name];
       const vao=gl.createVertexArray();
       gl.bindVertexArray(vao);
@@ -3310,12 +3736,21 @@ const R = (() => {
       gl.bindBuffer(gl.ELEMENT_ARRAY_BUFFER,ib);
       gl.bufferData(gl.ELEMENT_ARRAY_BUFFER,data,gl.STATIC_DRAW);
       gl.bindVertexArray(null);
-      return (meshes[name]={ vao, count: idx.length, type, skinned:true,
+      const out={ vao, count: idx.length, type, skinned:true,
         bPos:keep.pos, bNor:keep.nor, bUv:keep.uv, bJoint:keep.joint,
         bWeight:keep.weight, ib,
         bytes:(pos.byteLength || pos.length*4) + (nor.byteLength || nor.length*4) +
               (uv.byteLength || uv.length*4) + (joint.byteLength || joint.length*4) +
-              (weight.byteLength || weight.length*4) + data.byteLength });
+              (weight.byteLength || weight.length*4) + data.byteLength };
+      meshes[name]=out;
+      // Mirror only the completed WebGL ownership unit. The opt-in path is contained so a rejected
+      // budget or a failed WebGPU device can never turn successful authoritative registration into
+      // a loader failure.
+      if((!previewOpt||previewOpt.preview!=='bundle')&&
+          typeof WebGPUPreview!=='undefined'&&WebGPUPreview.requested){
+        try{WebGPUPreview.captureSkinMesh(name,pos,nor,uv,joint,weight,data);}catch(_){}
+      }
+      return out;
     },
     // Imported character meshes are streamable resources, unlike the renderer's permanent
     // primitive library. A VAO does not own the buffers it points at, so every one of the six
@@ -3334,31 +3769,53 @@ const R = (() => {
           if(b&&!seen.has(b)){ seen.add(b); gl.deleteBuffer(b); }
       }
       delete meshes[name];
+      if(typeof WebGPUPreview!=='undefined'){
+        try{WebGPUPreview.releaseMesh(name);}catch(_){}
+      }
       return true;
     },
     deleteTexture(texture){
       if(!texture) return false;
-      const known=textureResources.has(texture) || surfaceInfo.has(texture) ||
-        boundMat===texture || boundArm===texture;
+      // A glTF surface may be two WebGL textures presented as one handle: the visible albedo or
+      // normal map, plus the packed AO/roughness/metalness map associated with it by texture().
+      // The companion is deliberately private, so deleting the public carrier must delete the
+      // complete ownership unit. Previously it removed only `texture`; the ARM handle remained in
+      // both the driver and textureResources forever, even though no caller could reach it again.
+      const owned=ownedSurfaceTextures(texture);
+      const known=owned.some(t=>textureResources.has(t) || surfaceInfo.has(t) ||
+        boundMat===t || boundArm===t);
       if(!known) return false;
+      // Snapshot the id, then make the generation unresolvable before either backend destroys
+      // storage. releaseTexture deliberately accepts the now-retired id; the object fallback is
+      // solely for the pre-existing authored-skin seam, which is not part of this migration.
+      const resourceId=renderResourceId(texture);
+      retireRenderTexture(texture);
+      if(typeof WebGPUPreview!=='undefined'&&typeof WebGPUPreview.releaseTexture==='function'){
+        try{WebGPUPreview.releaseTexture(resourceId||texture);}catch(_){}
+      }
       if(contextAlive()){
-        if(boundMat===texture){
+        if(owned.includes(boundMat)){
           gl.activeTexture(gl.TEXTURE0+MAT_UNIT); gl.bindTexture(gl.TEXTURE_2D,null);
           gl.activeTexture(gl.TEXTURE0);
         }
-        if(boundArm===texture){
+        if(owned.includes(boundArm)){
           gl.activeTexture(gl.TEXTURE0+ARM_UNIT); gl.bindTexture(gl.TEXTURE_2D,null);
           gl.activeTexture(gl.TEXTURE0);
         }
-        gl.deleteTexture(texture);
+        for(const t of owned) gl.deleteTexture(t);
       }
-      if(boundMat===texture) boundMat=null;
-      if(boundArm===texture) boundArm=null;
-      surfaceInfo.delete(texture); textureResources.delete(texture); texIds.delete(texture);
+      if(owned.includes(boundMat)) boundMat=null;
+      if(owned.includes(boundArm)) boundArm=null;
+      for(const t of owned){
+        surfaceInfo.delete(t); textureResources.delete(t); texIds.delete(t);
+      }
       return true;
     },
     meshBytes(name){ const m=meshes[name]; return m ? (m.bytes || 0) : 0; },
-    textureBytes(texture){ return textureResources.get(texture) || 0; },
+    textureBytes(texture){
+      return texture ? ownedSurfaceTextures(texture)
+        .reduce((bytes,t)=>bytes+(textureResources.get(t)||0),0) : 0;
+    },
     get resourceStats(){
       const all=Object.values(meshes), textures=[...textureResources.values()];
       return {
@@ -3373,7 +3830,7 @@ const R = (() => {
     // skinning matrix (world joint transform times inverse bind), which is the caller's job
     // because that is where the pose lives. The three-part API lets Rig draw every material in
     // one setup; drawSkinned remains as the compatible one-part convenience path.
-    beginSkinned(model, bones){ return skinBegin(model, bones); },
+    beginSkinned(model, bones, previewMeta){ return skinBegin(model, bones, previewMeta); },
     drawSkinnedPart(name, color, opt){ return skinPart(name, color, opt); },
     endSkinned(){ skinEnd(); },
     drawSkinned(name,model,color,bones,opt={}){
@@ -3386,8 +3843,8 @@ const R = (() => {
     // One exact rig/LOD, many poses and placements. `parts` is an array of
     // `{mesh,color,opt}` records. Returns the number of complete people submitted, or zero so the
     // caller can use drawSkinned without guessing whether a partial group reached the GPU.
-    drawSkinnedMany(parts,models,bones,boneCount,count){
-      return skinMany(parts,models,bones,boneCount,count);
+    drawSkinnedMany(parts,models,bones,boneCount,count,previewMeta){
+      return skinMany(parts,models,bones,boneCount,count,previewMeta);
     },
     // Whether the instanced programs built, and why not if they did not. Read by the harnesses
     // so a driver that silently falls back is visible in a report rather than only in a frame
@@ -3501,14 +3958,26 @@ const R = (() => {
         gl.bindVertexArray(null);
         gl.useProgram(prog);                // everything after this expects the plain program
       }
+      // Packet ownership is intentionally recorded only after the authoritative GL submission.
+      // A malformed experimental command can abort its packet, never the frame already on screen.
+      if(framePacketId)recordFramePacketBatch(name,data,count,opt);
+      // Opt-in only: mirror the exact post-cull instance payload into the WebGPU comparison
+      // renderer. WebGL has already drawn the authoritative frame, so an unavailable adapter,
+      // an unfinished async device, or a rejected material is simply a no-op here.
+      if (typeof WebGPUPreview !== 'undefined'&&WebGPUPreview.requested){
+        const previewOpt=previewDrawOptions(opt);
+        if(previewOpt)WebGPUPreview.captureBatch(name,data,count,previewOpt);
+      }
       return count;
     },
     // A surface texture — a model's albedo map, or a tiling material. Mipmapped, because these
     // are seen at every distance from a hand's width to the end of the street, and repeating
     // by default, because a tiling material is the main reason this exists.
     texture(source,o={}){
+      const made=[];
       const upload=(src,unit)=>{
         const t=gl.createTexture();
+        made.push([t,unit]);
         gl.activeTexture(gl.TEXTURE0+unit);
         gl.bindTexture(gl.TEXTURE_2D,t);
         gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,src);
@@ -3522,22 +3991,54 @@ const R = (() => {
         textureResources.set(t,mipBytes(src));
         return t;
       };
-      const t=upload(source,MAT_UNIT), info={};
-      if(o.mean) info.mean=o.mean;
-      if(o.arm){
-        info.arm=upload(o.arm,ARM_UNIT);
-        info.armAO=!!o.armAO;
-        info.roughness=o.roughness===undefined?1:o.roughness;
-        info.metallic=o.metallic===undefined?1:o.metallic;
+      try {
+        const t=upload(source,MAT_UNIT), info={};
+        if(o.mean) info.mean=o.mean;
+        if(o.arm){
+          info.arm=upload(o.arm,ARM_UNIT);
+          info.armAO=!!o.armAO;
+          info.roughness=o.roughness===undefined?1:o.roughness;
+          info.metallic=o.metallic===undefined?1:o.metallic;
+        }
+        if(info.mean||info.arm) surfaceInfo.set(t,info);
+        gl.activeTexture(gl.TEXTURE0);
+        boundMat=t;                          // this unit now holds the texture just built
+        // Only reviewed static-model maps and eager tiling sheets cross the comparison seam.
+        // Publish after the complete WebGL carrier + private ARM transaction and its binding state
+        // have succeeded. ARM never receives an id: it remains a child of this carrier generation.
+        if(ordinaryPreviewKind(o.preview)&&typeof WebGPUPreview!=='undefined'&&
+            WebGPUPreview.requested){
+          const resourceId=claimRenderTexture(t,o.preview);
+          if(resourceId){
+            try{WebGPUPreview.captureTexture(resourceId,source,{clamp:!!o.clamp,kind:o.preview,
+                arm:o.arm||null,armAO:!!o.armAO,roughness:o.roughness,metallic:o.metallic,
+                mean:o.mean});}catch(_){}
+          }
+        }else if(o.preview==='skin'&&typeof WebGPUPreview!=='undefined'&&
+            WebGPUPreview.requested){
+          // Authored-character identity remains object-keyed until its separate owner/tier
+          // migration. Do not claim it in the ordinary resource registry.
+          try{WebGPUPreview.captureTexture(t,source,{clamp:!!o.clamp,kind:'skin'});}catch(_){}
+        }
+        return t;
+      } catch(e) {
+        // Uploading the optional companion can fail after the carrier already owns storage. Treat
+        // the pair transactionally: neither handle is usable to the caller until both succeeded.
+        // Clear the units as well as deleting the handles, or the bind caches describe textures
+        // different from the ones the context actually has selected on a retry.
+        for(const [t,unit] of made){
+          gl.activeTexture(gl.TEXTURE0+unit); gl.bindTexture(gl.TEXTURE_2D,null);
+          gl.deleteTexture(t); surfaceInfo.delete(t); textureResources.delete(t); texIds.delete(t);
+        }
+        boundMat=boundArm=null;
+        gl.activeTexture(gl.TEXTURE0);
+        gl.bindTexture(gl.TEXTURE_2D,atlas);
+        throw e;
       }
-      if(info.mean||info.arm) surfaceInfo.set(t,info);
-      gl.activeTexture(gl.TEXTURE0);
-      boundMat=t;                          // this unit now holds the texture just built
-      return t;
     },
     setRoom(rx,h,rz){ room=[rx,h,rz]; },
     // The floor plane of the current deck, for the height-dependent shading. Absolute world y.
-    setDeck(y){ deckY = y || 0; },
+    setDeck(y){ deckY = Number.isFinite(y) ? y : 0; },
     // The scene's daylight openings. Three forms, and the five-argument one is what every caller
     // written before the registry uses — it still means "this place has one window", and it now
     // says so by clearing the registry rather than by there being nowhere else to put one.
@@ -3584,42 +4085,50 @@ const R = (() => {
       bloomScale=o.bloom!==undefined?o.bloom:1;
       expose=o.expose===undefined?1:o.expose;
       const wb=o.whiteBalance||o.white;
-      whiteBal=wb&&wb.length>=3
-        ? [Math.max(0.5,Math.min(1.5,wb[0])),Math.max(0.5,Math.min(1.5,wb[1])),
-           Math.max(0.5,Math.min(1.5,wb[2]))]
-        : [1,1,1];
+      for (let i = 0; i < 3; i++) {
+        const v = wb && wb.length >= 3 ? wb[i] : 1;
+        whiteBal[i] = Number.isFinite(v) ? Math.max(0.5, Math.min(1.5, v)) : 1;
+      }
     },
     setTime(ms){ now=ms; },
     // How wet the ground is and how much snow is lying, both 0 to 1, and what colour the leaves
     // are this month. Set once a frame by the game; every surface in the world reads them.
-    setWeather(wet,snow,wind){ weather[0]=wet||0; weather[1]=snow||0; weather[2]=wind||0; },
+    setWeather(wet,snow,wind){
+      weather[0]=wet||0;weather[1]=snow||0;
+      weather[2]=Number.isFinite(wind)?Math.max(0,Math.min(MAX_FOLIAGE_WIND,wind)):0;
+    },
     setLeaf(c){ leafTint[0]=c[0]; leafTint[1]=c[1]; leafTint[2]=c[2]; },
-    setBulb(x,y,z,on){ bulb=[x,y,z]; bulbOn=on===undefined?1:on; },
+    setBulb(x,y,z,on){ bulb[0]=x; bulb[1]=y; bulb[2]=z; bulbOn=on===undefined?1:on; },
     // The room's local lights, replaced wholesale each time. `list` is [{x,y,z,col:[r,g,b],
     // power,radius}]. Anything past the eighth is dropped rather than silently wrapping, and
     // the caller is expected to have sorted by what matters — see game.js, which keeps the
     // nearest ones to the camera.
-    setLights(list){
+    setLights(list,gain=1){
       const n=Math.min(list?list.length:0,MAXLIGHTS);
+      const k=Number.isFinite(gain)?Math.max(0,Math.min(1,gain)):0;
       lightN=n;
       for(let i=0;i<n;i++){
         const L=list[i], c=L.col||[1,.86,.66], p=L.power===undefined?1:L.power;
         lightPos[i*3]=L.x; lightPos[i*3+1]=L.y; lightPos[i*3+2]=L.z;
-        lightCol[i*3]=c[0]*p; lightCol[i*3+1]=c[1]*p; lightCol[i*3+2]=c[2]*p;
+        lightCol[i*3]=c[0]*p*k; lightCol[i*3+1]=c[1]*p*k; lightCol[i*3+2]=c[2]*p*k;
         lightRad[i]=L.radius===undefined?2.2:L.radius;
       }
     },
     // dir need not be normalised; the shader does that.
-    setDaylight(dir,col,amt,sky,ground,moon){
+    setDaylight(dir,col,amt,sky,ground,moon,zenith,horizon){
       sun=dir; sunCol=col; sunAmt=amt; groundCol=ground;
+      skyZenith=zenith||sky; skyHorizon=horizon||sky;
       // The moon is drawn in the sky with a phase and a glow, and until now contributed nothing to
       // what anything on the ground was lit by: a clear full-moon night shaded exactly as dark as an
       // overcast new-moon one. A small cool lift on the sky term, which is where a night sky's light
       // actually comes from. Scaled by phase, so it goes away when the moon does.
       const m = moon === undefined ? 0 : moon;
-      skyCol = m > 0.001
-        ? [sky[0] + 0.055 * m, sky[1] + 0.060 * m, sky[2] + 0.075 * m]
-        : sky;
+      if (m > 0.001) {
+        moonSky[0] = sky[0] + 0.055 * m;
+        moonSky[1] = sky[1] + 0.060 * m;
+        moonSky[2] = sky[2] + 0.075 * m;
+        skyCol = moonSky;
+      } else skyCol = sky;
     },
     get sunAmount(){ return sunAmt; },
     // Resolution scale. The canvas keeps its CSS size and the browser stretches a smaller
@@ -3627,12 +4136,42 @@ const R = (() => {
     // square of the number — the cheapest frame there is to buy back on a slow machine.
     setRenderScale(k){ renderScale=Math.max(0.5,Math.min(1,k)); },
     setGlyphAssist(v){ glyphAssist = v > 0 ? 1 : 0; },
+    // Shallow-angle surface clarity follows the quality ladder without allocating another image.
+    // The extension and its hardware maximum are optional; trilinear mipmaps remain the fallback.
+    setAnisotropy(v){
+      const next=Number.isFinite(v)?Math.max(1,v):1;
+      if(next===surfaceAniso)return;
+      surfaceAniso=next;
+      if(!gl||!anisoExt||maxAniso<=1)return;
+      gl.activeTexture(gl.TEXTURE0+MAT_UNIT);
+      for(const texture of textureResources.keys()){
+        gl.bindTexture(gl.TEXTURE_2D,texture);
+        applyAnisotropy(gl.TEXTURE_2D,surfaceAniso);
+      }
+      // The material unit no longer contains the handle described by the binding cache. ARM's
+      // unit was not touched, but clearing both caches keeps the next complete material bind honest.
+      gl.bindTexture(gl.TEXTURE_2D,null);
+      boundMat=boundArm=null;
+      gl.activeTexture(gl.TEXTURE0);
+      gl.bindTexture(gl.TEXTURE_2D,atlas);
+    },
     // Resize the depth map, or turn it off entirely with 0.
     setShadowSize(px){
       if (px===smapSize) return;
       smapSize=px;
       shadowReady=false;
-      if (!px) return;
+      if (!px) {
+        // Basic quality is also the low-memory tier. Leaving the previous 1280/1024/768 square
+        // depth image allocated saved draw time but not a byte of GPU memory. Keep the handle and
+        // attachment stable, replacing only its storage with the smallest legal depth image; a
+        // later quality increase expands the same texture through the ordinary path below.
+        gl.activeTexture(gl.TEXTURE1);
+        gl.bindTexture(gl.TEXTURE_2D,sDepth);
+        gl.texImage2D(gl.TEXTURE_2D,0,gl.DEPTH_COMPONENT24,1,1,0,
+          gl.DEPTH_COMPONENT,gl.UNSIGNED_INT,null);
+        gl.activeTexture(gl.TEXTURE0);
+        return;
+      }
       gl.activeTexture(gl.TEXTURE1);
       gl.bindTexture(gl.TEXTURE_2D,sDepth);
       gl.texImage2D(gl.TEXTURE_2D,0,gl.DEPTH_COMPONENT24,px,px,0,
@@ -3669,14 +4208,24 @@ const R = (() => {
           cssObs.observe(canvas);
         } else cssObs = true;      // no observer here; fall back to reading every frame
       } else if (cssObs === true) { cssW = canvas.clientWidth; cssH = canvas.clientHeight; }
-      return [cssW, cssH];
+      cssSizeOut[0] = cssW; cssSizeOut[1] = cssH;
+      return cssSizeOut;
     },
     get cssW(){ return cssW; },
     get cssH(){ return cssH; },
     resize(canvas){
       const dpr=Math.min(devicePixelRatio||1,2)*renderScale;
       this.cssSize(canvas);
-      const w=cssW*dpr|0,h=cssH*dpr|0;
+      // A hidden/minimised canvas can report zero CSS extent for a ResizeObserver sample. WebGL
+      // does not have a useful zero-sized render target: attempting to rebuild the post chain at
+      // 0x0 marks it failed for the rest of the session, and a zero aspect makes M.persp infinite.
+      let w=Math.max(1,(cssW*dpr)|0),h=Math.max(1,(cssH*dpr)|0);
+      // The post graph owns several full-size multisample/resolve targets. Bound the complete
+      // allocation by both the driver's actual limits and a device-aware pixel budget so a large
+      // Retina window cannot turn a quality setting into a context-loss event.
+      const budget=renderPixelBudget;
+      const fit=Math.min(1,maxTargetSize/w,maxTargetSize/h,Math.sqrt(budget/(w*h)));
+      if(fit<1){w=Math.max(1,(w*fit)|0);h=Math.max(1,(h*fit)|0);}
       // Settled before it is acted on. This is called every frame, and a new size tears down and
       // rebuilds six render targets at three sizes — so dragging a window edge rebuilt the entire
       // post chain sixty times a second for as long as the drag lasted, and the frames in between
@@ -3693,13 +4242,23 @@ const R = (() => {
       } else pendW = pendH = 0;
       canvasW=canvas.width; canvasH=canvas.height;
       gl.viewport(0,0,canvas.width,canvas.height);
-      if (postWant && !postFail) postSize(canvas.width, canvas.height);
-      return cssW/Math.max(1,cssH);
+      // Not while a canvas size is still settling. A quality tier moving up turns the chain back
+      // on and flips AO in the same call, both of which ask for a rebuild immediately — but the
+      // canvas size that tier wants is pending for another 150 ms, so that rebuild would be made
+      // at a size already known to be wrong and thrown away when the real one lands. Every upward
+      // tier change was building the whole graph twice. The cost of waiting is that the frames in
+      // between draw without bloom, in the middle of a quality change the player is watching
+      // happen anyway.
+      if (postWant && !postFail && !pendW) postSize(canvas.width, canvas.height);
+      return Math.max(1,cssW)/Math.max(1,cssH);
     },
     // Resolve the scene, bleed the bright parts of it into the air, and put the result on screen.
     // Called once at the end of a frame, after everything else has been drawn. Returns whether it
     // did anything, which is how a caller can tell the chain is off rather than broken.
     present(){
+      // Even with the post chain disabled, the ordinary colour stream has ended and its diagnostic
+      // ownership must be consumed. Otherwise Basic quality would leak one pending packet a frame.
+      finishFramePacket();
       if (!postOn) return false;
       // Down from multisampled to textures the shader can read: the picture, and the map of what
       // in it is a light. One blit each, and each one has to say which attachment it is reading.
@@ -3779,6 +4338,11 @@ const R = (() => {
       // Put back everything the scene expects to find, including the texture unit the shadow map
       // lives on: leaving TEXTURE3 selected made the next frame bind the shadow map over the top
       // of the bloom buffer, which looks like the shadows failing rather than the post pass.
+      // AO shares unit 4 with ARM materials. It must be unbound before the next frame renders back
+      // into aTex[0]; sampling a texture while it is also the draw attachment is a WebGL feedback
+      // loop. That rejected both AO writes with INVALID_OPERATION and left contact darkening frozen
+      // on its first frame even though the colour pass continued normally.
+      if (withAo) { gl.activeTexture(gl.TEXTURE4); gl.bindTexture(gl.TEXTURE_2D, null); }
       gl.activeTexture(gl.TEXTURE0);
       gl.bindTexture(gl.TEXTURE_2D, atlas);      // the invariant the glyphs rely on
       boundArm = null;                          // post used unit 4 for AO; force next ARM bind
@@ -3792,7 +4356,11 @@ const R = (() => {
       postWant = on ? 1 : 0;
       if (amount !== undefined) bloomAmt = amount;
       if (vignette !== undefined) vigAmt = vignette;
-      if (postWant && !postFail && canvasW) postSize(canvasW, canvasH);
+      // R.resize runs once every frame and builds against the final quality tuple. Deferring the
+      // enabled case until there avoids allocating a bloom-only target and immediately replacing
+      // it when setAO runs a few lines later. The disabled case is immediate because its purpose is
+      // to return the high-tier render-target memory now, not after another frame.
+      if (!postWant) dropPostTargets();
     },
     // Contact darkening. Its own control because it costs its own buffer: a third full-size
     // multisampled attachment, which is the most expensive thing the post chain asks for.
@@ -3801,8 +4369,10 @@ const R = (() => {
       aoWant = on ? 1 : 0;
       if (amount !== undefined) aoAmt = amount;
       if (radius !== undefined) aoRadius = radius;
-      // The attachment is allocated or thrown away, so the target has to be rebuilt.
-      if (was !== aoWant && canvasW) { pW = 0; postSize(canvasW, canvasH); }
+      // The attachment is allocated or thrown away, so the next resize must rebuild. Do not build
+      // here: the quality callback sets post and AO consecutively, and one final allocation is both
+      // cheaper and less failure-prone than two full target graphs back-to-back.
+      if (was !== aoWant) pW = 0;
     },
     get ao(){ return { on: !!(aoWant && geFbo), amount: aoAmt, radius: aoRadius }; },
     get post(){ return { on: !!postOn, want: !!postWant, samples: msaa,
@@ -3846,9 +4416,23 @@ const R = (() => {
       skinInstFrameReady = false;
       skinInstFrameStats = { groups:0, calls:0, instances:0 };
       skinCharacterOpen = false;
+      webgpuDirectSkin = null;
       frameU(prog,U,eye);
       if (instOK) frameU(iprog,iU,eye);
       gl.useProgram(prog);
+      previewDepthWrite=true;previewAdditive=false;previewCullNone=false;
+      if(typeof WebGPUPreview!=='undefined'&&WebGPUPreview.packetRecordRequested)
+        beginFramePacket(sky,eye);
+      // The opt-in WebGPU comparison consumes the renderer's already-resolved environment here,
+      // after room/light selection and camera setup. Keeping this beside frameU prevents a second
+      // approximate lighting state from drifting in game.js, while ordinary WebGL sessions pay
+      // only the guarded branch.
+      if (typeof WebGPUPreview !== 'undefined' && WebGPUPreview.requested)
+        WebGPUPreview.beginFrame(vp,sky,{ dir:sun, color:sunCol, amount:sunAmt,
+          sky:skyCol, ground:groundCol, skyA:skyZenith, skyB:skyHorizon, eye, indoor, bulb, bulbOn,
+          lightPos, lightCol, lightRad, lightCount:lightN,
+          expose, white:whiteBal, fogNear, fogD, fogColor:fogCol, glyphAssist, deckY,
+          time:now, weather, leaf:leafTint });
     },
     // Render the sun's view of the world into the depth map. The caller paints the same scene
     // it is about to paint for real; `R.shadowPass` is true while that is happening so props
@@ -3889,6 +4473,7 @@ const R = (() => {
         gl.uniformMatrix4fv(siU.uView, false, M.ident());
         gl.useProgram(sprog);
       }
+      framePacketOmit('shadow-pass-out-of-band');
       return true;
     },
     endShadow(canvas){
@@ -4014,18 +4599,43 @@ const R = (() => {
       }
       bindArm(U,pNrm||pAlbedo);
       gl.drawElements(gl.TRIANGLES,m.count,m.type,0);
+      if(framePacketId)recordFramePacketDraw(name,model,color,opt);
+      // The WebGPU comparison mirrors one-off main-pass draws as well as retained batches. This
+      // sits after the authoritative WebGL submission and outside the shadow branch above, so a
+      // rejected optional material can neither hide the WebGL prop nor duplicate its shadow.
+      if(typeof WebGPUPreview!=='undefined'&&WebGPUPreview.requested){
+        const previewOpt=previewDrawOptions(opt);
+        if(previewOpt)WebGPUPreview.captureDraw(name,model,color,previewOpt);
+      }
     },
     // Sky, drawn first as a sphere around the eye with depth off, so everything else simply
     // paints over it. Culling has to go too: we are looking at it from the inside.
     dome(eye,zenith,horizon){
       gl.uniform3fv(U.uSkyA,zenith); gl.uniform3fv(U.uSkyB,horizon);
+      const packetActive=!!framePacketId;
+      previewDepthWrite=false;previewCullNone=true;
+      if(packetActive){
+        framePacketDepthWrite=false;framePacketCullNone=true;
+        // The strict direct mode-12 ball contract makes disabled depth testing intrinsic to this
+        // command. The packet's mode/cull/depth-write tuple therefore reconstructs it without a
+        // generic depth-test field or an out-of-band omission.
+      }
       gl.depthMask(false); gl.disable(gl.DEPTH_TEST); gl.disable(gl.CULL_FACE);
       this.draw('ball',M.mul(M.trans(eye[0],eye[1],eye[2]),M.scale(760,760,760)),
         horizon,{ mode:12,gloss:0 });
       gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.depthMask(true);
+      previewDepthWrite=true;previewCullNone=false;
+      if(packetActive){framePacketDepthWrite=true;framePacketCullNone=false;}
     },
-    depthMask(on){ gl.depthMask(on); },
-    additive(on){ gl.blendFunc(gl.SRC_ALPHA,on?gl.ONE:gl.ONE_MINUS_SRC_ALPHA); },
+    depthMask(on){
+      previewDepthWrite=!!on;
+      if(framePacketId)framePacketDepthWrite=!!on;gl.depthMask(on);
+    },
+    additive(on){
+      previewAdditive=!!on;
+      if(framePacketId)framePacketAdditive=!!on;
+      gl.blendFunc(gl.SRC_ALPHA,on?gl.ONE:gl.ONE_MINUS_SRC_ALPHA);
+    },
   };
 })();
 

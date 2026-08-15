@@ -59,15 +59,64 @@
 // ---------------------------------------------------------------------------------------------
 
 MetroFit['map'] = A => {
-  const { box, cyl, ball, cap, taper, wall, flat, glyphs, solid, glow, thing } = A;
-  const { C, G, col } = A;
+  const { box, cyl, glyphs, thing } = A;
+  const { C, col, RZ, STATIONS } = A;
 
-  // TODO: build the zone.
+  // The shell already owns the changing seven-stop diagram at x .70..5.30 and the ticket agent
+  // owns the fare board at x -3.84..-.64.  The 1.34 m wall bay between them is the only honest
+  // place for the wayfinding key: adding another line diagram would duplicate the live map, while
+  // putting a freestanding sign in the hall would pinch the only clear cross-room route at z -3.
+  const X = .03, Z = -RZ + .14, FACE = Z + .046;
+  const TAG = '换乘';
+  const ink = C('#e9f3f6'), dim = C('#a9c4d2'), shut = C('#d6ab46');
+
+  // One frame, one inset and one text plane.  All three keep the shell's existing metal/plaster
+  // vocabulary and remain opaque, so the entire module stays batchable.
+  box(X, 1.72, Z, 1.06, 1.60, .06, col.steelD,
+    { hard:true, gloss:.34, mat:'steel', matScale:.50, matAmt:.30, tag:TAG });
+  box(X, 1.72, FACE, .94, 1.48, .022, col.navy,
+    { hard:true, gloss:.22, tag:TAG });
+  box(X, 2.24, FACE + .016, .86, .30, .012, col.blue,
+    { hard:true, mode:1, glow:.18, tag:TAG });
+  glyphs(X, 2.24, FACE + .026, 0, '出口换乘',
+    { size:.095, gap:.026, lift:0, color:ink, mode:1, glow:.10, tag:TAG });
+
+  // A is the only open street exit in this compact station; B is deliberately marked unopened.
+  // This agrees with the stair agent's double-sided board instead of inventing a second doorway.
+  const arrow = (x, y, c, dir) => {
+    box(x, y, FACE + .018, .22, .035, .012, c,
+      { hard:true, mode:1, glow:.18, rz:dir ? Math.PI : 0, tag:TAG });
+    for (const s of [-1, 1])
+      box(x + (dir ? -.09 : .09), y + s * .055, FACE + .020, .14, .030, .012, c,
+        { hard:true, mode:1, glow:.18, rz:s * (dir ? -.72 : .72), tag:TAG });
+  };
+  arrow(X - .29, 1.91, col.jadeL, 1);
+  glyphs(X + .08, 1.91, FACE + .028, 0, 'A出口',
+    { size:.090, gap:.022, lift:0, color:ink, mode:1, tag:TAG });
+  glyphs(X - .27, 1.61, FACE + .028, 0, 'B出口',
+    { size:.082, gap:.020, lift:0, color:dim, mode:1, tag:TAG });
+  glyphs(X + .18, 1.61, FACE + .028, 0, '暂缓开通',
+    { size:.065, gap:.015, lift:0, color:shut, mode:1, tag:TAG });
+  glyphs(X, 1.29, FACE + .028, 0, '换乘请看线路图',
+    { size:.061, gap:.014, lift:0, color:dim, mode:1, tag:TAG });
+  // The end marker is a small legend, not a claimed interchange.  The live map immediately to
+  // its right still decides which physical dot is the terminus.
+  cyl(X - .33, 1.08, FACE + .024, .043, .012, col.navy,
+    { rx:Math.PI / 2, mode:1, tag:TAG });
+  glyphs(X + .07, 1.08, FACE + .030, 0, '终点站',
+    { size:.064, gap:.016, lift:0, color:ink, mode:1, tag:TAG });
+
+  thing('换乘', X, 2.28, FACE, '换乘请先看线路图。',
+    'Check the line map before changing lines.',
+    '换 to change + 乘 to ride. A出口 is open; B出口 is not open yet.',
+    { focus:[X, -RZ + 1.35], reach:2.0 });
+  // The live diagram grew to seven stops but its shell-authored teaching sentence still said six.
+  // Correct the existing thing in place rather than adding a second 线路图 interaction on top of it.
+  const lineThing = A.things.find(t => t.hz === '线路图');
+  if (lineThing) {
+    const n = STATIONS.length;
+    lineThing.sentence = `线路图上有${n === 7 ? '七' : n}个站。`;
+    lineThing.tr = `There are ${n} stations on the line map.`;
+    lineThing.note = '线路 route + 图 diagram. 终点站 is either end; 本站 is this station.';
+  }
 };
-
-// Anything that moves registers here and the shell dispatches it once a frame, BEFORE the shell's
-// own train placement, so you can read the clock it is about to act on. Do not start your own
-// timer. `t` is wall-clock seconds, `body` is the player, `clock` is the game clock in minutes.
-// A tick that throws is dropped for the rest of the run rather than stopping the station.
-//
-// MetroFit['map'].tick = (t, body, clock) => { };

@@ -4,12 +4,10 @@
 // this floor on deck 7 at y 18.60; `DECK_OF['f7']` maps the key to that deck, and every height
 // in this file is written off `A.y0` so it follows the contract rather than a copied number.
 //
-// IMPORTANT — unlike js/home-corridor.js, this file is NOT a fit-out. `buildShell` in
-// js/world.js pours a floor, a ceiling and four walls on decks 0 and 2 only, and `buildShafts`
-// builds landings on decks 0 and 2 only. On deck 7 the shell builds nothing at all, so this
-// file is the whole floor: slab, ceiling, perimeter, partitions, the lift landing, the six
-// front doors, and the flat behind the one that opens. See the notes at the foot of the file
-// for the two things that belong to whoever owns js/world.js.
+// IMPORTANT — unlike js/home-corridor.js, this file still owns its slab, ceiling, perimeter,
+// partitions, six front doors and fit-out because `buildShell` pours those only on decks 0 and 2.
+// It does NOT own the live lift frontage: `buildShafts` now runs over `SHAFT_DECKS`, and the shell
+// supplies both shafts, moving landing doors, indicator and call panel on deck 7.
 //
 // The plan, in the building's own coordinates (x -6..6 across, z -5..6.2 front to back):
 //
@@ -62,7 +60,9 @@ FlatFit['f7'] = A => {
 
   // The teacher's own door, cut in the z = 3.20 wall. Nothing else on this deck may build in
   // x 3.40 .. 4.40 at that wall.
-  const FX = 3.90, FW = 1.00, FTOP = 2.10;
+  // Match the generous 606 opening below: a full 1.20 m keeps the teacher's entrance calm even
+  // with a comfort envelope, an open leaf and doorstep storage all sharing the threshold.
+  const FX = 3.90, FW = 1.20, FTOP = 2.10;
 
   // The internal partitions. One number each, and every wall, collider and doorway below is
   // derived from them.
@@ -196,27 +196,29 @@ FlatFit['f7'] = A => {
   // (its own radius) clear of the edge in each and never reaches the other. Every straddle
   // below overlaps its two neighbours by 0.80 m, comfortably more than that radius; the real
   // width of each opening is set by the partition colliders further down, not by these.
-  A.zone({ id: 'f7', x0: X0, x1: X1, z0: ZC, z1: ZN, light: [0, Y + 2.30, 4.05], ceil: CY - .06 });
-  A.zone({ id: 'f7men', x0: FX - FW / 2, x1: FX + FW / 2, z0: ZC - .70, z1: ZC + .70,
+  const camNear = (w, d) => Math.max(1.9, Math.min(3.4, .42 * Math.min(w, d) + 1.35));
+  const zone = q => A.zone({ ...q, near: camNear(q.x1 - q.x0, q.z1 - q.z0) });
+  zone({ id: 'f7', x0: X0, x1: X1, z0: ZC, z1: ZN, light: [0, Y + 2.30, 4.05], ceil: CY - .06 });
+  zone({ id: 'f7men', x0: FX - FW / 2, x1: FX + FW / 2, z0: ZC - .85, z1: ZC + .85,
            light: [FX, Y + 2.30, ZC], ceil: CY - .06 });
-  A.zone({ id: 'f7keting', x0: PX, x1: X1, z0: PZK, z1: ZC,
+  zone({ id: 'f7keting', x0: PX, x1: X1, z0: PZK, z1: ZC,
            light: [3.55, Y + 2.34, 0.30], ceil: CY - .06 });
-  A.zone({ id: 'f7chufang', x0: PX, x1: X1, z0: ZF, z1: PZK,
+  zone({ id: 'f7chufang', x0: PX, x1: X1, z0: ZF, z1: PZK,
            light: [3.40, Y + 2.34, -3.55], ceil: CY - .06 });
-  A.zone({ id: 'f7shufang', x0: X0, x1: PX, z0: PZS, z1: ZC,
+  zone({ id: 'f7shufang', x0: X0, x1: PX, z0: PZS, z1: ZC,
            light: [-2.40, Y + 2.34, 1.70], ceil: CY - .06 });
-  A.zone({ id: 'f7woshi', x0: X0, x1: PX, z0: PZB, z1: PZS,
+  zone({ id: 'f7woshi', x0: X0, x1: PX, z0: PZB, z1: PZS,
            light: [-2.60, Y + 2.34, -1.80], ceil: CY - .06 });
-  A.zone({ id: 'f7yangtai', x0: X0, x1: PX, z0: ZF, z1: PZB,
+  zone({ id: 'f7yangtai', x0: X0, x1: PX, z0: ZF, z1: PZB,
            light: [-2.60, Y + 2.28, -4.30], ceil: CY - .06 });
   // the four straddles
-  A.zone({ id: 'f7d1', x0: PX - .80, x1: PX + .80, z0: DR_S[0] - .30, z1: DR_S[1] + .30,
+  zone({ id: 'f7d1', x0: PX - .80, x1: PX + .80, z0: DR_S[0] - .30, z1: DR_S[1] + .30,
            light: [PX, Y + 2.34, 2.05], ceil: CY - .06 });
-  A.zone({ id: 'f7d2', x0: PX - .80, x1: PX + .80, z0: DR_B[0] - .30, z1: DR_B[1] + .30,
+  zone({ id: 'f7d2', x0: PX - .80, x1: PX + .80, z0: DR_B[0] - .30, z1: DR_B[1] + .30,
            light: [PX, Y + 2.34, -1.15], ceil: CY - .06 });
-  A.zone({ id: 'f7d3', x0: DR_K[0] - .30, x1: DR_K[1] + .30, z0: PZK - .80, z1: PZK + .80,
+  zone({ id: 'f7d3', x0: DR_K[0] - .30, x1: DR_K[1] + .30, z0: PZK - .80, z1: PZK + .80,
            light: [3.85, Y + 2.34, PZK], ceil: CY - .06 });
-  A.zone({ id: 'f7d4', x0: DR_Y[0] - .30, x1: DR_Y[1] + .30, z0: PZB - .70, z1: PZB + .80,
+  zone({ id: 'f7d4', x0: DR_Y[0] - .30, x1: DR_Y[1] + .30, z0: PZB - .70, z1: PZB + .80,
            light: [-3.85, Y + 2.30, PZB], ceil: CY - .06 });
 
   // ============================================================================== PARTITIONS
@@ -328,21 +330,9 @@ FlatFit['f7'] = A => {
   dado('z', X0, 1, [[ZC, WZ - WW / 2], [WZ + WW / 2, ZN]]);
   dado('z', X1, -1, [[ZC, SZ - SW / 2], [SZ + SW / 2, ZN]]);
 
-  // --- the two lift shafts, seen from the landing.
-  //
-  // NOTE FOR js/world.js: `buildShafts` runs `for (const f of [0, 2])`, so on every deck above
-  // the second there is no shaft geometry, no landing and no call panel — the shaft is an open
-  // void in the back of the corridor and the eye goes straight through the building. What
-  // follows is a stand-in, built 20 mm proud of the planes the shell's own `landing()` uses so
-  // that when the shell is generalised the two do not fight for the same pixels. Delete it then.
-  const SF = LF.z0 - .020, SB = LB.z0 - .020;                 // the two shaft faces
-  // The shell now builds a real landing on every deck — doors, surround, indicator, call panel,
-  // moving leaves and an opening collider. This stand-in stands down rather than double-building.
-  // The shell builds a real landing on every deck (SHAFT_DECKS, js/world.js:246), so the
-  // stand-in that used to sit here under `if (!shellLanding)` was dead code. Removed 2026-08-09.
-
-  // --- the fallback call panel, and the little brass plate somebody screwed on beside it
-  const CPX = 3.72, CPZ = SF - .02;
+  // --- the little brass floor plate beside the shell-owned call panel
+  // It identifies the landing without duplicating the live 电梯 control or its interaction.
+  const CPX = 3.72, CPZ = LF.z0 - .04;
   box(CPX, Y + 1.40, CPZ - .014, .22, .09, .012, col.brass, { hard: true, gloss: .5 });
   G(CPX, Y + 1.40, CPZ - .026, PI, '七层', { size: .052, gap: .010, color: col.ink });
 
@@ -1400,7 +1390,9 @@ FlatFit['f7'] = A => {
   (function bedroom() {
     // 0.30 m further north than it wants to be. At z -1.90 the bed's collider and the balcony
     // partition left a 20 mm slot between them, so the 阳台 could not be reached at all.
-    const bx = -4.40, bz = -1.60;
+    // Put the bed where the room reads cleanly: against the west wall, with one generous aisle on
+    // its east. At -4.40 it created a 20 cm body strip behind the frame that could not be entered.
+    const bx = -5.05, bz = -1.60;
     box(bx, FL + .20, bz, 1.55, .40, 2.00, col.wood, { gloss: .22, tag: '床', ...MT.timber });
     box(bx, FL + .44, bz, 1.50, .14, 1.95, C('#cfc7b0'), { gloss: .05, mode: 7, tag: '床' });
     box(bx, FL + .52, bz + .12, 1.48, .06, 1.60, C('#8d9aa8'), { gloss: .05, mode: 7, tag: '床' });
@@ -1689,13 +1681,6 @@ FlatFit['f7'] = A => {
      'A pair of couplets is pasted at the door.',
      '书山有路勤为径，学海无涯苦作舟 — a teacher’s couplet, not a shopkeeper’s.',
      FX - .40, 3.95, 2.0);
-  // The shell contributes the live call control on every served deck.  This word belongs only to
-  // the compatibility landing above; keeping it beside the shell's control creates two usable
-  // 电梯 targets on F7 even though the duplicate panel geometry has correctly stood down.
-  if (!A.shellLanding)
-    TH('电梯', (LF.x0 + LF.x1) / 2, Y + 1.20, SF - .08, '我在七楼按了电梯。',
-       'I pressed for the lift on the seventh floor.',
-       '电 electric + 梯 ladder. 楼梯 is the staircase.', 3.20, 4.30, 2.6);
   TH('楼梯', X1 - .10, Y + 1.10, SZ, '楼梯在走廊的东头。',
      'The stairs are at the east end of the corridor.', '楼 storey + 梯 ladder.', 5.30, 4.20, 2.2);
   TH('安全出口', X1 - .10, Y + STOP + .19, SZ, '安全出口的灯是绿色的。',
@@ -1795,7 +1780,7 @@ FlatFit['f7'] = A => {
   TH('日历', 5.30, Y + 1.70, ZC - .05, '日历翻到了九月十号。',
      'The calendar is turned to the tenth of September.',
      '日 day + 历 calendar. 九月十号 is 教师节, Teachers’ Day.', 5.10, 2.40, 1.9);
-  TH('床', -4.40, Y + .60, -1.60, '床铺得整整齐齐。', 'The bed is made very neatly.',
+  TH('床', -5.05, Y + .60, -1.60, '床铺得整整齐齐。', 'The bed is made very neatly.',
      '床 bed. 起床 is to get up — literally to rise from the bed.', -3.00, -1.20, 2.4);
   TH('衣柜', 0.62, Y + 1.20, -2.34, '衣柜上放着一个旧箱子。',
      'An old suitcase sits on top of the wardrobe.', '衣 clothes + 柜 cupboard.',
@@ -1845,27 +1830,3 @@ FlatFit['f7'] = A => {
   HomeF7.built = true;
   return HomeF7;
 };
-
-// ---------------------------------------------------------------------------------------------
-// TWO THINGS FOR WHOEVER OWNS js/world.js, kept here rather than in a report that will be lost.
-//
-// 1. THE SHELL BUILDS NOTHING ABOVE DECK 2. `buildShell` pours its slab, ceiling, four walls and
-//    trim for deck 0 and deck 2 only, and `buildShafts` / the call-panel loop both run
-//    `for (const f of [0, 2])`. So on decks 3..12 there is no floor, no ceiling, no perimeter,
-//    no lift landing and no call button — which is why this file builds all of them. That is
-//    fine for one floor and wrong for ten: every floor builder is now writing the same landing
-//    from scratch, and the twelve of them will not agree. The generalisation TOWER.md asks for
-//    ("Generates one landing per deck in buildShell") is still outstanding.
-//
-//    The lift landing built here — surround, leaves, indicator, call panel — stands 20 mm proud
-//    of the planes `landing()` uses downstairs, so when the shell does start generating them the
-//    two will not z-fight. Delete `shafts()` and the call panel above at that point.
-//
-// 2. `goFloor(n)` STILL COLLAPSES TO TWO STOPS. js/world.js line 467 is
-//
-//        const to = n === 0 ? 0 : 2;
-//
-//    so pressing 七 in the car's floor panel sends it to deck 2. `DECK`, `ZONE`, `setFloor`,
-//    `deckDecals` and `roomAt` were all generalised in Wave 0 and this one was not, so deck 7
-//    is reachable by `World.setFloor(7)` and by nothing the player can press. `rideFloor` and
-//    `RIDE_T` (documented as "seconds between the two decks") need the same pass.

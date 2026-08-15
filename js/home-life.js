@@ -184,26 +184,26 @@ const HomeLife = (() => {
         b.late = true; S.arrears += b.yuan; out.over.push(b);
         S.bills.splice(S.bills.indexOf(b), 1);
       }
-    // A new set every ten days, into the 信箱 rather than onto the player.
-    // The 信箱 empties itself the way `S.waimai` above does. Nothing but `takePost` ever removed a
-    // row, so a player who never opens it accumulated one a cycle for ever and every one of them
-    // went into the save. A month is the bin: junk mail nobody collected is not news, and an
-    // unpaid bill is already tracked in `S.bills`, which has its own due dates.
-    S.post = S.post.filter(q => !Number.isFinite(+q.day) || ended - q.day < 30);
-    if (ended + 1 >= S.billDay + CYCLE) {
-      S.billDay = ended + 1;
+    // Mail is durable property rather than something the read method synthesises. A flyer arrives
+    // every third morning and remains for that three-day cycle; bills stay for a month because the
+    // debt they announce has its own due-date state. Both use the existing save row shape.
+    const arriving = ended + 1;
+    S.post = S.post.filter(q => !Number.isFinite(+q.day) ||
+      arriving - q.day < (q.bill ? 30 : 3));
+    if (arriving % 3 === 0 &&
+        !S.post.some(q => !q.bill && q.day === arriving && q.hz === '广告'))
+      S.post.push({ hz:'广告', en:'a handful of flyers', day:arriving, bill:false });
+    if (arriving >= S.billDay + CYCLE) {
+      S.billDay = arriving;
       S.bills = S.bills.filter(b => !b.paid);
       for (const b of BILLS)
         S.bills.push({ hz:b.hz, py:b.py, en:b.en, yuan:b.yuan, due:S.billDay + GRACE, paid:false, late:false });
       S.post.push({ hz:'账单', en:'the utility bills', day:S.billDay, bill:true });
-      // Trimmed the way `S.waimai` beside it already is, and to the same 12 the loader below
-      // already clamps to. Nothing removes from this list except `takePost`, so a player who never
-      // opens the 信箱 accumulated one row a cycle for ever — 2 items by day 20, 8 by day 80 — and
-      // every one of them was serialised into the save. The oldest go first: a letter you have
-      // ignored for six cycles is not news, and the count is what the 信箱 badge reads anyway.
-      if (S.post.length > 12) S.post = S.post.slice(-12);
       out.bills = S.bills.slice();
     }
+    // The loader already applies the same cap. Keep both a flyer and a bill when they arrive on
+    // day 30; only trim after all of that morning's post has been materialised.
+    if (S.post.length > 12) S.post = S.post.slice(-12);
     return out;
   }
 
@@ -240,6 +240,23 @@ const HomeLife = (() => {
     return out;
   }
 
+  // Price one actual stretch of sleep from its accepted start. `sleepPlan` chooses how long a
+  // normal night lasts; an interrupted bed action reaches this same arithmetic with the shorter
+  // time it really consumed, so waking early cannot keep yesterday's rested state.
+  function sleepValue(day, minutes, mins, alarm) {
+    const now = abs(day, minutes), hours = mins / 60, wake = now + mins;
+    const noise = noiseNight(day, minutes, mins, SLEEP_DECK);
+    const spoil = clamp(noise.loud * 0.55, 0, 0.45);
+    return {
+      mins, hours, alarm:!!alarm, noise, spoil:+spoil.toFixed(2), wakeHour:hourOf(wake),
+      rest:Math.round(100 * Math.min(1, hours / SLEEP_FULL) * (1 - spoil)),
+      mood:Math.round(clamp((hours - 4) * 5, -14, 14) - noise.loud * 9),
+      rested:clamp((hours - 4) / (SLEEP_FULL - 4), 0, 1) * (1 - spoil),
+      late:(typeof Career !== 'undefined' && Career.isWorkday && Career.isWorkday(dayOf(wake)) &&
+            !Career.onLeave(dayOf(wake)) && hourOf(wake) >= Career.ON_TIME),
+    };
+  }
+
   function sleepPlan(day, minutes) {
     const now = abs(day, minutes);
     let mins = 480, alarm = false;         // eight hours if nothing wakes you
@@ -252,34 +269,27 @@ const HomeLife = (() => {
     // Nobody stays in bed past the middle of the morning on their own.
     const nat = day * 1440 + 10 * 60 + (minutes >= 10 * 60 ? 1440 : 0);
     if (!alarm && now + mins > nat) mins = Math.max(60, nat - now);
-    const hours = mins / 60;
-    const wake = now + mins;
     // Item 263. A night with the drill going is not a shorter night, it is a worse one, so this
     // multiplies the quality and never the length — you still lose the hours to the bed.
     // A whole night at full volume takes 45% off; the cap is there because you do eventually
     // sleep through it, and a night that scores zero would make the flat unusable rather than
     // annoying.
-    const noise = noiseNight(day, minutes, mins, SLEEP_DECK);
-    const spoil = clamp(noise.loud * 0.55, 0, 0.45);
-    return {
-      mins, hours, alarm, noise, spoil: +spoil.toFixed(2),
-      wakeHour: hourOf(wake),
-      // Four hours and nine hours must not produce the same morning. Rest fills to the fraction of
-      // a full night you got; `rested` is the harsher curve, and it is what follows you all day.
-      rest: Math.round(100 * Math.min(1, hours / SLEEP_FULL) * (1 - spoil)),
-      mood: Math.round(clamp((hours - 4) * 5, -14, 14) - noise.loud * 9),
-      rested: clamp((hours - 4) / (SLEEP_FULL - 4), 0, 1) * (1 - spoil),
-      // Waking after 上班时间 on a workday is the flat's one direct line into the job. It is not a
-      // separate penalty: it means the punch you make when you get there is a late punch, and
-      // Career.clockIn already knows what a late punch is worth.
-      late: (typeof Career !== 'undefined' && Career.isWorkday && Career.isWorkday(dayOf(wake)) &&
-             !Career.onLeave(dayOf(wake)) && hourOf(wake) >= Career.ON_TIME),
-    };
+    // Four hours and nine hours must not produce the same morning. Rest fills to the fraction of a
+    // full night; `rested` is the harsher curve that follows the player through the next day.
+    return sleepValue(day, minutes, mins, alarm);
   }
 
-  // Actually get up. Returns the same plan, with the state written.
-  function sleep(day, minutes) {
-    const p = sleepPlan(day, minutes);
+  // Actually get up. `accepted` is the exact plan the bed displayed when the action began; its
+  // alarm and wake time win even if the stored alarm changes while the action is running. Passing
+  // no elapsed/accepted values retains the original two-argument owner contract.
+  function sleep(day, minutes, elapsed, accepted) {
+    const quoted = accepted && Number.isFinite(accepted.mins) && accepted.mins > 0
+      ? accepted : sleepPlan(day, minutes);
+    const spent = elapsed === undefined ? quoted.mins
+      : clamp(Number.isFinite(elapsed) ? elapsed : 0, 0, quoted.mins);
+    if (!(spent > 0)) return null;
+    const full = spent >= quoted.mins - 1e-6;
+    const p = full ? quoted : sleepValue(day, minutes, spent, false);
     S.slept = p.hours;
     S.rested = p.rested;
     S.alarmRang = p.alarm;
@@ -331,6 +341,7 @@ const HomeLife = (() => {
     get ayi() { return S.ayi; },
     get guest() { return S.guest; },
     get prep() { return S.prep; },
+    get hung() { return S.hung; },
 
     // ---- the alarm. Setting one has to be able to cost you sleep or it is a decoration.
     setAlarm(hour) { S.alarm = hour === null ? null : clamp(+hour || 0, 0, 23.75); return S.alarm; },
@@ -558,16 +569,14 @@ const HomeLife = (() => {
       return { spent, paid, owed: this.billsOwed() };
     },
 
-    // ---- the 信箱 and the 快递柜. The mailbox returned one fixed sentence about a water bill that
-    // did not exist; the parcel locker always succeeded at handing over a parcel nobody had sent.
-    // One backing store, so a delivery is one object rather than three props that each hand you one.
+    // ---- the 信箱 and the 快递柜. Both return only objects already held by their backing store, so
+    // a completed handoff can verify exact identity rather than minting property on read.
     mailbox(day) {
       const got = S.post.slice();
       S.post = [];
-      if (!got.length && day % 3 === 0) return [{ hz:'广告', en:'a handful of flyers', day }];
       return got;
     },
-    postFor(day) { return S.post.length ? S.post.length : (day % 3 === 0 ? 1 : 0); },
+    postFor(day) { return S.post.length; },
     addParcel(hz, en, day, where) {
       const code = `${1 + (day * 7 + S.parcels.length * 13) % 9}${(day * 31) % 10}${(day * 17 + 3) % 10}${(day * 5 + 7) % 10}`;
       S.parcels.push({ hz, en, code, day, where: where || 'locker' });

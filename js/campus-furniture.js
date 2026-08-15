@@ -155,7 +155,7 @@ CampusFits.register('furniture', 50, kit => {
     for(let i=-1;i<=1;i++) flat(x+i*.13,.017,z,.028,.39,col.black,{gloss:.05});
   }
   for(const [x,z] of [[-3,-1],[-3,40]]){
-    cyl(x,.014,z,.30,.02,col.steelD,{hard:true,mode:7,gloss:.22});
+    cyl(x,.014,z,.30,.02,col.steelD,{hard:true,gloss:.22});
   }
 
   // S02-S06 exact wayfinding posts.

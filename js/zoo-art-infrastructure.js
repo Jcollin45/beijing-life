@@ -79,11 +79,17 @@ const ZooArtInfrastructure = (() => {
         { mode: 15, gloss: .09 }), PLANT_LOD);
     }
 
-    function canopy(x, y, z, rx, ry, rz, color = P.leafD) {
+    function canopy(x, y, z, rx, ry, rz, color = P.leafD, options = {}) {
       finite(x, y, z, rx, ry, rz);
-      inSite(x - rx, x + rx, z - rz, z + rz);
-      return keep(B.ball(x, y, z, rx, ry, rz, color,
-        { mode:15, gloss:.08 }), PLANT_LOD);
+      const { treeId, ...render } = options, yaw=render.ry||0, tilt=render.rz||0;
+      const hx=Math.abs(Math.cos(yaw))*rx+Math.abs(Math.sin(yaw))*rz+
+        Math.abs(Math.sin(tilt))*ry;
+      const hz=Math.abs(Math.sin(yaw))*rx+Math.abs(Math.cos(yaw))*rz;
+      inSite(x-hx,x+hx,z-hz,z+hz);
+      const p=keep(B.ball(x,y,z,rx,ry,rz,color,
+        {mode:15,gloss:.075,...render}),PLANT_LOD);
+      if(treeId){p.greenhouseTree=treeId;p.treePart='crown';}
+      return p;
     }
 
     function oval(x, y, z, rx, ry, rz, color, mode = 0) {
@@ -92,10 +98,14 @@ const ZooArtInfrastructure = (() => {
       return keep(B.ball(x, y, z, rx, ry, rz, color,{mode,gloss:.08}),FINE_LOD);
     }
 
-    function trunk(x, y, z, w, h, d, color = P.timberD) {
+    function trunk(x, y, z, w, h, d, color = P.timberD, options = {}) {
       finite(x, y, z, w, h, d);
-      inSite(x-w/2,x+w/2,z-d/2,z+d/2);
-      return keep(B.capsule(x,y,z,w,h,d,color,{gloss:.10}),FINE_LOD);
+      const { treeId, ...render }=options,leanX=render.rz||0,leanZ=render.rx||0;
+      inSite(x-w/2-Math.abs(Math.sin(leanX))*h/2,x+w/2+Math.abs(Math.sin(leanX))*h/2,
+        z-d/2-Math.abs(Math.sin(leanZ))*h/2,z+d/2+Math.abs(Math.sin(leanZ))*h/2);
+      const p=keep(B.capsule(x,y,z,w,h,d,color,{gloss:.10,...render}),FINE_LOD);
+      if(treeId){p.greenhouseTree=treeId;p.treePart='trunk';}
+      return p;
     }
 
     function finial(x, y, z, w, h, d, color = P.roofD) {
@@ -229,15 +239,27 @@ const ZooArtInfrastructure = (() => {
       // the roof read as a living greenhouse rather than an empty pavilion.
       oval(35.50,.10,47.20,6.50,.10,1.70,P.soil,10);
       oval(40.50,.10,57.30,7.25,.10,2.10,P.soil,10);
-      trunk(34.00,2.00,47.30,.28,4.00,.28,P.timberD);
-      trunk(42.50,2.25,57.00,.30,4.50,.30,P.timberD);
-      trunk(37.60,1.70,58.20,.25,3.40,.25,P.timber);
-      canopy(34.00,3.75,47.30,2.10,1.30,1.72,P.leafD);
-      canopy(35.20,4.10,47.00,1.72,1.02,1.42,P.leaf);
-      canopy(42.50,4.25,57.00,2.35,1.38,1.92,P.leafD);
-      canopy(44.00,4.55,56.60,1.82,1.08,1.62,P.leafL);
-      canopy(37.50,3.20,58.20,1.68,1.02,1.48,P.leaf);
-      canopy(36.40,3.45,58.00,1.32,.88,1.18,P.leafL);
+      // Three wind-shaped specimens replace the former upright trunks and near-spherical crown
+      // pairs.  Every tree keeps the same one-trunk/two-crown budget, but flatter, rotated lobes
+      // now read as planting rather than topiary balls through the greenhouse facade.
+      trunk(34.00,2.00,47.30,.28,4.00,.28,P.timberD,
+        {treeId:'B08-A',rx:.018,rz:-.045});
+      trunk(42.50,2.25,57.00,.30,4.50,.30,P.timberD,
+        {treeId:'B08-B',rx:-.016,rz:.038});
+      trunk(37.60,1.70,58.20,.25,3.40,.25,P.timber,
+        {treeId:'B08-C',rx:.020,rz:-.035});
+      canopy(33.90,3.65,47.35,2.25,.95,1.55,P.leafD,
+        {treeId:'B08-A',ry:.28,rz:-.035});
+      canopy(35.25,4.05,46.88,1.75,.78,1.30,P.leaf,
+        {treeId:'B08-A',ry:-.36,rz:.030});
+      canopy(42.35,4.15,57.05,2.45,1.02,1.70,P.leafD,
+        {treeId:'B08-B',ry:-.24,rz:.040});
+      canopy(44.10,4.55,56.55,1.90,.82,1.38,P.leafL,
+        {treeId:'B08-B',ry:.38,rz:-.030});
+      canopy(37.55,3.15,58.15,1.75,.76,1.28,P.leaf,
+        {treeId:'B08-C',ry:.31,rz:-.040});
+      canopy(36.35,3.42,57.92,1.38,.66,1.05,P.leafL,
+        {treeId:'B08-C',ry:-.44,rz:.035});
       shrub(30.15,47.25,1.02,.72,1.12,P.leafD);
       shrub(46.35,57.35,1.04,.74,1.16,P.leafL);
       shrub(33.65,56.90,1.02,1.02,1.12,P.leafD);

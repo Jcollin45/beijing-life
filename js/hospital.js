@@ -1,4 +1,4 @@
-// 北京市仁和医院 — a four-floor public hospital.
+// 北京市澄安医院 — a four-floor public hospital.
 //
 // Each playable floor is its own Lazy scene.  The building still reads and works as one place —
 // every floor has the same lift, stair and directory core — but only the department the player is
@@ -14,9 +14,12 @@
 const HospFit = {};
 const HospitalCast = [];
 
-// Street-side return point.  The hospital frontage is on the blank west-side civic block and faces
-// east onto the main road.  street-hospital.js builds the other half of this threshold.
-const HOSPITAL_OUT = { x: 24.35, z: 22.20, yaw: Math.PI / 2 };
+// Street-side return point. The protected cycle track starts at x=25.42, so a return at x=27.05
+// put the player directly in a live moped route. This point is centred on the 2.22 m patient
+// footway instead. It faces south along that footway toward the outpatient entrance: an east-facing
+// return drove the 5.2 m follow camera backwards into the civic-block mass, whereas this view keeps
+// both the first forward step and the complete follow-camera ray in the clear longitudinal route.
+const HOSPITAL_OUT = { x: 24.35, z: 23.60, yaw: Math.PI };
 
 const HOSPITAL_FLOORS = [
   { n:1, place:'hospital',  hz:'一楼', en:'ground floor', name:'门诊大厅 · 急诊' },
@@ -41,11 +44,12 @@ const HospitalCore = (() => {
     bed:C('#d9edf0'), rail:C('#d9e0e2'), black:C('#171d20'),
   };
   const FLOOR_COL = [null, col.red, col.blue, col.green, col.orange];
+  const PLASTER = Object.freeze({ mat:'plaster', matScale:.62, matAmt:.12 });
 
   function makeFloor(lazyName, floorNo) {
     return Lazy(lazyName, () => {
       const B = Build.scene({ wood:new Set([col.wood, col.woodD]), fabricGloss:.035 });
-      const { box,cyl,ball,capsule,taper,flat,glyphs,solid,blocker,shade,glow,light,thing } = B;
+      const { box,cyl,ball,capsule,taper,modelOr,flat,glyphs,solid,blocker,shade,glow,light,thing } = B;
       const lit = [], screens = [], floorTicks = [], privacyDoors = [], cameraRooms = [];
       // Floor files can hang small, hospital-only routines here without teaching the global game
       // loop about every ward door and clinical round.  The state object is also returned on the
@@ -117,15 +121,15 @@ const HospitalCore = (() => {
         let at=x0;
         for(const [a,b] of cuts) {
           if(a>at+.02) {
-            box((at+a)/2,H/2,z,a-at,H,.18,color,{hard:true,mat:'plaster',matScale:2.4,matAmt:.12,...tagOpt(tag)});
+            box((at+a)/2,H/2,z,a-at,H,.18,color,{hard:true,...PLASTER,...tagOpt(tag)});
             solid(at,a,z-.09,z+.09);
             dressWallZ(z,at,a,tag,dressSides,[at>x0+.02,true]);
           }
-          box((a+b)/2,3.35,z,b-a,H-2.60,.18,color,{hard:true,...tagOpt(tag)});
+          box((a+b)/2,3.35,z,b-a,H-2.60,.18,color,{hard:true,...PLASTER,...tagOpt(tag)});
           at=Math.max(at,b);
         }
         if(at<x1-.02) {
-          box((at+x1)/2,H/2,z,x1-at,H,.18,color,{hard:true,mat:'plaster',matScale:2.4,matAmt:.12,...tagOpt(tag)});
+          box((at+x1)/2,H/2,z,x1-at,H,.18,color,{hard:true,...PLASTER,...tagOpt(tag)});
           solid(at,x1,z-.09,z+.09);
           dressWallZ(z,at,x1,tag,dressSides,[at>x0+.02,false]);
         }
@@ -137,15 +141,15 @@ const HospitalCore = (() => {
         let at=z0;
         for(const [a,b] of cuts) {
           if(a>at+.02) {
-            box(x,H/2,(at+a)/2,.18,H,a-at,color,{hard:true,mat:'plaster',matScale:2.4,matAmt:.12,...tagOpt(tag)});
+            box(x,H/2,(at+a)/2,.18,H,a-at,color,{hard:true,...PLASTER,...tagOpt(tag)});
             solid(x-.09,x+.09,at,a);
             dressWallX(x,at,a,tag,dressSides,[at>z0+.02,true]);
           }
-          box(x,3.35,(a+b)/2,.18,H-2.60,b-a,color,{hard:true,...tagOpt(tag)});
+          box(x,3.35,(a+b)/2,.18,H-2.60,b-a,color,{hard:true,...PLASTER,...tagOpt(tag)});
           at=Math.max(at,b);
         }
         if(at<z1-.02) {
-          box(x,H/2,(at+z1)/2,.18,H,z1-at,color,{hard:true,mat:'plaster',matScale:2.4,matAmt:.12,...tagOpt(tag)});
+          box(x,H/2,(at+z1)/2,.18,H,z1-at,color,{hard:true,...PLASTER,...tagOpt(tag)});
           solid(x-.09,x+.09,at,z1);
           dressWallX(x,at,z1,tag,dressSides,[at>z0+.02,false]);
         }
@@ -385,20 +389,22 @@ const HospitalCore = (() => {
         const f=[Math.sin(yaw),Math.cos(yaw)], r=[Math.cos(yaw),-Math.sin(yaw)];
         const at=(side,fore)=>[x+r[0]*side+f[0]*fore,z+r[1]*side+f[1]*fore];
         const opt=tagOpt(tag);
+        const fallback=()=>{
+          // A dark rolled rim remains visible beneath the upholstered, elliptical seat pan.
+          box(x,.425,z,.50,.065,.50,col.steelD,{round:.07,gloss:.30,...opt});
+          ball(x,.468,z,.275,.057,.265,color,{mode:7,gloss:.045,ry:yaw,...opt});
 
-        // A dark rolled rim remains visible beneath the upholstered, elliptical seat pan.
-        box(x,.425,z,.50,.065,.50,col.steelD,{round:.07,gloss:.30,...opt});
-        ball(x,.468,z,.275,.057,.265,color,{mode:7,gloss:.045,ry:yaw,...opt});
+          // Twin back stays disappear into the seat and the gently reclined moulded pad. A
+          // cylinder preserves their exact visible diameter with a smoother 28-segment shaft;
+          // spending capsule hemispheres on the two buried ends only adds shadow vertices.
+          for(const side of [-.17,.17]) {
+            const [sx,sz]=at(side,-.215);
+            cyl(sx,.625,sz,.016,.405,col.steelD,{gloss:.42,...opt});
+          }
+          const [bx,bz]=at(0,-.275);
+          ball(bx,.795,bz,.225,.295,.052,color,{mode:7,gloss:.045,ry:yaw,rx:-.07,...opt});
 
-        // Twin back stays disappear into a deliberately narrower, gently reclined moulded pad.
-        for(const side of [-.17,.17]) {
-          const [sx,sz]=at(side,-.215);
-          capsule(sx,.625,sz,.032,.405,.032,col.steelD,{gloss:.42,...opt});
-        }
-        const [bx,bz]=at(0,-.275);
-        ball(bx,.795,bz,.225,.295,.052,color,{mode:7,gloss:.045,ry:yaw,rx:-.07,...opt});
-
-        if(!linked) {
+          if(linked) return;
           // Four round legs instead of the old two-post silhouette; the rear pair sit under the
           // back stays, so the frame reads as one manufactured object from oblique views.
           for(const side of [-.19,.19]) for(const fore of [-.17,.17]) {
@@ -406,7 +412,12 @@ const HospitalCore = (() => {
             capsule(lx,.225,lz,.036,.445,.036,col.steelD,{gloss:.42,...opt});
             cyl(lx,.025,lz,.045,.025,col.black,{gloss:.18,...opt});
           }
-        }
+        };
+        // Waiting banks keep their shared native frame. Standalone chairs reuse the already
+        // resident CC0 moulded chair, replacing thirteen primitives with one streamed part.
+        if(linked) return fallback();
+        return modelOr('plastic_monobloc_chair',x,0,z,.95,
+          {ry:yaw,color,gloss:.10,...opt},fallback);
       }
       function bench(x,z,n=4,yaw=0,tag='候诊椅',color=col.fabric) {
         const f=[Math.sin(yaw),Math.cos(yaw)], r=[Math.cos(yaw),-Math.sin(yaw)];
@@ -466,69 +477,75 @@ const HospitalCore = (() => {
         const at=(side,long)=>[x+r[0]*side+f[0]*long,z+r[1]*side+f[1]*long];
         const opt=tagOpt(tag);
 
-        // Tubular perimeter and cross-members replace the single steel slab under the mattress.
-        for(const side of [-.31,.31]) {
-          const [px,pz]=at(side,0);
-          capsule(px,.625,pz,.050,2.06,.050,col.steelD,
-            {rx:Math.PI/2,ry:yaw,gloss:.46,...opt});
-        }
-        for(const long of [-.77,.77]) {
-          const [px,pz]=at(0,long);
-          capsule(px,.625,pz,.045,.66,.045,col.steelD,
-            {rz:Math.PI/2,ry:yaw,gloss:.46,...opt});
-        }
-
-        // A compact wheeled lifting base and crossed supports give the bed believable daylight
-        // beneath it.  The wheel discs turn with the bed, rather than remaining world-aligned.
-        capsule(x,.12,z,.080,1.18,.080,col.steelD,
-          {rx:Math.PI/2,ry:yaw,gloss:.45,...opt});
-        for(const side of [-.24,.24]) for(const tilt of [-.66,.66]) {
-          const [px,pz]=at(side,0);
-          capsule(px,.385,pz,.046,.76,.046,col.steel,
-            {ry:yaw,rx:tilt,gloss:.42,...opt});
-        }
-        for(const long of [-.52,.52]) for(const side of [-.27,.27]) {
-          const [wx,wz]=at(side,long);
-          capsule(wx,.165,wz,.026,.18,.026,col.steelD,{gloss:.44,...opt});
-          cyl(wx,.082,wz,.078,.045,col.black,{rz:Math.PI/2,ry:yaw,gloss:.25,...opt});
-          cyl(wx,.082,wz,.040,.052,col.steel,{rz:Math.PI/2,ry:yaw,gloss:.42,...opt});
-        }
-
-        // Three mattress sections break the long rectangular loaf into an adjustable clinical
-        // couch.  A true ellipsoid pillow supplies the softest silhouette on the bed.
-        for(const [long,len,tilt] of [[-.67,.62,-.075],[-.05,.56,0],[.59,.70,.025]]) {
-          const [mx,mz]=at(0,long);
-          ball(mx,.805,mz,.36,.085,len/2,color,
-            {mode:7,ry:yaw,rx:tilt,gloss:.035,...opt});
-        }
-        const [px,pz]=at(0,-.79);
-        ball(px,.935,pz,.285,.070,.215,col.white,{mode:7,ry:yaw,gloss:.03,...opt});
-
-        // Shaped end boards and folding tube rails identify this as a mobile hospital bed rather
-        // than a domestic divan.  The rail leaves the patient's shoulder and foot approaches open.
-        for(const long of [-1.04,1.04]) {
-          const head=long<0, top=head?1.06:.92;
-          const [ex,ez]=at(0,long);
-          // Open tube handles keep the end readable without hiding the patient behind a white
-          // panel.  The inset plastic guard is taller at the head and deliberately low at foot.
-          for(const side of [-.28,.28]) {
-            const [tx,tz]=at(side,long);
-            capsule(tx,(top+.64)/2,tz,.030,top-.64,.030,col.rail,{gloss:.48,...opt});
+        // TRELLIS.2 may replace only the rendered bed. The authored solid below stays stable so
+        // every department preserves its measured route and interaction footprint.
+        modelOr('hospital_mobile_exam_bed',x,0,z,1,{ry:yaw,gloss:.20,...opt},()=>{
+          // Tubular perimeter and cross-members replace the single steel slab under the mattress.
+          for(const side of [-.31,.31]) {
+            const [px,pz]=at(side,0);
+            capsule(px,.625,pz,.050,2.06,.050,col.steelD,
+              {rx:Math.PI/2,ry:yaw,gloss:.46,...opt});
           }
-          capsule(ex,top,ez,.032,.58,.032,col.rail,
-            {rz:Math.PI/2,ry:yaw,gloss:.48,...opt});
-          taper(ex,head?.84:.76,ez,head?.46:.40,head?.22:.13,.060,col.blueL,
-            {ry:yaw,gloss:.20,...opt});
-        }
-        for(const side of [-.41,.41]) {
-          const [gx,gz]=at(side,.12);
-          capsule(gx,1.015,gz,.033,1.25,.033,col.rail,
-            {rx:Math.PI/2,ry:yaw,gloss:.48,...opt});
-          for(const long of [-.36,.48]) {
-            const [sx,sz]=at(side,long);
-            capsule(sx,.885,sz,.028,.27,.028,col.rail,{gloss:.48,...opt});
+          // Cross-members terminate on the side-rail axes. Their cylinder caps stay inside the
+          // rail profile instead of the former rounded ends protruding beyond both sides.
+          for(const long of [-.77,.77]) {
+            const [px,pz]=at(0,long);
+            cyl(px,.625,pz,.021,.62,col.steelD,
+              {rz:Math.PI/2,ry:yaw,gloss:.46,...opt});
           }
-        }
+
+          // A compact wheeled lifting base and crossed supports give the bed believable daylight
+          // beneath it.  The wheel discs turn with the bed, rather than remaining world-aligned.
+          capsule(x,.12,z,.080,1.18,.080,col.steelD,
+            {rx:Math.PI/2,ry:yaw,gloss:.45,...opt});
+          for(const side of [-.24,.24]) for(const tilt of [-.66,.66]) {
+            const [px,pz]=at(side,0);
+            capsule(px,.385,pz,.046,.76,.046,col.steel,
+              {ry:yaw,rx:tilt,gloss:.42,...opt});
+          }
+          for(const long of [-.52,.52]) for(const side of [-.27,.27]) {
+            const [wx,wz]=at(side,long);
+            capsule(wx,.165,wz,.026,.18,.026,col.steelD,{gloss:.44,...opt});
+            cyl(wx,.082,wz,.078,.045,col.black,{rz:Math.PI/2,ry:yaw,gloss:.25,...opt});
+            cyl(wx,.082,wz,.040,.052,col.steel,{rz:Math.PI/2,ry:yaw,gloss:.42,...opt});
+          }
+
+          // Three mattress sections break the long rectangular loaf into an adjustable clinical
+          // couch.  A true ellipsoid pillow supplies the softest silhouette on the bed.
+          for(const [long,len,tilt] of [[-.67,.62,-.075],[-.05,.56,0],[.59,.70,.025]]) {
+            const [mx,mz]=at(0,long);
+            ball(mx,.805,mz,.36,.085,len/2,color,
+              {mode:7,ry:yaw,rx:tilt,gloss:.035,...opt});
+          }
+          const [px,pz]=at(0,-.79);
+          ball(px,.935,pz,.285,.070,.215,col.white,{mode:7,ry:yaw,gloss:.03,...opt});
+
+          // Shaped end boards and folding tube rails identify this as a mobile hospital bed rather
+          // than a domestic divan. The rail leaves the patient's shoulder and foot approaches open.
+          for(const long of [-1.04,1.04]) {
+            const head=long<0, top=head?1.06:.92;
+            const [ex,ez]=at(0,long);
+            // Open tube handles keep the end readable without hiding the patient behind a white
+            // panel. The inset plastic guard is taller at the head and deliberately low at foot.
+            for(const side of [-.28,.28]) {
+              const [tx,tz]=at(side,long);
+              capsule(tx,(top+.64)/2,tz,.030,top-.64,.030,col.rail,{gloss:.48,...opt});
+            }
+            capsule(ex,top,ez,.032,.58,.032,col.rail,
+              {rz:Math.PI/2,ry:yaw,gloss:.48,...opt});
+            taper(ex,head?.84:.76,ez,head?.46:.40,head?.22:.13,.060,col.blueL,
+              {ry:yaw,gloss:.20,...opt});
+          }
+          for(const side of [-.41,.41]) {
+            const [gx,gz]=at(side,.12);
+            capsule(gx,1.015,gz,.033,1.25,.033,col.rail,
+              {rx:Math.PI/2,ry:yaw,gloss:.48,...opt});
+            for(const long of [-.36,.48]) {
+              const [sx,sz]=at(side,long);
+              capsule(sx,.885,sz,.028,.27,.028,col.rail,{gloss:.48,...opt});
+            }
+          }
+        });
 
         const hx=Math.abs(f[0])*1.10+Math.abs(r[0])*.45;
         const hz=Math.abs(f[1])*1.10+Math.abs(r[1])*.45;
@@ -545,9 +562,12 @@ const HospitalCore = (() => {
         cyl(x,.92,z,.027,1.84,col.steelD,{gloss:.48,...tagOpt(tag)});
         capsule(x,1.79,z,.025,.54,.025,col.steelD,{rz:Math.PI/2,gloss:.48,...tagOpt(tag)});
         for(const s of [-1,1]) capsule(x+s*.24,1.67,z,.018,.22,.018,col.steelD,{gloss:.48,...tagOpt(tag)});
+        // Low cylinder spokes meet the central pole and caster bodies, hiding both flat caps. The
+        // former 8 cm centreline left a visible gap above each caster's 6.25 cm top.
         for(let i=0;i<4;i++) {
           const a=i*Math.PI/2;
-          capsule(x+Math.sin(a)*.15,.08,z+Math.cos(a)*.15,.018,.32,.018,col.steelD,{rx:Math.PI/2,ry:a,...tagOpt(tag)});
+          cyl(x+Math.sin(a)*.15,.053,z+Math.cos(a)*.15,.009,.32,col.steelD,
+            {rx:Math.PI/2,ry:a,...tagOpt(tag)});
           cyl(x+Math.sin(a)*.29,.045,z+Math.cos(a)*.29,.045,.035,col.black,{...tagOpt(tag)});
         }
       }
@@ -568,7 +588,7 @@ const HospitalCore = (() => {
 
       // ---------------------------------------------------------------- envelope
       flat(0,.002,0,RX*2,RZ*2,col.floor,{mat:'tile',matScale:.66,matAmt:.42,gloss:.16});
-      box(0,H+.08,0,RX*2+.30,.16,RZ*2+.30,col.white,{hard:true,gloss:.10});
+      box(0,H+.08,0,RX*2+.30,.16,RZ*2+.30,col.white,{hard:true,gloss:.10,...PLASTER});
       // perimeter walls; on 1F the street door is a true opening rather than painted glass
       partitionZ(RZ,-RX,RX,[],col.wall,'外墙',[-1]);
       partitionX(-RX,-RZ,RZ,[],col.wall,'外墙',[1]);
@@ -596,7 +616,7 @@ const HospitalCore = (() => {
         // backdrop card.  The opening only subtends four metres, but a wider set survives camera
         // orbit without its edge ever entering frame.
         box(0,3.75,-RZ-8.45,24.0,7.50,.36,col.wallD,
-          {hard:true,mat:'plaster',matScale:2.8,matAmt:.12,tag:'门外'});
+          {hard:true,...PLASTER,tag:'门外'});
         box(0,.55,-RZ-8.22,24.2,1.10,.18,col.blueD,{hard:true,tag:'门外'});
         for(let x=-9.0;x<=9.0;x+=3.0) {
           box(x,2.12,-RZ-8.22,2.15,2.65,.08,col.black,{hard:true,gloss:.22,tag:'门外'});
@@ -770,7 +790,7 @@ const HospitalCore = (() => {
           hospitalState.entrance.near=near;
         });
         flat(0,.026,-10.82,4.20,1.45,col.tealD,{mode:7,gloss:.06,tag:'门'});
-        sign(0,3.47,-RZ+.04,0,'北京市仁和医院',col.red,'门',.255);
+        sign(0,3.47,-RZ+.04,0,'北京市澄安医院',col.red,'门',.255);
         glyphs(0,3.12,-RZ+.01,0,'门诊 · 急诊',{size:.14,gap:.05,color:col.ink,mode:1,lift:.012,tag:'门'});
         thing('门',0,1.45,-RZ+.05,'自动门外就是医院门前的主路。',
           'The automatic doors lead back to the main road.',
@@ -810,7 +830,7 @@ const HospitalCore = (() => {
         hospitalState,hospitalDoors:privacyDoors,cameraRooms,cameraAssistAt,
         RX,RZ,H,
         WIN:{x:RX-.2,y:2.0,z:0,hw:1.0,hh:1.8},
-        label:'医院', labelK:`北京市仁和医院 · ${title.hz} ${title.name}`,
+        label:'医院', labelK:`北京市澄安医院 · ${title.hz} ${title.name}`,
         indoor:true,cutaway:true,winOn:false,near:.06,far:72,expose:1.18,
         // The hospital is a 34-by-24-metre white shell. At the ordinary room amount the contact
         // pass samples the opposite wall and lays a translucent copy of the whole floor over the

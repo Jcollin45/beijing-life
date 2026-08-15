@@ -29,9 +29,9 @@
 // committed. Three things that came out of that, which no plan drawn on paper would have known:
 //
 //  1. THE ROOMS HAD ALREADY BUILT SOME OF THESE WALLS. js/home-second.js stands a real 0.10 ×
-//     2.60 × 2.70 wall at x -2.60, and js/home-entry.js has two full-height quads — one at z 1.61
-//     running x 2.60..5.20, one at x 5.19 running z 1.60..3.20. Those are the 玄关's own south and
-//     east walls. They are not rebuilt here; the plan aligns to them.
+//     2.60 × 2.70 wall at x -2.60, and js/home-entry.js owns the full-height south face at z 1.61,
+//     running x 2.60..6.00. Its east face is the shell's real x 6.00 envelope: the old x 5.19
+//     partition only boxed 1.28 m2 into an inaccessible void, so the entry now aligns to the shell.
 //
 //  2. THE TALL FURNITURE SAYS WHERE THE WALLS WERE MEANT TO GO. The 次卧 has a 1.50 × 2.05 × 0.60
 //     wardrobe standing at z -1.72 and a 1.98 m unit at z -1.68 — both backed onto a north wall
@@ -370,10 +370,14 @@ FlatFit['walls'] = A => {
 
     // 客厅 | 餐厅 + 玄关. Runs the full depth, meeting the 玄关's own south wall at z 1.61 in a T.
     // Two openings: the 餐厅 in the middle of the room, and the 玄关 up by the front door — so you
-    // come in, take your shoes off, and step through into the living room, which is the sequence
-    // the 玄关 exists for.
+    // come in, take your shoes off, and step west into the hall, which is the sequence the 玄关
+    // exists for. That cased opening is broad enough to turn through beside the shoe cabinet;
+    // its old 0.90 m width left only 0.30 m of legal body-centre run before furniture was counted.
+    // The public rooms share a broad cased opening rather than a bedroom-sized door. The table
+    // starts at x 4.30 and the living group ends west of x 1.86 after body padding, so this 2.20 m
+    // sightline is also a genuinely clear route, not just a larger hole behind furniture.
     { id: '客厅|餐厅+玄关', ax: 0, at: 2.75, lo: -2.20, hi: 3.15,
-      doors: [[-0.40, 0.60], [2.15, 3.05]] },
+      doors: [[-1.20, 1.00], [1.90, 3.10]] },
 
     // 走道 | 客厅. Room 10 in APARTMENT.md and the one strip of this flat nobody owned: the
     // ROOMS table below used to fold z 1.60..3.20 into the living room, so the walk from the
@@ -386,15 +390,16 @@ FlatFit['walls'] = A => {
     // :497 says they were built to stand 18 mm proud of a wall surface at 1.600. A partition
     // centred on 1.60 would have swallowed them. Centred on 1.65 its south face lands exactly on
     // 1.600, which is the wall those frames were measured against, and the TV console collider
-    // (x -0.03..1.93, z 1.12..1.60) butts it without overlapping.
+    // (x -0.48..1.48, z 1.12..1.60) butts it without overlapping.
     //
     // One opening, and it is west of the television because it is the only place it can be. The
-    // console occupies x -0.03..1.93 and clampMove inflates that to -0.33..2.23, so a doorway
-    // anywhere across it is a doorway you cannot stand south of; east of it there is only 0.27 m
-    // of standable x before the x 2.75 wall, which is the 书房's disease again. West of it there
-    // is room, so 1.00 m at x -1.85..-0.85 — wider than the flat's 0.80 doors on purpose, since a
-    // hall opening is a cased opening, and it leaves a 0.40 m standable slot.
-    { id: '走道|客厅', ax: 2, at: 1.65, lo: -2.60, hi: 2.75, doors: [[-1.85, -0.85]] },
+    // console occupies x -0.48..1.48 and clampMove inflates that to -0.78..1.78, so a doorway
+    // anywhere across it is a doorway you cannot stand south of. West of it there is 0.17 m of
+    // clear body-centre run before the opening's east jamb at x -0.65; the opening therefore runs
+    // x -2.40..-0.65 — wider than a domestic door on purpose, since a
+    // hall opening is a cased opening. Widening it toward both clear ends turns the hall and
+    // living room into one long view while keeping the television wall from x -0.65 eastward.
+    { id: '走道|客厅', ax: 2, at: 1.65, lo: -2.60, hi: 2.75, doors: [[-2.40, -0.65]] },
   ];
 
   // ---------------------------------------------------------------- building one

@@ -5,12 +5,20 @@ const M = {
   },
   // out = a * b  (apply b first, then a)
   mul(a, b, o = new Float32Array(16)) {
+    // Cache the left matrix as well as each right-hand column. `o === b` was already safe because
+    // a column is read before it is replaced; without these locals `o === a` overwrote a's first
+    // column and every later result then multiplied by the damaged matrix. Core math should not
+    // turn a harmless scratch-buffer choice into a non-finite or sheared world transform.
+    const a0 = a[0], a1 = a[1], a2 = a[2], a3 = a[3];
+    const a4 = a[4], a5 = a[5], a6 = a[6], a7 = a[7];
+    const a8 = a[8], a9 = a[9], a10 = a[10], a11 = a[11];
+    const a12 = a[12], a13 = a[13], a14 = a[14], a15 = a[15];
     for (let c = 0; c < 4; c++) {
       const b0 = b[c * 4], b1 = b[c * 4 + 1], b2 = b[c * 4 + 2], b3 = b[c * 4 + 3];
-      o[c * 4]     = a[0] * b0 + a[4] * b1 + a[8]  * b2 + a[12] * b3;
-      o[c * 4 + 1] = a[1] * b0 + a[5] * b1 + a[9]  * b2 + a[13] * b3;
-      o[c * 4 + 2] = a[2] * b0 + a[6] * b1 + a[10] * b2 + a[14] * b3;
-      o[c * 4 + 3] = a[3] * b0 + a[7] * b1 + a[11] * b2 + a[15] * b3;
+      o[c * 4]     = a0 * b0 + a4 * b1 + a8  * b2 + a12 * b3;
+      o[c * 4 + 1] = a1 * b0 + a5 * b1 + a9  * b2 + a13 * b3;
+      o[c * 4 + 2] = a2 * b0 + a6 * b1 + a10 * b2 + a14 * b3;
+      o[c * 4 + 3] = a3 * b0 + a7 * b1 + a11 * b2 + a15 * b3;
     }
     return o;
   },
@@ -29,8 +37,8 @@ const M = {
     o[0] = c; o[1] = s; o[4] = -s; o[5] = c; return o;
   },
   // translate * rotY * scale — the transform used by nearly every prop
-  trs(x, y, z, ry, sx, sy, sz) {
-    const c = Math.cos(ry), s = Math.sin(ry), o = new Float32Array(16);
+  trs(x, y, z, ry, sx, sy, sz, o = new Float32Array(16)) {
+    const c = Math.cos(ry), s = Math.sin(ry);
     o[0] = c * sx;  o[1] = 0;   o[2] = -s * sx; o[3] = 0;
     o[4] = 0;       o[5] = sy;  o[6] = 0;       o[7] = 0;
     o[8] = s * sz;  o[9] = 0;   o[10] = c * sz; o[11] = 0;
@@ -55,7 +63,13 @@ const M = {
   },
   lookAt(eye, tgt, o = new Float32Array(16)) {
     let zx = eye[0] - tgt[0], zy = eye[1] - tgt[1], zz = eye[2] - tgt[2];
-    let l = Math.hypot(zx, zy, zz) || 1; zx /= l; zy /= l; zz /= l;
+    let l = Math.hypot(zx, zy, zz);
+    // A scripted focus can legitimately finish on the camera's own point for one sample. Dividing
+    // a zero direction by the old `|| 1` guard stayed finite but produced three zero basis vectors,
+    // a singular view matrix that blanks or smears everything downstream. Use the conventional
+    // default view direction for that one undefined orientation; the eye position is still exact.
+    if (l < 1e-9) { zx = 0; zy = 0; zz = 1; l = 1; }
+    else { zx /= l; zy /= l; zz /= l; }
     // x = normalize(cross(up, z)), with up = (0,1,0). The three lines that used to sit here
     // computed xx/xy/xz from a hardcoded zero vector and were overwritten on the next line without
     // ever being read.

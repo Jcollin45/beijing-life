@@ -8,7 +8,14 @@
 const OfficeLift=(()=>{
   const floors=OFFICE_FLOORS;
   const alias=key=>key==='officeRF'?'officeRoof':key;
-  const byKey=key=>OFFICE_FLOOR_META[alias(key)]||null;
+  // Save data is input, not a trusted property name. OFFICE_FLOOR_META is an ordinary object, so
+  // indexing it directly accepted inherited names such as `__proto__` and `constructor` as real
+  // stops. Those keys then survived restore/safeLanding and could start a ride with NaN timing.
+  const byKey=key=>typeof key==='string'&&Object.prototype.hasOwnProperty.call(OFFICE_FLOOR_META,alias(key))
+    ?OFFICE_FLOOR_META[alias(key)]:null;
+  // Save records serialize their compatible fields directly. Ignore prototype-chain fallbacks so
+  // a record with no own currentKey/key/place behaves exactly like an empty or missing record.
+  const savedOwn=(saved,key)=>!!saved&&Object.prototype.hasOwnProperty.call(saved,key)?saved[key]:undefined;
   const valid=key=>!!byKey(key);
   const state={
     currentKey:'office1',sourceKey:'office1',targetKey:'office1',phase:'idle',direction:0,
@@ -17,14 +24,13 @@ const OfficeLift=(()=>{
   let hooks={},visual=null,arriveFired=true;
 
   const clamp=(v,a=0,b=1)=>Math.max(a,Math.min(b,Number(v)||0));
-  const physicalDistance=(a,b)=>Math.abs(byKey(a).level-byKey(b).level);
+  // `level` is a display/elevation label and deliberately has no zero: B1=-1, F1=1.  Travel is
+  // measured in authored stop order, otherwise the adjacent B1↔1 journey costs two storeys and
+  // the indicator spends twice as long crossing that one interval.
+  const physicalDistance=(a,b)=>Math.abs(byKey(a).order-byKey(b).order);
   const rideSeconds=(a,b)=>valid(a)&&valid(b)?+(1.20+physicalDistance(a,b)*.64).toFixed(3):0;
-  const shownLevel=v=>{
-    if(v<0)return 'B1';
-    const roofLevel=byKey('officeRoof').level;
-    if(v>=roofLevel-.45)return 'RF';
-    return String(Math.max(1,Math.min(roofLevel-1,Math.round(v))));
-  };
+  const shownLevel=order=>floors.reduce((best,f)=>
+    Math.abs(f.order-order)<Math.abs(best.order-order)?f:best,floors[0]).display;
   const snapshot=()=>Object.freeze({
     currentKey:state.currentKey,sourceKey:state.sourceKey,targetKey:state.targetKey,
     current:byKey(state.currentKey)?.display||'1',target:byKey(state.targetKey)?.display||'1',
@@ -59,7 +65,7 @@ const OfficeLift=(()=>{
     if(sourceKey===targetKey){syncLanding(sourceKey);return 'here';}
     const a=byKey(sourceKey),b=byKey(targetKey);
     state.currentKey=sourceKey;state.sourceKey=sourceKey;state.targetKey=targetKey;
-    state.phase='closing';state.direction=Math.sign(b.level-a.level);state.openness=1;
+    state.phase='closing';state.direction=Math.sign(b.order-a.order);state.openness=1;
     state.progress=0;state.elapsed=0;state.duration=rideSeconds(sourceKey,targetKey);
     state.display=a.display;state.diagnostic=false;arriveFired=false;
     syncVisual();if(hooks.depart)hooks.depart(snapshot());return true;
@@ -72,30 +78,48 @@ const OfficeLift=(()=>{
   }
   function goTo(targetKey,sourceKey=state.currentKey){return begin(sourceKey,targetKey);}
   function advance(dt){
-    dt=clamp(dt,0,.25);
+    dt=Number.isFinite(dt)?clamp(dt,0,.25):0;
     if(state.diagnostic){syncVisual();return snapshot();}
     if(!dt||state.phase==='idle'){syncVisual();return snapshot();}
-    state.elapsed+=dt;
-    if(state.phase==='closing'){
-      state.progress=Math.min(1,state.elapsed/1.10);state.openness=1-state.progress;
-      if(state.progress>=1){state.phase='moving';state.elapsed=0;state.progress=0;state.openness=0;
-        if(hooks.cue)hooks.cue('move');}
-    }else if(state.phase==='moving'){
-      state.progress=Math.min(1,state.elapsed/Math.max(.01,state.duration));state.openness=0;
-      const a=byKey(state.sourceKey),b=byKey(state.targetKey);
-      state.display=shownLevel(a.level+(b.level-a.level)*state.progress);
-      if(state.progress>=1){state.phase='opening';state.elapsed=0;state.progress=0;
-        state.currentKey=state.targetKey;state.display=b.display;if(hooks.cue)hooks.cue('arrive');}
-    }else if(state.phase==='opening'){
-      state.progress=Math.min(1,state.elapsed/1.10);state.openness=state.progress;
-      if(state.progress>=1){state.phase='arrive';state.elapsed=0;state.progress=1;state.openness=1;}
-    }else if(state.phase==='arrive'&&state.elapsed>=.45&&!arriveFired){
-      arriveFired=true;state.phase='idle';state.sourceKey=state.targetKey;state.direction=0;
-      state.elapsed=0;state.duration=0;state.progress=0;state.openness=1;
-      syncVisual();if(!state.diagnostic&&hooks.arrive)hooks.arrive(state.currentKey,snapshot());
-      return snapshot();
+    // Carry the unused slice through phase boundaries. Dropping it made the same ride last a
+    // different wall-clock time at 20 Hz and 120 Hz (and made door animation cues rate-dependent).
+    let remaining=dt,transitions=0,arrived=false;
+    while(remaining>1e-9&&state.phase!=='idle'&&transitions<8){
+      if(state.phase==='closing'){
+        const take=Math.min(remaining,Math.max(0,1.10-state.elapsed));
+        state.elapsed+=take;remaining-=take;
+        state.progress=Math.min(1,state.elapsed/1.10);state.openness=1-state.progress;
+        if(state.elapsed<1.10-1e-9)break;
+        state.phase='moving';state.elapsed=0;state.progress=0;state.openness=0;transitions++;
+        if(hooks.cue)hooks.cue('move');
+      }else if(state.phase==='moving'){
+        const duration=Math.max(.01,state.duration);
+        const take=Math.min(remaining,Math.max(0,duration-state.elapsed));
+        state.elapsed+=take;remaining-=take;
+        state.progress=Math.min(1,state.elapsed/duration);state.openness=0;
+        const a=byKey(state.sourceKey),b=byKey(state.targetKey);
+        state.display=shownLevel(a.order+(b.order-a.order)*state.progress);
+        if(state.elapsed<duration-1e-9)break;
+        state.phase='opening';state.elapsed=0;state.progress=0;state.currentKey=state.targetKey;
+        state.display=b.display;transitions++;if(hooks.cue)hooks.cue('arrive');
+      }else if(state.phase==='opening'){
+        const take=Math.min(remaining,Math.max(0,1.10-state.elapsed));
+        state.elapsed+=take;remaining-=take;
+        state.progress=Math.min(1,state.elapsed/1.10);state.openness=state.progress;
+        if(state.elapsed<1.10-1e-9)break;
+        state.phase='arrive';state.elapsed=0;state.progress=1;state.openness=1;transitions++;
+      }else if(state.phase==='arrive'){
+        const take=Math.min(remaining,Math.max(0,.45-state.elapsed));
+        state.elapsed+=take;remaining-=take;
+        if(state.elapsed<.45-1e-9||arriveFired)break;
+        arriveFired=true;state.phase='idle';state.sourceKey=state.targetKey;state.direction=0;
+        state.elapsed=0;state.duration=0;state.progress=0;state.openness=1;
+        transitions++;arrived=true;
+      }else break;
     }
-    syncVisual();return snapshot();
+    syncVisual();
+    if(arrived&&!state.diagnostic&&hooks.arrive)hooks.arrive(state.currentKey,snapshot());
+    return snapshot();
   }
   const update=advance;
   function landingOpen(key,near=true){
@@ -119,7 +143,7 @@ const OfficeLift=(()=>{
   function toSave(){const q=safeLanding();return {v:1,currentKey:q.key,phase:'landing'};}
   const saveState=toSave;
   function restore(saved){
-    const candidate=alias(saved&&(saved.currentKey||saved.key||saved.place));
+    const candidate=alias(savedOwn(saved,'currentKey')||savedOwn(saved,'key')||savedOwn(saved,'place'));
     const key=valid(candidate)?candidate:'office1',meta=byKey(key);
     state.currentKey=state.sourceKey=state.targetKey=key;state.phase='idle';state.direction=0;
     state.openness=1;state.progress=0;state.elapsed=0;state.duration=0;state.display=meta.display;
@@ -133,10 +157,10 @@ const OfficeLift=(()=>{
     const a=byKey(sourceKey),b=byKey(targetKey),p=clamp(progress);
     state.sourceKey=sourceKey;state.targetKey=targetKey;
     state.currentKey=phase==='opening'||phase==='arrive'?targetKey:sourceKey;
-    state.phase=phase;state.direction=Math.sign(b.level-a.level);state.duration=rideSeconds(sourceKey,targetKey);
+    state.phase=phase;state.direction=Math.sign(b.order-a.order);state.duration=rideSeconds(sourceKey,targetKey);
     state.progress=p;state.elapsed=phase==='moving'?state.duration*p:1.10*p;
     state.openness=phase==='closing'?1-p:phase==='opening'||phase==='arrive'?p:phase==='idle'?1:0;
-    state.display=phase==='moving'?shownLevel(a.level+(b.level-a.level)*p):
+    state.display=phase==='moving'?shownLevel(a.order+(b.order-a.order)*p):
       (phase==='opening'||phase==='arrive'?b.display:a.display);
     state.diagnostic=true;arriveFired=true;syncVisual();return snapshot();
   }
@@ -158,7 +182,8 @@ const OfficeLift=(()=>{
     };
     const B=Build.scene({wood:new Set([col.wood]),fabricGloss:.035});
     const {box,cyl,ball,capsule,taper,flat,glyphs,solid,blocker,glow,thing}=B;
-    const hidden=M.trs(0,-80,0,0,.001,.001,.001),doorParts=[],displayGroups={},buttonGroups={},landingGroups={};
+    const hidden=M.trs(0,-80,0,0,.001,.001,.001),doorParts=[],displayGroups={},buttonGroups={},landingGroups={},
+      lightPanels=[];
     const remember=(map,key,parts)=>map[key]=parts.map(p=>{
       const m0=p.m;p.fixed=true;p.cx=m0[12];p.cy=m0[13];p.cz=m0[14];
       const sx=Math.hypot(m0[0],m0[1],m0[2]),sy=Math.hypot(m0[4],m0[5],m0[6]),
@@ -206,6 +231,7 @@ const OfficeLift=(()=>{
       box(x,2.745,z,.37,.022,.37,col.steelD,{hard:true,gloss:.50,tag:'照明'});
       const p=box(x,2.725,z,.29,.026,.29,col.warm,{hard:true,mode:1,glow:.22,tag:'照明'});
       p._phase=x*2.1+z*1.7;
+      lightPanels.push(p);
     }
     glow(M.trs(0,.022,0,0,2.2,1,2.45),col.warm,.10);
     // Continuous rails and their wall brackets.
@@ -232,8 +258,11 @@ const OfficeLift=(()=>{
 
     // Front portal and animated centre-opening leaves.
     const movingCarDoor=(p,s)=>{
-      p.ob=null;p.fixed=true;p.cx=p.m[12];p.cy=p.m[13];p.cz=p.m[14];p.r=1.66;
-      doorParts.push({p,s,m0:p.m});return p;
+      // Keep a live camera OBB. The matrix moves every frame; dropping `ob` made the closed car
+      // doors invisible to both the real-ray gate and the local camera cut. The shared index
+      // reserves the whole declared sweep once, while this same object follows the leaf.
+      p.fixed=true;p.cx=p.m[12];p.cy=p.m[13];p.cz=p.m[14];p.r=1.66;p.cameraSweepX=.72;
+      doorParts.push({p,s,m0:p.m,ob:p.ob,obX:p.ob&&p.ob.x});return p;
     };
     box(0,1.43,-1.505,2.25,2.76,.045,col.ink,{hard:true,gloss:.12,tag:'电梯门'});
     box(0,2.76,-1.40,2.45,.18,.16,col.steelD,{hard:true,gloss:.62,tag:'电梯门'});
@@ -345,7 +374,10 @@ const OfficeLift=(()=>{
 
     visual=s=>{
       const open=s.openness;doorBarrier.open=open>.62;
-      for(const q of doorParts)q.p.m=M.mul(M.trans(q.s*.72*open,0,0),q.m0);
+      for(const q of doorParts){
+        q.p.m=M.mul(M.trans(q.s*.72*open,0,0),q.m0);
+        if(q.ob)q.ob.x=q.obX+q.s*.72*open;
+      }
       for(const key in displayGroups){
         const show=key===s.display||(key==='UP'&&s.direction>0)||(key==='DOWN'&&s.direction<0);
         for(const q of displayGroups[key])q.p.m=show?q.m0:hidden;
@@ -356,14 +388,25 @@ const OfficeLift=(()=>{
       for(const key in landingGroups)for(const q of landingGroups[key])q.p.m=key===landing?q.m0:hidden;
     };
     visual(snapshot());
-    let last=0;
-    function tick(t){const dt=last?Math.min(.20,Math.max(0,t-last)):0;last=t;advance(dt);
+    let last=0,hasLast=false;
+    function tick(t){
+      // Keep malformed host timestamps out of both the controller delta and the animated light
+      // phase. Rebase on the next finite frame so Infinity/NaN cannot turn a resumed gap into a
+      // quarter-second state jump.
+      const finite=Number.isFinite(t),now=finite?t:last;
+      const dt=finite&&hasLast?Math.min(.20,Math.max(0,t-last)):0;
+      if(finite){last=t;hasLast=true;}else hasLast=false;
+      advance(dt);
       const moving=state.phase==='moving'?1:0;
-      for(const p of B.props)if(p._phase!==undefined)p.glow=.20+moving*(.025*Math.sin(t*8+p._phase));}
+      // Only nine ceiling panels animate.  Scanning every car/landing prop each frame made this
+      // compact scene pay a floor-wide search for a nine-item effect.
+      for(const p of lightPanels)p.glow=.20+moving*(.025*Math.sin(now*8+p._phase));}
     return B.finish({tick,indoor:true,cutaway:true,winOn:false,near:.045,far:22,expose:1.08,
       label:'公司客梯',labelK:'公司大楼 · 客梯轿厢',camera:{pitch:.28,dist:3.55,maxDist:3.9,lookY:1.18},
-      spawn:{x:0,z:.48,yaw:Math.PI},zones:[{id:'officeLift',x0:-1.08,x1:1.08,z0:-1.60,z1:1.24,
-        light:[0,2.55,0]},{id:'officeLiftLanding',x0:-3.0,x1:3.0,z0:-5.38,z1:-1.25,light:[0,2.65,-3.5]}],
+      spawn:{x:0,z:.48,yaw:Math.PI},zones:[{id:'officeLift',cameraMode:'lift',near:2.30,
+        x0:-1.08,x1:1.08,z0:-1.60,z1:1.24,ceil:2.70,light:[0,2.55,0]},
+        {id:'officeLiftLanding',x0:-3.0,x1:3.0,z0:-5.38,z1:-1.25,ceil:2.94,
+          light:[0,2.65,-3.5]}],
       roomAt(x,z){return z<-1.5?this.zones[1]:this.zones[0];},officeLiftState:snapshot});
   });
 

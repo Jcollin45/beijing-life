@@ -51,7 +51,7 @@
 //
 // A Chinese lobby is not a Western one with Chinese labels, and the difference is mostly things a
 // Western lobby has no reason to contain: somebody sitting in a glazed room by the door all day,
-// a wall of letterboxes for forty flats, a bank of parcel lockers that the courier — the same one
+// a wall of letterboxes for sixty flats, a bank of parcel lockers that the courier — the same one
 // who already delivers to this flat — loads from the other side, a glazed case of notices, which
 // is where the building actually talks to you, and a lit advertising frame either side of the lift
 // doors, which is where somebody else does.
@@ -675,16 +675,10 @@ FlatFit['lobby'] = A => {
   A.cyl(4.36, Y + .795, -1.20, .075, .02, C('#5b6167'), { gloss: .40 });
   A.cap(4.36, Y + .90, -1.20, .012, .22, .012, C('#5b6167'), { gloss: .45 });
   A.cyl(4.36, Y + 1.03, -1.20, .105, .05, C('#c8cdd0'), { gloss: .38, rz: Math.PI / 2 });
-  // The swivel chair. It used to be "pushed back and turned away, and a jacket over the back of
-  // it" — staging that only reads as *stepped out for a minute* while there is nobody who could
-  // step back in, and nobody could: `grep -rn "place: 'home'" js/` finds one character in this
-  // whole building and it is the courier. So it is square to the desk now and drawn up to it, at
-  // x 4.86 facing -x toward the counter, which is the seat a 保安 is put into rather than the seat
-  // he has just left. His roster row is queued for lane 2 (item 76) and the rig is lane 8's.
-  //
-  // The jacket stays on the back of the chair, and stays there when he arrives. A guard's tunic
-  // over his own chair is what every one of these rooms has whether the man is in it or not, and
-  // it is the wrong thing to model twice — once here and once on the figure.
+  // The swivel chair is square to the desk and drawn up to it at x 4.86, facing -x toward the
+  // counter. That is also the shared seat used by 刘师傅's day shift and 老陈's night shift in
+  // js/data.js, so the room and both roster rows agree instead of staging an empty, turned-away
+  // chair. The jacket remains on the back as part of the booth dressing, not a duplicate figure.
   A.cyl(4.86, Y + .030, -2.15, .28, .05, C('#3f4449'), { gloss: .34 });
   A.cyl(4.86, Y + .240, -2.15, .045, .44, C('#5b6167'), { gloss: .50 });
   A.box(4.86, Y + .470, -2.15, .46, .09, .44, col.charcoal, CLOTH);
@@ -719,7 +713,69 @@ FlatFit['lobby'] = A => {
   A.th('门卫室', GX - .30, Y + 1.55, -2.20, '门卫室的师傅一天到晚都在。',
     'The porter is in his room from morning to night.',
     '门卫室 is the porter\'s room by the door; 保安 is the guard himself.',
-    { focus: [3.00, -2.20], reach: 1.7 });
+    // Keep the focus clear of the counter at the lobby's 40 cm comfort envelope. The old x 3.00
+    // was valid for the 30 cm player by just 6 cm, which made a normal approach feel like edging
+    // along collision even though there is open floor immediately beside it.
+    { focus: [2.70, -2.20], reach: 1.7 });
+
+  // ---- 狗 on a lead (item 323). A small retained prop rig, adapted from the seated puppy in
+  // js/mall-pets.js rather than added to the tower cast: figure.js has no dog species, and two
+  // animated pets would spend the public-floor NPC budget on animals that never leave this spot.
+  // The dog sits in the pocket between the entrance planter and the porter's counter, outside the
+  // inner-door/lift diagonal. It deliberately has no collider; the booth already closes the wall
+  // behind it, while a second stop here would make a harmless pet narrow the entrance route.
+  (function lobbyDog() {
+    const DGX = GX - .76, DGZ = GZ0 + .52, yaw = -Math.PI / 2, S = 1.45;
+    const coat = C('#b88755'), coatD = C('#765238'), muzzle = C('#d2ad7d');
+    const ink = C('#211b17'), collar = C('#a8322c'), lead = C('#7c2d29');
+    const at = (fw, side) => [DGX + Math.sin(yaw) * fw + Math.cos(yaw) * side,
+                              DGZ + Math.cos(yaw) * fw - Math.sin(yaw) * side];
+    const dogBall = (fw, side, up, rx, ry, rz, color, o = {}) => {
+      const p = at(fw, side);
+      return A.ball(p[0], FY + up, p[1], rx, ry, rz, color, { ry: yaw, ...o, tag: '狗' });
+    };
+    const dogCap = (fw, side, up, sx, sy, sz, color, o = {}) => {
+      const p = at(fw, side);
+      return A.cap(p[0], FY + up, p[1], sx, sy, sz, color, { ry: yaw, ...o, tag: '狗' });
+    };
+    dogBall(-.048 * S, 0, .118 * S, .104 * S, .114 * S, .108 * S, coat, { gloss: .10 });
+    dogBall( .068 * S, 0, .132 * S, .096 * S, .104 * S, .104 * S, coat, { gloss: .10 });
+    for (const q of [-1, 1]) {
+      dogCap(.112 * S, q * .056 * S, .058 * S, .046 * S, .118 * S, .046 * S, coat);
+      dogBall(.138 * S, q * .056 * S, .022 * S, .030 * S, .021 * S, .040 * S, muzzle);
+      dogBall(-.026 * S, q * .080 * S, .028 * S, .032 * S, .027 * S, .050 * S, coat);
+    }
+    dogBall(.106 * S, 0, .248 * S, .080 * S, .078 * S, .078 * S, coat, { gloss: .12 });
+    dogBall(.166 * S, 0, .224 * S, .045 * S, .039 * S, .052 * S, muzzle, { gloss: .14 });
+    dogBall(.206 * S, 0, .236 * S, .017 * S, .014 * S, .014 * S, ink, { gloss: .45 });
+    for (const q of [-1, 1]) {
+      dogBall(.154 * S, q * .038 * S, .274 * S, .013 * S, .014 * S, .011 * S, ink,
+        { gloss: .55 });
+      dogBall(.082 * S, q * .076 * S, .242 * S, .026 * S, .058 * S, .031 * S, coatD,
+        { rz: q * .22 });
+    }
+    dogCap(-.108 * S, .054 * S, .120 * S, .036 * S, .108 * S, .036 * S, muzzle,
+      { rz: -.55 });
+    // Collar, then a two-piece sagging lead to a steel ring on the booth. Keeping the lead tagged
+    // but not separately interactive lets the dog's sentence teach 牵引绳 without stacking two
+    // prompts over a prop only half a metre wide.
+    dogCap(.070 * S, 0, .185 * S, .056 * S, .026, .060 * S, collar, { gloss: .28 });
+    const neck = at(.070 * S, 0), ringX = 3.205, ringY = Y + .54;
+    const leadSeg = (x1, y1, x2, y2) => {
+      const dx = x2 - x1, dy = y2 - y1, len = Math.hypot(dx, dy);
+      A.cap((x1 + x2) / 2, (y1 + y2) / 2, DGZ + .006, .012, len, .012, lead,
+        { rz: Math.atan2(-dx, dy), gloss: .28, tag: '牵引绳' });
+    };
+    leadSeg(neck[0], FY + .185 * S, 2.98, Y + .12);
+    leadSeg(2.98, Y + .12, ringX - .018, ringY);
+    A.cyl(ringX, ringY, DGZ, .040, .018, steel,
+      { rz: Math.PI / 2, gloss: .58, ...MAT.metal, tag: '牵引绳' });
+    A.shade(DGX, DGZ, .74, .52, .44, SY);
+    A.th('狗', DGX, FY + .48, DGZ, '狗拴着牵引绳，安静地坐在门卫室旁边。',
+      'A dog sits quietly beside the porter\'s room, tethered on a lead.',
+      '牵引绳 qiānyǐnshéng is a lead or leash; 拴 shuān is to tether.',
+      { focus: [2.22, -2.70], reach: 1.6 });
+  })();
 
   // ================================================================ the battened wall
   //
@@ -982,9 +1038,9 @@ FlatFit['lobby'] = A => {
   A.stop(-5.86, -5.38, 4.96, 5.46);
   // The pile said 这几个包裹是别人的 unconditionally, forever — including ten minutes after you
   // ordered something, which is the one moment a player looks at it. It answers for its own state
-  // now: `A.parcel` registers the sentence and the crate with the shell, and js/game.js flips both
-  // through `World.setParcel(mine)` when `courier.here` fires. Queued for lane 2 as item 84; until
-  // that call lands the pile reads exactly as it did before, which is the correct default.
+  // now: `A.parcel` registers the sentence and the crate with the shell so the shared parcel state
+  // can flip both through `World.setParcel(mine)`. Until that state is set, the pile reads exactly
+  // as it did before, which is the correct default.
   A.parcel(
     A.th('包裹', -1.28, Y + .96, LZ - .46, '这几个包裹是别人的。',
       'These parcels belong to somebody else.',
@@ -1016,8 +1072,8 @@ FlatFit['lobby'] = A => {
   // both about the water, neither aware of the other.
   //
   // `NOTICE_DAY` keys each slip to a weekday the way js/mall.js:4304 keys its announcements, and
-  // `noticeFor` picks the three that are up today. Evaluated once, at build: the slips are baked
-  // glyph quads and swapping them at runtime would mean rebuilding the board every frame for a
+  // `noticeFor` picks the two ordinary slips that are up today. Evaluated once, at build: those
+  // slips are baked glyph quads and swapping them at runtime would mean rebuilding the board for a
   // thing nobody reads twice in one visit. The 停水 slip carries no weekday and is therefore always
   // up, which is what makes it agree with the street door instead of contradicting it.
   //
@@ -1026,29 +1082,29 @@ FlatFit['lobby'] = A => {
   // player learning Chinese; every word below has a js/vocab.js row, so the body is glossable and
   // the board is the best readable text in the building rather than a picture of a board.
   //
-  // 电梯维修 is no longer always up. A notice that is true every day of the year teaches the player
-  // to stop reading the case, and 刘师傅 already says 二号梯停用 out loud. The real fix is an
-  // out-of-service state on the car in js/world.js, which this lane does not own — QUEUED, item
-  // 288. Until it lands the slip runs on a weekday key like every other slip, so the board is
-  // wrong two days a week instead of right for the wrong reason.
+  // 二号梯 is structurally sealed, but that permanent fact is already printed at its doors. The
+  // third bay here belongs to the working car's actual maintenance window: it is prebuilt below
+  // and `World.setLiftOut` reveals it only while Disrupt reports 电梯检修.
   const NOTICE_DAY = [
     ['停水通知', C('#8c2f22'), '明日全天停水', '本周六停水请各位住户提前储水备用', col.white,    -1],
-    ['电梯维修', C('#33383c'), '二号梯停用',   '二号梯停用维修请改乘一号梯上下',   col.white,     3],   // 星期三
-    ['物业通知', C('#8c2f22'), '楼道禁停电动车', '楼道内禁止停放和充电电动车',     C('#e8ccc2'), -1],
+    ['物业通知', C('#8c2f22'), '楼道禁停电动车', '楼道内禁止停放和充电电动车',     C('#e8ccc2'),  2],   // 星期二
     ['缴费通知', C('#8c2f22'), '本月物业费',   '本月物业费请于十五日前交清',       C('#e8ccc2'),  1],   // 星期一
     ['垃圾分类', C('#33383c'), '厨余请沥干',   '厨余垃圾请沥干水分再投绿桶',       col.white,     4],   // 星期四
     ['社区通知', C('#8c2f22'), '周末免费理发', '本周日上午在大堂免费理发',         C('#e8ccc2'),  6],   // 星期六
   ];
-  // Three slots, and the slips that are up today fill them: the standing ones first, then whatever
-  // is keyed to this weekday. `A.day` is not a thing the shell offers, so this uses the real one —
-  // the same source js/mall.js reads.
+  // Two ordinary slots: the standing notice, then today's dated one. Not every rotating notice
+  // needs its own weekday, so an unmatched day advances through that set instead of leaving a
+  // blank bay.
+  // `A.day` is not a thing the shell offers, so this uses the same real weekday source as the mall.
   function noticeFor(day) {
-    const up = NOTICE_DAY.filter(n => n[5] < 0 || n[5] === day);
-    return up.slice(0, 3);
+    const standing = NOTICE_DAY.filter(n => n[5] < 0);
+    const rotating = NOTICE_DAY.filter(n => n[5] >= 0);
+    const dated = rotating.find(n => n[5] === day) || rotating[day % rotating.length];
+    return [...standing, dated].slice(0, 2);
   }
   const notices = noticeFor(new Date().getDay()).map(([head, hc, sub, body, paper], i) =>
     [NZ - .62 + i * .62, paper, head, hc, sub, body]);
-  for (const [nz, paper, head, hc, sub, body] of notices) {
+  function drawNotice(nz, paper, head, hc, sub, body) {
     A.box(-5.933, Y + 1.575, nz, .006, .82, .54, paper, { hard: true, gloss: .06 });
     A.glyph(-5.918, Y + 1.880, nz, Math.PI / 2, head,
       { size: .088, color: hc, lift: 0, gloss: .08 });
@@ -1061,15 +1117,22 @@ FlatFit['lobby'] = A => {
         { size: .038, gap: .008, color: C('#4a4640'), lift: 0, gloss: .08 });
     A.box(-5.922, Y + 1.24, nz + .17, .004, .052, .20, C('#a8342a'), { hard: true });
   }
+  for (const notice of notices) drawNotice(...notice);
+  const repairAt = A.props.length;
+  drawNotice(NZ + .62, col.white, '电梯维修', C('#33383c'), '一号梯暂停使用',
+    '一号梯检修暂停使用请走安全楼梯');
+  const repairProps = A.props.slice(repairAt);
   A.box(-5.898, Y + 1.575, NZ, .016, 1.06, 1.82, glassC, { hard: true, alpha: .20, gloss: .80 });
   for (const [dy, dz, h, w] of [[.550, 0, .09, NW + .04], [-.550, 0, .09, NW + .04],
                                 [0, -.965, 1.19, .07], [0, .965, 1.19, .07]])
     A.box(-5.900, Y + 1.575 + dy, NZ + dz, .040, h, w, C('#5a6166'),
       { hard: true, gloss: .50, ...MAT.metal });
   A.stop(-6.03, -5.85, NZ - NW / 2 - .06, NZ + NW / 2 + .06);
-  A.th('通知栏', -5.72, Y + 1.62, NZ, '看看这星期有什么通知。', 'Let me see this week\'s notices.',
+  const noticeThing = A.th('通知栏', -5.72, Y + 1.62, NZ,
+    '看看这星期有什么通知。', 'Let me see this week\'s notices.',
     '通知 is a notice and 栏 is the case it is in. 物业 is the management company.',
     { focus: [-5.05, NZ], reach: 1.6 });
+  A.liftNotice(repairProps, noticeThing);
 
   // 消防栓 — the hydrant cabinet, red, with the glass you break. It is on this wall in every one
   // of these buildings and the word is worth having.
@@ -1406,10 +1469,9 @@ FlatFit['lobby'] = A => {
     { gloss: .30, rz: -.13, rx: .10 });                                            // the grip
   A.shade(WX - .04, WZ - .44, .48, .48, .50, SY);
   A.stop(WX - .24, WX + .24, WZ - .62, WZ + .18);
-  // 拖把 already has a dictionary row — it is a 45-yuan item in js/data.js and line 1144 of
-  // js/vocab.js — so this label is safe to hang. 摄像头 and 应急灯, the other two things added to
-  // this room, have no row, and a headword with no row cannot be learned, which is the point of
-  // the game; they are left unlabelled and written up as a ticket instead.
+  // 拖把 has both a dictionary row and a home action, so this label is safe to hang. The camera and
+  // emergency lamp remain environmental fittings rather than two more prompts in an already busy
+  // corner.
   A.th('拖把', WX + .02, Y + .78, WZ - .46, '保洁阿姨把拖把放在这儿了。',
     'The cleaner has left her mop here.',
     '拖 to drag + 把 a handle. 拖地 is to mop the floor; 保洁 is the cleaner.',

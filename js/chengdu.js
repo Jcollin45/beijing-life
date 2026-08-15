@@ -5,7 +5,7 @@
 // time-skip. You paid, you boarded, the screen went dark, and you were standing back in the
 // terminal two days older. This is the second one that lands.
 //
-// Why 成都 and not 西安: the schedule in `airport.js` already carries CZ3908 to 成都 at 13:05,
+// Why 成都 and not 西安: the schedule in `airport.js` already carries QL3908 to 成都 at 13:05,
 // with a board row, a gate, a baked PA call and an entry in `FX_CITY` for the view out of the
 // window. 西安 has none of those, and the schedule is not this file's to edit. So the fix is to
 // make a flight that already exists arrive somewhere, which is the honest shape of the bug.
@@ -70,7 +70,7 @@ const Chengdu = Lazy('Chengdu', () => {
   };
 
   const B = Build.scene({ fabricGloss: G.fabric });
-  const { box, cyl, ball, capsule, taper, flat, glyphs,
+  const { box, cyl, ball, capsule, taper, modelOr, flat, glyphs,
           solid, blocker, shade, glow, thing } = B;
 
   // ---------------------------------------------------------------- dimensions
@@ -110,7 +110,7 @@ const Chengdu = Lazy('Chengdu', () => {
   // character that is missing does not fail loudly — it draws as a hole in the sign, which is
   // how 元 was missing from the Bund's photographer's board for as long as the board existed.
   Glyphs.need('成都四川宽窄巷子茶馆铺盖碗竹椅火锅麻辣鸳鸯花椒掏耳朵采师傅' +
-              '熊猫大川剧变脸戏台客栈住宿公共厕所男女民航售票处机场巴双流' +
+              '熊猫大川剧变脸戏台客栈住宿公共厕所男女民航售票处机场巴锦岚' +
               '回程确认北京元老号院小吃担面串香青石板灯笼欢迎光临' +
               '0123456789:—·');
 
@@ -233,26 +233,29 @@ const Chengdu = Lazy('Chengdu', () => {
   // the options and leaving the offsets in world axes would spin each rail about its own centre
   // and leave the chair inside out.
   function bambooChair(cx, cz, ry) {
-    const T = { ry, tag: '竹椅', ...MAT.timber, gloss: .22 };
-    const c = Math.cos(ry), s = Math.sin(ry);
-    const at = (ox, oz) => [cx + c * ox + s * oz, cz - s * ox + c * oz];
-    for (const [ox, oz] of [[-.21, -.20], [.21, -.20], [-.21, .20], [.21, .20]]) {
-      const [px, pz] = at(ox, oz);
-      cyl(px, .19, pz, .020, .38, col.bambooD, T);
-    }
-    box(cx, .40, cz, .50, .05, .46, col.bamboo, { ...T, hard: true });
-    for (let i = 0; i < 3; i++) {
-      const [px, pz] = at(0, .22);
-      box(px, .56 + i * .14, pz, .48, .035, .035, col.bamboo, { ...T, hard: true });
-    }
-    for (const ox of [-.21, .21]) {
-      const [px, pz] = at(ox, .21);
-      cyl(px, .62, pz, .018, .48, col.bambooD, T);
-      const [qx, qz] = at(ox, 0);
-      box(qx, .60, qz, .045, .035, .44, col.bambooL, { ...T, hard: true });
-      const [rx2, rz2] = at(ox, -.19);
-      cyl(rx2, .50, rz2, .018, .22, col.bambooD, T);
-    }
+    modelOr('chengdu_bamboo_armchair', cx, 0, cz, 1,
+      { ry, tag: '竹椅', gloss: .22 }, () => {
+        const T = { ry, tag: '竹椅', ...MAT.timber, gloss: .22 };
+        const c = Math.cos(ry), s = Math.sin(ry);
+        const at = (ox, oz) => [cx + c * ox + s * oz, cz - s * ox + c * oz];
+        for (const [ox, oz] of [[-.21, -.20], [.21, -.20], [-.21, .20], [.21, .20]]) {
+          const [px, pz] = at(ox, oz);
+          cyl(px, .19, pz, .020, .38, col.bambooD, T);
+        }
+        box(cx, .40, cz, .50, .05, .46, col.bamboo, { ...T, hard: true });
+        for (let i = 0; i < 3; i++) {
+          const [px, pz] = at(0, .22);
+          box(px, .56 + i * .14, pz, .48, .035, .035, col.bamboo, { ...T, hard: true });
+        }
+        for (const ox of [-.21, .21]) {
+          const [px, pz] = at(ox, .21);
+          cyl(px, .62, pz, .018, .48, col.bambooD, T);
+          const [qx, qz] = at(ox, 0);
+          box(qx, .60, qz, .045, .035, .44, col.bambooL, { ...T, hard: true });
+          const [rx2, rz2] = at(ox, -.19);
+          cyl(rx2, .50, rz2, .018, .22, col.bambooD, T);
+        }
+      });
   }
 
   // A tea table: a low square top, three or four bamboo chairs round it, and a 盖碗 in front of
@@ -413,7 +416,7 @@ const Chengdu = Lazy('Chengdu', () => {
       { tag: '机场大巴', hard: true, gloss: .26 });
     for (const g of glyphs(BX, 3.20, BZ - .17, Math.PI, '机场大巴',
       { size: .21, gap: .06, color: col.white, mode: 1, tag: '机场大巴' })) litten(g, .9);
-    for (const g of glyphs(BX, 2.80, BZ - .17, Math.PI, '双流机场',
+    for (const g of glyphs(BX, 2.80, BZ - .17, Math.PI, '锦岚机场',
       { size: .15, gap: .05, color: C('#a8c4e0'), mode: 1, tag: '机场大巴' })) litten(g, .6);
     // the coach, standing in the road with its nose north
     const CZ = 4.60;

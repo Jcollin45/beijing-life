@@ -1,4 +1,4 @@
-// ✈️ Apron + parked aircraft — The widebody at stand B12 — livery 中国国际航空, reg B-2589 — plus tugs and GPU/water services
+// ✈️ Apron + parked aircraft — The widebody at stand B12 — livery 燕河航空, reg B-2589 — plus tugs and GPU/water services
 //
 // Registered into AirFit (declared at the top of js/airport.js). See AIRPORT.md for the full
 // zone + camera contract. This file is yours alone; nothing else in the build writes to it.
@@ -9,7 +9,7 @@
 //   zone    behind the curtain wall, -z  (AZ = -21.5)
 //   camera  D2-plane
 //
-// The widebody at stand B12 — livery 中国国际航空, reg B-2589 — plus tugs and GPU/water services.
+// The widebody at stand B12 — livery 燕河航空, reg B-2589 — plus tugs and GPU/water services.
 // Seen through WIN from BOTH halves of the hall. THE CURTAIN WALL AND WIN BELONG TO THE SHELL;
 // build behind them, never through them. D2 is one of the Verifier's two cross-zone canaries.
 //
@@ -342,14 +342,15 @@
 
     // ------------------------------------------------------------------ the word for it
     //
-    // At the glass, on the airside half, looking at the loader and the container train. `focus`
-    // points the camera out of the window rather than at the pane, the way the shell's two 飞机
-    // things do — and this is deliberately not tagged 飞机, so it does not fight them for `pick`.
+    // At the glass, on the airside half, looking at the loader and the container train. `focus` is
+    // the player's approach point, so it stays inside the terminal; the former z=-19.40 value was
+    // eleven metres out on the apron and could never be routed to. The thing itself remains beyond
+    // the pane and is deliberately not tagged 飞机, so it does not fight those objects for `pick`.
     thing('行李车', 4.40, 2.20, -A.RZ - .40,
       '地勤正在把行李装上飞机。',
       'The ramp crew are loading the bags onto the aircraft.',
       '行李车 the baggage cart. 地勤 ground staff, 装 to load, 传送带 the conveyor belt.',
-      { focus: [4.30, -19.40], reach: 3.20 });
+      { focus: [4.30, -A.RZ + .95], reach: 3.20 });
   };
 
   // Anything that moves registers here and the shell dispatches it once a frame. Do not start your

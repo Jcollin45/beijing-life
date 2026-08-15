@@ -32,7 +32,8 @@ const Campus = Lazy('Campus', () => {
     grass:C('#5b7343'),grassD:C('#496035'),render:C('#c3bdaf'),renderD:C('#a8a294'),
     renderL:C('#d2ccbe'),brick:C('#9a6c56'),brickD:C('#7d5644'),stone:C('#918c83'),
     stoneD:C('#6f6a62'),stoneL:C('#a9a39b'),trunk:C('#5b4a38'),trunkL:C('#74604a'),
-    leaf:C('#4f7a3c'),leafD:C('#3c6130'),red:C('#a8372a'),redD:C('#7f2a20'),
+    leaf:C('#4f7a3c'),leafD:C('#3c6130'),leafM:C('#5c8247'),leafL:C('#72945b'),
+    red:C('#a8372a'),redD:C('#7f2a20'),
     gold:C('#c9992f'),goldL:C('#e0b850'),cream:C('#e6dcc6'),white:C('#eceae2'),
     steel:C('#a7adb2'),steelD:C('#7b8288'),chrome:C('#c6ccd0'),charcoal:C('#33383d'),
     black:C('#22262b'),blue:C('#2f6392'),blueSign:C('#1f4f8f'),teal:C('#4c8a86'),
@@ -47,7 +48,7 @@ const Campus = Lazy('Campus', () => {
     pave:{mat:'paving',matScale:.68,matAmt:.36},path:{mat:'paving',matScale:.54,matAmt:.36},
     court:{mat:'asphalt',matScale:2.4,matAmt:.34},rend:{mat:'concrete',matScale:2.4,matAmt:.30},
     lib:{mat:'concrete',matScale:3.0,matAmt:.28},stone:{mat:'concrete',matScale:1.4,matAmt:.30},
-    plas:{mat:'plaster',matScale:2.1,matAmt:.30},brick:{mat:'brick',matScale:.92,matAmt:.34},
+    plas:{mat:'plaster',matScale:.62,matAmt:.12},brick:{mat:'brick',matScale:.92,matAmt:.34},
     tile:{mat:'tile',matScale:.32,matAmt:.38},steel:{mat:'metal',matScale:.40,matAmt:.30},
     tarp:{mat:'fabric',matScale:.85,matAmt:.32},
   };
@@ -66,6 +67,7 @@ const Campus = Lazy('Campus', () => {
   const GROUND = Object.freeze({ x:0,z:27,w:104,d:88 });
   const AXIS_X = -3.0, SPAWN = CAMPUS_CONTRACT.spawn, OUT = SPAWN;
   const panes = [], litProps = [], lampPools = [];
+  let treeSeq = 0;
   let seed = 0x2c9f70;
   const rnd = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
   const pick = a => a[(rnd() * a.length) | 0];
@@ -208,20 +210,34 @@ const Campus = Lazy('Campus', () => {
   }
   function tree(x,z,h) {
     capsule(x,h*.40,z,.15,h*.84,.15,col.trunkL,{gloss:G.wood});
-    for(let i=0;i<7;i++){
-      const a=i*2.399;
-      ball(x+Math.sin(a)*.60,h*.78+(i%3)*.26,z+Math.cos(a)*.60,.90,.72,.90,
-        i%2?col.leaf:col.leafD,{gloss:.12,mode:15,ry:a});
+    // Seven count-neutral, flattened lobes replace the old ring of identical spheres.  Offset
+    // centres, unequal horizontal axes and a shaded four-tone progression give the exterior trees
+    // a directional crown while keeping exactly the same prop, batch and collision budgets.
+    const treeId=++treeSeq;
+    const lobes=[
+      [ .00,.70, .00,1.05,.34,.90,col.leafD, .12],
+      [-.62,.77, .38, .86,.58,.96,col.leaf, -.24],
+      [ .68,.80,-.32, .92,.64,.76,col.leafL, .31],
+      [-.38,.84,-.60, .72,.56,.88,col.leafD,-.38],
+      [ .44,.87, .52, .78,.60,.68,col.leafM, .45],
+      [ .10,.89,-.05, .70,.60,.82,col.leafL,-.16],
+      [-.54,.91, .16, .62,.52,.68,col.leaf,  .27],
+    ];
+    for(const [ox,hy,oz,rx,ry,rz,pigment,yaw] of lobes){
+      const crown=ball(x+ox,h*hy,z+oz,rx,ry,rz,pigment,
+        {gloss:.105,mode:15,ry:yaw,rz:(ox-oz)*.012});
+      crown.campusTree=treeId;
+      crown.treePart='crown';
     }
     solid(x-.28,x+.28,z-.28,z+.28); shade(x,z,2.8,2.8,.26);
   }
   function bike(x,z,ry,color=col.bike1,tag='自行车') {
     const T={tag,ry};
     for(const o of [-.50,.50]) cyl(x+Math.sin(ry)*o,.33,z+Math.cos(ry)*o,.33,.045,
-      col.charcoal,{...T,rx:Math.PI/2,gloss:.30});
-    // At campus viewing distance one continuous, slightly stronger frame spine reads as clearly as
-    // the former overlapping two-tube frame while saving one property on every authored bicycle.
-    capsule(x,.50,z,.055,1.02,.055,color,{...T,rz:Math.PI/2,gloss:.34});
+      col.charcoal,{...T,rz:Math.PI/2,gloss:.30});
+    // The continuous frame spine follows the bicycle's fore-aft axis and meets both wheel hubs.
+    // A cylinder is enough here: its ends are hidden inside the wheel discs at campus distance.
+    cyl(x,.50,z,.022,1.02,color,{...T,rx:Math.PI/2,gloss:.34});
     capsule(x+Math.sin(ry)*.44,.74,z+Math.cos(ry)*.44,.028,.46,.028,col.steelD,
       {...T,rz:Math.PI/2,gloss:G.metal});
     box(x-Math.sin(ry)*.24,.74,z-Math.cos(ry)*.24,.24,.06,.11,col.black,{...T,gloss:.26});

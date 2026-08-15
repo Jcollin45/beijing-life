@@ -160,9 +160,9 @@ const HotelLift = (() => {
     flat(0,.010,0,3.25,3.20,col.stone,{mode:7,gloss:.25,mat:'tile',matScale:.55,matAmt:.26});
     // A flush three-part medallion breaks up the stone field with a genuinely rounded centrepiece.
     // The pieces are only millimetres thick and carry no body collider.
-    cyl(0,.018,.25,.76,.012,col.bronzeD,{hard:true,mode:7,gloss:.62,tag:'轿厢'});
-    cyl(0,.025,.25,.61,.012,col.stoneL,{hard:true,mode:7,gloss:.22,tag:'轿厢'});
-    cyl(0,.032,.25,.20,.012,col.celadon,{hard:true,mode:7,gloss:.36,tag:'轿厢'});
+    cyl(0,.018,.25,.76,.012,col.bronzeD,{hard:true,gloss:.62,tag:'轿厢'});
+    cyl(0,.025,.25,.61,.012,col.stoneL,{hard:true,gloss:.22,tag:'轿厢'});
+    cyl(0,.032,.25,.20,.012,col.celadon,{hard:true,gloss:.36,tag:'轿厢'});
     // Walnut side panels in bronze frames; a dark mirror at the rear is intentionally suggested,
     // not a fake real-time reflection.
     box(-1.57,1.42,0,.12,2.84,3.18,col.walnut,{hard:true,mode:6,gloss:.34,tag:'轿厢'});

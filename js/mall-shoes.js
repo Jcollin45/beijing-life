@@ -183,7 +183,7 @@ MallFit['鞋店'] = A => {
   const TIMBER = { mat: 'wood',    matScale: .90,  matAmt: .30 };
   const SLAB   = { mat: 'paving',  matScale: .72,  matAmt: .28 };
   const CLOTH  = { mat: 'fabric',  matScale: .55,  matAmt: .32 };
-  const PLAST  = { mat: 'plaster', matScale: 2.40, matAmt: .28, nrm: null };
+  const PLAST  = { mat: 'plaster', matScale: .62, matAmt: .12, nrm: null };
   const STOCK_GONE = M.trs(0, -99, 0, 0, 0, 0, 0);
   const stockBlue = C('#2c4f63'), stockAmber = C('#d99b2b');
   let heroStock = null, stockScreen = null, stockPower = { active:true };

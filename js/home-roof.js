@@ -39,8 +39,8 @@
 // **Everything opaque here batches.** js/build.js groups props by mesh and mode, so the five
 // hundred boxes of the city are three or four instanced draw calls rather than five hundred,
 // which is what makes a view this size affordable in a scene that is also drawn from every other
-// deck. See-through props are the one thing it cannot batch, so the graded haze is deliberately
-// held to eight-sided rings.
+// deck. See-through props normally stay loose because their order matters; the vista's continuous
+// courses use one local `alphaGroup` apiece so each course keeps its authored order in one call.
 const HomeRoof = { built: false };
 
 FlatFit['roof'] = A => {
@@ -136,7 +136,7 @@ FlatFit['roof'] = A => {
     for (let i = 0; i < n; i++) {
       const a = rot + (i + .5) * Math.PI * 2 / n;
       out.push(box(Math.sin(a) * r, (y0 + y1) / 2, Math.cos(a) * r, w, y1 - y0, .04, colour,
-        { hard: true, mode: 1, ry: a, gloss: 0, alpha: o.alpha }));
+        { hard: true, mode: 1, ry: a, gloss: 0, alpha: o.alpha, alphaGroup: o.alphaGroup }));
     }
     return out;
   }
@@ -149,10 +149,13 @@ FlatFit['roof'] = A => {
   // ---- the zenith. Real sky is darkest overhead and palest at the horizon, and the engine gives
   // one colour per list — so the gradient is three see-through courses of a fixed deep blue, each
   // on its own radius so they never share a plane, each rotated off the last so the eight seams
-  // never stack into one visible edge. Eight sides on purpose: transparency is the one thing
-  // js/build.js cannot batch, so each of these costs a draw call of its own.
-  for (const [r, y0, rot] of [[32.8, 37, .00], [32.6, 43, .39], [32.4, 49, .78]])
-    ring(r, y0, 56, 8, rot, C('#20406a'), { alpha: .17 });
+  // never stack into one visible edge. Eight sides on purpose, and one local alpha group per
+  // course: their back-to-front course order and each course's panel order remain unchanged.
+  for (const [r, y0, rot, group] of [
+    [32.8, 37, .00, 'roof-zenith-low'],
+    [32.6, 43, .39, 'roof-zenith-mid'],
+    [32.4, 49, .78, 'roof-zenith-high'],
+  ]) ring(r, y0, 56, 8, rot, C('#20406a'), { alpha: .17, alphaGroup: group });
 
   // ---- and the smog under it. Below the horizon the ring is not sky, it is thirty kilometres of
   // Beijing seen edge on, which on most days is a flat white-grey nothing. On the `city` far list
@@ -163,10 +166,12 @@ FlatFit['roof'] = A => {
   // of the frame. Everything went the same value: the near blocks, the far towers and the sky were
   // one pale wash and the view had no depth in it at all. Haze reads at a quarter of what it feels
   // like it should be, because it is the *difference* between the layers that says distance.
-  for (const p of ring(32.7, 6, 36.6, 8, .20, C('#a9bccd'), { alpha: .26 })) cityReg(0, p);
+  for (const p of ring(32.7, 6, 36.6, 8, .20, C('#a9bccd'),
+    { alpha: .26, alphaGroup: 'roof-smog' })) cityReg(0, p);
   // The bright band sitting right on the horizon line, which is the single cue that says "hazy
   // day, and you are looking a very long way". Narrow, and only just there.
-  ring(32.0, Y - .4, Y + 2.4, 8, .55, C('#eae4d8'), { alpha: .13 });
+  ring(32.0, Y - .4, Y + 2.4, 8, .55, C('#eae4d8'),
+    { alpha: .13, alphaGroup: 'roof-horizon' });
 
   // ---- the ground, thirty-four metres down. A box and not a quad, so it cannot be seen through
   // from below, and set 0.60 m under the lobby's own floor so the two can never fight for pixels.
@@ -258,7 +263,7 @@ FlatFit['roof'] = A => {
     // sunset and midnight for free, and it goes where the value belongs anyway, since the bottom
     // of a block is in the shadow of everything around it.
     box(bx, GY + h * .34, bz, w * 1.01, h * .68, dep * 1.01, C('#1b2733'),
-      { hard: true, mode: 1, ry: a, alpha: .26 });
+      { hard: true, mode: 1, ry: a, alpha: .26, alphaGroup: 'roof-near-wash' });
     // 客厅 window uses too, and it is what makes a dark block read as a block with a top on it.
     cityReg(0, box(bx, GY + h + .10, bz, w * 1.02, .20, dep * 1.02, C('#98a9b6'),
       { hard: true, mode: 1, ry: a }));
@@ -348,7 +353,7 @@ FlatFit['roof'] = A => {
         if (on) cityReg(2, p);
       }
     box(bx, GY + h * .30, bz, w * 1.01, h * .60, dep * 1.01, C('#1b2733'),
-      { hard: true, mode: 1, ry: a, alpha: .22 });
+      { hard: true, mode: 1, ry: a, alpha: .22, alphaGroup: 'roof-tall-wash' });
   }
 
   // ---- the haze, laid after all of it.
@@ -357,12 +362,15 @@ FlatFit['roof'] = A => {
   // go first, then the trees, then the lower storeys, and the far towers stand out of a white
   // floor. Built after the towers on purpose — these are see-through, and see-through in this
   // renderer is the one thing that depends on the order it was made in.
-  for (const [hy, r0, r1, al] of [[2.6, 13, 32.5, .26], [6.4, 20, 32.5, .42]]) {
+  for (const [hy, r0, r1, al, group] of [
+    [2.6, 13, 32.5, .26, 'roof-haze-low'],
+    [6.4, 20, 32.5, .42, 'roof-haze-high'],
+  ]) {
     const m = (r0 + r1) / 2, t = r1 - r0;
     for (const [hx, hz, sw, sd] of [
       [0, m, r1 * 2, t], [0, -m, r1 * 2, t], [m, 0, t, r0 * 2], [-m, 0, t, r0 * 2],
     ]) cityReg(0, box(hx, GY + hy, hz, sw, .04, sd, C('#c6d2dc'),
-      { hard: true, mode: 1, alpha: al }));
+      { hard: true, mode: 1, alpha: al, alphaGroup: group }));
   }
 
   // ---- 楼下 the building you are standing on, seen from outside it.
@@ -735,10 +743,9 @@ FlatFit['roof'] = A => {
     '晾 liàng — to hang out to dry. 晾衣服 is what this roof is for.',
     { focus: [1.40, LINES[1][0] - .60], reach: 1.7 });
 
-  // The washing moves. There is no wind uniform indoors and js/game.js does not know this fixture
-  // yet, so it is registered as a `mover` and left at rest — one line in the tick loop turns the
-  // whole yard on, and it is in the report as a ticket. Registered rather than left out, because
-  // a sheet that never moves is a painted sheet and this is the fixture that most wants the fix.
+  // The washing is registered as one named mover because there is no outdoor wind uniform in this
+  // globally indoor scene. `weatherTick` below publishes the live wind amount; the home's slow
+  // fixture driver feeds that value to this mover without rebuilding any geometry.
   mover('laundry', laundry, (v, i, m0) => {
     const ph = m0[12] * 1.30 + m0[14] * 0.70 + i * 0.37;
     const a = (v * 2 - 1) * 0.16 * (0.65 + 0.35 * Math.sin(ph));
@@ -777,13 +784,21 @@ FlatFit['roof'] = A => {
     cyl(sx - .30, Y + .20, sz - .30, .022, .16, cSteel, { gloss: G.metal, ...METL });
     stop(sx - .90, sx + .90, sz - .30, sz + .46);
   }
-  solar(4.05, -3.75);
-  solar(4.05, -2.25);
-  solar(4.05, -0.75);
-  th('太阳能', 4.05, Y + 1.55, -2.25, '楼上的热水是太阳能烧的。',
+  // Keep a real service aisle between the collectors and the east parapet. At x 4.05 the frames
+  // ended 83 cm from the wall: passable for the 60 cm body, but with three stops in a row it left
+  // only 3 cm at an 80 cm shared-space comfort envelope and stranded the roof hatch behind them.
+  // Forty centimetres west buys a 1.23 m physical aisle without crowding the open middle of the
+  // roof, and every pipe below is written off the same datum so the plumbing still connects.
+  const SOLAR_X = 3.65;
+  // The south frame also used to sit only 73 cm off the parapet. Moving the row 35 cm north makes
+  // that end a 1.08 m maintenance aisle. Together with the wider east aisle above, this gives the
+  // hatch a route from the main deck instead of sealing it into an equipment pocket.
+  const SOLAR_Z = [-3.40, -1.90, -0.40];
+  for (const sz of SOLAR_Z) solar(SOLAR_X, sz);
+  th('太阳能', SOLAR_X, Y + 1.55, SOLAR_Z[1], '楼上的热水是太阳能烧的。',
     'The hot water upstairs is heated by the sun.',
     '太阳能 tàiyángnéng — solar power. 太阳能热水器 is the drum on every roof in China.',
-    { focus: [3.05, -2.25], reach: 1.9 });
+    { focus: [SOLAR_X - 1.45, SOLAR_Z[1]], reach: 1.9 });
 
   // ================================================================ 水箱 the water tanks
   //
@@ -807,12 +822,20 @@ FlatFit['roof'] = A => {
     shade(tx, tz, r * 2.5, r * 2.5, .46);
     stop(tx - r - .06, tx + r + .06, tz - r - .06, tz + r + .06);
   }
-  tank(-4.55, 1.05, .68, 1.34);
-  tank(-4.55, 2.85, .58, 1.16);
-  cap(-4.55, Y + 1.62, 1.95, .026, 1.30, .026, C('#d8d2c4'), { rx: Math.PI / 2, gloss: .16 });
-  th('水箱', -4.55, Y + 2.10, 1.05, '楼顶的水箱夏天最忙。', 'The roof tank is busiest in summer.',
+  const TANK_X = -4.55, TANK_Z0 = 1.05, TANK_Z1 = 2.55;
+  tank(TANK_X, TANK_Z0, .68, 1.34);
+  // The smaller tank stood at z 2.85, only 71 cm from the stair-head mass. Once both objects were
+  // expanded for the body it left an 11 cm thread into the fire-exit landing. Pulling it 30 cm
+  // south keeps the two drums together but restores a 1.01 m physical landing in front of the
+  // stair, with a real comfort route through it.
+  tank(TANK_X, TANK_Z1, .58, 1.16);
+  cap(TANK_X, Y + 1.62, (TANK_Z0 + TANK_Z1) / 2, .026, TANK_Z1 - TANK_Z0 - .20, .026,
+    C('#d8d2c4'), { rx: Math.PI / 2, gloss: .16 });
+  th('水箱', TANK_X, Y + 2.10, TANK_Z0, '楼顶的水箱夏天最忙。', 'The roof tank is busiest in summer.',
     '水箱 shuǐxiāng — water tank. 箱 is a box or a case: 冰箱 is the ice one.',
-    { focus: [-3.60, 1.05], reach: 2.0 });
+    // The former -3.60 focus left only 9 cm beyond the shipped body and was inside the shared
+    // comfort envelope. The same open aisle continues 35 cm east with no loss of reach.
+    { focus: [-3.25, 1.05], reach: 2.0 });
 
   // ================================================================ 天线 dishes and aerials
   //
@@ -836,7 +859,9 @@ FlatFit['roof'] = A => {
     cyl(dx + nx * r * .98, cy + ny * r * .98, dz + nz * r * .98, .045, .14, C('#e6e2d8'),
       { ry: aim, rx: tilt, gloss: .30 });
     shade(dx, dz, .44, .44, .40);
-    stop(dx - .10, dx + .10, dz - .10, dz + .10);
+    // The 26 cm plinth is below the player's step and the dish itself is overhead. A 20 cm stop
+    // inflated by the body became an 80–100 cm invisible obstacle; six in a row formed a hidden
+    // fence along the view edge. Keep the visible bases, but let circulation pass over them.
   }
   dish(-5.05, -4.05, .34, Math.PI + .12, .86);
   dish(-4.05, -4.18, .30, Math.PI - .09, .90);
@@ -1234,9 +1259,9 @@ FlatFit['roof'] = A => {
   // on brick piers with a landing board and a whistle-perch above it, tucked into the corner the
   // washing does not reach. It is the second-most Beijing object on this roof after the laundry.
   //
-  // The birds are lane 8's roster to add — the animal rig is skinned like the human one and costs
-  // what a person costs, so a loft with four birds modelled would be four figures standing on the
-  // roof of a scene that is drawn from every other deck. What this builds is the loft.
+  // Birds are deliberately not static roof props: the animal rig costs roughly what a person does,
+  // and four permanent figures would be drawn from every other deck. The lived-in loft, feed and
+  // water make the use legible without spending that cross-tower figure budget.
   (function loft() {
     const PX = 5.05, PZ = 2.60, PW = 1.80, PD = .95, PH = 1.20, PY = Y + .46;
     for (const [bx, bz] of [[PX - PW / 2 + .18, PZ - PD / 2 + .16], [PX + PW / 2 - .18, PZ - PD / 2 + .16],
@@ -1329,7 +1354,9 @@ FlatFit['roof'] = A => {
     th('杂物', JX, Y + 1.00, JZ + 1.20, '楼顶堆着一堆杂物，盖着蓝布。',
       'A pile of junk sits on the roof under a blue tarpaulin.',
       '杂 miscellaneous + 物 things. 蓝色的防水布 — that blue tarp is on every site in the country.',
-      { focus: [JX + 1.30, JZ + 1.20], reach: 2.2 });
+      // Approach from the open east/south face, not the narrow service seam between this pile and
+      // the first water tank. The old north-east focus made that non-route look mandatory.
+      { focus: [JX + 1.30, JZ + .55], reach: 2.2 });
   })();
 
   // ---- 马扎, the folding stool that lives folded against the south parapet. The chair by the
@@ -1369,7 +1396,10 @@ FlatFit['roof'] = A => {
   // the stair head with galvanised conduit fanning out of the bottom of it. It is the fixture that
   // explains every light up here, and it was the one thing missing that made them arbitrary.
   {
-    const EX = SH0 + .52, EZ = SHZ - .11;
+    // Centre it on the actual left jamb. The former `SH0 + .52` landed its 52 cm cabinet almost
+    // exactly on the *edge of the doorway*, overlapping 29 cm of the opening it was meant to sit
+    // beside. That was the remaining stair choke after the tank/service layout was opened up.
+    const EX = (SH0 + SDX - SDW / 2) / 2, EZ = SHZ - .11;
     box(EX, Y + 1.46, EZ, .52, .68, .17, C('#9aa1a6'), { hard: true, gloss: .34, ...METL });
     box(EX + .01, Y + 1.46, EZ - .088, .44, .60, .012, C('#8d949a'), { hard: true, gloss: .40 });
     cyl(EX - .21, Y + 1.46, EZ - .092, .012, .05, cSteelD, { rx: Math.PI / 2, gloss: .5 });
@@ -1378,29 +1408,29 @@ FlatFit['roof'] = A => {
     glyph(EX, Y + 1.74, EZ - .100, Math.PI, '有电危险',
       { size: .040, gap: .008, color: C('#2a241d') });
     box(EX, Y + 1.82, EZ - .02, .58, .05, .21, C('#8d949a'), { hard: true, gloss: .32, rx: -.18 });
-    // the conduit: one run up to the mast, one along to the bulkhead, one dropping into the slab
-    cyl(EX + .30, Y + 1.10, EZ - .04, .022, .74, cGalv, { rz: Math.PI / 2, gloss: G.metal });
-    cyl(EX + .67, Y + 1.62, EZ - .04, .022, 1.10, cGalv, { gloss: G.metal, ...METL });
+    // the conduit: route left across its own jamb rather than back across the fire door, then one
+    // run up to the mast and one dropping into the slab
+    cyl(EX - .30, Y + 1.10, EZ - .04, .022, .74, cGalv, { rz: Math.PI / 2, gloss: G.metal });
+    cyl(EX - .67, Y + 1.62, EZ - .04, .022, 1.10, cGalv, { gloss: G.metal, ...METL });
     cyl(EX - .16, Y + .62, EZ - .04, .022, 1.00, cGalv, { gloss: G.metal, ...METL });
     cyl(EX - .16, Y + .10, EZ - .04, .026, .16, C('#87909a'), { gloss: G.metal });
     for (let i = 0; i < 4; i++)
       box(EX - .16, Y + .34 + i * .30, EZ - .062, .06, .03, .05, cSteelD,
         { hard: true, gloss: G.metal });
-    // two 消防砂 buckets under it, which is what the 物业 inspection actually looks for
-    for (const [bs, bc] of [[-1, '#b8412c'], [1, '#a8382a']]) {
-      taper(EX + .96 + bs * .17, Y + .13, EZ - .16, .30, .26, .30, C(bc), { gloss: .24 });
-      cyl(EX + .96 + bs * .17, Y + .26, EZ - .16, .140, .03, C('#c4a97a'), { hard: true, gloss: .10 });
-      cap(EX + .96 + bs * .17, Y + .30, EZ - .16, .008, .28, .008, cSteelD,
-        { rz: Math.PI / 2, gloss: .40 });
-    }
+    // One 消防砂 bucket under it, which is what the 物业 inspection actually looks for. The old
+    // pair stood almost a metre east of the cabinet, directly across the stair approach; two
+    // 30 cm buckets cannot physically fit on this 52 cm jamb without repeating that overlap.
+    taper(EX, Y + .13, EZ - .16, .30, .26, .30, C('#b8412c'), { gloss: .24 });
+    cyl(EX, Y + .26, EZ - .16, .140, .03, C('#c4a97a'), { hard: true, gloss: .10 });
+    cap(EX, Y + .30, EZ - .16, .008, .28, .008, cSteelD,
+      { rz: Math.PI / 2, gloss: .40 });
     shade(EX, EZ, .70, .34, .26);
-    shade(EX + .96, EZ - .16, .74, .40, .32);
-    stop(EX - .30, EX + .30, SHZ - .22, SHZ);
-    stop(EX + .70, EX + 1.22, EZ - .34, EZ + .02);
+    shade(EX, EZ - .16, .74, .40, .32);
+    stop(EX - .28, EX + .28, EZ - .34, SHZ);
     th('配电箱', EX, Y + 1.46, EZ - .26, '楼顶的配电箱，写着有电危险。',
       'The roof distribution board, marked "danger — live".',
       '配电 to distribute power + 箱 box. 有电危险 is on every one of them.',
-      { focus: [EX, SHZ - .86], reach: 1.7 });
+      { focus: [SDX + .55, SHZ - 1.10], reach: 1.7 });
   }
 
   // ================================================================ 屋面检修口 the roof hatch
@@ -1483,17 +1513,21 @@ FlatFit['roof'] = A => {
 
   // ---- 保温管, the solar heaters' flow and return in grey lagging, dropping into the slab. Three
   // drums that feed nothing are three drums; the pipework is what makes them plumbing.
-  for (const sz of [-3.75, -2.25, -0.75]) {
-    cyl(4.05, Y + .40, sz - .34, .048, .70, C('#d8d2c4'), { gloss: .16 });
-    cyl(3.62, Y + .11, sz - .34, .048, .90, C('#d8d2c4'), { rz: Math.PI / 2, gloss: .16 });
+  for (const sz of SOLAR_Z) {
+    cyl(SOLAR_X, Y + .40, sz - .34, .048, .70, C('#d8d2c4'), { gloss: .16 });
+    cyl(SOLAR_X - .43, Y + .11, sz - .34, .048, .90, C('#d8d2c4'), { rz: Math.PI / 2, gloss: .16 });
   }
-  cyl(3.14, Y + .11, -2.25, .056, 3.30, C('#cfc9bb'), { rx: Math.PI / 2, gloss: .16 });
-  cyl(3.14, Y + .11, -0.55, .062, .16, C('#b8b2a4'), { rx: Math.PI / 2, gloss: .16 });
-  box(3.14, Y + .05, -0.34, .22, .10, .22, cTar, { hard: true, gloss: .20, ...CAST });
+  const SOLAR_RISER_X = SOLAR_X - .91;
+  cyl(SOLAR_RISER_X, Y + .11, SOLAR_Z[1], .056, 3.30, C('#cfc9bb'),
+    { rx: Math.PI / 2, gloss: .16 });
+  cyl(SOLAR_RISER_X, Y + .11, SOLAR_Z[2] + .20, .062, .16, C('#b8b2a4'),
+    { rx: Math.PI / 2, gloss: .16 });
+  box(SOLAR_RISER_X, Y + .05, SOLAR_Z[2] + .41, .22, .10, .22, cTar,
+    { hard: true, gloss: .20, ...CAST });
   for (let i = 0; i < 4; i++)
-    cyl(3.62, Y + .11, -4.05 + i * 1.05, .062, .05, C('#9aa2a6'),
+    cyl(SOLAR_X - .43, Y + .11, SOLAR_Z[0] - .30 + i * 1.05, .062, .05, C('#9aa2a6'),
       { rz: Math.PI / 2, gloss: G.metal });
-  shade(3.38, -2.25, .60, 3.60, .30);
+  shade(SOLAR_X - .67, SOLAR_Z[1], .60, 3.60, .30);
 
   // ================================================================ 天黑以后 lighting the roof
   //
@@ -1525,14 +1559,10 @@ FlatFit['roof'] = A => {
   // per-frame:
   //
   //   1. at build, so the yard is dressed for the day you arrive rather than for a default;
-  //   2. in `HomeRoof.weatherTick`, a setter js/game.js can call as coarsely as once a second.
+  //   2. in `HomeRoof.weatherTick`, the setter js/game.js calls once a second.
   //
-  // What it must NOT do is poll. There is no tick hook a FlatFit room can register — the fixture
-  // block at js/game.js:10567 names every driven part by hand — so the honest shape is a setter
-  // that costs nothing until somebody calls it, and a ticket for the one line that calls it. Until
-  // that line lands the build-time read is what runs, and the movement below stays at rest. Said
-  // plainly rather than dressed up: today this changes the washing when the scene is built and not
-  // while you watch.
+  // It does not poll. The home's slow fixture tick owns the cadence, while this setter owns the
+  // roof rule: rain takes the washing in and the current wind amplitude stays published beside it.
   const wxNow = () => (typeof Weather !== 'undefined' && Weather.now) ? Weather.now : null;
   // How much washing is out. Nobody leaves a quilt on the roof in the rain, and the line comes in
   // before the sheets do — so `wet` takes the quilts off the pole first and thins the lines after.

@@ -520,23 +520,25 @@ const Hotel10Fit = Object.freeze({ floor:'hotel10', api:1 });
 
   // --------------------------------------------------------------------------- seating
   function clubChair(A, c, x, z, yaw, tag, hide = c.leather) {
-    const p = (u, v) => at(x, z, yaw, u, v);
-    A.box(x, .34, z, .60, .10, .58, c.walnutD, { ry:yaw, gloss:.28, tag });
-    A.box(x, .45, z, .68, .17, .66, hide, { ry:yaw, mode:7, gloss:.09, tag });
-    const b = p(0, -.29);
-    A.box(b[0], .79, b[1], .70, .70, .13, c.walnutD, { ry:yaw, gloss:.29, tag });
-    A.box(b[0] + Math.sin(yaw) * .05, .81, b[1] + Math.cos(yaw) * .05, .56, .56, .07, hide,
-      { ry:yaw, mode:7, gloss:.09, tag });
-    for (const s of [-1, 1]) {
-      const a = p(s * .33, -.02);
-      A.box(a[0], .64, a[1], .11, .30, .56, c.walnut, { ry:yaw, mode:7, gloss:.30, tag });
-    }
-    for (const sx of [-1, 1]) {
-      const l = p(sx * .25, 0);
-      A.cyl(l[0], .13, l[1], .017, .54, c.brassD, { rx:Math.PI / 2, gloss:.54, tag });
-    }
-    const cr = p(0, -.35);
-    A.cyl(cr[0], 1.13, cr[1], .013, .60, c.brassL, { rz:Math.PI / 2, ry:yaw, gloss:.70, tag });
+    A.B.modelOr('arm_chair_01', x, 0, z, 1, { ry:yaw, tag, gloss:.22 }, () => {
+      const p = (u, v) => at(x, z, yaw, u, v);
+      A.box(x, .34, z, .60, .10, .58, c.walnutD, { ry:yaw, gloss:.28, tag });
+      A.box(x, .45, z, .68, .17, .66, hide, { ry:yaw, mode:7, gloss:.09, tag });
+      const b = p(0, -.29);
+      A.box(b[0], .79, b[1], .70, .70, .13, c.walnutD, { ry:yaw, gloss:.29, tag });
+      A.box(b[0] + Math.sin(yaw) * .05, .81, b[1] + Math.cos(yaw) * .05, .56, .56, .07, hide,
+        { ry:yaw, mode:7, gloss:.09, tag });
+      for (const s of [-1, 1]) {
+        const a = p(s * .33, -.02);
+        A.box(a[0], .64, a[1], .11, .30, .56, c.walnut, { ry:yaw, mode:7, gloss:.30, tag });
+      }
+      for (const sx of [-1, 1]) {
+        const l = p(sx * .25, 0);
+        A.cyl(l[0], .13, l[1], .017, .54, c.brassD, { rx:Math.PI / 2, gloss:.54, tag });
+      }
+      const cr = p(0, -.35);
+      A.cyl(cr[0], 1.13, cr[1], .013, .60, c.brassL, { rz:Math.PI / 2, ry:yaw, gloss:.70, tag });
+    });
     A.shade(x, z, .80, .80, .18);
   }
 

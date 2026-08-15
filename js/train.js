@@ -810,14 +810,21 @@ const Train = Lazy('Train', () => {
     th.labelGroup = 'train-doors';
   });
   SEATS.forEach((st, i) => {
+    // Both seats on one side open into the same clear aisle strip. The former outer-seat focus at
+    // z ±.55 was still inside the seat bank after the player's .30 m radius was applied, so
+    // standing up caused collision recovery to throw the body roughly three quarters of a metre.
+    const aisle = st.z > 0 ? .30 : -.30;
     const th = thing(st.care ? '爱心专座' : '座位', st.x, 1.00, st.z + (st.z > 0 ? -.1 : .1),
       st.care ? '这是爱心专座，让给别人吧。' : '有座位，坐下吧。',
       st.care ? 'A priority seat — better left for somebody who needs it.'
               : 'There is a seat free. Sit down.',
       st.care ? '爱心 loving heart + 专座 reserved seat.' : '座 to sit + 位 place.',
-      { focus: [st.x, st.z + (st.z > 0 ? -.55 : .55)], reach: 1.15 });
-    // What the body does with it: settle into the individual forward-facing cushion.
-    th.seat = { type: 'sit', at: [st.x + .04, st.z], yaw: st.yaw, seatY: .49 };
+      { focus: [st.x, aisle], reach: 1.15 });
+    // What the body does with it: settle onto the upper cushion. Its centre is .565 m and its
+    // thickness is .12 m, so the physical surface is .625 m high; using the former .49 m pan
+    // value buried the player's hips thirteen and a half centimetres into the upholstery.
+    th.seat = { type: 'sit', at: [st.x + .04, st.z], yaw: st.yaw, seatY: .625 };
+    th.stand = [st.x, aisle];
     th.labelGroup = st.care ? 'train-priority-seats' : 'train-seats';
   });
   for (const s of [-1, 1]) {
@@ -830,6 +837,14 @@ const Train = Lazy('Train', () => {
       'Let me look at the line map.', 'Six stations, and 二号线 runs in a ring.',
       { focus: [DOORX[2], s * (SEATZ - .40)], reach: 1.6 });
     th.labelGroup = 'train-route-maps';
+  }
+  // The long shelves are one continuous fixture on each side. These two grouped targets make the
+  // authored racks learnable without pretending the carriage has a separate luggage-state system.
+  for (const s of [-1, 1]) {
+    const th = thing('行李架', 0, 2.05, s * (RZ - .34), '行李放在头顶的架子上。',
+      'Luggage goes on the rack overhead.', '行李 luggage + 架 rack.',
+      { focus: [0, s * (SEATZ - .40)], reach: 1.6 });
+    th.labelGroup = 'train-luggage-racks';
   }
 
   // ---------------------------------------------------------------- 充电站 charging socket

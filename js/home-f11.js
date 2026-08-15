@@ -11,9 +11,9 @@
 // CONVINCING even though it is the least dramatic. Everything it does is materials, light and
 // small true detail.
 //
-// It also carries the old upper-floor shell fallback. The shared shell now owns a working landing
-// on every deck and advertises that with `A.shellLanding`; the fallback therefore stands down when
-// that flag is present, while this floor keeps its own finishes and its taped outage notice.
+// The shared shell owns the working landing on every deck. This file adds only floor-specific
+// corridor finishes and the taped outage notice at that plane; it does not carry a second set of
+// doors, shaft colliders or interactions.
 //
 // ---------------------------------------------------------------- the plan
 //
@@ -244,13 +244,10 @@ FlatFit['f11'] = A => {
   // THE LIFT SHAFTS AND THE LANDING
   // ===============================================================================================
   //
-  // This used to be required while `buildShafts` stopped at deck 2. Keep it as a compatibility
-  // fallback, but never place a second surround, indicator or call panel over the shell-owned one.
+  // The shared shaft owns structure, doors, colliders, indicator, call panel and the 电梯
+  // interaction. This floor owns only its corridor finish and the outage notice on the dead leaf.
   const DOORW = (A.CAR && A.CAR.door) || .80;
-  const LFX = (LF.x0 + LF.x1) / 2, LBX = (LB.x0 + LB.x1) / 2;
-
-  // The shell builds a real landing on every deck (SHAFT_DECKS, js/world.js:246), so the
-  // stand-in that used to sit here under `if (!shellLanding)` was dead code. Removed 2026-08-09.
+  const LBX = (LB.x0 + LB.x1) / 2;
 
   // F11's corridor finish and notice remain authored here even when the shell owns the hardware.
   for (const sh of [LF, LB]) {
@@ -282,11 +279,6 @@ FlatFit['f11'] = A => {
   stop(X0, X1, ZF - .40, ZF + .06);              // the block's south face
   stop(X0 - .40, X0 + .06, ZF, ZN);
   stop(X1 - .06, X1 + .40, ZF, ZN);
-  if (!A.shellLanding) {
-    stop(LB.x0 - .10, LB.x1 + .10, LB.z0, LB.z1 + .05);               // the dead shaft
-    stop(LF.x0 - .10, LFX - DOORW / 2, LF.z0, LF.z1 + .05);           // the working shaft's piers
-    stop(LFX + DOORW / 2, LF.x1 + .10, LF.z0, LF.z1 + .05);
-  }
 
   // ===============================================================================================
   // ZONES — where the body may stand, per room, and which lamp is overhead in each
@@ -302,12 +294,16 @@ FlatFit['f11'] = A => {
   const BED  = { x0: -6.00, x1: -0.85, z0: 0.30, z1: 3.20 };
   const KIT  = { x0: -6.00, x1: -0.85, z0: -2.10, z1: 0.30 };
   const BZ = BAL.z1, BDX0 = 1.10, BDX1 = 2.60;   // the balcony screen, and its walk-through
+  // The old 80 cm bedroom and 75 cm kitchen cuts were technically passable for the 60 cm shipped
+  // body and impossible at the shared-space 80 cm comfort envelope. One metre preserves ordinary
+  // residential proportions while leaving actual tolerance on both routes.
+  const BED_DOOR = [1.85, 2.85], KIT_DOOR = [-0.85, 0.15];
 
   A.zone({ id: 'f11', x0: X0, x1: X1, z0: ZS, z1: ZN,
            light: [0.6, CY - .30, 4.30], ceil: CY - .06 });
   A.zone({ id: 'f11hall', x0: HALL.x0, x1: HALL.x1, z0: HALL.z0, z1: HALL.z1,
            light: [3.20, Y + FT.h - .26, 2.35], ceil: Y + FT.h - .06 });
-  A.zone({ id: 'f11gap', x0: FDX0, x1: FDX1, z0: 2.50, z1: 3.90,
+  A.zone({ id: 'f11gap', x0: FDX0, x1: FDX1, z0: 2.30, z1: 4.10,
            light: [FX, Y + FT.h - .26, 3.00], ceil: Y + FT.h - .06 });
   A.zone({ id: 'f11liv', x0: LIV.x0, x1: LIV.x1, z0: LIV.z0, z1: LIV.z1,
            light: [2.10, Y + FT.h - .22, -0.70], ceil: Y + FT.h - .06 });
@@ -316,19 +312,19 @@ FlatFit['f11'] = A => {
   // clamps to the zone the body is standing in and then looks no further. Each of these overlaps
   // the rooms it joins by at least 0.15 m of *post-clamp* run — the colliders, not the zone edges,
   // are what shape the doorway.
-  A.zone({ id: 'f11livgap', x0: 1.20, x1: 2.80, z0: 0.70, z1: 2.20,
+  A.zone({ id: 'f11livgap', x0: 1.20, x1: 2.80, z0: 0.55, z1: 2.30,
            light: [2.00, Y + FT.h - .26, 1.45], ceil: Y + FT.h - .06 });
   A.zone({ id: 'f11bal', x0: BAL.x0, x1: BAL.x1, z0: BAL.z0, z1: BAL.z1,
            light: [2.40, Y + FT.h - .28, -4.10], ceil: Y + FT.h - .06 });
-  A.zone({ id: 'f11balgap', x0: BDX0, x1: BDX1, z0: -4.10, z1: -2.50,
+  A.zone({ id: 'f11balgap', x0: BDX0, x1: BDX1, z0: -4.20, z1: -2.40,
            light: [1.85, Y + FT.h - .26, -3.30], ceil: Y + FT.h - .06 });
   A.zone({ id: 'f11bed', x0: BED.x0, x1: BED.x1, z0: BED.z0, z1: BED.z1,
            light: [-3.40, Y + FT.h - .24, 1.70], ceil: Y + FT.h - .06 });
-  A.zone({ id: 'f11bedgap', x0: -1.60, x1: -0.10, z0: 1.85, z1: 2.85,
+  A.zone({ id: 'f11bedgap', x0: -1.75, x1: 0.05, z0: 1.65, z1: 3.05,
            light: [-0.85, Y + FT.h - .26, 2.35], ceil: Y + FT.h - .06 });
   A.zone({ id: 'f11kit', x0: KIT.x0, x1: KIT.x1, z0: KIT.z0, z1: KIT.z1,
            light: [-3.40, Y + FT.h - .26, -0.90], ceil: Y + FT.h - .06 });
-  A.zone({ id: 'f11kitgap', x0: -1.60, x1: -0.10, z0: -0.80, z1: 0.15,
+  A.zone({ id: 'f11kitgap', x0: -1.75, x1: 0.05, z0: -1.05, z1: 0.40,
            light: [-0.85, Y + FT.h - .26, -0.35], ceil: Y + FT.h - .06 });
 
   // ===============================================================================================
@@ -340,8 +336,8 @@ FlatFit['f11'] = A => {
   // under the ceiling quad so no two faces share the plane at Y + 2.60.
   const PT = .12, PH = FT.h - .015, PYC = Y + PH / 2;
   // The holes are SORTED before the spans are walked, and that sort is not a nicety. Given
-  // [[1.95, 2.75], [-0.70, 0.05]] the unsorted walk pushes one span from a0 straight past the
-  // second hole to 1.95 and then never revisits it — so the 厨房 doorway came out as solid wall,
+  // `[BED_DOOR, KIT_DOOR]` in reverse order would push one span straight past the lower opening
+  // and never revisit it — so the 厨房 doorway would come out as solid wall,
   // in the geometry and in the collider both, and the kitchen was a sealed room you could see the
   // light under. Measured with World.clampMove, not spotted by eye.
   const sorted = holes => holes.slice().sort((p, q) => p[0] - q[0]);
@@ -366,7 +362,7 @@ FlatFit['f11'] = A => {
     }
   }
   part('x', HALL.z0, HALL.x0, HALL.x1, [[1.20, 2.80]], col.cream, 2.10);      // hall | 客厅
-  part('z', BED.x1, BAL.z0, HALL.z1, [[1.95, 2.75], [-0.70, 0.05]], col.cream, 2.05);
+  part('z', BED.x1, BAL.z0, HALL.z1, [BED_DOOR, KIT_DOOR], col.cream, 2.05);
   part('x', BED.z0, BED.x0, BED.x1, [], col.cream);                           // 主卧 | 厨房
   part('x', KIT.z0, KIT.x0, KIT.x1, [], col.cream);                           // 厨房 | 卫生间
 
@@ -382,7 +378,7 @@ FlatFit['f11'] = A => {
       axis === 'x' ? stop(s0, s1, plane - .07, plane + .07) : stop(plane - .07, plane + .07, s0, s1);
   };
   wallStop('x', HALL.z0, HALL.x0, HALL.x1, [[1.20, 2.80]]);
-  wallStop('z', BED.x1, BAL.z0, HALL.z1, [[1.95, 2.75], [-0.70, 0.05]]);
+  wallStop('z', BED.x1, BAL.z0, HALL.z1, [BED_DOOR, KIT_DOOR]);
   wallStop('x', BED.z0, BED.x0, BED.x1, []);
   wallStop('x', KIT.z0, KIT.x0, KIT.x1, []);
   // The balcony screen, which is structure and not furniture: solid either side of the doorway.
@@ -685,7 +681,7 @@ FlatFit['f11'] = A => {
   stop(3.84, 4.36, ZN - .34, ZN);
   stop(3.34, 3.86, ZN - .40, ZN);
 
-  // --- 1106's 快递. A week of it. Two 京东-shaped cartons, a padded envelope, a bag of fruit gone
+  // --- 1106's 快递. A week of it. Two courier cartons, a padded envelope, a bag of fruit gone
   // soft, and a phone number in biro on the back of a delivery slip, taped to the door at eye
   // height by a courier who has given up ringing.
   (function parcels() {
@@ -1102,19 +1098,13 @@ FlatFit['f11'] = A => {
   // THE WORDS ON THE LANDING
   // ===============================================================================================
   //
-  // Focus points sit deliberately AWAY from z 3.95..4.25, which is the band the deck-2 corridor
-  // uses. `things` in js/world.js is one flat list with no deck in it — see the ticket at the foot
-  // of this file — so a word focused at the same (x, z) as a word downstairs competes with it. In
-  // the two deep pockets there is no contest at all, and everything that can go there does.
+  // Focus points sit in the clear pockets beside the objects rather than in the shaft approach or
+  // furniture colliders. Shared selection now filters by deck, so their placement is circulation
+  // design rather than an obsolete attempt to dodge words directly downstairs.
   TH('走廊', 0.60, Y + 1.62, 4.30, '十一楼的走廊比楼下亮。',
      'The eleventh-floor corridor is brighter than the ones below.',
      '走 walk + 廊 covered passage. A corridor here is storage, notice board and landing at once.',
      0.60, 4.42, 3.0, '走廊');
-  // Paired with the fallback panel in the guarded landing block above.  The generalized shell
-  // already supplies F11's one live call target, so its compatibility word must stand down too.
-  if (!A.shellLanding)
-    TH('电梯', LFX, Y + 1.24, LF.z0 - .08, '我在十一楼等电梯。', 'I am waiting for the lift on the eleventh floor.',
-       '电 electric + 梯 ladder. 楼梯 is the staircase; this one has a motor.', 2.50, 4.45, 2.4);
   TH('窗户', X0 + .18, Y + 1.55, WZ, '走廊尽头的窗户能看见整个城市。',
      'The window at the end of the corridor looks out over the whole city.',
      '窗 window + 户 door-leaf; together, the fitting. Eleven floors up it is worth the walk.',
@@ -1390,9 +1380,9 @@ FlatFit['f11'] = A => {
     sofa(SFX, SFZ);
     stop(SFX - .92, SFX + .92, SFZ - .46, SFZ + .46);
 
-    // ---- the rug the whole group stands on. `A.rug` cannot be used up here — it lays its bands at
-    // a hardcoded y just above zero, which on deck 11 is thirty-one metres under the floor — so the
-    // bands are laid by hand off FL instead.
+    // ---- the rug the whole group stands on. Its four authored bands are laid by hand off FL so
+    // the border widths align exactly with this sofa group; the shared `A.rug` wrapper is safe on
+    // upper decks, but its generic fringe/repeat is not the design used here.
     for (const [i, inset, c] of [[0, 0, C('#8d6f57')], [1, .18, C('#a3866b')],
                                  [2, .46, C('#8d6f57')], [3, .60, C('#b49a7c')]])
       flat(SFX, FL + .002 + i * .003, -1.62, 2.60 - inset, 1.72 - inset, c, { mode: 7, gloss: .03 });
@@ -1810,10 +1800,13 @@ FlatFit['f11'] = A => {
     shade(NX, NZ, .58, .54, .30);
     stop(NX - .24, NX + .24, NZ - .24, NZ + .24);
 
-    // ---- 衣柜, three doors, against the spine. No `A.rail` here: that contract belongs to your own
-    // 主卧 on deck 2 and a second room pushing shirts onto it would put strangers' clothes in your
-    // wardrobe.
-    const WX2 = -1.19, WZ2 = 1.22, WL = 1.70;
+    // ---- 衣柜, three doors, against the spine. It sits between the kitchen and bedroom openings,
+    // not across either one. The former 1.70 m case at z 1.22 physically overlapped the bedroom
+    // cut by 22 cm; its inflated collider sealed that route at the comfort envelope even though a
+    // 30 cm body could scrape round the corner. A compact 1.40 m case centred at z 1.00 leaves
+    // 15 cm of post-comfort clearance to both openings. No `A.rail` here: that contract belongs to
+    // your own 主卧 on deck 2 and a second room must not put strangers' clothes in your wardrobe.
+    const WX2 = -1.19, WZ2 = 1.00, WL = 1.40;
     box(WX2, Y + 1.03, WZ2, .58, 2.06, WL, col.wood, { gloss: .22, tag: '衣柜', ...MAT.timber });
     box(WX2, Y + 2.09, WZ2, .62, .06, WL + .04, col.woodL, { hard: true, gloss: .26, mode: 6 });
     for (let i = 0; i < 3; i++) {
@@ -1898,10 +1891,9 @@ FlatFit['f11'] = A => {
 
   // ---------------------------------------------------------------- 厨房 · seen through its door
   //
-  // Not a room you spend time in from here — the door is 0.75 m wide and the sight line from the
-  // 客厅 runs due west along z = -0.35 — so everything worth building is on that line: the sink
-  // under the window, the hob, the wok, and the rice cooker that is on in every flat in the block
-  // at half past six.
+  // A compact room reached through the one-metre spine opening. Its sight line from the 客厅 runs
+  // due west along z = -0.35, so the sink, hob, wok and always-on rice cooker line that route
+  // without occupying it.
   {
     const CX2 = -5.68;                                    // the run along the west wall
     box(CX2, Y + .43, -0.90, .62, .86, 2.00, C('#dcd6c6'), { gloss: .22, tag: '厨房' });
@@ -2061,11 +2053,11 @@ FlatFit['f11'] = A => {
      -2.60, 1.62, 1.8);
   TH('枕头', -4.21, Y + .58, 2.89, '枕头是荞麦皮的。', 'The pillows are filled with buckwheat husk.',
      '枕 to pillow + 头 head.', -2.55, 2.62, 1.8);
-  TH('衣柜', -1.19, Y + 1.20, 1.22, '衣柜顶上放着行李箱。', 'A suitcase lives on top of the wardrobe.',
-     '衣 clothes + 柜 cabinet.', -2.05, 1.22, 1.8);
-  TH('厨房', -3.40, Y + 1.10, -0.90, '厨房的门关着，因为炒菜有油烟。',
-     'The kitchen door stays shut, because of the smoke off the wok.',
-     '厨 kitchen + 房 room. It is a room with a door here, not part of the living room.',
+  TH('衣柜', -1.19, Y + 1.20, 1.00, '衣柜顶上放着行李箱。', 'A suitcase lives on top of the wardrobe.',
+     '衣 clothes + 柜 cabinet.', -2.05, 1.00, 1.8);
+  TH('厨房', -3.40, Y + 1.10, -0.90, '厨房门开着，晚饭快做好了。',
+     'The kitchen door is open; dinner is almost ready.',
+     '厨 kitchen + 房 room. It is a separate room reached through this open doorway.',
      -2.30, -0.60, 2.2);
   TH('电饭煲', -5.70, Y + 1.10, 0.10, '电饭煲的灯亮着，饭快好了。',
      'The rice cooker light is on; the rice is nearly done.',
@@ -2077,33 +2069,3 @@ FlatFit['f11'] = A => {
   HomeF11.built = true;
   return HomeF11;
 };
-
-// ------------------------------------------------------------------------------------------------
-// TWO THINGS FOR WHOEVER OWNS js/world.js AND js/game.js, kept here rather than in a report that
-// will be lost. Neither is fixable from a floor file and both affect every floor above the second,
-// not only this one.
-//
-// 1. `things` IS ONE FLAT LIST WITH NO DECK IN IT. `ZONE`, `SOL`, `SHA` and `GLO` are all keyed by
-//    deck and refilled by `setFloor`; `things` is not. game.js:8085 picks what E and Q are aimed at
-//    with `Math.hypot(th.focus[0] - P.x, th.focus[1] - P.z)` — x and z only, no y and no deck — so
-//    a word on deck 2 competes with a word at the same (x, z) on deck 11 and often wins.
-//
-//    Measured, not deduced: standing at this floor's 水泵 (focus x -4.55, z 4.00) the E prompt
-//    offers 消火栓, which is js/home-corridor.js's hydrant three metres below on deck 2 at
-//    (-4.20, 4.10). Standing anywhere on this landing, the lobby's 手推车 label draws over the
-//    corridor. With ten new floors stacked on the same footprint this gets ten times worse.
-//
-//    The fix is the same one the zones already have: bucket `things` per deck at build time (the
-//    shell knows `curDeck` while each builder runs) and have `setFloor` refill a live list, exactly
-//    as it does for `solids`. Everything in this file already puts its focus points as far from the
-//    deck-2 band (z 3.95 .. 4.25) as the plan allows, which reduces the collisions and cannot
-//    remove them.
-//
-// 2. `A.rug` CANNOT BE USED ABOVE THE LOBBY. `Build.scene`'s `rug` lays its bands at
-//    `.005 + i * .0035` and its fringe at `.010` — absolute y, with no deck term — so a rug asked
-//    for on deck 11 is built thirty-one metres under the floor, in the lobby, where it is also
-//    invisible because the lobby's ceiling is in the way. `A.shade` takes a y and the toolkit
-//    defaults it to the deck correctly; `rug` has no such parameter. Either give `rug` the same
-//    treatment `A.shade` has, or take it off the documented toolkit list at the top of world.js.
-//    The 客厅 rug in this file is laid by hand out of `flat` calls for exactly this reason.
-// ------------------------------------------------------------------------------------------------

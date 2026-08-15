@@ -256,6 +256,9 @@ window.ArcadeSys = (function () {
     };
   }
   const state = fresh();
+  // A first top-up below ¥50 also buys the ¥10 card. Resolve that combined amount once so the
+  // picker and the transaction boundary cannot disagree about what is affordable.
+  const topUpDue = yuan => yuan + (!state.card.has && yuan < 50 ? CARD_FEE : 0);
   // Roll the per-day part over without touching anything that belongs to the life.
   function sameDay(day) {
     if (state.today.day !== day) state.today = { day, scores:{}, plays:0, taken:{}, board:'' };
@@ -298,6 +301,11 @@ window.ArcadeSys = (function () {
       const g = G();
       if (g && g.setMallTickets) { try { g.setMallTickets(H.tickets() + n); state.tickets = H.tickets(); return; } catch (e) {} }
       state.tickets = Math.max(0, state.tickets + n);
+    },
+    stamp(kind) {
+      const g = G();
+      if (g && g.awardMallStamp) { try { return g.awardMallStamp(kind); } catch (e) {} }
+      return null;
     },
     Pick() { return (host && host.Pick) || (G() && G().Pick) || null; },
     say(html) {
@@ -585,12 +593,16 @@ window.ArcadeSys = (function () {
     if (l.opts.challenge) {
       if (l.won) state.challenge.won++; else state.challenge.lost++;
     }
+    // The real-time cabinets replaced game.js's quiz fallback, including the only old caller that
+    // awarded this passport category. Award it here, at the canonical completed-game boundary.
+    const stamp = H.stamp('arcade');
     H.time(6);
     H.need('mood', wasBest ? 15 : 8);
     H.need('rest', -3);
     const line = l.game.result ? l.game.result(l) : { hz:'游戏结束', py:'yóuxì jiéshù', en:'game over' };
     H.say(`${line.hz} · <span class="dim">${line.en} · ${score}分 → +${won}张票` +
-          `${wasBest ? ' · 新纪录 new record' : ''} · 共${H.tickets()}张</span>`);
+          `${wasBest ? ' · 新纪录 new record' : ''} · 共${H.tickets()}张` +
+          `${stamp ? ` · 新章：${stamp.hz} (${stamp.count}/4)` : ''}</span>`);
     H.sentence(wasBest ? '我破纪录了！' : '再玩一次吧。');
     H.diary(`在游戏厅玩了${cab.hz}，得了${score}分，赢了${won}张彩票。`,
       `Played ${cab.en} in the arcade: ${score} points, ${won} tickets.`, 'mallarcade');
@@ -1187,6 +1199,7 @@ window.ArcadeSys = (function () {
     if (P && P.isOpen) P.close();
     open(cab, game, { secs: opts.secs || (cab.key === 'race' ? 60 : cab.key === 'hockey' ? 999 : 45),
                       how:p.how, foe:opts.foe, twoPlayer:opts.twoPlayer, challenge:opts.challenge });
+    return true;
   }
 
   // ---------------------------------------------------------------- 游戏厅 · the lobby
@@ -1246,10 +1259,16 @@ window.ArcadeSys = (function () {
         en:'free credit you have been given so far', right:`${state.card.bonus}币` });
     }
     rows.push({ sec:'充值 · chōngzhí', en:'top up — 充值一百送二十' });
-    for (const t of TOPUPS) rows.push({ top:t.yuan, hz:`充值 ${t.yuan}`, py:`chōngzhí ${t.yuan}`,
-      en: t.bonus ? `¥${t.yuan} buys ${t.yuan + t.bonus} 币 — ${t.bonus} of them free`
-                  : `¥${t.yuan} buys ${t.yuan} 币`,
-      right: t.bonus ? `送${t.bonus}` : `${t.yuan}币`, off:H.money() < t.yuan });
+    for (const t of TOPUPS) {
+      const due=topUpDue(t.yuan),cardExtra=due-t.yuan;
+      rows.push({ top:t.yuan, hz:`充值 ${t.yuan}`, py:`chōngzhí ${t.yuan}`,
+        en: (t.bonus ? `¥${t.yuan} buys ${t.yuan + t.bonus} 币 — ${t.bonus} of them free`
+                     : `¥${t.yuan} buys ${t.yuan} 币`) +
+                    (cardExtra ? ` · plus ¥${cardExtra} for the new card` : ''),
+        right: cardExtra ? `¥${due} → ${t.yuan + t.bonus}币`
+                         : t.bonus ? `送${t.bonus}` : `${t.yuan}币`,
+        off:H.money() < due });
+    }
     P.show({
       title:'换币台 · 游戏卡',
       sub:`苏晓萌 · ¥${H.money()} 在身上 · ${state.card.has ? `${state.card.balance} 币在卡上` : '还没有卡'}`,
@@ -1267,26 +1286,32 @@ window.ArcadeSys = (function () {
       if (H.money() < CARD_FEE) { H.say(`钱不够 · <span class="dim">the card is ¥${CARD_FEE}</span>`); return false; }
       H.spend(CARD_FEE); state.spend += CARD_FEE;
     }
-    state.card.has = true;
-    // A card number that is stable for this life and looks like one.
-    state.card.no = 'NX' + String(1000 + (hash(H.day(), 7, state.plays) % 9000));
+    issueCard();
     H.say(`办好了 · <span class="dim">游戏卡 ${state.card.no} — top it up and the machines take it</span>`);
     H.sentence('我办了一张游戏卡。');
     H.save();
     return false;
   }
+  function issueCard() {
+    state.card.has = true;
+    // A card number that is stable for this life and looks like one.
+    state.card.no = 'NX' + String(1000 + (hash(H.day(), 7, state.plays) % 9000));
+  }
   function topUp(yuan) {
     const t = TOPUPS.find(q => q.yuan === yuan); if (!t) return false;
-    if (H.money() < yuan) { H.say(`钱不够 · <span class="dim">¥${yuan} needed</span>`); return false; }
+    const due = topUpDue(yuan);
+    if (H.money() < due) { H.say(`钱不够 · <span class="dim">¥${due} needed` +
+      `${due > yuan ? ` including the ¥${CARD_FEE} card` : ''}</span>`); return false; }
     // A top-up of fifty or more brings the card with it, which is what the desk actually does
     // rather than charging somebody ten yuan for a piece of plastic they are about to load.
-    if (!state.card.has) makeCard(yuan >= 50 ? yuan : 0);
-    if (!state.card.has) return false;
-    H.spend(yuan); state.spend += yuan;
+    const newCard = !state.card.has;
+    H.spend(due); state.spend += due;
+    if (newCard) issueCard();
     state.card.balance += yuan + t.bonus;
     state.card.bonus += t.bonus;
     state.card.topups++;
     if (yuan === 100) state.card.promo100++;
+    if (newCard) H.sentence('我办了一张游戏卡。');
     H.say(t.bonus
       ? `充值 ${yuan} 送 ${t.bonus} · <span class="dim">${yuan + t.bonus} 币 on the card, ${state.card.balance} in total</span>`
       : `充值 ${yuan} · <span class="dim">${state.card.balance} 币 on the card</span>`);
@@ -1368,8 +1393,7 @@ window.ArcadeSys = (function () {
         if (H.tickets() < f.stake) {
           H.say(`彩票不够 · <span class="dim">${f.stake} tickets to play ${f.hz}</span>`); return false;
         }
-        H.addTickets(-f.stake);
-        playCab('hockey', { foe:f, challenge:true });
+        if (playCab('hockey', { foe:f, challenge:true })) H.addTickets(-f.stake);
         return false;
       },
     });

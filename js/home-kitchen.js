@@ -500,19 +500,50 @@ FlatFit['kitchen'] = A => {
   FlatFit['kitchen'].door = { leaf: kitchenDoor, stop: kitchenDoorStop, hinge: [4.20, -2.271] };
 
   // -------------------------------------------------------------------------- 电饭煲 rice cooker
-  // A real 电压力锅 mesh rather than five primitives. Its control panel is a texture with legible
-  // Chinese on it (排骨, 白米粥, 杂粮饭, 美汤), which is why it faces the room and not the tiles:
-  // a player who can read it learns something a player who cannot does not, and that is the
-  // whole point of putting Chinese on a surface instead of in a flashcard.
-  //
-  // RX moved 5.14 -> 5.20. The mesh is .352 wide against the old taper's .27, and the oil bottle
-  // at x 4.88 .. 4.98 was inside the difference. Measured, not eyeballed.
+  // Code-native on purpose: the licensed reference mesh's control-panel atlas visibly carried a
+  // real appliance brand.  This compact cylindrical cooker keeps the useful visual vocabulary —
+  // lid, carry handle, steam vent, live display and named cook/keep-warm controls — without ever
+  // asking the runtime to fetch that texture. Its 34 cm footprint remains inside the measured
+  // .37 x .34 contact patch and does not change the fitted counter's circulation or collision.
   const RX = 5.20, RZ = -4.56;
-  model('rice_cooker', RX, top, RZ, 1, { gloss: .34, tag: '电饭煲' });
-  // The indicator keeps its own primitive: the mesh has a painted panel but nothing that lights,
-  // and this is the only part of the cooker that changes state.
-  box(RX - .035, top + .105, RZ + .158, .027, .018, .008, K.red,
-      { hard: true, mode: 1, glow: .14, tag: '电饭煲' });
+  cyl(RX, top + .137, RZ, .165, .274, K.white,
+      { ...whiteMat, gloss: .30, tag: '电饭煲' });
+  cyl(RX, top + .025, RZ, .157, .050, K.steelD,
+      { ...metalMat, gloss: .42, tag: '电饭煲' });
+  cyl(RX, top + .268, RZ, .168, .034, K.steel,
+      { ...metalMat, gloss: .48, tag: '电饭煲' });
+  cyl(RX, top + .292, RZ - .002, .168, .054, K.black,
+      { gloss: .26, tag: '电饭煲' });
+  cyl(RX, top + .322, RZ - .002, .132, .014, K.steelD,
+      { ...metalMat, gloss: .48, tag: '电饭煲' });
+  // Two short pivots make the raised carry handle physically meet the lid at both ends. Without
+  // them the horizontal capsule starts 5.5 mm above the insert — visible daylight at this scale.
+  cyl(RX - .070, top + .333, RZ - .020, .011, .026, K.steelD,
+      { ...metalMat, gloss: .52, tag: '电饭煲' });
+  cyl(RX + .070, top + .333, RZ - .020, .011, .026, K.steelD,
+      { ...metalMat, gloss: .52, tag: '电饭煲' });
+  cap(RX, top + .347, RZ - .020, .025, .166, .025, K.steelD,
+      { rz: PI / 2, ...metalMat, gloss: .52, tag: '电饭煲' });
+  cyl(RX + .105, top + .337, RZ - .045, .014, .018, K.black,
+      { gloss: .32, tag: '电饭煲' });
+
+  // The controls face the clear approach at +z. A moulded dark panel separates the hierarchy;
+  // its two functional Chinese labels are atlas glyphs, never baked advertising.
+  // The 17.6 cm panel is narrow enough that even its fully rounded outermost points remain inside
+  // the cylindrical shell. A wider tangent slab meets at its flat back but floats at the curved
+  // wings — exactly the seam this inset avoids.
+  box(RX, top + .137, RZ + .138, .176, .118, .060, K.black,
+      { round: .030, gloss: .44, tag: '电饭煲' });
+  box(RX - .030, top + .157, RZ + .165, .078, .036, .008, K.redD,
+      { hard: true, round: .008, mode: 1, glow: .075, tag: '电饭煲' });
+  glyph(RX - .030, top + .157, RZ + .169, 0, '保温',
+      { size: .016, lift: .001, color: C('#f2a05a'), mode: 1, tag: '电饭煲' });
+  ball(RX + .044, top + .145, RZ + .162, .014, .014, .007, K.steel,
+      { ...metalMat, gloss: .58, tag: '电饭煲' });
+  glyph(RX + .044, top + .101, RZ + .168, 0, '煮饭',
+      { size: .014, lift: .001, color: K.steel, tag: '电饭煲' });
+  ball(RX + .074, top + .172, RZ + .165, .005, .005, .004, K.red,
+      { mode: 1, glow: .14, tag: '电饭煲' });
 
   // -------------------------------------------------------------------------- prep and clutter
   // A thick wooden 案板 with a Chinese cleaver; both sit well away from the active rings.
@@ -594,7 +625,7 @@ FlatFit['kitchen'] = A => {
   // floor — the worktop's upper face is exactly `top`, and .003 clears it without z-fighting.
   const CS = top + .003;
   shade(HX, HZ, 1.02, .60, .30, CS);                 // 灶台, the hob's enamelled surround
-  shade(RX, RZ, .37, .34, .32, CS);                  // 电饭煲, .352 x .318 x .300 mesh
+  shade(RX, RZ, .37, .34, .32, CS);                  // 电饭煲, 34 cm code-native cooker
   shade(BX, BZ, .50, .41, .28, CS);                  // 案板
   shade(5.57, -4.15, .47, .42, .26, CS);             // the draining rack
   shade(4.87, -4.765, .30, .17, .26, CS);            // 油 and the soy bottle, as one pair

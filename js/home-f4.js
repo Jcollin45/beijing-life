@@ -4,18 +4,12 @@
 // FlatFit key 'f4' -> deck 4 -> y 9.30. Every height below is written `Y + h` off `A.y0`, never
 // off a literal, because a room that hardcodes its deck builds itself in the lobby.
 //
-// WHAT THE SHELL GIVES A FLOOR ABOVE THE SECOND, WHICH IS ALMOST NOTHING.
+// WHAT THE SHELL GIVES A FLOOR ABOVE THE SECOND.
 //
 // `buildShell` in js/world.js pours a floor, a ceiling and four walls for deck 0 and deck 2 and
-// for no other deck; `buildShafts` builds its landings inside `for (const f of [0, 2])`. So on
-// deck 4 there is no slab, no ceiling, no perimeter wall, no shaft enclosure and no lift doors —
-// this file is the shell as well as the fit-out, and if it did not pour a floor the deck would be
-// a hole. The one thing the shell does own everywhere is the car itself, which travels.
-//
-// The landing built here is therefore provisional, and it takes itself out of the build the
-// moment the shell grows one: `shellLanding` below scans `A.props` for anything the shell has
-// already put in the shaft mouth at this deck's height, and skips the whole block if it finds it.
-// See the ticket at the foot of this file.
+// for no other deck, so this file still owns deck 4's slab, ceiling, perimeter and fit-out.
+// `buildShafts` now runs over `SHAFT_DECKS`: the shell owns both shaft enclosures, moving doors,
+// indicator, call panel and shaft collision here.
 //
 // WHAT THIS FLOOR IS.
 //
@@ -30,7 +24,7 @@
 //
 // THE PLAN, in the building's own coordinates:
 //
-//   x -6.0 .. 6.0, z -5.0 .. 6.2, clear height 2.72
+//   x -6.0 .. 6.0, z -5.0 .. 6.2, clear height 2.60
 //
 //   z  4.9 .. 6.2   x -0.4..1.4  LIFT_B (dead shaft)   x 1.6..3.4  LIFT (working)
 //   x -6.0 .. -1.6, z 1.9 .. 6.2   物业办公室 — enclosed, seen through its hatch and its door
@@ -112,11 +106,11 @@ FlatFit['f4'] = A => {
   // ------------------------------------------------------------------ the coordinate contract
   const Y = A.y0;                                   // deck 4 — 9.30 under the contract
   const X0 = -6.0, X1 = 6.0, Z0 = -5.0, Z1 = 6.2;
-  const H = 2.72, CY = Y + H;                       // clear height, and the ceiling plane
+  // Match the shell's shaft frontage and every adjacent residential deck. At 2.72 the room lid
+  // sat 12 cm above the shell-owned lift walls, exposing a bright slit over both shafts.
+  const H = (A.CORR && A.CORR.h) || 2.60, CY = Y + H;
   const LF = A.LIFT   || { x0: 1.6, x1: 3.4, z0: 4.9, z1: 6.2 };
   const LB = A.LIFT_B || { x0: -0.4, x1: 1.4, z0: 4.9, z1: 6.2 };
-  const DOORW = 0.80, DOORH = 2.10;
-  const CXL = (LF.x0 + LF.x1) / 2;                  // the working shaft's centreline
 
   // The office block, and the two lines everything in this file is measured against.
   const OFX = -1.6;        // its east wall — the 公告栏 hangs on this
@@ -127,18 +121,6 @@ FlatFit['f4'] = A => {
   // anything laid over them at +14, the contact shadows at +22, and everything that stands on the
   // floor at +26. Ten millimetres is the rule; these are ten or more at every step.
   const FLD = Y + .004, MAT_Y = Y + .014, SHY = Y + .022, FL = Y + .026;
-
-  // ------------------------------------------------------------------ has the shell caught up?
-  //
-  // Computed before this file builds anything, so it can only ever see the shell's work. If
-  // js/world.js has grown per-deck landings, everything in the LANDING section below is skipped
-  // and the shell's doors are the ones you see.
-  const shellLanding = !!(A.props && A.props.some(p => {
-    const m = p && p.m;
-    return m && m[13] > Y + .05 && m[13] < Y + H &&
-           m[14] > LF.z0 - .70 && m[14] < LF.z0 + .45 &&
-           m[12] > LF.x0 - 1.20 && m[12] < LF.x1 + 1.20;
-  }));
 
   // ------------------------------------------------------------------ palette
   // Public building, not a home: cream paint over a grey-green dado, beige floor tile, grey
@@ -453,9 +435,13 @@ FlatFit['f4'] = A => {
   // keeps the body inside the union of the zones it is *already* standing in, so two adjoining
   // rectangles with no overlap are two rooms with a wall between them. One rectangle over the
   // whole footprint, and then colliders for everything solid.
-  A.zone({ id: 'f4-lift', x0: OFX, x1: 3.5, z0: 3.2, z1: Z1,
+  // A room-sized orbit cap keeps the eye inside these low rooms. game.js eases the value and
+  // preserves the player's zoom, so moving between hall, office and reading corner stays calm.
+  const camNear = (w, d) => Math.max(1.9, Math.min(3.4, .42 * Math.min(w, d) + 1.35));
+  const zone = q => A.zone({ ...q, near: camNear(q.x1 - q.x0, q.z1 - q.z0) });
+  zone({ id: 'f4-lift', x0: OFX, x1: 3.5, z0: 3.2, z1: Z1,
            light: [1.20, Y + 2.36, 4.40], ceil: CY - .06 });
-  A.zone({ id: 'f4-read', x0: 3.5, x1: X1, z0: 4.6, z1: Z1,
+  zone({ id: 'f4-read', x0: 3.5, x1: X1, z0: 4.6, z1: Z1,
            light: [4.80, Y + 2.30, 5.50], ceil: CY - .06 });
   // The office is a room now, not a shopfront: its own lamp and its own cutaway box, because
   // behind the fascia the ceiling is 40 mm lower than the hall's and the light is a strip over the
@@ -469,15 +455,15 @@ FlatFit['f4'] = A => {
   //
   // The lamp is at x -2.40, in the open lane described over the colliders below, and not over the
   // desks: a light position that is inside a collider is a start point no flood fill can leave.
-  A.zone({ id: 'f4-office', x0: X0, x1: OFX, z0: OFZ, z1: Z1,
+  zone({ id: 'f4-office', x0: X0, x1: OFX, z0: OFZ, z1: Z1,
            light: [-2.40, Y + 2.42, 4.30], ceil: CY - .10 });
   // The games end of the hall, along the window wall. Registered before the catch-all so `roomAt`
   // finds it first: the 棋牌 and 麻将 tables sit 4 m south of the hall's own pendant and were lit
   // by it, which is why that corner read flat against a window wall at dusk.
-  A.zone({ id: 'f4-games', x0: X0, x1: 4.20, z0: Z0, z1: -1.90,
+  zone({ id: 'f4-games', x0: X0, x1: 4.20, z0: Z0, z1: -1.90,
            light: [-1.60, Y + 2.30, -3.30], ceil: CY - .06 });
-  A.zone({ id: 'f4', x0: X0, x1: X1, z0: Z0, z1: Z1,
-           light: [0, Y + 2.48, -0.90], ceil: CY - .06, near: 6.0 });
+  zone({ id: 'f4', x0: X0, x1: X1, z0: Z0, z1: Z1,
+         light: [0, Y + 2.48, -0.90], ceil: CY - .06 });
   A.deckH(Y + H);
   HomeF4.built = true;
 
@@ -500,79 +486,8 @@ FlatFit['f4'] = A => {
   stop(-6.4, -3.10, OFZ - .10, OFZ + .10);   // the south wall, west of the door
   stop(-1.70, -1.50, OFZ - .10, OFZ + .10);  // and its east jamb
   stop(-1.70, -1.50, OFZ, 6.4);              // the east wall, the one the 公告栏 hangs on
-  stop(CUPX, 1.50, 4.85, 6.35);                         // the dead shaft
-  stop(1.50, CXL - DOORW / 2, 4.85, 6.35);              // the working shaft's west pier
-  stop(CXL + DOORW / 2, 3.55, 4.85, 6.35);              // and its east pier
-  stop(CXL - DOORW / 2, CXL + DOORW / 2, 4.88, 5.10);   // the landing doors themselves
-
-  // ===================================================================== 6. THE LANDING
-  //
-  // Provisional — see the head of this file and the ticket at the foot. Skipped entirely the day
-  // js/world.js builds landings on every deck.
-  if (!shellLanding) {
-    const ZF = LF.z0;                             // both shafts stand on the same plane
-    // The dead shaft first: no opening, a pair of doors that have not moved in a year and the
-    // notice taped over them. This is what the second lift in a Beijing tower always is.
-    wall((LB.x0 + LB.x1) / 2, Y + H / 2, ZF - .012, LB.x1 - LB.x0 + .10, H, PI, col.wall, PLAST);
-    box((LB.x0 + LB.x1) / 2, Y + 1.03, ZF - .040, 1.06, 2.06, .030, col.wallD,
-        { hard: true, gloss: .14 });
-    for (const s of [-1, 1])
-      box((LB.x0 + LB.x1) / 2 + s * .27, Y + 1.03, ZF - .062, .50, 2.02, .022, C('#9aa1a6'),
-          { hard: true, gloss: .30, ...MAT.metal });
-    box((LB.x0 + LB.x1) / 2, Y + 2.30, ZF - .058, .52, .28, .05, col.dark,
-        { hard: true, gloss: .32 });
-    G((LB.x0 + LB.x1) / 2, Y + 2.30, ZF - .090, PI, '—', { size: .14, color: col.grey });
-    box((LB.x0 + LB.x1) / 2, Y + 1.60, ZF - .086, .46, .32, .020, col.paper,
-        { hard: true, gloss: .05, ry: .03 });
-    G((LB.x0 + LB.x1) / 2, Y + 1.69, ZF - .100, PI, '此梯检修',
-      { size: .054, gap: .010, color: col.redD });
-    G((LB.x0 + LB.x1) / 2, Y + 1.59, ZF - .100, PI, '请乘一号梯', { size: .042, gap: .008 });
-    G((LB.x0 + LB.x1) / 2, Y + 1.49, ZF - .100, PI, '物业服务中心',
-      { size: .032, gap: .006, color: col.grey });
-    // its west flank, which is the only side of it anyone stands beside
-    wall(CUPX, Y + H / 2, (ZF + Z1) / 2, Z1 - ZF, H, -PI / 2, col.wallD, PLAST);
-
-    // The working shaft. Same construction the shell uses downstairs: a plaster face across the
-    // mouth with the opening cut in it, a brushed surround standing 2 cm proud, the leaves behind
-    // the face so they read as recessed, and the indicator over the top.
-    const hw = DOORW / 2;
-    box(CXL, Y + (DOORH + H) / 2, ZF + .06, DOORW + 1.20, H - DOORH, .12, col.wall, PLAST);
-    for (const s of [-1, 1])
-      box(CXL + s * (hw + .30), Y + DOORH / 2, ZF + .06, .60, DOORH, .12, col.wall, PLAST);
-    for (const s of [-1, 1])
-      box(CXL + s * (hw + .07), Y + DOORH / 2 + .05, ZF - .01, .14, DOORH + .10, .05, col.steelD,
-          { hard: true, gloss: .55, tag: '电梯', ...MAT.metal });
-    box(CXL, Y + DOORH + .075, ZF - .01, DOORW + .42, .14, .05, col.steelD,
-        { hard: true, gloss: .55, tag: '电梯', ...MAT.metal });
-    for (const s of [-1, 1]) {
-      box(CXL + s * DOORW / 4, Y + DOORH / 2, ZF + .13, DOORW / 2, DOORH, .045, C('#7e868c'),
-          { hard: true, gloss: .34, tag: '电梯', ...MAT.metal });
-      box(CXL + s * DOORW / 4, Y + DOORH / 2, ZF + .105, DOORW / 2 - .05, DOORH - .10, .012,
-          C('#8d959b'), { hard: true, gloss: .34, tag: '电梯' });
-    }
-    box(CXL, Y + DOORH + .34, ZF - .015, .52, .30, .06, col.dark,
-        { hard: true, gloss: .34, tag: '电梯' });
-    G(CXL, Y + DOORH + .34, ZF - .050, PI, '四',
-      { size: .17, color: C('#ff9a4d'), mode: 1, glow: .16, tag: '电梯' });
-    // the shaft's east flank, seen from the 阅览角
-    wall(3.50, Y + H / 2, (ZF + Z1) / 2, Z1 - ZF, H, PI / 2, col.wallD, PLAST);
-    // the call panel between the two sets of doors
-    const px = 1.50;
-    box(px, Y + 1.12, ZF - .04, .13, .22, .04, C('#d9d4c8'),
-        { hard: true, gloss: .34, tag: '电梯' });
-    for (const [dy, ch] of [[.045, '▲'], [-.045, '▼']]) {
-      box(px, Y + 1.12 + dy, ZF - .062, .055, .055, .012, C('#ffbe6a'),
-          { hard: true, mode: 1, glow: .16, tag: '电梯' });
-      G(px, Y + 1.12 + dy, ZF - .076, PI, ch, { size: .038, color: C('#4a3316'), gloss: .12 });
-    }
-    // 四层 on the jamb, which is the only place a Chinese landing says which floor you are on
-    box(CXL + hw + .30, Y + 1.72, ZF - .012, .26, .26, .020, col.paper,
-        { hard: true, gloss: .06 });
-    G(CXL + hw + .30, Y + 1.75, ZF - .028, PI, '四层',
-      { size: .075, gap: .012, color: col.redD });
-    G(CXL + hw + .30, Y + 1.63, ZF - .028, PI, '物业·活动室',
-      { size: .028, gap: .005, color: col.grey });
-  }
+  // Shaft walls, leaves, controls and dynamic collision belong to world.js. In particular this
+  // floor must never register a static door stop across the working lift opening.
 
   // ===================================================================== 7. 物业办公室
   //
@@ -612,7 +527,7 @@ FlatFit['f4'] = A => {
   // --- the red fascia. This is the thing that makes it a 党群服务站 and not a reception desk:
   // gold on red, the whole width of the block, above everything else on the wall.
   box(-3.8, Y + 2.40, OFZ - .045, 4.40, .40, .09, col.red, { hard: true, gloss: .14 });
-  box(-3.8, Y + 2.615, OFZ - .052, 4.40, .035, .10, col.gold, { hard: true, gloss: .30 });
+  box(-3.8, Y + 2.575, OFZ - .052, 4.40, .035, .10, col.gold, { hard: true, gloss: .30 });
   box(-3.8, Y + 2.185, OFZ - .052, 4.40, .035, .10, col.gold, { hard: true, gloss: .30 });
   G(-3.86, Y + 2.40, OFZ - .100, PI, '金桥园社区党群服务站',
     { size: .155, gap: .026, color: col.gold, gloss: .16, tag: '党群服务站' });
@@ -1062,8 +977,8 @@ FlatFit['f4'] = A => {
       expired.push({ id, box: stampBox, ink: stampInk });
     }
   }
-  // One setter, and every stamp on the board agrees with the clock. `day` is the game day the way
-  // js/game.js keeps it; nothing calls this yet, which is the ticket at the foot of this file.
+  // One setter, and every stamp on the board agrees with the clock. Callers may provide the game
+  // day; the initial build deliberately renders day 1 when no clock value has been supplied.
   HomeF4.setDay = day => {
     HomeF4.day = day;
     for (const e of expired) {
@@ -1273,7 +1188,7 @@ FlatFit['f4'] = A => {
     cyl(X1 - .10 - (i % 2) * .022, Y + 1.42, cz, .062, 2.32, i % 2 ? C('#8e1f18') : col.red,
         { gloss: .10, mat: 'fabric', matScale: .5, matAmt: .28, nrmAmt: .30 });
   }
-  box(X1 - .13, Y + 2.62, (SZ0 + SZ1) / 2, .10, .10, SZ1 - SZ0 + .10, col.woodD, TIMBER);
+  box(X1 - .13, Y + 2.54, (SZ0 + SZ1) / 2, .10, .10, SZ1 - SZ0 + .10, col.woodD, TIMBER);
   // the banner. White on red, hung across the whole of the back wall over the stage.
   // X1 - .30, not X1 - .17: the curtain folds are 0.062 m cylinders standing at x 5.82 .. 5.96,
   // so a banner at 5.81 hangs inside the cloth instead of across the front of it.
@@ -1312,8 +1227,8 @@ FlatFit['f4'] = A => {
     cyl(4.72 + s * .16, FL + SH + .30, 2.05, .016, .62, col.steelX, { rz: s * .12, gloss: .40 });
   shade(4.72, 2.05, .40, .40, .28, FL + SH + .012);
   // 文化活动室 over the stage, on the wall above the banner
-  box(X1 - .08, Y + 2.66, SZ0 - .60, .05, .22, .90, col.white, { hard: true, gloss: .18 });
-  G(X1 - .112, Y + 2.66, SZ0 - .60, -PI / 2, '文化活动室',
+  box(X1 - .08, Y + 2.47, SZ0 - .60, .05, .22, .90, col.white, { hard: true, gloss: .18 });
+  G(X1 - .112, Y + 2.47, SZ0 - .60, -PI / 2, '文化活动室',
     { size: .120, gap: .024, color: col.redD });
 
   // --- the stacked plastic chairs. Two towers against the east wall, which is where they live
@@ -1621,7 +1536,7 @@ FlatFit['f4'] = A => {
                                             [KX - .70, KZ - .16, .34, .22, .28, -.34],
                                             [KX - .78, KZ + .16, .30, .20, .26, .10]])
       box(bx, Y + bh / 2 + (bz > KZ ? .00 : .00) + (bw < .35 ? .28 : 0), bz, bw, bh, bd,
-          C('#ab8f62'), { hard: true, gloss: .10, ry: br, mode: 11 });
+          C('#ab8f62'), { hard: true, gloss: .10, ry: br });
     box(KX - .74, Y + .30, KZ - .34, .26, .012, .006, C('#e6e0cd'), { hard: true, gloss: .06 });
     shade(KX, KZ, KW + .30, KD + .40, .34, SHY);
     shade(KX - .74, KZ - .02, .58, .62, .28, SHY);
@@ -1911,61 +1826,3 @@ FlatFit['f4'] = A => {
 };
 
 // ---------------------------------------------------------------------------------------------
-// TICKETS — kept here rather than in a report that will be lost.
-//
-// 1. FOR js/world.js. `buildShafts` still builds its landings inside `for (const f of [0, 2])`,
-//    and `buildShell` pours a floor, a ceiling and four walls for those two decks only. So every
-//    floor above the second is its own shell, including this one, and the landing in section 6
-//    above is a stand-in for one the shell should own. It removes itself automatically:
-//    `shellLanding` scans A.props for anything already standing in the shaft mouth at this deck's
-//    height and skips the whole block when it finds it — so the day world.js grows a per-deck
-//    landing, nothing here has to change and nothing here will z-fight it.
-//
-//    Two consequences worth naming while it is still this way round:
-//      * `goFloor(n)` in world.js is still `const to = n === 0 ? 0 : 2`, so the car cannot be sent
-//        to deck 4 at all. This floor is reachable only by `World.setFloor(4)` today.
-//      * the door collider laid here (`stop(CXL ± DOORW/2, 4.88, 5.10)`) never opens, because
-//        `doorStops` is the shell's and only has entries for decks 0 and 2. When the shell takes
-//        the landing over, it takes that with it.
-//
-// 1b. THREE THINGS IN THE ENGINE THAT ASSUME ONE DECK, found while lighting this floor. None of
-//    them is fatal and none is this file's to fix, but all three make an upper floor look flatter
-//    than the lobby does and they will hit every one of F3..F12 the same way.
-//
-//      * `A.rug(x, z, w, d, bands)` (js/build.js) lays its quads at a hardcoded y of 0.005 and its
-//        fringe at 0.010 — world y, not deck y. On any deck above the ground it draws the rug in
-//        the lobby. Nothing here uses it; the floor coverings above are `flat` at `Y + .014`.
-//      * `openness()` in js/gl.js measures `toFloor = max(p.y, 0)` from world zero, so on deck 4
-//        every surface scores the full "well clear of the floor" ambient and nothing gets the
-//        contact darkening the lobby gets for free. This floor compensates with about forty
-//        `A.shade` patches; a floor that does not will read as if it is floating.
-//      * `B.lights` is one global list and js/game.js ranks it by distance in x/z only, ignoring y
-//        (game.js:7706). A lamp in the flat on deck 2 is therefore exactly as "near" as one on
-//        deck 4 directly above it, and with twelve floors furnished the eight slots the shader has
-//        will mostly be spent on lamps in other buildings-worth of rooms. Filtering the list by
-//        the current deck before that sort is a two-line change and it is the single thing that
-//        would most improve how every floor above the second is lit.
-//
-// 2. FOR js/game.js — USE_AT.home rows for the words this floor posts. The verbs are ones the room
-//    actually supports; none of them need new machinery.
-//
-//      '公告栏'   看公告     kàn gōnggào      read the notice board       2.8s / 5 min  mood +3
-//      '收费标准' 看收费标准 kàn shōufèi biāozhǔn  read the fee schedule  2.4s / 4 min
-//      '物业'     找物业     zhǎo wùyè        ask at the management window 3.0s / 6 min mood +4
-//      '乒乓球台' 打乒乓球   dǎ pīngpāngqiú   play table tennis  6.0s / 30 min mood +14 rest -6
-//      '麻将'     看打麻将   kàn dǎ májiàng   watch the mahjong           3.0s / 10 min mood +8
-//      '电子琴'   弹琴       tán qín          play the keyboard           5.0s / 20 min mood +12
-//      '健身器材' 锻炼       duànliàn         use the machines   5.5s / 25 min mood +10 rest -8
-//      '报纸'     看报       kàn bào          read the paper              3.2s / 15 min mood +6
-//      '饮水机'   接水       jiē shuǐ         fill a cup                  1.8s / 2 min
-//      '书'       借书       jiè shū          borrow a book               2.4s / 6 min  mood +5
-//      '发财树' / '安全出口' / '消防栓' already exist in USE_AT.home and want no second row.
-//
-// 3. FOR js/vocab.js — the clusters this floor teaches, none of which the game has yet:
-//      物业 · 物业费 · 收费标准 · 公告栏 · 通知 · 停水 · 年检 · 垃圾分类 · 公章 · 钥匙
-//      活动室 · 舞台 · 横幅 · 乒乓球 · 麻将 · 电子琴 · 健身器材 · 报刊架 · 饮水机 · 党群服务站
-//
-// 4. FOR whoever owns the NPCs (game.js `NPCS`). The two clerks behind the hatch are geometry, not
-//    people: they do not move, turn or speak. A `{ hz:'物业', place:'home', deck:4 }` NPC standing
-//    at (-4.40, 2.24) facing -z would replace the seated one in section 7 outright, and the 广场舞
-//    rehearsal on the notice board is an obvious hook for a second one in the hall.

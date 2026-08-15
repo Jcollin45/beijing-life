@@ -273,14 +273,82 @@ window.PetSys = (function () {
   const toSave = () => ({ ...state, app: state.app && { ...state.app, answers:{ ...state.app.answers } },
     care:{ ...state.care }, tank:{ ...state.tank }, basket: state.basket.map(r => ({ ...r })),
     pet: state.pet && { ...state.pet }, groom: state.groom && { ...state.groom } });
+  const savedCount = (value, max = 1e6) => Number.isSafeInteger(value) && value >= 0
+    ? Math.min(max, value) : 0;
+  const savedStamp = value => Number.isFinite(value) && value >= 0
+    ? Math.min(Number.MAX_SAFE_INTEGER, Math.floor(value)) : 0;
+  const savedText = (value, max) => typeof value === 'string' ? value.slice(0, max) : '';
+  function cleanAnswers(raw) {
+    const out = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    for (const question of QUESTIONS) {
+      if (question.answers.some(answer => answer.hz === raw[question.key]))
+        out[question.key] = raw[question.key];
+    }
+    return out;
+  }
+  function cleanTimedGroups(raw, owners, fields) {
+    const out = {};
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return out;
+    for (const owner of owners) {
+      const saved = raw[owner.key];
+      if (!saved || typeof saved !== 'object' || Array.isArray(saved)) continue;
+      const row = {};
+      for (const field of fields) {
+        const value = savedStamp(saved[field]);
+        if (value) row[field] = value;
+      }
+      if (Object.keys(row).length) out[owner.key] = row;
+    }
+    return out;
+  }
+  function cleanApp(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw) || !animalOf(raw.key)) return null;
+    const answers = cleanAnswers(raw.answers);
+    const answered = Object.keys(answers).length;
+    const acceptable = QUESTIONS.every(question => {
+      const answer = question.answers.find(row => row.hz === answers[question.key]);
+      return answer && answer.ok !== false;
+    });
+    const allowed = new Set(['asked','form','booked','blocked','ready']);
+    let stage = allowed.has(raw.stage) ? raw.stage : 'asked';
+    if ((stage === 'form' || stage === 'booked' || stage === 'ready') &&
+        (answered !== QUESTIONS.length || !acceptable)) stage = 'asked';
+    const visitDay = savedCount(raw.visitDay, 1e7);
+    if (stage === 'booked' && !visitDay) stage = 'form';
+    const conditions = Array.isArray(raw.conditions) ? raw.conditions.slice(0, SUPPLIES.length)
+      .flatMap(row => {
+        const supply = row && typeof row === 'object' ? supplyOf(row.hz) : null;
+        return supply ? [supply] : [];
+      }) : null;
+    return { key:raw.key, stage, answers, startedAt:savedStamp(raw.startedAt),
+      visitDay, visitOk:raw.visitOk === true,
+      why:savedText(raw.why, 160), whyEn:savedText(raw.whyEn, 320), conditions };
+  }
   function load(s) {
-    if (!s || typeof s !== 'object') return;
-    Object.assign(state, fresh0(), s);
-    state.basket = Array.isArray(s.basket) ? s.basket.filter(r => supplyOf(r.hz)).map(r => ({ hz:r.hz, n:Math.max(1, r.n | 0) })) : [];
-    if (state.app && !animalOf(state.app.key)) state.app = null;
-    if (state.pet && !animalOf(state.pet.key)) state.pet = null;
-    if (state.groom && (!animalOf(state.groom.key) || !Number.isFinite(state.groom.doneAt)))
-      state.groom = null;
+    const clean = fresh0();
+    if (!s || typeof s !== 'object' || Array.isArray(s)) { Object.assign(state, clean); return; }
+    clean.app = cleanApp(s.app);
+    clean.care = cleanTimedGroups(s.care, ANIMALS, CARE.map(row => row.key));
+    clean.tank = cleanTimedGroups(s.tank, TANKS, ['changed','fed','filter']);
+    const basket = new Map();
+    if (Array.isArray(s.basket)) for (const row of s.basket.slice(0, 60)) {
+      if (!row || typeof row !== 'object' || !supplyOf(row.hz) ||
+          !Number.isSafeInteger(row.n) || row.n < 1) continue;
+      basket.set(row.hz, Math.min(99, (basket.get(row.hz) || 0) + row.n));
+    }
+    clean.basket = [...basket].map(([hz, n]) => ({ hz, n }));
+    if (s.pet && typeof s.pet === 'object' && !Array.isArray(s.pet) && animalOf(s.pet.key)) {
+      const since = savedStamp(s.pet.since);
+      clean.pet = { key:s.pet.key, since, deposit:s.pet.deposit === DEPOSIT ? DEPOSIT : 0,
+        fedAt:savedStamp(s.pet.fedAt) || since, playedAt:savedStamp(s.pet.playedAt) || since };
+    }
+    if (s.groom && typeof s.groom === 'object' && !Array.isArray(s.groom) &&
+        animalOf(s.groom.key) && Number.isFinite(s.groom.doneAt) && s.groom.doneAt >= 0)
+      clean.groom = { key:s.groom.key, doneAt:savedStamp(s.groom.doneAt) };
+    clean.spend = savedCount(s.spend, Number.MAX_SAFE_INTEGER);
+    clean.fed = savedCount(s.fed);
+    Object.assign(state, clean);
   }
   const stamp = (day, minutes) => day * 1440 + minutes;
   function restore() {
@@ -296,8 +364,6 @@ window.PetSys = (function () {
     H.save();
     return { ...state.groom };
   }
-  restore();
-
   // ---------------------------------------------------------------- the four questions
   // Asked out loud, by a person, at a desk, before any form comes out. This is the conversation the
   // brief asked for and it is deliberately not a checkbox list: each answer is a sentence you say,
@@ -781,6 +847,11 @@ window.PetSys = (function () {
     A(QUESTIONS.every(q => q.answers.some(x => x.ok !== false)), 'a question with no acceptable answer');
     return 'PetSys.selfCheck: ok';
   }
+
+  // Restore only after the question/care/tank catalogues above have initialized. The schema
+  // validator resolves saved keys against those catalogues; running it at the old early call site
+  // hit their temporal dead zone and the storage try/catch quietly turned every reload into blank.
+  restore();
 
   return {
     NAME, NAME_PY, NAME_EN,

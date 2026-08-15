@@ -109,7 +109,7 @@ MallFit['甜品店'] = A => {
   const TIMBER = { mat: 'wood', matScale: .90, matAmt: .30 };
   const TILE   = { mat: 'tile', matScale: .34, matAmt: .30 };
   const SLAB   = { mat: 'paving', matScale: .72, matAmt: .28 };
-  const PLAST  = { mat: 'plaster', matScale: 2.40, matAmt: .28, nrm: null };
+  const PLAST  = { mat: 'plaster', matScale: .62, matAmt: .12, nrm: null };
   const T = A.tag;                                  // every prop is tagged with the shop's kind
   const TILL = '收银台';                            // and the till is tagged as itself, so it lights
 
@@ -424,7 +424,7 @@ MallFit['甜品店'] = A => {
   // 豆花 warmer: a deep steel pot in a well, a domed lid stood half open on it, and a ladle.
   A.put(.86, -2.34, .34, .34, .12, .96, P.steelD, { hard: true, gloss: .52, tag: T });
   A.cyl(.86, -2.34, 1.06, .132, .10, P.chrome, { gloss: .66, tag: T });
-  A.ball(.86, -2.34, 1.11, .134, .072, .134, P.chrome, { mode: 7, gloss: .70, tag: T });
+  A.ball(.86, -2.34, 1.11, .134, .072, .134, P.chrome, { gloss: .70, tag: T });
   A.ball(.86, -2.34, 1.152, .026, .020, .026, P.trim, { mode: 7, tag: T });
   A.cyl(.99, -2.34, 1.11, .010, .18, P.steelD, { gloss: .5, rz: .34, tag: T });
   A.put(1.00, -2.34, .07, .09, .026, 1.02, P.milk, { round: .02, mode: 7, tag: T });
@@ -744,7 +744,7 @@ MallFit['甜品店'] = A => {
       { mode: 1, alpha: .16, gloss: .95, tag: T });
     A.ball(4.18, bb, .758, .186, .092, .186, P.glass,
       { mode: 1, alpha: .16, gloss: .95, tag: T });
-    A.ball(4.18, bb, .800, .026, .030, .026, P.chrome, { mode: 7, gloss: .7, tag: T });
+    A.ball(4.18, bb, .800, .026, .030, .026, P.chrome, { gloss: .7, tag: T });
   }
 
   // ================================================================ the shop as a working counter

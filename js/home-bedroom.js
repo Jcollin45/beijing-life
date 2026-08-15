@@ -493,7 +493,10 @@ FlatFit['bedroom'] = function bedroom(A) {
   FlatFit['bedroom'].outfitMirror = OM;
 
   sha(mirX - .04, mirZ, .30, .62, .34);
-  stop(-2.82, -2.60, 1.00, 1.62);
+  // A 22 cm-deep leaning mirror is not a metre-wide obstacle. `clampMove` adds the player's
+  // 30 cm radius to every side of a stop, so the old collider reached 52 cm into the only route
+  // from the bedroom door and pinched the turn between the wardrobe and the hall wall. Keep the
+  // visible frame and contact shadow; let a shoulder brush past it as it would in the real room.
   th('镜子', mirX - .10, 1.32, mirZ, '出门以前照照镜子。', 'A look in the mirror before going out.',
      '照镜子 zhào jìngzi is to look at yourself in one — 照 is the same 照 as in 照片, a photograph.',
      { focus:[-3.62, 1.30], reach:1.5 });
@@ -520,10 +523,13 @@ FlatFit['bedroom'] = function bedroom(A) {
 
   // ---------------------------------------------------------------- 篮子 the laundry basket
   //
-  // In the corner you undress in, between the bedside table and the hall wall. The lid is off
-  // square and there is a sleeve over the rim, because a laundry basket with the lid on straight
-  // and nothing showing is a bin.
-  const bkX = -2.96, bkZ = -1.08;
+  // In the open lower wardrobe bay, where it uses storage volume instead of consuming the clear
+  // side of the bed. The old position between the bedside table and the hall wall left only
+  // 54 cm of physical floor beside the mattress — less than the player's diameter before any
+  // comfort margin — and its radius-inflated stop sealed that side completely. The hanging bay
+  // already has an empty 1.00 m-high lower half, so this is both the more useful layout and the
+  // more believable place to sort clothes while changing.
+  const bkX = railX, bkZ = wZc;
   box(bkX, .27, bkZ, .42, .54, .42, wicker, { tag: '篮子', mode:7, gloss:.09, ...BASKET });
   for (const by of [.14, .28, .42])
     box(bkX, by, bkZ, .432, .022, .432, wickerD, { tag: '篮子', mode:7, gloss:.08, ...BASKET });
@@ -533,10 +539,9 @@ FlatFit['bedroom'] = function bedroom(A) {
   cap(bkX - .12, .585, bkZ - .19, .05, .24, .05, C('#c4bfb2'),
       { rz:1.05, ry:.55, tag: '篮子', mode:7, gloss:G.fabric, ...CLOTH });
   sha(bkX, bkZ, .56, .56, .36);
-  stop(-3.20, -2.72, -1.32, -.84);
   th('篮子', bkX, .74, bkZ, '脏衣服都在篮子里。', 'The dirty clothes are all in the basket.',
      '篮子 basket. 脏 zāng is dirty — 干净 gānjìng is its opposite.',
-     { focus:[-3.10, -.48], reach:1.4 });
+     { focus:[-5.25, 2.12], reach:1.4 });
 
   // ---------------------------------------------------------------- 拖鞋 slippers
   //

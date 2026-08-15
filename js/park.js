@@ -414,18 +414,28 @@ const Park = Lazy('Park', () => {
     // read as a floating pill bottle.
     const duckCull = [LK.x + 1.10, .28, LK.z + .46, .90];
     movingPart(duckParts,
-      ball(LK.x + 1.2, .13, LK.z + .60, .17, .12, .26, col.white, { gloss: .22, ry: .5 }),
+      ball(LK.x + 1.2, .13, LK.z + .60, .17, .12, .26, col.white,
+        { tag: '鸭子', gloss: .22, ry: .5 }),
       ...duckCull);
     movingPart(duckParts,
-      cyl(LK.x + 1.08, .25, LK.z + .44, .045, .20, col.white, { gloss: .20, rx: .3 }),
+      cyl(LK.x + 1.08, .25, LK.z + .44, .045, .20, col.white,
+        { tag: '鸭子', gloss: .20, rx: .3 }),
       ...duckCull);
     movingPart(duckParts,
-      ball(LK.x + 1.05, .37, LK.z + .39, .085, .085, .085, col.leafD, { gloss: .20 }),
+      ball(LK.x + 1.05, .37, LK.z + .39, .085, .085, .085, col.leafD,
+        { tag: '鸭子', gloss: .20 }),
       ...duckCull);
     movingPart(duckParts,
       box(LK.x + 1.00, .355, LK.z + .31, .055, .04, .11, col.gold,
-        { hard: true, gloss: .20 }),
+        { tag: '鸭子', hard: true, gloss: .20 }),
       ...duckCull);
+    // The duck stays on the water; its action point is on the clear south bank directly opposite.
+    // Keeping `pos` on the animal makes the label and action facing honest, while `focus` keeps the
+    // player's body outside the lake's radius-expanded collision envelope.
+    thing('鸭子', LK.x + 1.10, .55, LK.z + .46, '鸭子在湖里游来游去。',
+      'A duck is paddling around the lake.',
+      '鸭子 is a duck. 喂鸭子 means to feed a duck.',
+      { focus: [LK.x + 1.10, LK.z - LK.rz - .90], reach: 1.9 });
     // The lake is not walkable. Two overlapping blocks rather than one, so the corners the water
     // no longer reaches are not fenced off as if it did.
     solid(LK.x - LK.rx - .3, LK.x + LK.rx + .3, LK.z - LK.rz * .60, LK.z + LK.rz * .60);
@@ -522,13 +532,23 @@ const Park = Lazy('Park', () => {
     box(PX, 2.57, PZ, .24, .035, .24, col.redD, { tag: '亭子', hard: true, gloss: .24 });
     ball(PX, 2.28, PZ, .045, .06, .045, col.gold, { tag: '亭子', gloss: G.metal });
     B.light(PX, 2.34, PZ, [1.00, 0.84, 0.58], .80, 6.0);
-    solid(PX - 2.7, PX + 2.7, PZ - 2.4, PZ + 2.4);
-    blocker(PX - 2.7, PX + 2.7, PZ - 2.4, PZ + 2.4, 4.6);
+    // Collision follows the six posts and three fixed benches instead of filling the pavilion with
+    // one 5.4 x 4.8 m invisible block. The old volume contradicted the visible open sides, made the
+    // benches unusable and forced the interaction focus into the lake. These measured footprints
+    // keep two generous south entrances and let the chase camera accompany the player inside.
+    for (let i = 0; i < 6; i++) {
+      const a = i / 6 * Math.PI * 2;
+      const cx = PX + Math.sin(a) * 2.00, cz = PZ + Math.cos(a) * 1.70;
+      solid(cx - .25, cx + .25, cz - .25, cz + .25);
+    }
+    for (const s of [-1, 1])
+      solid(PX + s * 1.70 - .22, PX + s * 1.70 + .22, PZ - 1.10, PZ + 1.70);
+    solid(PX - 1.80, PX + 1.80, PZ + 1.30, PZ + 1.80);
     shade(PX, PZ, 6.0, 5.4, .32);
     thing('亭子', PX, 3.30, PZ - 2.40, '亭子里有人下棋。',
       'There are people playing chess in the pavilion.',
       '亭 pavilion + 子. Somewhere to sit out of the sun, and there is one in every park.',
-      { focus: [PX, PZ - 3.4], reach: 2.6 });
+      { focus: [PX + 1.0, PZ - 1.25], reach: 2.6 });
 
     // ================================================================ 广场舞 the dance plaza
     // The speaker on its trolley, turned up too loud, and the paint on the ground everyone lines
@@ -626,6 +646,97 @@ const Park = Lazy('Park', () => {
       '花 flower. 开花 is to bloom.',
       { focus: [GX + 4.6, -RZ + 1.0], reach: 1.9 });
 
+    // ================================================================ 公共厕所
+    // A compact municipal brick pavilion in the grass between the south path and the lake. Its
+    // doors face the path, while the solid follows the main shell rather than the slightly wider
+    // roof, so neither the north-south path nor the duck's action point is pinched off.
+    const TX = 5.0, TZ = -2.7;
+    const TOILET = { tag: '公共厕所' };
+    box(TX, .12, TZ, 4.70, .24, 3.50, col.granD,
+      { ...TOILET, hard: true, ...STONE, matScale: .82 });
+    box(TX, 1.50, TZ, 4.60, 2.76, 3.40, col.stoneD,
+      { ...TOILET, hard: true, ...BRICK, matScale: .46 });
+    box(TX, 2.94, TZ, 4.90, .20, 3.68, col.granL,
+      { ...TOILET, hard: true, ...STONE, matScale: .90 });
+    taper(TX, 3.30, TZ, 4.72, .56, 3.50, col.tileR,
+      { ...TOILET, hard: true, gloss: .18, ...ROOF });
+    // A short apron joins the doors to the existing south path. Without it the interaction focus
+    // was reachable but visibly stood in grass, which made a municipal building look dropped into
+    // the lawn rather than connected to the park circulation.
+    flat(TX, .012, TZ - 2.15, 3.40, .90, col.path,
+      { ...PAVE, matScale: .50, tag: '公共厕所' });
+    // The two enamel doors carry words, not generic pictograms: large white 男 / 女 labels stay
+    // readable from the path, and their blue/red panels remain distinct even before the glyphs.
+    for (const [ox, ch, doorCol] of [[-1.05, '男', col.blueSign], [1.05, '女', col.redD]]) {
+      box(TX + ox, 1.18, TZ - 1.73, 1.24, 2.20, .12, doorCol,
+        { ...TOILET, hard: true, gloss: G.paint, mat: 'metal', matScale: .46, matAmt: .24 });
+      for (const g of glyphs(TX + ox, 1.70, TZ - 1.80, Math.PI, ch,
+          { size: .30, gap: 0, color: col.white, mode: 1, tag: '公共厕所' })) litten(g, .55);
+      ball(TX + ox + (ox < 0 ? .42 : -.42), 1.02, TZ - 1.81,
+        .045, .045, .045, col.steel, { ...TOILET, gloss: G.metal });
+    }
+    box(TX, 2.64, TZ - 1.77, 3.36, .42, .12, col.blueSign,
+      { ...TOILET, hard: true, gloss: .24, mat: 'metal', matScale: .52, matAmt: .24 });
+    for (const g of glyphs(TX, 2.64, TZ - 1.84, Math.PI, '公共厕所',
+        { size: .20, gap: .055, color: col.white, mode: 1, tag: '公共厕所' })) litten(g, .75);
+    solid(TX - 2.30, TX + 2.30, TZ - 1.70, TZ + 1.70);
+    shade(TX, TZ, 5.4, 4.2, .27);
+    thing('公共厕所', TX, 1.70, TZ - 1.95, '公园里有公共厕所，门口排着队。',
+      'There is a public toilet in the park, with a queue outside.',
+      '公共 public + 厕所 toilet. 排队 is to queue.',
+      { focus: [TX, TZ - 2.45], reach: 2.2 });
+
+    // ================================================================ 小卖部
+    // A compact kiosk backs onto the south fence between the two boundary trees. Its north-facing
+    // counter opens onto a short paved apron which meets the existing east-west path exactly at
+    // z=-7.90; the authored solid stops at the shell, leaving that complete approach walkable.
+    const KX = 8.4, KZ = -10.2;
+    const KIOSK = { tag: '小卖部' };
+    flat(KX, .012, KZ + 1.575, 3.00, 1.45, col.path,
+      { ...PAVE, matScale: .50, ...KIOSK });
+    box(KX, .10, KZ, 2.90, .20, 1.70, col.granD,
+      { ...KIOSK, hard: true, ...STONE, matScale: .70 });
+    // Back, side cheeks and the low counter wall make an open service kiosk rather than a sealed
+    // shed. The dark recess and two stocked shelves remain visible from the path in daylight.
+    box(KX, 1.34, KZ - .80, 2.80, 2.48, .10, col.iron,
+      { ...KIOSK, hard: true, gloss: G.paint, ...IRON, matScale: .52 });
+    for (const s of [-1, 1])
+      box(KX + s * 1.40, 1.34, KZ, .10, 2.48, 1.60, col.iron,
+        { ...KIOSK, hard: true, gloss: G.paint, ...IRON, matScale: .52 });
+    box(KX, .56, KZ + .80, 2.80, 1.02, .10, col.ironL,
+      { ...KIOSK, hard: true, gloss: G.paint, ...IRON, matScale: .48 });
+    box(KX, 1.62, KZ + .755, 2.54, 1.02, .055, col.black,
+      { ...KIOSK, hard: true, gloss: .08 });
+    for (const sy of [1.25, 1.58, 1.91])
+      box(KX, sy, KZ + .79, 2.42, .035, .22, col.steelD,
+        { ...KIOSK, hard: true, gloss: G.metal });
+    // Water, soft drinks and instant-noodle cups: varied silhouettes on the lit shelf, not a flat
+    // coloured poster. Their low emissive term keeps the stock readable after the park lamps come on.
+    const STOCK = [col.white, col.blue, col.red, col.yellow, col.teal, col.orange];
+    for (let i = 0; i < 12; i++) {
+      const sx = KX - 1.02 + (i % 6) * .405, sy = i < 6 ? 1.39 : 1.72;
+      litten(cyl(sx, sy, KZ + .805, .060, .21, STOCK[i % STOCK.length],
+        { ...KIOSK, mode: 1, glow: .018, gloss: .25 }), .32);
+      if (i % 3 === 0)
+        box(sx, sy + .115, KZ + .81, .095, .025, .095, col.cream,
+          { ...KIOSK, hard: true, mode: 1, glow: .012 });
+    }
+    box(KX, 1.04, KZ + .92, 2.58, .12, .30, col.granL,
+      { ...KIOSK, hard: true, ...COPING, matScale: .55 });
+    box(KX, 2.30, KZ + .805, 2.78, .44, .09, col.redD,
+      { ...KIOSK, hard: true, gloss: .22, mat: 'metal', matScale: .46, matAmt: .24 });
+    for (const g of glyphs(KX, 2.30, KZ + .86, 0, '小卖部',
+        { size: .22, gap: .065, color: col.goldL, mode: 1, tag: '小卖部' })) litten(g, .85);
+    box(KX, 2.62, KZ, 2.90, .16, 1.70, col.tileRD,
+      { ...KIOSK, hard: true, gloss: .18, ...ROOF, matScale: .46 });
+    B.light(KX, 2.14, KZ + .68, [1.00, .86, .62], .48, 3.6);
+    solid(KX - 1.45, KX + 1.45, KZ - .85, KZ + .85);
+    shade(KX, KZ, 3.20, 2.10, .25);
+    thing('小卖部', KX, 1.55, KZ + .95, '小卖部有方便面、矿泉水和冷饮。',
+      'The kiosk sells instant noodles, mineral water and cold drinks.',
+      '小卖部 is a little neighbourhood kiosk. 买方便面 means to buy instant noodles.',
+      { focus: [KX, KZ + 1.65], reach: 2.0 });
+
     // ================================================================ trees and the fence
     // Willows along the water, planes round the edge, and a low iron railing with the gate in it.
     willow(LK.x - LK.rx - 2.6, LK.z + 3.0, 5.2, .14);
@@ -651,7 +762,7 @@ const Park = Lazy('Park', () => {
     // west of the gate is paved and there is no grass to plant in between them at all.
     for (const [sx3, sz3, r3, h3] of [
       [-15.0, -10.4, .74, .90], [-2.2, -10.5, .78, .92], [2.6, -10.6, .90, 1.05],
-      [7.6, -10.2, .82, .98], [13.4, -9.4, .88, 1.02],
+      [6.0, -10.4, .72, .90], [13.4, -9.4, .88, 1.02],
       [14.6, 1.0, .84, 1.00], [14.8, 6.4, .80, .95], [-15.2, 3.0, .68, .82],
       [-4.6, 3.4, .74, .88], [-6.6, 5.4, .78, .92], [-3.4, 6.4, .82, .96],
     ]) shrub(sx3, sz3, r3, h3);

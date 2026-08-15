@@ -1,4 +1,4 @@
-// 北京市仁和医院 · 4F — inpatient wards, the operating suite, family visiting and rehabilitation.
+// 北京市澄安医院 · 4F — inpatient wards, the operating suite, family visiting and rehabilitation.
 HospFit[4] = A => {
   const { box,cyl,ball,capsule,taper,flat,glyphs,solid,shade,thing,
           RX,RZ,H,col,fc,luminous,liveScreen,partitionZ,partitionX,sign,doorPlate,screen,

@@ -62,7 +62,7 @@ const Metro = Lazy('Metro', () => {
   const LAMP_OPEN = C('#4fd68c'), LAMP_SHUT = C('#c8452f');
 
   const B = Build.scene({ fabricGloss: G.fabric });
-  const { box, cyl, ball, capsule, taper, wall, flat, glyphs,
+  const { box, cyl, ball, capsule, taper, modelOr, wall, flat, glyphs,
           solid, shade, glow, thing } = B;
 
   // ---------------------------------------------------------------- dimensions
@@ -167,9 +167,13 @@ const Metro = Lazy('Metro', () => {
   // later means giving one of these an `out` and building the place it comes out in.
   const STATIONS = [
     { hz:'杨柳胡同', py:'Yángliǔ Hútòng', en:'Willow Lane',
-      out: { place:'street', at: { x: 19.4, z: 1.35, yaw: Math.PI * .5 } } },
+      // The street entrance solid begins at z=1.50.  z=.70 lands at the authored check focus with
+      // 80 cm to the structure, so even the strict .45 m transition envelope arrives legally.
+      out: { place:'street', at: { x: 19.4, z: .70, yaw: Math.PI * .5 } } },
     { hz:'商务区', py:'Shāngwùqū', en:'Business District',
-      out: { place:'street', at: { x: 38.7, z: -4.10, yaw: Math.PI } } },
+      // This mouth faces south: the previous rear return at z=-4.10 was inside its entrance solid.
+      // Return beside the route-map/check focus, a full 1.10 m beyond the structure's south face.
+      out: { place:'street', at: { x: 38.45, z: -7.10, yaw: Math.PI } } },
     // The coordinates are written out rather than read off each scene, so that metro.js does not
     // have to load after four other files to know where its own line goes.
     { hz:'大学城', py:'Dàxuéchéng', en:'University Town',
@@ -823,7 +827,7 @@ const Metro = Lazy('Metro', () => {
       [(-RX + SX - STAIRW) / 2, H / 2, -RZ, SX - STAIRW + RX, H, 0],
       [SX, (2.70 + H) / 2, -RZ, STAIRW * 2, H - 2.70, 0],
     ]) wall(x, y, z, w, h, yaw, col.wall,
-      { mode: 4, mat: 'plaster', matScale: 2.20, matAmt: .28 });
+      { mode: 4, mat: 'plaster', matScale: .62, matAmt: .12, nrm: null });
     // The pilasters go where nothing is mounted. One standing 17 cm off the wall behind a board
     // that stands 3 cm off it does not break up the run, it z-fights with the back of the board.
     // Tiled only as far as the platform edge. Past that is tunnel, and tunnels are not tiled.
@@ -942,12 +946,16 @@ const Metro = Lazy('Metro', () => {
     // bank read as three blank grey cupboards.
     MACHX.forEach((mx, i) => {
       const T = { tag: '售票机' };
-      box(mx, .74, MBZ, .96, 1.48, .56, col.steelD,
-        { ...T, gloss: .34, mat: 'steel', matScale: .40, matAmt: .32 });
-      box(mx, 1.50, MBZ, 1.00, .07, .60, col.chrome, { ...T, hard: true, gloss: G.metal });
-      // the console shelf, raked toward you, and the screen standing above it
-      box(mx, 1.20, MFZ - .10, .92, .07, .34, col.slab,
-        { ...T, hard: true, rx: .38, gloss: .28 });
+      // The generated fixture may replace the moulded carcass, but the authored display, fare
+      // controls, collider and language interaction below remain authoritative and deterministic.
+      modelOr('metro_ticket_machine', mx, 0, MBZ, 1, { ...T, gloss:.30 }, () => {
+        box(mx, .74, MBZ, .96, 1.48, .56, col.steelD,
+          { ...T, gloss: .34, mat: 'steel', matScale: .40, matAmt: .32 });
+        box(mx, 1.50, MBZ, 1.00, .07, .60, col.chrome, { ...T, hard: true, gloss: G.metal });
+        // the console shelf, raked toward you, and the screen standing above it
+        box(mx, 1.20, MFZ - .10, .92, .07, .34, col.slab,
+          { ...T, hard: true, rx: .38, gloss: .28 });
+      });
       box(mx, 1.20, MFZ + .02, .74, .56, .04, col.charcoal, { ...T, hard: true, gloss: .34 });
       litten(box(mx, 1.20, MFZ + .05, .64, .46, .02, C('#173a4a'),
         { ...T, hard: true, mode: 1, glow: .26 }), .5);
@@ -1427,7 +1435,7 @@ const Metro = Lazy('Metro', () => {
     // lightbox, and mode 1 with a glow on a painted band is how a wall stripe turns into a lamp.
     box(0, 2.26, EDGEZ - .09, RX * 2, .11, .04, col.blue, { hard: true, gloss: .34, glow: .08 });
     box(0, 2.72, EDGEZ + .06, RX * 2, .58, .10, col.wall,
-      { hard: true, gloss: G.paint, mat: 'plaster', matScale: 2.20, matAmt: .28 });
+      { hard: true, gloss: G.paint, mat: 'plaster', matScale: .62, matAmt: .12, nrm: null });
     // 下一车 the next-train board, on the header over the screen doors. A dark panel with a row of
     // segments across it, and the segments march. Standing still it is a painted stripe; moving,
     // it is the one thing in the room that is plugged in.

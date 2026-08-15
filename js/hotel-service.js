@@ -1578,7 +1578,7 @@ const HotelServiceFit = (() => {
     '储物柜':{zh:'打开储物柜',py:'dǎkāi chǔwùguì',en:'open a locker',secs:1.6,mins:2,
       gain:{},pose:{type:'open'},done:'个人物品安全地放好了。',doneTr:'Personal belongings are stored safely.'},
     '员工食堂':{zh:'吃员工餐',py:'chī yuángōng cān',en:'eat a staff meal',secs:3.8,mins:30,
-      gain:{hunger:32,rest:8,mood:5},pose:{type:'eat',seatY:.48},done:'热饭热菜让人重新有了精神。',doneTr:'A hot meal brings your energy back.'},
+      gain:{food:32,rest:8,mood:5},pose:{type:'eat',seatY:.48},done:'热饭热菜让人重新有了精神。',doneTr:'A hot meal brings your energy back.'},
     '工程部':{zh:'检查设备状态',py:'jiǎnchá shèbèi zhuàngtài',en:'inspect plant status',secs:3.0,mins:12,
       gain:{rest:-3},pose:{type:'check'},done:'水泵、空调和配电状态正常。',doneTr:'Pumps, air conditioning and power are normal.'},
     '保安部':{zh:'交接保安班次',py:'jiāojiē bǎo’ān bāncì',en:'hand over the security shift',secs:2.6,mins:8,

@@ -136,7 +136,8 @@ const ZooExpansion = (() => {
       waterL: C('#4d7e82'), sand: C('#b9a06f'), mud: C('#6b583c'),
       earth: C('#8a6545'), rock: C('#77766f'), rockL: C('#99978e'),
       meadow: C('#73864d'), leaf: C('#487139'), leafL: C('#668f4b'),
-      pine: C('#315a40'), willow: C('#668c49'), cream: C('#eee1c4'),
+      pineD: C('#254735'), pine: C('#315a40'), pineL: C('#47725a'),
+      willow: C('#668c49'), cream: C('#eee1c4'),
       white: C('#edf1eb'), gold: C('#d5ad42'), orange: C('#cb772f'),
       blue: C('#3574a0'), teal: C('#438d84'), purple: C('#765b92'),
       green: C('#3b8452'), yellow: C('#d9b536'), charcoal: C('#30373a'),
@@ -234,26 +235,41 @@ const ZooExpansion = (() => {
       const crownStart = props.length;
       const crown = kind === 'pine' ? P.pine : kind === 'willow' ? P.willow : P.leaf;
       if (kind === 'pine') {
-        for (let i = 0; i < 3; i++)
-          taper(x, h * (.54 + i * .13), z, h * (.42 - i * .07), h * .32,
-            h * (.42 - i * .07), crown, { mode: 15, gloss: .06 });
+        // Three unequal, wind-shifted tiers retain the conifer read without the old stack of
+        // concentric green cones.  This is deliberately count-neutral: silhouette and colour do
+        // the work, so the district's 60 fps foliage budget does not move.
+        for (const tier of [
+          [-.055, .035, .55, .43, .30, .35, P.pineD, .14, -.025],
+          [ .045,-.045, .68, .36, .29, .41, P.pine, -.20, .018],
+          [-.025, .018, .81, .27, .25, .31, P.pineL, .31, -.014],
+        ]) taper(x + h * tier[0], h * tier[2], z + h * tier[1],
+          h * tier[3], h * tier[4], h * tier[5], tier[6],
+          { mode: 15, gloss: .055, ry: tier[7], rz: tier[8] });
       } else {
-        ball(x, h * .67, z, h * .27, h * .25, h * .26, crown,
-          { mode: 15, gloss: .06 });
-        ball(x - h * .16, h * .61, z + h * .07, h * .20, h * .20, h * .20,
-          crown, { mode: 15, gloss: .06 });
-        ball(x + h * .16, h * .64, z - h * .05, h * .21, h * .21, h * .20,
-          P.leafL, { mode: 15, gloss: .06 });
+        // Flattened, rotated lobes break the perfect-sphere topiary profile visible in long zoo
+        // views.  Their overlap keeps the crown full while three muted tones supply depth.
+        ball(x - h * .02, h * .67, z + h * .02, h * .31, h * .18, h * .26,
+          P.forest, { mode: 15, gloss: .055, ry: .18 });
+        ball(x - h * .17, h * .61, z + h * .09, h * .23, h * .16, h * .20,
+          crown, { mode: 15, gloss: .055, ry: -.30, rz: .045 });
+        ball(x + h * .18, h * .65, z - h * .08, h * .22, h * .17, h * .27,
+          P.leafL, { mode: 15, gloss: .055, ry: .34, rz: -.038 });
         if (kind === 'willow') for (let i = 0; i < 8; i++) {
           const a = i * Math.PI / 4;
           capsule(x + Math.cos(a) * h * .20, h * .40, z + Math.sin(a) * h * .20,
             .025, h * .62, .025, P.willow, { rz: Math.sin(a) * .18, mode: 15 });
         }
       }
-      for (const p of props.slice(crownStart)) p.zooLodMax = 34;
+      for (const p of props.slice(crownStart)) {
+        p.zooLodMax = 34;
+        p.plantingId = id;
+        p.treeKind = kind;
+        p.treeLod = 'near';
+      }
       if (kind === 'pine') {
-        const proxy=taper(x,h*.75,z,h*.46,h*.72,h*.46,P.pine,{mode:15,gloss:.06});
-        proxy.zooLodMin=34;
+        const proxy=taper(x-h*.025,h*.74,z+h*.02,h*.42,h*.69,h*.34,P.pineD,
+          {mode:15,gloss:.055,ry:.19,rz:-.018});
+        proxy.zooLodMin=34;proxy.plantingId=id;proxy.treeKind=kind;proxy.treeLod='far';
       } else {
         // Broadleaf and willow crowns keep two offset flattened masses at distance. The previous
         // single round proxy recreated the same lollipop silhouette the near LOD had avoided.
@@ -261,7 +277,9 @@ const ZooExpansion = (() => {
           {mode:15,gloss:.06});
         const b=ball(x+h*.14,h*.75,z-h*.06,h*.25,h*.20,h*.28,P.leafL,
           {mode:15,gloss:.06});
-        a.zooLodMin=34;b.zooLodMin=34;
+        for(const proxy of [a,b]) {
+          proxy.zooLodMin=34;proxy.plantingId=id;proxy.treeKind=kind;proxy.treeLod='far';
+        }
       }
       // The planting contract gives every scheduled trunk the same measured 0.56 m body. Crowns
       // remain visual only, so paths under a canopy stay usable while nobody walks through bark.
@@ -2253,7 +2271,7 @@ const ZooExpansion = (() => {
     const visitorLooks = [
       { skin:'#d1a17b', hair:'#332824', hairStyle:'short', top:'#7086a1', pants:'#3d4652',
         shoe:'#33383d', bag:'pack', packColor:'#806246', faceSeed:351 },
-      { skin:'#c68e64', hair:'#241f1d', hairStyle:'pony', top:'#b86f63', pants:'#414653',
+      { skin:'#c68e64', hair:'#241f1d', hairStyle:'ponytail', top:'#b86f63', pants:'#414653',
         shoe:'#3b3d42', bag:'tote', bagColor:'#d1b270', faceSeed:352 },
       { skin:'#d9ab83', hair:'#4b372e', hairStyle:'bob', top:'#638a72', pants:'#4a4c4f',
         shoe:'#383b40', hat:'cap', hatColor:'#e1c16b', faceSeed:353 },

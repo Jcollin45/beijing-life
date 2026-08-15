@@ -951,7 +951,7 @@ const Cabin = Lazy('Cabin', () => {
     // The lit panel between the curtains: a warm screen with the carrier's name across it.
     litten(box(0, 1.34, BULK + .08, 1.90, .96, .05, C('#8fb0c4'),
       { hard: true, mode: 1, glow: .09 }), .3);
-    for (const g of glyphs(0, 1.70, BULK + .12, 0, '国航',
+    for (const g of glyphs(0, 1.70, BULK + .12, 0, '燕河航空',
       { size: .18, gap: .07, color: col.cream, mode: 1, glow: .30 })) litten(g, .8);
     // And under the name, the two numbers every cabin display in the world shows: how high you are
     // and how much longer this is going to take. Built as fixed slots that get written into rather
@@ -1080,11 +1080,14 @@ const Cabin = Lazy('Cabin', () => {
         litten(g, .4);
   }
   // Three colliders, one per seat block, spanning every row: you cannot walk between rows anyway,
-  // and one box per block is three draw-free colliders instead of eighteen.
+  // and one box per block is three draw-free colliders instead of eighteen.  The aft face follows
+  // the visible seat-back equipment, whose furthest face is z + .385.  The old +.46 added 7.5 cm
+  // of invisible seat and, together with the conservative rear zone, sealed the cross-aisle for a
+  // .45 m comfort envelope even though the model left a walkable galley in plain view.
   for (let b = 0; b < 3; b++) {
     const cs = COLS.filter((_, i) => BLOCK[i] === b);
     solid(cs[0] - SEATW / 2 - .03, cs[cs.length - 1] + SEATW / 2 + .03,
-      ROWZ[0] - .34, ROWZ[ROWZ.length - 1] + .46);
+      ROWZ[0] - .34, ROWZ[ROWZ.length - 1] + .39);
   }
   shade(0, 0, RX * 2, RZ * 2, .16);
   minePool = glow(M.trs(0, -9, 0, 0, 1.5, 1, 1.5), C('#a8d4ff'), 0);
@@ -1212,11 +1215,12 @@ const Cabin = Lazy('Cabin', () => {
   // flight. Cut to the parts a passenger actually needs — who is flying you, buckle up, we are
   // level, we are going down, goodbye — and each one now has silence on both sides of it.
   //
-  // The text of every line is unchanged from a line that was already baked, so nothing here needs
-  // the voices rebuilt. Dropped: the phones-and-no-smoking line, the do-not-leave-your-seat line,
-  // and the twenty-minutes-out weather report. They are the three a passenger tunes out.
+  // The retained wording keeps the established timing; the two carrier-name lines were rebaked
+  // with the fictional 燕河 identity. Dropped: the phones-and-no-smoking line, the
+  // do-not-leave-your-seat line, and the twenty-minutes-out weather report. They are the three a
+  // passenger tunes out.
   const BRIEF = [
-    '女士们，先生们，欢迎乘坐国航航班。我是本次航班的机长。',
+    '女士们，先生们，欢迎乘坐燕河航班。我是本次航班的机长。',
     // The one line that has to be heard, so it goes out on its own into the climb.
     '飞机很快就要起飞了，请您系好安全带，收起小桌板，调直座椅靠背。',
     '我们将要飞往上海，飞行时间大约两个小时十分钟。',
@@ -1224,7 +1228,7 @@ const Cabin = Lazy('Cabin', () => {
     // The descent, in two parts rather than three: that you are going down, and the goodbye as the
     // gear comes out.
     '各位旅客，飞机已经开始下降。请您回到座位，系好安全带，收起小桌板。',
-    '飞机马上就要着陆了。感谢您乘坐国航的航班，希望您旅途愉快，欢迎下次再来。',
+    '飞机马上就要着陆了。感谢您乘坐燕河的航班，希望您旅途愉快，欢迎下次再来。',
   ];
   // Which line goes out at which point of which phase. Written as a table rather than buried in the
   // tick so the whole briefing can be read in one place and reordered without touching the machine.
@@ -2000,7 +2004,11 @@ const Cabin = Lazy('Cabin', () => {
     // You come in through the rear galley, looking up the cabin at six rows of seat backs and the
     // bulkhead beyond them — which is the view in the reference photograph.
     spawn: { x: -AISLE, z: GALLEY - .85, yaw: Math.PI },
-    zones: [{ id: 'cabin', x0: -RX + .22, x1: RX - .22, z0: BULK + .34, z1: GALLEY - .34,
+    // The rear boundary is the visible front face of the .14 m galley wall.  clampMove applies
+    // the body radius itself; subtracting another .34 here double-inset the room and trapped an
+    // arrival in one aisle.  Keeping the authored floor to the wall face preserves exact visual
+    // collision while leaving the real rear cross-aisle available at both .30 and .45 m radii.
+    zones: [{ id: 'cabin', x0: -RX + .22, x1: RX - .22, z0: BULK + .34, z1: GALLEY - .07,
               light: [0, H - .30, 0] }],
     roomAt() { return this.zones[0]; },
   });

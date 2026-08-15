@@ -205,7 +205,10 @@ HospFit[3] = A => {
   partitionX(-10.05,FRONT,RZ-.12,[],col.wall,'科室隔墙');
   partitionX(-1.78,FRONT,RZ-.12,[],col.wall,'科室隔墙');
   partitionX(6.28,FRONT,RZ-.12,[],col.wall,'科室隔墙');
-  partitionX(11.22,FRONT,RZ-.12,[],col.wall,'科室隔墙');
+  // Staff circulation links treatment and the dispensary behind their public fronts. Without this
+  // internal doorway, the service counter and corridor partition enclosed every stock shelf and
+  // the labelled medicine refrigerator in a component no player-sized route could enter.
+  partitionX(11.22,FRONT,RZ-.12,[[-1.00,1.40]],col.wall,'科室隔墙');
   partitionZ(SPLIT,-RX+.12,-10.05,[[-13.30,1.42]],col.wall,'科室隔墙');
   partitionZ(SPLIT,-10.05,-1.78,[[-5.88,1.42]],col.wall,'科室隔墙');
   partitionZ(SPLIT,-1.78,6.28,[[2.15,1.42]],col.wall,'科室隔墙');
@@ -678,8 +681,9 @@ HospFit[3] = A => {
     '站 is a station or post.',{focus:[4.05,9.85],reach:1.75});
 
   // ================================================================ 305 药房
-  // A glazed dispensing line directly behind the door.  The counter blocks the staff side while
-  // the opening remains reachable from the corridor, so collecting medicine feels like a service.
+  // A glazed dispensing line directly behind the door. The public side stays a convincing service
+  // boundary; staff/player access to stock uses the measured internal doorway above rather than an
+  // implausible squeeze around the ends of the counter.
   counter(14.05,-4.42,4.55,.78,'药房',col.green,.54);
   box(14.05,2.28,-4.02,5.08,2.42,.08,col.glass,
     {hard:true,mode:1,alpha:.30,gloss:.52,tag:'药房'});
@@ -689,7 +693,7 @@ HospFit[3] = A => {
     box(x,1.54,-4.03,1.12,.70,.045,col.glass,
       {hard:true,mode:1,alpha:.12,gloss:.50,tag:'取药窗口'});
     box(x,1.07,-4.35,.76,.06,.46,col.steel,{hard:true,gloss:.38,tag:'取药窗口'});
-    ball(x,1.115,-4.35,.36,.035,.20,col.steel,{mode:7,gloss:.48,tag:'取药窗口'});
+    ball(x,1.115,-4.35,.36,.035,.20,col.steel,{gloss:.48,tag:'取药窗口'});
     box(x-.18,1.17,-4.36,.30,.018,.18,col.warm,
       {hard:true,ry:(n===1?-.06:.05),mode:1,tag:'处方'});
     glyphs(x,2.23,-4.08,0,String(n),{size:.24,color:col.white,mode:1,tag:'取药窗口'});

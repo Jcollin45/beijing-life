@@ -1459,7 +1459,9 @@ const HotelPublicFit = (() => {
       for(let ring=0;ring<3;ring++) for(let i=0;i<8;i++){
         const a=i*Math.PI/4+ring*.22,r=.34+ring*.24;
         const y=3.62-ring*.20,z=6.2+Math.cos(a)*r,px=x+Math.sin(a)*r;
-        capsule(px,(A.H+y)/2,z,.012,A.H-y,.012,P.bronzeD,{gloss:AGED,tag:'吊灯'});
+        // A straight 12 mm suspension cable crosses the 26 cm ceiling slab and ends at the
+        // crystal's centre, so both cylinder caps stay buried while the visible wire keeps its size.
+        cyl(px,(A.H+y)/2,z,.006,A.H-y,P.bronzeD,{gloss:AGED,tag:'吊灯'});
         capsule((x+px)/2,3.80,(6.2+z)/2,.016,r,.016,P.bronze,
           {rz:Math.PI/2,ry:a,gloss:AGED,tag:'吊灯'});
         const q=anim(ball(px,y,z,.075,.13,.075,ring===2?P.bronzeL:P.warm,
@@ -1830,12 +1832,23 @@ const HotelPublicFit = (() => {
       P.show({ title:'京华大酒店 · 退房', sub:`${b.nights}晚 · 共¥${b.total} · 钱包¥${H.money()}`, rows,
         onPick(r){
           if (!r.go) return false;
-          if (b.settle < 0 && H.money() < -b.settle) {
-            H.say(`还差${-b.settle - H.money()}块，先去取钱。`,
-                  `¥${-b.settle - H.money()} short of settling the bill — the cash machine is at the bank.`);
+          // Time continues behind the bill panel. Re-read it at confirmation so crossing a daily
+          // charge boundary cannot settle yesterday's captured total and clear the stay cheaply.
+          const nowDay=H.day(), nowMinutes=H.minutes();
+          const live=Stay.bill(nowDay,nowMinutes);
+          if (!live) return true;
+          if (live.nights!==b.nights || live.total!==b.total ||
+              live.deposit!==b.deposit || live.settle!==b.settle) {
+            H.say('账单有变化，请重新确认。','The bill has changed; review the updated total.');
+            setTimeout(openBill,0);
+            return true;
+          }
+          if (live.settle < 0 && H.money() < -live.settle) {
+            H.say(`还差${-live.settle - H.money()}块，先去取钱。`,
+                  `¥${-live.settle - H.money()} short of settling the bill — the cash machine is at the bank.`);
             return false;
           }
-          const done = Stay.checkOut(day, H.minutes());
+          const done = Stay.checkOut(nowDay,nowMinutes);
           if (done.settle >= 0) H.refund(done.settle); else H.pay(-done.settle);
           H.spend(8);
           H.word('我要退房。');

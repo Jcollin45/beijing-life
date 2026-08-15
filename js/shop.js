@@ -1,8 +1,9 @@
 // 幸福超市 — the corner shop on the ground floor of your block, from the inside.
 //
 // A Chinese 超市 of this size is a particular room: a hard tiled floor, bare fluorescent tubes
-// in a low ceiling, aisles you can barely pass someone in, a chest freezer humming against one
-// wall, a wall of instant noodles, and a till by the door with a stool behind it. The whole
+// in a low ceiling, compact aisles that still let two shoppers turn past one another, a chest
+// freezer humming against one wall, a wall of instant noodles, and a till by the door with a stool
+// behind it. The whole
 // shop is about seven metres by six, which is what makes it feel like a shop rather than a
 // warehouse — you are never more than a couple of steps from a shelf.
 //
@@ -356,17 +357,10 @@ const Shop = Lazy('Shop', () => {
     const kinds = AISLES[aisle][deck % 4];
     const T = { tag };
     let x = cx - len / 2 + .12;
-    // `stop` is where the run of shelving disappears behind something else. The second gondola
-    // runs its last 40 cm into the end of the till counter, and stock faced up past that point
-    // is stock standing inside a solid box: paid for in draw calls and never once seen.
-    //
-    // Nothing passes it, deliberately. The counter it was written for is 96 cm tall and the
-    // gondola has four decks at 30, 64, 98 and 132: only the bottom two are actually buried in
-    // it, and a single x cut-off applies to all four. Handing it 1.45 would save about forty
-    // props you cannot see and strip half a metre off the top two decks, which stand *above*
-    // the counter top and are the shelf you look straight at while you queue. It stays here
-    // because a run of shelving that dies into a wall is a real case and this is where it would
-    // be handled; it needs a height as well as an x before it is worth using.
+    // `stop` is an optional stock-facing cutoff for variants where a shelf disappears behind a
+    // taller fitted fixture. The current shop keeps every run physically separate, so neither
+    // call needs it; retaining the parameter lets a future variant avoid authoring invisible
+    // packets inside joinery without changing the shared shelf geometry.
     const edge = Math.min(cx + len / 2 - .10, stop === undefined ? Infinity : stop);
     let k = 0;
     while (x < edge && k < 40) {
@@ -496,12 +490,13 @@ const Shop = Lazy('Shop', () => {
     // ================================================================ shell
     // The floor is the one surface in here you cannot avoid looking at, and the whole reason a
     // 超市 sounds and feels the way it does: 45 cm porcelain floor tile, laid to the room. The
-    // texture is read triplanar in world space, so `matScale` is simply the size of one tile in
-    // metres and no unwrapping is involved. `matAmt` stays low — the palette above was chosen
+    // texture is read triplanar in world space. Tiles141 contains a 6×6 tile sheet and `matScale`
+    // is metres per whole repeat, so 2.70 m makes the authored tiles 45 cm each. `matAmt` stays low
+    // — the palette above was chosen
     // to sit *under* the goods, and the texture is here to give the fill a grain, not to
     // repaint the shop whatever colour the photograph happened to be.
     flat(0, 0, 0, RX * 2, RZ * 2, col.floor,
-      { mode: 9, gloss: .30, mat: 'tile', matScale: .46, matAmt: .42 });
+      { mode: 0, gloss: .30, mat: 'tile', matScale: 2.70, matAmt: .42 });
     // Ceiling: the floor quad turned over, the same way the apartment does it. Emissive, and so
     // deliberately bare — it is the light in this room, not a surface.
     B.props.push({ mesh: 'quad', color: col.ceil, mode: 1, alpha: 1,
@@ -570,8 +565,12 @@ const Shop = Lazy('Shop', () => {
     // Packaging colours, muted. At full saturation the two aisles came out as rows of sweets
     // and the shop read as a toy: real shelves are mostly red, cream and gold with the odd
     // blue or green among them, and the paper they are printed on is never that clean.
-    gondola(-.35, -.15, 4.60, 0, '货架', ['dry', 'snack']);
-    gondola(-.35, 1.50, 4.60, 0, '货架', ['snack', 'dry']);
+    // The former 4.60 m runs met the cold-case and till envelopes at their east ends. The rear
+    // run actually overlapped the till collider by 0.57 m, turning the displays into two complete
+    // barriers. A 3.80 m grocery run leaves 1.03 m beside the freezer; the compact 1.40 m impulse
+    // run is centred west and leaves a 1.24 m queue route to the relocated compact till.
+    gondola(-.35, -.15, 3.80, 0, '货架', ['dry', 'snack']);
+    gondola(-1.80, 1.50, 1.40, 0, '货架', ['snack', 'dry']);
     thing('货架', -.35, 1.62, -.15, '方便面在第二个货架。',
       'The instant noodles are on the second shelf.',
       '货 goods + 架 rack. The word for any shelf in a shop.',
@@ -759,6 +758,36 @@ const Shop = Lazy('Shop', () => {
     }
     for (const ox of [-.7, .7]) for (const oz of [-2.35, -1.05])
       capsule(px + ox, .18, oz, .03, .36, .03, col.steelD, { gloss: G.metal });
+
+    // 称重 — the scale the purchase line has always claimed the cashier shows you. It stands over
+    // the narrow gap between the two crate rows, wholly inside the fruit stand's existing solid,
+    // so making that line visible adds no blocker and cannot narrow the aisle. The display is an
+    // opaque seven-segment 0.5 rather than glyph atlas cells: ordinary boxes keep the complete
+    // fixture in the renderer's plain mode-0 stream and 0.5 kg is exactly one 斤.
+    const sx = -1.73, sz = -1.70, sy = 1.22;
+    const SCALE = { tag:'称重', hard:true, bevel:0 };
+    box(sx, .55, sz, .34, .10, .12, col.steelD, { ...SCALE, gloss:G.metal });
+    box(sx, .86, sz - .02, .035, .62, .035, col.steelD, { ...SCALE, gloss:G.metal });
+    box(sx, .88, sz + .04, .18, .12, .14, col.steelD, { ...SCALE, gloss:G.metal });
+    box(sx, .95, sz + .04, .42, .035, .28, col.steel, { ...SCALE, gloss:.42 });
+    box(sx, sy, sz, .36, .24, .10, col.fridge, { ...SCALE, gloss:.28 });
+    box(sx, sy, sz + .056, .30, .17, .012, col.charcoal, { ...SCALE, gloss:.18 });
+    const faceZ = sz + .066;
+    const segment = (x, y, w, h) =>
+      box(x, y, faceZ, w, h, .008, col.lime, { ...SCALE, gloss:.24 });
+    const digit = (x, on) => {
+      if (on.includes('a')) segment(x, sy + .061, .052, .010);
+      if (on.includes('b')) segment(x + .032, sy + .031, .010, .050);
+      if (on.includes('c')) segment(x + .032, sy - .031, .010, .050);
+      if (on.includes('d')) segment(x, sy - .061, .052, .010);
+      if (on.includes('e')) segment(x - .032, sy - .031, .010, .050);
+      if (on.includes('f')) segment(x - .032, sy + .031, .010, .050);
+      if (on.includes('g')) segment(x, sy, .052, .010);
+    };
+    digit(sx - .070, 'abcdef');
+    segment(sx, sy - .056, .012, .012);
+    digit(sx + .070, 'afgcd');
+
     solid(px - .95, px + .95, -2.55, -.85);
     thing('水果', px, .92, -1.70, '水果多少钱一斤？', 'How much is the fruit per jin?',
       '水 water + 果 fruit. Sold by the 斤 — half a kilo.',
@@ -791,18 +820,19 @@ const Shop = Lazy('Shop', () => {
       { focus: [-2.30, .55], reach: 1.9 });
 
     // ================================================================ 收银台 the till
-    // Beside the door, facing into the shop, with the counter running toward the glazing so
-    // you queue along the window the way you actually do.
-    const tx = 2.30, tz = 1.35;
-    box(tx, .48, tz, 1.70, .96, .74, col.lino,
+    // The compact counter sits beyond the main aisle, facing the entrance. Moving it 1.30 m west
+    // and 20 cm north removes its former 0.48 x 1.22 m physical overlap with the drinks chiller;
+    // shortening it keeps a 0.96 m clear bay to that case and 1.24 m to the impulse shelf.
+    const tx = 1.00, tz = 1.55;
+    box(tx, .48, tz, 1.40, .96, .74, col.lino,
       { tag: '收银台', gloss: .26, mat: 'plaster', matScale: .55, matAmt: .24 });
-    box(tx, .98, tz, 1.78, .06, .82, col.woodD,
+    box(tx, .98, tz, 1.48, .06, .82, col.woodD,
       { tag: '收银台', hard: true, gloss: G.wood, mat: 'wood', matScale: .85, matAmt: .42 });
     // The front of the counter carries the shop's name, the way they all do. In near-black it
     // was a 1.7 metre hole in the middle of the room.
-    box(tx, .52, tz - .40, 1.70, .70, .04, col.blue,
+    box(tx, .52, tz - .40, 1.40, .70, .04, col.blue,
       { tag: '收银台', hard: true, gloss: .20 });
-    box(tx, .78, tz - .41, 1.70, .06, .03, col.goldL,
+    box(tx, .78, tz - .41, 1.40, .06, .03, col.goldL,
       { tag: '收银台', hard: true, mode: 1 });
     glyphs(tx, .52, tz - .42, Math.PI, '幸福超市',
       { size: .17, gap: .07, color: col.white, mode: 1, tag: '收银台' });
@@ -821,8 +851,7 @@ const Shop = Lazy('Shop', () => {
         pick([col.red, col.blue, col.yellow]), { hard: true, tag: '收银台' });
     cyl(tx - .60, 1.08, tz + .02, .07, .14, col.glass,
       { tag: '收银台', mode: 1, alpha: .5, gloss: G.glass });
-    // A stool behind it, pushed to the far end — the cashier stands at x 2.40 and the stool
-    // used to be at exactly that spot, so she stood with it through her shins.
+    // A stool behind it, pushed to the far end so the working position stays clear.
     taper(tx - .66, .22, tz + .52, .32, .44, .32, col.steelD, { gloss: G.metal });
     box(tx - .66, .45, tz + .52, .34, .05, .34, col.charcoal, { gloss: .22 });
     const scx = tx - .66, scz = tz + .52;
@@ -833,7 +862,7 @@ const Shop = Lazy('Shop', () => {
     for (let i = 0; i < 4; i++)
       box(tx + .74, .78 - i * .015, tz + .30, .20, .28, .02 + i * .005, col.white,
         { hard: true, alpha: .8, gloss: .40, ry: (i - 1.5) * .06 });
-    solid(tx - .90, tx + .92, tz - .44, tz + .78);
+    solid(tx - .84, tx + .78, tz - .44, tz + .68);
     shade(tx, tz, 2.0, 1.2, .32);
     thing('收银台', tx, 1.44, tz - .38, '在收银台交钱。', 'You pay at the till.',
       '收 collect + 银 silver + 台 counter. 交钱 or 付钱 is to hand the money over.',
@@ -880,11 +909,11 @@ const Shop = Lazy('Shop', () => {
       "Low prices every day — that is what the banner over the aisles says.",
       '天天 every day + 低 low + 价 price. Shops put it up whether it is true or not.',
       { focus: [-.35, .55], reach: 2.6 });
-    box(tx, 2.20, tz - .50, 1.50, .34, .05, col.blue, { hard: true, gloss: .24 });
+    box(tx, 2.20, tz - .50, 1.32, .34, .05, col.blue, { hard: true, gloss: .24 });
     glyphs(tx, 2.20, tz - .525, Math.PI, '收银', { size: .22, gap: .10, color: col.white, mode: 1 });
     glyphs(tx, 2.20, tz - .475, 0, '收银', { size: .22, gap: .10, color: col.white, mode: 1 });
     for (const s of [-1, 1])
-      capsule(tx + s * .60, 2.42, tz - .50, .012, .38, .012, col.steelD, { gloss: G.metal });
+      capsule(tx + s * .52, 2.42, tz - .50, .012, .38, .012, col.steelD, { gloss: G.metal });
 
     tube(-1.20, -1.00, 4.20);
     tube(-1.20, 1.90, 4.20);
@@ -947,7 +976,7 @@ const Shop = Lazy('Shop', () => {
     // The painted lane the arrows run down. It takes the same tile at the same size as the
     // floor it is painted on, or it reads as a sheet of lino laid over the tiling.
     flat(1.55, .005, .60, .70, 2.90, C('#c9c2ac'),
-      { mode: 9, gloss: .14, mat: 'tile', matScale: .46, matAmt: .24 });
+      { mode: 0, gloss: .14, mat: 'tile', matScale: 2.70, matAmt: .24 });
 
     // ---- a clip fan on the end of the first aisle, and the radio behind the till
     // Clamped to the top of the gondola upright — visibly clamped. With nothing but a 30 cm
@@ -1015,7 +1044,7 @@ const Shop = Lazy('Shop', () => {
     // Not at x 2.95, z 1.05: the whole +x wall is refrigeration, and a pallet there stood with
     // half of it inside the end of the till counter. Behind the second run of shelving is the
     // one bit of floor in the shop nothing else wants.
-    const plx = 1.20, plz = 2.45;
+    const plx = -1.30, plz = 2.45;
     for (let i = 0; i < 5; i++)
       box(plx + (i % 2) * .06, .18 + ((i / 2) | 0) * .34, plz, .58, .32, .44,
         i % 2 ? col.card : col.cardD, { hard: true, gloss: .16, ry: (rnd() - .5) * .14,

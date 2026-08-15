@@ -115,7 +115,14 @@ const World = Lazy('World', () => {
   // `mat(v, i)` may vary per item, which is what lets a bunched curtain spread across a
   // window instead of sliding along it as one lump.
   function mover(name, items, mat) {
-    parts[name] = { v: -1, mat, items: items.filter(Boolean).map(p => ({ p, m0: p.m, ob: p.ob && { ...p.ob } })) };
+    const moving = items.filter(Boolean);
+    // Build seals ordinary prop centres into static packed cull arrays. A hinge or slide changes
+    // both the matrix and that centre, so registering the fixture is also the authoritative moment
+    // to opt every piece into Build's small dynamic-cull table. Without it a refrigerator door,
+    // curtain or sash could move a metre while frustum tests kept asking where it was when shut.
+    for (const p of moving) p.dynamic = true;
+    parts[name] = { v: -1, mat,
+      items: moving.map(p => ({ p, m0: p.m, ob: p.ob && { ...p.ob } })) };
   }
   // Screens and burners: dark and inert at 0, lit at 1.
   function emitter(name, items, dim = .26) {
@@ -255,9 +262,9 @@ const World = Lazy('World', () => {
   // shifts in plan between the ground and the first floor for exactly this reason.
   const STAIR  = { x0: 6.10, x1: 8.30, z0: 3.90, z1: 6.90 };
   const STAIR0 = { x0: 4.10, x1: 6.90, z0: 6.30, z1: 8.60 };
-  // State for `timed`, `parcel` and `locker`, declared up here with the shell's other lists rather
-  // than beside the functions that own them. Both sets are written by FlatFit files as the rooms
-  // build, and the FlatFit loop runs some two thousand lines before those functions are written:
+  // State for `timed`, `parcel`, `locker` and the lift notice, declared up here with the shell's
+  // other lists rather than beside the functions that own them. FlatFit files write these
+  // registries as the rooms build, and that loop runs some two thousand lines before the functions:
   // a `const` down there is in its temporal dead zone when a room calls it and throws
   // "Cannot access 'timedProps' before initialization" — which is exactly what .bootcheck.js
   // caught the first time this was written the other way round. Function declarations hoist;
@@ -265,6 +272,8 @@ const World = Lazy('World', () => {
   const timedProps = [];
   let timedHour = -1;
   const parcels = [], lockers = [];
+  const liftNotices = [];
+  let liftOutNow = null, liftNoticeOn = null;
 
   // One box for the whole scene, which is what `R.setRoom` wants and what the shader's ambient
   // term measures walls and ceiling against. x and z cover both decks; the height is the deck
@@ -544,6 +553,7 @@ const World = Lazy('World', () => {
   function callLift(to) {
     // The old signature took the deck to go to. Anything passing one still means `goFloor`.
     if (to !== undefined) return goFloor(to);
+    if (liftOutNow) return 'liftOut';
     if (ride) return ride.to === floor ? 'coming' : 'busy';
     if (carAt === floor) { openDoors(); return true; }
     sendCar(floor, false);
@@ -590,6 +600,8 @@ const World = Lazy('World', () => {
     return {
       at: carAt, on: floor, moving: !!ride, door, open: doorK,
       riding: !!(ride && ride.rider),
+      out: !!liftOutNow,
+      outNote: liftOutNow ? liftOutNow.note : null,
       // 461. Where it is going and how much of the ride is left, in seconds of real time. A
       // refusal is not a wait: the landing button could say the car was busy and nothing else,
       // so the player pressed it again. Both are already here; they were just never handed out.
@@ -721,8 +733,8 @@ const World = Lazy('World', () => {
     // ---- L0 大堂. A polished stone floor with a darker border laid inside it: a lobby floor is
     // never one field of stone, and the border is what tells you where the walking is.
     //
-    // The lobby is not symmetric about the origin — it runs z -5.0 .. 5.3, because the corridor
-    // above it had to grow 0.3 m to be walkable — so every one of these is written off LOBBY.z0
+    // The lobby is not symmetric about the origin — it runs z -5.0 .. 6.2, because the corridor
+    // and shafts above it were deepened to be walkable — so every one of these is written off LOBBY.z0
     // and LOBBY.z1 rather than off ±RZ. RZ is the half-extent of the box `R.setRoom` wants, and
     // it is the larger of the two ends; using it as a wall position put the street wall 0.3 m
     // outside the building.
@@ -810,7 +822,7 @@ const World = Lazy('World', () => {
     wall(fdx, y2 + (fdtop + CORR.h) / 2, CORR.z0, fdw, CORR.h - fdtop, 0, C('#c9bda8'), PL);
     box(fdx, y2 + fdtop + .02, FLAT.z1, fdw + .20, .05, .16, col.trim, { hard: true, gloss: G.wood });
     // ±6 cm, not ±9. The wall itself is a quad with no thickness, and every centimetre of collider
-    // on its corridor side is a centimetre off a walkway that only has 0.71 m to give.
+    // on its corridor side comes out of the 1.70 m gross strip in front of the lift shafts.
     stopAt(2, -RX, fdx - fdw / 2, FLAT.z1 - .09, FLAT.z1 + .06);
     stopAt(2, fdx + fdw / 2, RX, FLAT.z1 - .09, FLAT.z1 + .06);
     // Skirting, both sides.
@@ -826,7 +838,13 @@ const World = Lazy('World', () => {
       box(s * (RX - .045), y2 + .065, (CORR.z0 + CORR.z1) / 2, .065, .13, CORR.z1 - CORR.z0,
         col.trim, { hard: true, gloss: G.wood });
     }
-    box(0, y2 + .065, FLAT.z0 + .045, RX * 2, .13, .065, col.trim, { hard: true, gloss: G.wood });
+    // The south wall crosses three finishes. Dark timber belongs to the bedroom/study only;
+    // continuing it through the tiled bathroom was the loudest palette clash in the flat. The wet
+    // room tiles run cleanly to the floor, while the kitchen gets a quiet washable tile plinth.
+    box(-3.70, y2 + .065, FLAT.z0 + .045, 4.60, .13, .065, col.trim,
+      { hard: true, gloss: G.wood });
+    box(4.10, y2 + .065, FLAT.z0 + .045, 3.80, .13, .065, col.tileW,
+      { hard: true, gloss: .16, ...MAT.tile });
     box(0, y2 + .065, CORR.z1 - .045, RX * 2, .13, .065, col.trim, { hard: true, gloss: G.wood });
     stopAt(2, -RX - .4, -RX + .10, FLAT.z0, CORR.z1);
     stopAt(2, RX - .10, RX + .4, FLAT.z0, CORR.z1);
@@ -941,7 +959,9 @@ const World = Lazy('World', () => {
           // it with a panel of its own 12 mm in front, which can now come out.
           wall((sh.x0 + sh.x1) / 2, y0 + ch / 2, sh.z0, sh.x1 - sh.x0, ch, Math.PI, col.wall,
             MAT.plaster);
-          stopAt(2, sh.x0 - .10, sh.x1 + .10, sh.z0, sh.z1 + .05);
+          // This blanked-off shaft face is permanent shell structure. Mark it exactly like the
+          // working shaft piers below so the stale per-floor-collider cleanup cannot remove it.
+          stopAt(2, sh.x0 - .10, sh.x1 + .10, sh.z0, sh.z1 + .05).shaft = true;
           continue;
         }
         wall(sh.x0, y0 + ch / 2, (sh.z0 + sh.z1) / 2, sh.z1 - sh.z0, ch, Math.PI / 2, C('#b8ae9c'),
@@ -1136,6 +1156,9 @@ const World = Lazy('World', () => {
     // FlatFit room could only build out of primitives. It takes world y like every other builder
     // here, which means a caller passes `A.y0 + h` and not a floor-relative height.
     model: B.model,
+    // A model replacement must keep a code-native visual when its download is absent or rejected.
+    // Forward the paired helper too so floor fit-outs can use the same fail-safe seam as rooms.
+    modelOr: B.modelOr,
     glow,
     // `rug` lays its quads at a hardcoded world y of 0.005, so on any deck above the ground it
     // draws the rug in the lobby. Wrapped rather than fixed in js/build.js because every other
@@ -1153,10 +1176,10 @@ const World = Lazy('World', () => {
     },
     ceiling,
     stop: (x0, x1, z0, z1, f) => stopAt(f === undefined ? curDeck : f, x0, x1, z0, z1),
-    // True once the shell builds a real landing on every deck — doors, surround, indicator, call
-    // panel, moving leaves and an opening collider. Ten floor files built a stand-in landing while
-    // this was false and each is gated on it, so they stand down rather than double-building.
-    // js/home-f3/f4/f5.js detect the same thing by scanning `A.props` and need no flag.
+    // The shell builds the real landing on every deck — doors, surround, indicator, call panel,
+    // moving leaves and an opening collider. This flag remains part of the floor-toolkit contract
+    // so a new or older fit-out can decline its fallback; the obsolete floor-owned fallbacks and
+    // their A.props scans have been removed from the maintained decks.
     shellLanding: true,
     // ---- what a floor above the second needs from the shell, and nothing more.
     //
@@ -1183,7 +1206,7 @@ const World = Lazy('World', () => {
     dial: (x, y, z, yaw, hands) => { const d = { x, y, z, yaw, hands }; dials.push(d); return d; },
     sky: p => { skyGlass.push(p); return p; },
     timed,
-    parcel, locker,
+    parcel, locker, liftNotice,
     city: (layer, p) => { city[layer].push(p); return p; },
     // Five numbers, or the record itself — `A.setWin({x, y, z, hw, hh})` reads so naturally that
     // js/home-living.js wrote it that way, and the five-argument form quietly stored the whole
@@ -3090,6 +3113,36 @@ const World = Lazy('World', () => {
     if (p) p.glow = full ? .22 : .02;
   }
 
+  // ---------------------------------------------------------------- 电梯维修, only while it is true
+  //
+  // The lobby builds the paper and its glyphs once, because rebuilding text during play would
+  // invalidate the scene's batches. They start invisible; the building clock supplies the one
+  // outage record that also governs the car. A power cut still stops the car, but it does not turn
+  // a repair notice on — 停电 and 电梯检修 are different information for somebody choosing stairs.
+  function liftNotice(items, th) {
+    const visible = items.filter(Boolean);
+    for (const p of visible) { p.alpha = 0; p.liftNotice = true; }
+    liftNotices.push({ items: visible, th,
+      sentence: th && th.sentence, tr: th && th.tr });
+    return th;
+  }
+  function setLiftOut(day, minutes) {
+    const out = day !== undefined && typeof Disrupt !== 'undefined' && Disrupt.liftOut
+      ? Disrupt.liftOut(day, minutes) : null;
+    const repair = !!(out && out.why && out.why.hz === '电梯检修');
+    liftOutNow = out;
+    if (repair === liftNoticeOn) return out;
+    liftNoticeOn = repair;
+    for (const q of liftNotices) {
+      for (const p of q.items) p.alpha = repair ? 1 : 0;
+      if (q.th) {
+        q.th.sentence = repair ? '通知栏贴着电梯维修通知。' : q.sentence;
+        q.th.tr = repair ? 'A lift repair notice is posted on the board.' : q.tr;
+      }
+    }
+    return out;
+  }
+
   function setClockHands(mins) {
     const hh = Math.floor((mins || 0) / 60) % 24;
     if (hh !== timedHour) { timedHour = hh; for (const t of timedProps) applyTimed(t, hh); }
@@ -3248,7 +3301,7 @@ const World = Lazy('World', () => {
     // `WIN` is the flat's one legacy record; `WINS` is every room's, which is what the renderer is
     // actually driven from. A plain field and not a getter: the array is never reassigned, so the
     // spread in `B.finish` carries the identity and later pushes show through it.
-    skyGlass, RX, RZ, H, WIN, WINS, zones, roomAt, setClockHands, setCity,
+    skyGlass, RX, RZ, H, WIN, WINS, zones, roomAt, setClockHands, setLiftOut, setCity,
     setPart, setEmit, setFade, setSteam, setLamp, lampFlicker, tvGlow, rail,
     setBag, get BAG_SPOTS() { return bagSpots; }, get bagThing() { return bagThing; },
     // The building. `tick` is the one game.js already calls on any scene that has it, and it is
@@ -3282,6 +3335,9 @@ const World = Lazy('World', () => {
     addZone: (f, q) => { (ZONE[f] || (ZONE[f] = [])).push(q); return q; },
     setDeckH: (f, h) => { DECK_H[f] = h; },
     level: () => floor,
+    // A little more peripheral room than the generic interior lens. It exposes both sides of a
+    // doorway sooner, so the flat needs less panning without turning the room into a fisheye view.
+    camera: { fov: .96 },
     indoor: true, cutaway: true, near: .05, far: 60,
     // Where the body stands after coming in through the front door.
     spawn: { x: 2.30, z: 1.90, yaw: Math.PI * 0.85 },

@@ -245,28 +245,33 @@ const Hotel9Fit=Object.freeze({floor:'hotel9',api:1});
 
   function chair(A,c,x,z,yaw=0,upholstery=c.silk,tag='座椅') {
     const {box,capsule,taper,cyl,ball,shade}=A;
-    box(x,.34,z,.62,.11,.60,c.walnutD,{...MAT.timber,hard:true,mode:6,gloss:.27,ry:yaw,tag});
-    box(x,.46,z,.72,.19,.68,upholstery,{...MAT.cloth,mode:7,gloss:.035,ry:yaw,tag});
-    box(x,.565,z,.60,.035,.56,c.silkL,{...MAT.cloth,mode:7,gloss:.04,ry:yaw,tag});
-    for(const sx of [-1,1])for(const sz of [-1,1]) {
-      const p=at(x,z,yaw,sx*.25,sz*.22);
-      taper(p[0],.19,p[1],.075,.38,.055,c.walnutD,{hard:true,gloss:.31,tag});
-      cyl(p[0],.025,p[1],.082,.05,c.bronzeL,{gloss:.66,tag});
-    }
-    // `yaw` points toward the sitter's focal target: local +v is the open/front edge and local
-    // -v carries the backrest.  Keeping that convention here makes every radial table chair,
-    // writing chair and lounge chair face its paired table or desk.
-    const back=at(x,z,yaw,0,-.30),inset=at(x,z,yaw,0,-.235);
-    box(back[0],.90,back[1],.72,.76,.15,c.walnutD,{...MAT.timber,mode:6,gloss:.29,ry:yaw,tag});
-    box(inset[0],.89,inset[1],.57,.58,.065,upholstery,{...MAT.cloth,mode:7,gloss:.035,ry:yaw,tag});
-    capsule(back[0],1.30,back[1],.028,.57,.028,c.bronzeL,
-      {rz:Math.PI/2,ry:yaw,gloss:.68,tag});
-    ball(inset[0],.92,inset[1],.035,.035,.020,c.bronzeL,{gloss:.67,tag});
-    for(const s of [-1,1]) {
-      const arm=at(x,z,yaw,s*.35,0);
-      capsule(arm[0],.68,arm[1],.032,.43,.032,c.walnut,{tag});
-      box(arm[0],.78,arm[1],.10,.09,.52,c.walnutL,{...MAT.timber,mode:7,gloss:.29,ry:yaw,tag});
-    }
+    const {modelOr}=A.B;
+    modelOr('hotel9_walnut_club_chair', x, 0, z, 1,
+      { ry:yaw, tag, gloss:.24 }, () => modelOr('chinese_armchair', x, 0, z, .83,
+        { ry:yaw, tag, gloss:.24 }, () => {
+        box(x,.34,z,.62,.11,.60,c.walnutD,{...MAT.timber,hard:true,mode:6,gloss:.27,ry:yaw,tag});
+        box(x,.46,z,.72,.19,.68,upholstery,{...MAT.cloth,mode:7,gloss:.035,ry:yaw,tag});
+        box(x,.565,z,.60,.035,.56,c.silkL,{...MAT.cloth,mode:7,gloss:.04,ry:yaw,tag});
+        for(const sx of [-1,1])for(const sz of [-1,1]) {
+          const p=at(x,z,yaw,sx*.25,sz*.22);
+          taper(p[0],.19,p[1],.075,.38,.055,c.walnutD,{hard:true,gloss:.31,tag});
+          cyl(p[0],.025,p[1],.082,.05,c.bronzeL,{gloss:.66,tag});
+        }
+        // `yaw` points toward the sitter's focal target: local +v is the open/front edge and local
+        // -v carries the backrest.  Keeping that convention here makes every radial table chair,
+        // writing chair and lounge chair face its paired table or desk.
+        const back=at(x,z,yaw,0,-.30),inset=at(x,z,yaw,0,-.235);
+        box(back[0],.90,back[1],.72,.76,.15,c.walnutD,{...MAT.timber,mode:6,gloss:.29,ry:yaw,tag});
+        box(inset[0],.89,inset[1],.57,.58,.065,upholstery,{...MAT.cloth,mode:7,gloss:.035,ry:yaw,tag});
+        capsule(back[0],1.30,back[1],.028,.57,.028,c.bronzeL,
+          {rz:Math.PI/2,ry:yaw,gloss:.68,tag});
+        ball(inset[0],.92,inset[1],.035,.035,.020,c.bronzeL,{gloss:.67,tag});
+        for(const s of [-1,1]) {
+          const arm=at(x,z,yaw,s*.35,0);
+          capsule(arm[0],.68,arm[1],.032,.43,.032,c.walnut,{tag});
+          box(arm[0],.78,arm[1],.10,.09,.52,c.walnutL,{...MAT.timber,mode:7,gloss:.29,ry:yaw,tag});
+        }
+      }));
     shade(x,z,.82,.80,.18);
   }
 

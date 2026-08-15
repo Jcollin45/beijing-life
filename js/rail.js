@@ -355,10 +355,10 @@ const Rail = Lazy('Rail', () => {
 
   function build() {
     // ================================================================ shell
-    // Big-format stone, 1.25 m to the slab, which is the size a concourse is actually laid in and
+    // Big-format stone, 1.15 m to the slab, which is the size a concourse is actually laid in and
     // the size the grout grid drawn over it below already implies. Eighteen metres by fourteen of
     // one flat tone was the largest untextured surface in the game.
-    flat(0, 0, 0, RX * 2, RZ * 2, D.floorT, { mode: 9, gloss: .46, ...MAT.floor });
+    flat(0, 0, 0, RX * 2, RZ * 2, D.floorT, { mode: 0, gloss: .46, ...MAT.floor });
     B.props.push({ mesh: 'quad', color: col.ceil, mode: 1, alpha: 1,
       m: M.mul(M.trans(0, H, 0), M.mul(M.rotZ(Math.PI), M.scale(RX * 2, 1, RZ * 2))) });
     // The -x wall gets a little glow of its own. The room has one bulb, over the middle of the
@@ -430,11 +430,13 @@ const Rail = Lazy('Rail', () => {
         { hard: true, gloss: .40, ...MAT.steel });
       for (let i = -3; i <= 3; i++) {
         // The joint flange, which is the whole reason a duct reads as a duct and not a beam,
-        // and the pair of drop rods up to the slab that hang it there.
+        // and the pair of straight drop rods up to the slab that hang it there. Their cylinder
+        // ends sit inside the duct and ceiling, preserving the visible 14 mm shaft without
+        // spending rounded capsule geometry on hidden joints.
         box(i * 2.40, 4.35, dz2, .06, .42, .50, col.steel, { hard: true, gloss: G.metal });
         for (const s of [-1, 1])
-          capsule(i * 2.40, 4.96, dz2 + s * .21, .014, 1.20, .014,
-            col.steelX, { gloss: G.metal });
+          cyl(i * 2.40, 4.96, dz2 + s * .21, .007, 1.30, col.steelX,
+            { gloss: G.metal });
         // A diffuser between each pair: the grille the air actually comes out of.
         if (i === 3) continue;
         box(i * 2.40 + 1.20, 4.13, dz2, .46, .09, .34, D.steelF,
@@ -830,10 +832,14 @@ const Rail = Lazy('Rail', () => {
       { tag: '小卖部', hard: true, gloss: .24, ...MAT.concF });
     box(kx, 1.28, kz - 1.16, 3.20, .08, .18, D.chromeF,
       { tag: '小卖部', hard: true, gloss: G.metal, ...MAT.metalF });
+    // Keep the warm interior luminous without clipping it to a featureless white panel; at .30
+    // the bottle and noodle silhouettes in front of it disappeared in the C2-board review view.
     litten(box(kx, 1.90, kz - 1.10, 3.00, 1.10, .06, C('#ffe9c0'),
-      { tag: '小卖部', hard: true, mode: 1, glow: .30 }), .8);
+      { tag: '小卖部', hard: true, mode: 1, glow: .12 }), .8);
+    // Stock belongs in front of the luminous backing. It used to sit 8 cm behind the opaque
+    // panel, so lowering the glow alone could never reveal it from the waiting hall.
     for (let i = 0; i < 12; i++)
-      cyl(kx - 1.30 + (i % 6) * .52, 1.42 + ((i / 6) | 0) * .46, kz - 1.02, .10, .17,
+      cyl(kx - 1.30 + (i % 6) * .52, 1.42 + ((i / 6) | 0) * .46, kz - 1.20, .10, .17,
         pick([col.red, col.gold, col.orange, col.jade]),
         { tag: '小卖部', gloss: .26 });
     box(kx, 2.62, kz - 1.16, 3.40, .44, .14, col.red, { tag: '小卖部', hard: true, gloss: .22 });

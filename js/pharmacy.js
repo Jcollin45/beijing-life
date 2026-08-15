@@ -34,7 +34,13 @@ const Pharmacy = Lazy('Pharmacy', () => {
 
   const B = Build.scene({ fabricGloss: G.fabric });
   const { box, cyl, ball, capsule, taper, flat, wall, glyphs,
-          solid, blocker, shade, glow, thing } = B;
+          solid: boundsSolid, blocker, shade, glow, thing } = B;
+  // Every fixture below is authored as a centre plus footprint, while Build.solid takes four
+  // bounds. Passing the centre/size tuple through unchanged produced reversed z extents on the
+  // counter and both islands, so the player could walk through visible pharmacy furniture. Keep
+  // the room's convenient signature, but convert it once at the renderer boundary.
+  const solid = (cx, cz, w, d) =>
+    boundsSolid(cx - w / 2, cx + w / 2, cz - d / 2, cz + d / 2);
 
   // A single room, wider than it is deep, with the door in the -z wall and the counter across
   // the far end. 4.6 x 3.6 is about the footprint of the unit it sits behind on the parade.
@@ -44,7 +50,7 @@ const Pharmacy = Lazy('Pharmacy', () => {
   // build time — see the note on OUT below.
   const OUT = (typeof Street !== 'undefined' && Street.PHARMACY_OUT)
     ? { ...Street.PHARMACY_OUT }
-    : { x: 6.4, z: 0, yaw: -Math.PI / 2 };
+    : { x: 24.98, z: -4.05, yaw: -Math.PI / 2 };
 
   const litProps = [], tubes = [], doorParts = [];
   const litten = (p, k) => { litProps.push({ p, k }); return p; };

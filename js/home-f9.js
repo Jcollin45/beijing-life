@@ -13,13 +13,12 @@
 //   clear height 2.60
 //
 // ---------------------------------------------------------------------------------------------
-// THIS FILE IS A SHELL AS WELL AS A FIT-OUT, which js/home-corridor.js is not.
+// THIS FILE IS AN UPPER-DECK ENVELOPE AS WELL AS A FIT-OUT, which js/home-corridor.js is not.
 //
-// `buildShell` in js/world.js lays deck 0 and deck 2 by hand, and `buildShafts` loops over
-// `[0, 2]`. Nothing above the second floor exists until its own file lays it: no slab, no
-// ceiling, no perimeter wall, no shaft cladding, no landing, no call panel. All of that is built
-// here, off `A.y0`, which is the only height this file is allowed to know. See the ticket at the
-// foot of the file for the one thing that genuinely cannot be built from out here.
+// `buildShell` lays the lobby and deck 2 envelopes by hand, so this file still owns deck 9's slab,
+// ceiling, perimeter and partitions. The shared `buildShafts` now serves every live deck and owns
+// both shaft boxes, moving leaves, landing collider and call panel. Section 5's old local landing
+// is therefore compatibility-only behind `!A.shellLanding`; normal play never double-builds it.
 //
 // ---------------------------------------------------------------------------------------------
 // THE FLOOR, as this file settles it. Nine rooms and the landing; the lines are x = -4.00, -2.60,
@@ -36,16 +35,16 @@
 //  -1.40 ├──────────────────────┤       客厅         │              │
 //        │                      │                    │     厨房     │
 //  -3.40 │       空房           ├────────────────────┤              │
-//        │    (the empty one)   │      阳台          │              │
+//        │    (the unused one)  │      阳台          │              │
 //  -5.00 └──────────────────────┴────────────────────┴──────────────┘
 //
 // Everything opens off the 客厅 or the 走道, except the 储藏, which opens off the 主卧 — which is
 // what a store room in a flat this shape actually does.
 //
-// The 空房 is the room they have not got to: bare plaster, a bare bulb on a flex, two windows,
-// and nothing else at all. It is deliberately the best-lit room on the floor, because a room with
-// nothing in it is only worth building if the light in it is the subject.
-const HomeF9 = { built: false, ROOMS: [] };
+// The 空房 is the room they have not got to: bare plaster, a bare bulb on a flex, two windows and
+// the flat-pack furniture still waiting to be assembled. It is deliberately the best-lit room on
+// the floor; 空房 means unused here, not a claim that no carton has been stored in it.
+const HomeF9 = { built: false };
 
 FlatFit['f9'] = A => {
   if (!A || typeof A.box !== 'function') { console.warn('home-f9: toolkit A missing'); return HomeF9; }
@@ -978,12 +977,12 @@ FlatFit['f9'] = A => {
        '行李 luggage + 箱 case.', -3.30, .95, 1.4);
   })();
 
-  // ==================================================================== 13. 空房 the empty room
+  // ==================================================================== 13. 空房 the unused room
   //
-  // The room they have not got to. Bare plaster, a bare bulb on a flex, two windows and a floor
-  // with nothing on it — and, because of that, the room worth standing in at six in the evening.
-  // Everything in here is light: the west window and the south window cross on the floor, the
-  // plaster takes it, and there is nothing to interrupt it.
+  // The room they have not got to. Bare plaster, a bare bulb on a flex, two windows and boxed
+  // furniture waiting along the edges. The open centre remains the place worth standing at six in
+  // the evening: the west and south windows cross there without the room pretending to be empty
+  // of the flat-pack section that follows.
   (function empty() {
     const cx = -4.30, cz = -3.30;
     const BARE = { hard: true, gloss: .06, ...MAT.plaster };
@@ -1037,11 +1036,12 @@ FlatFit['f9'] = A => {
       flat(-5.28 + (i % 3) * .13, FL + .002, -4.48 + ((i / 3) | 0) * .12, .16, .13,
            C('#d8d2c2'), { mode: 7, gloss: .04, ry: i });
 
-    TH('灯泡', cx, CY - .53, cz, '这间屋子只有一个灯泡。', 'This room has nothing but a bare bulb.',
+    TH('灯泡', cx, CY - .53, cz, '这间屋子还只装了一个灯泡。', 'The only light installed here is a bare bulb.',
        '灯 lamp + 泡 bubble — the bulb itself. 灯 on its own is the light.', cx, cz + 1.00, 2.6);
-    TH('空', cx - .40, Y + 1.30, cz - 1.00, '这间还空着，什么都没有。',
-       'This room is still empty — nothing in it at all.',
-       '空 kōng is empty. 空房间 an empty room; but 有空 yǒu kòng is to have free time.',
+    TH('空', cx - .40, Y + 1.30, cz - 1.00, '这间还空着，只放了没装的家具。',
+       'This room is still unused; only the unassembled furniture is stored here.',
+       '空 kōng is empty or unused. 空房 can still be where unopened furniture waits; ' +
+       '有空 yǒu kòng is to have free time.',
        cx - .40, cz + .10, 2.8, '空');
   })();
 
@@ -1057,7 +1057,7 @@ FlatFit['f9'] = A => {
     // at line 356 — a 1.10 m gap at z 1.60, x -5.45 .. -4.35. At z 1.05 this box inflated to
     // z 0.21 .. 1.89 and closed it to 0.44 m. Dropped south, against the same wall.
     const AX = -5.35, AZ = -0.20;
-    box(AX, Y + .50, AZ, .42, 1.00, .96, C('#b39a72'), { hard: true, gloss: .10, mode: 11, tag: '纸箱' });
+    box(AX, Y + .50, AZ, .42, 1.00, .96, C('#b39a72'), { hard: true, gloss: .10, tag: '纸箱' });
     box(AX, Y + 1.01, AZ, .44, .04, .98, C('#9e8760'), { hard: true, gloss: .08 });
     box(AX - .215, Y + .62, AZ, .012, .34, .52, C('#e9e2cf'), { hard: true, gloss: .06 });
     G(AX - .223, Y + .70, AZ, -PI / 2, '分体式空调', { size: .046, gap: .010, color: col.ink });
@@ -1148,7 +1148,7 @@ FlatFit['f9'] = A => {
     }
     // the boxed television, on its end against the partition
     box(WX2 + .84, Y + .52, WZ2 - .30, .18, 1.00, .74, C('#ab8f62'),
-        { hard: true, gloss: .10, rz: .04, mode: 11, tag: '纸箱' });
+        { hard: true, gloss: .10, rz: .04, tag: '纸箱' });
     box(WX2 + .93, Y + .66, WZ2 - .30, .012, .30, .40, C('#e9e2cf'), { hard: true, gloss: .06 });
     G(WX2 + .938, Y + .74, WZ2 - .30, PI / 2, '液晶电视', { size: .044, gap: .009, color: col.ink });
     G(WX2 + .938, Y + .64, WZ2 - .30, PI / 2, '向上　防潮',
@@ -1229,7 +1229,7 @@ FlatFit['f9'] = A => {
         { mode: 18, alpha: .26, gloss: .72 });
     box(SHX, Y + .88, SHZ2, .38, .04, 1.04, C('#b8a888'), { hard: true, gloss: .14 });
     box(SHX - .02, Y + .96, SHZ2 - .18, .26, .12, .40, C('#ab8f62'),
-        { hard: true, gloss: .10, ry: .18, mode: 11 });
+        { hard: true, gloss: .10, ry: .18 });
     for (const s of [-1, 1])
       box(SHX + s * .17, Y + .44, SHZ2, .02, .026, 1.05, C('#e2c06a'), { hard: true, gloss: .18 });
     shade(SHX, SHZ2, .50, 1.16, .34);
@@ -1265,7 +1265,7 @@ FlatFit['f9'] = A => {
     // a 衣柜 arrives and where it waits until somebody has a free Sunday.
     for (const [i, cz] of [[0, -2.95], [1, -2.68]]) {
       box(X0 + .30 + i * .015, Y + .98, cz, .22, 1.92, 1.10, i ? KCD : KC,
-          { hard: true, gloss: .10, rz: .02, mode: 11, tag: '纸箱' });
+          { hard: true, gloss: .10, rz: .02, tag: '纸箱' });
       box(X0 + .42, Y + 1.34, cz, .012, .34, .46, C('#e9e2cf'), { hard: true, gloss: .06 });
       G(X0 + .428, Y + 1.42, cz, PI / 2, '两门衣柜', { size: .048, gap: .010, color: col.ink });
       G(X0 + .428, Y + 1.32, cz, PI / 2, '一件', { size: .034, gap: .007, color: C('#8d8578') });
@@ -1277,7 +1277,7 @@ FlatFit['f9'] = A => {
     for (let i = 0; i < 4; i++)
       box(SX + (i % 2 ? .03 : -.02), Y + .09 + i * .105, SZ2 + (i % 2 ? -.04 : .03),
           1.34, .10, .58, [KC, KCD, KCL, KC][i], { hard: true, gloss: .10, ry: (i - 1.5) * .022,
-                                                   mode: 11, tag: '纸箱' });
+                                                   tag: '纸箱' });
     box(SX + .30, Y + .50, SZ2 - .06, .38, .05, .28, C('#cfd8d2'),
         { mode: 7, gloss: .16, ry: .18 });
     for (let i = 0; i < 5; i++)
@@ -1296,7 +1296,7 @@ FlatFit['f9'] = A => {
     // doorway clear, which sealed the room. Anything standing in here keeps its inflated east edge
     // west of x -3.00.
     const CCX = -4.40, CCZ = -2.30;
-    box(CCX, Y + .34, CCZ, .74, .66, .74, KC, { hard: true, gloss: .10, ry: .12, mode: 11, tag: '纸箱' });
+    box(CCX, Y + .34, CCZ, .74, .66, .74, KC, { hard: true, gloss: .10, ry: .12, tag: '纸箱' });
     box(CCX, Y + .68, CCZ, .76, .04, .76, KCD, { hard: true, gloss: .08, ry: .12 });
     for (const s of [-1, 1])
       box(CCX + s * .19, Y + .74, CCZ + .30, .36, .12, .34, KCL,
@@ -1664,7 +1664,8 @@ FlatFit['f9'] = A => {
   const RM = (id, hz, x0, x1, z0, z1, near) => {
     const q = A.zone({ id, x0, x1, z0, z1, near,
                        light: [(x0 + x1) / 2, Y + H - .22, (z0 + z1) / 2], ceil: ZL });
-    q.hz = hz; HomeF9.ROOMS.push(q); return q;
+    q.hz = hz;
+    return q;
   };
   RM('f9bed', '主卧', -6.00, -2.60, -1.40, 1.60, 3.4);
   RM('f9empty', '空房', -6.00, -2.60, -5.00, -1.40, 4.0);
@@ -1683,10 +1684,9 @@ FlatFit['f9'] = A => {
   // night, and hanging all three off a point in the middle of the second one is what made the
   // landing read as evenly lit grey.
   //
-  // Written directly rather than through `RM` because these are not rooms of the flat: `RM` also
-  // pushes to `HomeF9.ROOMS`, which js/home-walls.js and the cutaway read as the flat's room plan,
-  // and a corridor is not one of its rooms. Registered before the landing catch-all and long
-  // before `f9all`, which is what `roomAt` falls through to.
+  // Written directly rather than through `RM` because these are not named rooms of the flat and
+  // should not carry a room headword. Registered before the landing catch-all and long before
+  // `f9all`, which is what `roomAt` falls through to.
   //
   // Each spans the landing's full depth ZM..ZN, so no internal boundary runs across the walking
   // line and the pairs overlap by 0.9 m or more — well clear of the 0.60 m dead band two merely
@@ -1709,38 +1709,3 @@ FlatFit['f9'] = A => {
   HomeF9.built = true;
   return HomeF9;
 };
-
-// ---------------------------------------------------------------------------------------------
-// FOR WHOEVER OWNS js/world.js AND js/game.js — two things this file cannot fix from out here.
-//
-// 1. THE SHELL BUILDS NOTHING ABOVE DECK 2, so the landing doors do not move up here.
-//    `buildShell` lays deck 0 and deck 2 by hand and `buildShafts` loops `for (const f of [0, 2])`.
-//    Every floor builder is therefore laying its own slab, ceiling, perimeter, shaft cladding,
-//    landing and call panel — twelve times, differently. More to the point, `leaves` and
-//    `doorStops` are pushed only inside `landing(f, ...)` for f in [0, 2] and both arrays are
-//    private to js/world.js, so no floor builder can register a leaf that slides with `landingK`.
-//
-//    This file therefore builds the opening open, and the car's own leaves are the doors you see
-//    slide. In play that is always right: the only way onto deck 9 is to ride here, and
-//    `callLift()` with the car already at your floor only re-opens it, so the car cannot leave
-//    without you. It is wrong in a screenshot taken with the car parked elsewhere, and it will be
-//    wrong the moment anything can send the car away from an occupied deck.
-//
-//    The fix is to run that loop over `decks()` rather than `[0, 2]`. Everything section 5 builds
-//    stands 12 mm proud of the shaft plane so the two do not z-fight in the meantime, and the
-//    whole of section 5 comes out on the same day.
-//
-// 2. THE CROSS-DECK LAMP PROBLEM IS ALREADY FIXED, and this is a note not to un-fix it. Twelve
-//    decks stand in the same x and z, so ranking `scene.lights` by ground-plane distance alone put
-//    a lamp on deck 2 exactly as near as one on deck 9 and filled all eight shader slots with
-//    lamps on floors you cannot see. js/game.js now narrows the list to the current deck with
-//    `drawDeck` before it ranks (the frame loop, beside `R.setLights`). Every lamp this file makes
-//    sits between `A.y0` and `A.y0 + 2.60` so that filter finds them.
-//
-//    This floor is nevertheless built so that it still reads if it ever loses that contest: the
-//    room lamp `roomAt` hands to `R.setBulb` is per-zone and per-deck and is always right, and the
-//    bulbs, the window panes, the skyline and the light pools are emissive or decals rather than
-//    lit surfaces.
-//
-// ---------------------------------------------------------------------------------------------
-// TICKETS FOR js/game.js (USE_AT.home) AND js/vocab.js — see the report.

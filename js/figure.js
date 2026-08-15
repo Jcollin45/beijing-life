@@ -2,6 +2,10 @@
 // for what a builder is handed and why this exists — in short, so that more than one person can
 // work on the wardrobe without all of them editing the same 1,200-line function.
 const FigureFit = {};
+// Builder failures are recoverable by design, but a broken garment must not emit once per figure
+// per frame. Keep the warning state out of FigureFit itself so metadata can never be mistaken for
+// another callable builder.
+const FigureFitWarned = new Set();
 
 // The figure rig: one body, many people.
 //
@@ -2128,8 +2132,15 @@ function drawFigure(pose, px, pz, yaw, lk, lod, holder, lift = 0) {
                                 : { cy: shellCY, sx: 0.440 * W, sy: shellY, sz: 0.48 * W } },
                   surf, FABRIC, SKINM, HAIRM, HAIRM2, SHOEM, LIPM };
     for (const k in FigureFit) {
-      try { FigureFit[k](ctx); }
-      catch (e) { if (!FigureFit._warned) console.error('FigureFit ' + k + ': ' + (e && e.message)); }
+      const fit = FigureFit[k];
+      if (typeof fit !== 'function') continue;
+      try { fit(ctx); }
+      catch (e) {
+        if (!FigureFitWarned.has(k)) {
+          FigureFitWarned.add(k);
+          console.error('FigureFit ' + k + ': ' + (e && e.message));
+        }
+      }
     }
   }
 }

@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="zh-Hans">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -10,16 +10,16 @@
     --ink:#0d0f12; --paper:#f4efe4; --jade:#4f8271; --jade-l:#9fe0c4;
     --red:#b2412f; --gold:#d8a13a; --text:#f1ece1;
     --panel:rgba(15,17,21,.80); --panel-solid:#14171c;
-    --line:rgba(255,255,255,.11); --line-2:rgba(255,255,255,.2);
+    --line:rgba(255,255,255,.11); --line-1:var(--line); --line-2:rgba(255,255,255,.2);
     --shadow:0 24px 60px rgba(0,0,0,.55);
-    --font:"PingFang SC","Hiragino Sans GB","Heiti SC","Noto Sans SC","Microsoft YaHei",
+    --font:"PingFang SC","Hiragino Sans GB","Heiti SC","Noto Sans CJK SC","Noto Sans SC","Microsoft YaHei",
            -apple-system,BlinkMacSystemFont,system-ui,sans-serif;
   }
   *{box-sizing:border-box;margin:0;padding:0}
   html,body{height:100%;overflow:hidden;background:#07080a;font-family:var(--font);
     color:var(--text);-webkit-font-smoothing:antialiased;user-select:none;
     -webkit-tap-highlight-color:transparent}
-  canvas{display:block;width:100%;height:100%}
+  canvas{display:block;width:100%;height:100%;touch-action:none}
   button{font-family:inherit}
 
   /* ---------- colour grade over the render ---------- */
@@ -196,7 +196,7 @@
   /* The weather chip. Cool when something is falling out of the sky, warm and quiet otherwise, so
      the state of the day is readable out of the corner of an eye without reading the characters.
      It is the one chip you can click, so it says so on hover. */
-  #sky{cursor:pointer;transition:border-color .3s}
+  #sky{appearance:none;color:inherit;text-align:left;cursor:pointer;transition:border-color .3s}
   #sky:hover{border-color:var(--jade-l)}
   #sky.wet b{color:#7fb0d8}
   #sky.cold b{color:#cfe2f2}
@@ -306,6 +306,11 @@
     cursor:pointer;color:inherit;font-family:inherit}
   #mapHere .door:hover{background:rgba(159,224,196,.13);border-color:rgba(159,224,196,.38)}
   #mapHere .door.on{color:var(--jade-l);border-color:rgba(159,224,196,.42);cursor:default}
+  #mapHere .door.firestation{color:#ffc0b5;font-weight:600;
+    background:rgba(178,65,47,.16);border-color:rgba(232,105,82,.58);
+    box-shadow:inset 0 0 0 1px rgba(255,170,150,.06)}
+  #mapHere .door.firestation:hover{color:#ffe0d9;background:rgba(178,65,47,.28);
+    border-color:rgba(255,145,121,.82)}
   #mapHere .door.shut{opacity:.52;cursor:default}
   #mapHere .door.shut:hover{background:rgba(255,255,255,.05);border-color:var(--line)}
   #mapHere .none{font-size:10.5px;opacity:.52;letter-spacing:.11em;padding:3px 2px;
@@ -840,7 +845,8 @@
      reflows and keeps hit-testing correct, so the touch layer still lands on what it looks like it
      lands on. Set with window.__setUiScale(n); persisted in localStorage. */
   :root{ --ui-scale:1; }
-  #hud,#needs,#goals,#map,#keys,#prompt,#toast,#doing{ zoom:var(--ui-scale); }
+  #hud,#needs,#goals,#map,#keys,#prompt,#toast,#doing,#coach,
+  #card,#talk,#book,#pick,#pause .sheet,#howto .sheet,.fxshell{zoom:var(--ui-scale)}
 
   /* 楼层 — the tower's own always-visible readout. The storey lives in the place chip today, which
      is also where every other location's name goes, so on the twelfth floor it reads the same shape
@@ -1343,6 +1349,99 @@
     #hud,#needs,#goals,#map,#keys,#card,#talk,#book,#pick{forced-color-adjust:auto;
       background:Canvas;border:1px solid CanvasText;color:CanvasText}
   }
+
+  /* 2026 comfort pass -----------------------------------------------------
+     Keep the primary play state in one relaxed row. Secondary telemetry is still one click away,
+     but no longer competes with time, money, place and the next review on every frame. */
+  #hud{gap:3px;padding:6px}
+  #hud #words,#hud #sky,#hud #perf{display:none}
+  #hudMore{display:grid;place-items:center}
+  #hud.hud-more{flex-wrap:wrap;max-width:min(780px,calc(100vw - 214px))}
+  #hud.hud-more #words,#hud.hud-more #sky,#hud.hud-more #perf{display:flex}
+  .chip{padding:8px 12px;gap:8px}
+  .chip .k{font-size:10px;opacity:.68}
+  .panel-disclosure small{font-size:10px;opacity:.82}
+  #goals .gh .k{font-size:10px;opacity:.72}
+  #goals .reward,#keys span{font-size:12px}
+  .goal .en,.row .m,.mrow .m,.srow .lab span,#book .sub,#pick .sub{font-size:12px;opacity:.72}
+
+  /* A shared visual modal host. It quiets the simulation while a learning surface is active,
+     without obscuring the card itself or adding another blur composition pass. */
+  #ui::before{content:"";position:fixed;inset:0;z-index:24;pointer-events:none;
+    background:rgba(3,5,7,.58);opacity:0;transition:opacity .18s ease}
+  #ui:has(#card.on,#talk.on,#book.on,#pick.on,#flightExperience.on)::before{opacity:1}
+
+  /* First-session coach: three short actions, then it gets out of the way permanently. */
+  #coach{display:none;position:absolute;left:var(--safe-l);bottom:calc(var(--safe-b) + 112px);
+    z-index:21;width:min(330px,calc(100vw - 24px));padding:14px 15px;border:1px solid
+    rgba(159,224,196,.34);border-radius:16px;background:linear-gradient(155deg,
+    rgba(18,27,27,.96),rgba(10,14,17,.96));box-shadow:0 18px 48px rgba(0,0,0,.48)}
+  #coach.on{display:block}
+  #coach .coachTop{display:flex;align-items:center;gap:9px;margin-bottom:8px}
+  #coach .coachTop b{font-size:13px;letter-spacing:.08em;color:var(--jade-l)}
+  #coach .coachDots{display:flex;gap:4px;margin-left:auto}
+  #coach .coachDots i{width:18px;height:3px;border-radius:4px;background:rgba(255,255,255,.14)}
+  #coach .coachDots i.on{background:var(--gold)}
+  #coachText{font-size:14px;line-height:1.55;color:#f7f1e6}
+  #coachText small{display:block;margin-top:3px;font-size:12px;color:rgba(241,236,225,.72)}
+  #coachSkip{margin-top:9px;padding:5px 0;border:0;background:transparent;color:rgba(241,236,225,.62);
+    font:600 11px/1.2 var(--font);cursor:pointer}
+
+  /* A notebook is useful when it answers “what should I study next?” before it lists words. */
+  #bookStats{display:grid;grid-template-columns:repeat(3,1fr);gap:7px;margin:0 0 14px}
+  #bookStats .stat{padding:9px 8px;border:1px solid rgba(255,255,255,.09);border-radius:11px;
+    background:rgba(255,255,255,.035);text-align:center}
+  #bookStats .stat b{display:block;font-size:18px;color:#fff4df}
+  #bookStats .stat span{display:block;margin-top:2px;font-size:10px;color:var(--muted)}
+  #bookTools{position:sticky;top:-1px;z-index:2;margin:0 -4px 8px;padding:5px 4px 9px;
+    background:linear-gradient(180deg,rgba(14,18,21,.99) 70%,transparent)}
+  #bookFilters{display:flex;gap:5px;overflow-x:auto;scrollbar-width:none}
+  #bookFilters button{min-height:34px;padding:6px 10px;white-space:nowrap;border:1px solid
+    rgba(255,255,255,.11);border-radius:999px;background:rgba(255,255,255,.04);color:var(--muted);
+    font:650 11px/1 var(--font);cursor:pointer}
+  #bookFilters button.on{border-color:rgba(159,224,196,.42);background:rgba(79,130,113,.20);
+    color:#dcf6e9}
+  #bookSearch{width:100%;height:36px;margin-top:7px;padding:0 11px;border:1px solid
+    rgba(255,255,255,.12);border-radius:10px;background:rgba(0,0,0,.24);color:var(--text);
+    font:500 13px/1 var(--font);user-select:text}
+  #bookSearch::placeholder{color:rgba(241,236,225,.43)}
+  #bookEmpty{padding:22px 10px;text-align:center;color:var(--muted);font-size:13px;line-height:1.6}
+
+  /* The loader now reports actual stages instead of leaving one cold, static word on screen. */
+  #loadProgress{display:none;width:min(360px,100%);margin-top:10px}
+  #loadProgress.on{display:block}
+  #loadProgress .track{height:4px;overflow:hidden;border-radius:999px;background:rgba(255,255,255,.11)}
+  #loadProgress i{display:block;width:0;height:100%;border-radius:inherit;background:linear-gradient(90deg,
+    var(--jade-l),var(--gold));transition:width .18s ease}
+  #loadProgress span{display:block;margin-top:7px;font-size:10px;letter-spacing:.09em;
+    color:rgba(241,236,225,.68)}
+
+  @media (any-pointer:coarse){
+    #hud,#needs,#goals,#map,#keys,#touchMove,#touchActions button,.modalClose{
+      backdrop-filter:none}
+    #touchMove{width:104px;height:104px}
+    #touchMove .thumb{width:44px;height:44px}
+    #touchActions{width:122px;gap:6px}
+    #touchActions button{height:48px;border-radius:15px}
+    #touchJump{display:none!important}
+  }
+  @media (max-width:760px){
+    #hud.hud-more{max-width:calc(100vw - 24px)}
+    .chip .k{font-size:9.5px}
+    .panel-disclosure .hz{font-size:13px}
+    .panel-disclosure small{font-size:10px}
+  }
+  @media (max-width:480px){
+    #bookStats{gap:5px}
+    #bookStats .stat{padding:8px 4px}
+    #bookFilters button{min-height:36px;font-size:12px}
+    #coach{left:8px;bottom:132px;width:calc(100vw - 16px)}
+  }
+  @media (max-width:760px) and (any-pointer:coarse){
+    #goals,#map,#goals:not(.is-collapsed),#map:not(.is-collapsed){bottom:calc(var(--safe-b) + 118px)}
+    #prompt{bottom:calc(var(--safe-b) + 178px)}
+    #doing{bottom:calc(var(--safe-b) + 226px)}
+  }
 </style>
 </head>
 <body>
@@ -1353,7 +1452,8 @@
   <div id="hud">
     <div class="chip" id="clock"><span class="ic"><svg viewBox="0 0 16 16"><rect x="2" y="3.2" width="12" height="10.8" rx="1.8"/><path d="M2 6.6h12M5.4 1.8v2.6M10.6 1.8v2.6"/></svg></span><span class="tx"><span class="k">第 1 天 · day</span><b>14:00</b></span></div>
     <div class="chip" id="money"><span class="ic"><svg viewBox="0 0 16 16"><rect x="1.8" y="4" width="12.4" height="8.6" rx="1.9"/><path d="M1.8 7h7.4"/><circle cx="11.2" cy="8.4" r=".9"/></svg></span><span class="tx"><span class="k">钱 · money</span><b>¥260</b></span></div>
-    <div class="chip" id="words"><span class="ic"><svg viewBox="0 0 16 16"><path d="M2.2 3h3.9A1.9 1.9 0 018 4.9v8.3a1.6 1.6 0 00-1.6-1.3H2.2z"/><path d="M13.8 3H9.9A1.9 1.9 0 008 4.9v8.3a1.6 1.6 0 011.6-1.3h4.2z"/></svg></span><span class="tx"><span class="k">词语 · words</span><b>0</b></span></div>
+    <button class="chip" id="words" type="button" title="打开生词本 · open notebook"
+      aria-label="打开生词本 · open vocabulary notebook"><span class="ic"><svg viewBox="0 0 16 16"><path d="M2.2 3h3.9A1.9 1.9 0 018 4.9v8.3a1.6 1.6 0 00-1.6-1.3H2.2z"/><path d="M13.8 3H9.9A1.9 1.9 0 008 4.9v8.3a1.6 1.6 0 011.6-1.3h4.2z"/></svg></span><span class="tx"><span class="k">词语 · words</span><b>0</b></span></button>
     <button class="chip zero" id="revw" type="button" title="复习到期词语 · review words due"><span class="ic"><svg viewBox="0 0 16 16"><path d="M13.6 8a5.6 5.6 0 11-1.7-4"/><path d="M13.9 2.4v3.4h-3.4"/></svg></span><span class="tx"><span class="k">复习 · review</span><b>0</b></span></button>
     <div class="chip" id="where"><span class="ic"><svg viewBox="0 0 16 16"><path d="M8 14.4s5-4.3 5-8a5 5 0 10-10 0c0 3.7 5 8 5 8z"/><circle cx="8" cy="6.3" r="1.9"/></svg></span><span class="tx"><span class="k">家 · home</span><b>家</b></span></div>
     <!-- 楼层 — the tower's floor indicator. Only shown inside 十八号楼, where the storey is a
@@ -1365,7 +1465,8 @@
     <!-- What it is like outside, and what month of the year it is. Clickable, because both of
          those are words: the sky is the only teacher in this game that talks to you without
          being walked up to. -->
-    <div class="chip" id="sky" title="今天的天气 · today's weather"><span class="ic"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3.1"/><path d="M8 1.4v1.5M8 13.1v1.5M1.4 8h1.5M13.1 8h1.5M3.3 3.3l1.1 1.1M11.6 11.6l1.1 1.1M12.7 3.3l-1.1 1.1M4.4 11.6l-1.1 1.1"/></svg></span><span class="tx"><span class="k">秋天 · autumn</span><b>晴天</b></span></div>
+    <button class="chip" id="sky" type="button" title="今天的天气 · today's weather"
+      aria-label="今天的天气 · today's weather"><span class="ic"><svg viewBox="0 0 16 16"><circle cx="8" cy="8" r="3.1"/><path d="M8 1.4v1.5M8 13.1v1.5M1.4 8h1.5M13.1 8h1.5M3.3 3.3l1.1 1.1M11.6 11.6l1.1 1.1M12.7 3.3l-1.1 1.1M4.4 11.6l-1.1 1.1"/></svg></span><span class="tx"><span class="k">秋天 · autumn</span><b>晴天</b></span></button>
     <!-- What you are carrying: meals in the fridge, or the basket in the shop, or what you
          have ordered in the restaurant. Which one depends on where you are standing. -->
     <div class="chip" id="carry"><span class="ic"><svg viewBox="0 0 16 16"><path d="M2.4 5.4h11.2l-.9 8a1.4 1.4 0 01-1.4 1.2H4.7a1.4 1.4 0 01-1.4-1.2z"/><path d="M5.6 5.4V4a2.4 2.4 0 014.8 0v1.4"/></svg></span><span class="tx"><span class="k">冰箱 · fridge</span><b>2 份</b></span></div>
@@ -1392,7 +1493,7 @@
   </div>
   <div id="flightExperience" role="dialog" aria-modal="true" aria-label="In-flight experience"
     aria-hidden="true" inert>
-    <div class="fxshell"><div class="fxhead"><div><span class="eyebrow">国航 · AIR CHINA</span>
+    <div class="fxshell"><div class="fxhead"><div><span class="eyebrow">燕河航空 · YANHE AIR</span>
       <b id="fxTitle">飞行信息 · Flight information</b></div><button id="fxClose" aria-label="Close">×</button></div>
       <div id="fxTabs"><button data-fx="map">航线 MAP</button><button data-fx="outside">窗外 OUTSIDE</button>
         <button data-fx="cockpit">驾驶舱 COCKPIT</button><button data-fx="entertainment">娱乐 MEDIA</button><button data-fx="learn">中文 LEARN</button>
@@ -1441,6 +1542,12 @@
        div, so a screen reader was told nothing about a twelve-floor lift ride. Same treatment
        #mapNote already has. -->
   <div id="toast" role="status" aria-live="polite" aria-atomic="true"></div>
+  <section id="coach" role="status" aria-live="polite" aria-label="First day guide">
+    <div class="coachTop"><b>第一天 · FIRST STEPS</b><span class="coachDots" aria-hidden="true">
+      <i></i><i></i><i></i></span></div>
+    <div id="coachText"></div>
+    <button id="coachSkip" type="button">跳过引导 · SKIP GUIDE</button>
+  </section>
   <div id="card" role="dialog" aria-modal="true" aria-label="Vocabulary card" aria-hidden="true" inert>
     <button class="modalClose" id="cardClose" type="button" aria-label="Close vocabulary card">×</button>
     <div class="top"><div class="hz"></div><div class="py"></div><div class="en"></div></div>
@@ -1473,10 +1580,21 @@
   <div id="book" role="dialog" aria-modal="true" aria-label="Vocabulary notebook" aria-hidden="true" inert>
     <button class="modalClose" id="bookClose" type="button" aria-label="Close vocabulary notebook">×</button>
     <h2>生词本</h2>
-    <div class="sub">Notebook — every word you have met in this apartment</div>
+    <div class="sub">Notebook — every word you have met across the city</div>
     <!-- The chapter you are on and the people who know you. Both live above the word list because
          both are answers to "what am I doing here", which the word list never was. -->
     <div id="bookStory"></div>
+    <div id="bookStats" aria-label="Vocabulary progress"></div>
+    <div id="bookTools">
+      <div id="bookFilters" role="tablist" aria-label="Filter vocabulary">
+        <button class="on" type="button" role="tab" aria-selected="true" data-book-filter="all">全部 · ALL</button>
+        <button type="button" role="tab" aria-selected="false" data-book-filter="due">到期 · DUE</button>
+        <button type="button" role="tab" aria-selected="false" data-book-filter="learning">学习中 · LEARNING</button>
+        <button type="button" role="tab" aria-selected="false" data-book-filter="mastered">熟练 · MASTERED</button>
+      </div>
+      <input id="bookSearch" type="search" autocomplete="off" spellcheck="false"
+        aria-label="Search vocabulary" placeholder="搜索汉字、拼音或英文 · Search words">
+    </div>
     <div id="bookList"></div>
   </div>
   <!-- One chooser for the menu in the restaurant, the jobs on the office board and the stations
@@ -1498,7 +1616,8 @@
     <span><b>WASD</b> move</span><span><b>Shift</b> run</span><span><b>drag</b> look</span>
     <span><b>scroll</b> zoom</span><span><b>F</b> recenter</span><span><b>click</b> anything</span>
     <span><b>E</b> word</span><span><b>Q</b> use it</span><span><b>R</b> review</span>
-    <span><b>1–4</b> answer</span><span><b>B</b> notebook</span><span><b>M</b> 手机 phone</span>
+    <span><b>1–4</b> answer</span><span><b>B</b> notebook</span><span><b>Shift+B</b> home directory</span>
+    <span><b>M</b> 手机 phone</span>
     <span><b>P</b> quality</span><span><b>N</b> next song</span><span><b>G</b> 广播 again</span>
     <span><b>Esc</b> pause</span>
   </div>
@@ -1536,6 +1655,14 @@
           <div class="seg" id="setQ"></div>
         </div>
         <div class="srow">
+          <div class="lab"><b>文字大小</b><span>Text size across the HUD, dialogue, notebook and menus.</span></div>
+          <div class="seg" id="setUiScale" role="group" aria-label="interface text size">
+            <button type="button" data-ui-scale="1">标准</button>
+            <button type="button" data-ui-scale="1.15">大</button>
+            <button type="button" data-ui-scale="1.3">特大</button>
+          </div>
+        </div>
+        <div class="srow">
           <div class="lab"><b>镜头灵敏度</b><span>Look sensitivity — how far the camera swings
             for a given drag.</span></div>
           <div class="ctl"><input type="range" id="setSens" min="40" max="220" step="5"
@@ -1548,29 +1675,40 @@
             aria-label="clock speed"><i id="setClockV">1.0×</i></div>
         </div>
         <div class="srow">
+          <div class="lab"><b>动态效果</b><span>Motion and flashing effects. 自动 follows your
+            system preference; 减少 keeps arcade and display effects calm.</span></div>
+          <div class="seg" id="setMotion" role="group"
+            aria-label="motion and flashing effects"></div>
+        </div>
+        <div class="srow">
           <div class="lab"><b>拼音</b><span>Keep pinyin and English on every label, even on
             words you have already met.</span></div>
-          <button class="tog" id="setAssist" aria-label="always show pinyin"></button>
+          <button class="tog" id="setAssist" type="button" aria-label="always show pinyin"
+            aria-pressed="false"></button>
         </div>
         <div class="srow">
           <div class="lab"><b>人声</b><span>Let the neighbours say their lines out loud. Every
             voice is worked out from the person, not recorded.</span></div>
-          <button class="tog" id="setSpeech" aria-label="npc voices"></button>
+          <button class="tog" id="setSpeech" type="button" aria-label="npc voices"
+            aria-pressed="true"></button>
         </div>
         <div class="srow">
           <div class="lab"><b>环境音</b><span>The sound the places themselves make — the street,
             the platform, the noodle shop. Turn it off if you would rather have quiet.</span></div>
-          <button class="tog" id="setAmbience" aria-label="room ambience"></button>
+          <button class="tog" id="setAmbience" type="button" aria-label="room ambience"
+            aria-pressed="true"></button>
         </div>
         <div class="srow">
-          <div class="lab"><b>隐藏墙壁</b><span>Take the flat's interior walls away so you can see
-            into every room at once. Furniture, floors and the outside of the building stay, and a
-            wall you cannot see still stops you walking through it. Shortcut: V.</span></div>
-          <button class="tog" id="setWalls" aria-label="hide interior walls"></button>
+          <div class="lab"><b>隐藏墙壁</b><span>Lower the interior walls in supported homes and
+            offices so you can read the whole plan. Furniture, floors and the outside
+            shell stay, and a wall you cannot see still stops you walking through it. Shortcut: V.</span></div>
+          <button class="tog" id="setWalls" type="button" aria-label="hide interior walls"
+            aria-pressed="false"></button>
         </div>
         <div class="srow">
           <div class="lab"><b>帧数</b><span>Show the frame rate in the top bar.</span></div>
-          <button class="tog" id="setFps" aria-label="show frame rate"></button>
+          <button class="tog" id="setFps" type="button" aria-label="show frame rate"
+            aria-pressed="false"></button>
         </div>
       </div>
       <div class="acts">
@@ -1583,7 +1721,8 @@
       <div class="foot">
         <b>WASD</b> move &nbsp; <b>Shift</b> run &nbsp; <b>drag</b> look &nbsp;
         <b>E</b> word &nbsp; <b>Q</b> use &nbsp; <b>R</b> review<br>
-        <b>B</b> notebook &nbsp; <b>M</b> phone &nbsp; <b>Esc</b> pause and settings
+        <b>B</b> notebook &nbsp; <b>Shift+B</b> home directory &nbsp;
+        <b>M</b> phone &nbsp; <b>Esc</b> pause and settings
       </div>
     </div>
   </div>
@@ -1600,7 +1739,12 @@
         <div class="cta">
           <button id="start" type="button" disabled aria-live="polite">正在加载 · LOADING</button>
           <button id="startFresh" type="button" class="ghost" disabled>重新开始 · START FRESH</button>
-          <button id="howtoOpen" class="ghost">怎么玩 · HOW TO PLAY</button>
+          <button id="howtoOpen" class="ghost" type="button" aria-controls="howto"
+            aria-expanded="false">怎么玩 · HOW TO PLAY</button>
+        </div>
+        <div id="loadProgress" class="on" role="progressbar" aria-label="Loading game"
+          aria-valuemin="0" aria-valuemax="100" aria-valuenow="2">
+          <div class="track"><i></i></div><span>准备城市 · PREPARING CITY</span>
         </div>
       </div>
       <div class="foot">
@@ -1660,13 +1804,25 @@
     }
   } catch (_) { /* Storage can be unavailable; the game already handles that case. */ }
 
-  var uiKey = 'bjlife.interface.v2';
-  var state = { needs:true, goals:true, map:true, keys:true };
-  try { Object.assign(state, JSON.parse(localStorage.getItem(uiKey)) || {}); }
-  catch (_) { /* The compact defaults still work without persistence. */ }
+  // Wide and compact layouts keep separate disclosure state. Carrying an open desktop map onto
+  // a phone used to cover the entire lower half of the game on first paint.
+  var compactLayout = matchMedia('(max-width:760px)');
+  var uiMode = compactLayout.matches ? 'compact' : 'wide';
+  function keyFor(mode) { return 'bjlife.interface.v3.' + mode; }
+  function readState(mode) {
+    var next = { needs:true, goals:true, map:true, keys:true };
+    try {
+      var raw = localStorage.getItem(keyFor(mode));
+      // Migrate the old preference only to the roomy layout; compact always begins clear.
+      if (!raw && mode === 'wide') raw = localStorage.getItem('bjlife.interface.v2');
+      Object.assign(next, JSON.parse(raw) || {});
+    } catch (_) { /* The compact defaults still work without persistence. */ }
+    return next;
+  }
+  var state = readState(uiMode);
 
   function save() {
-    try { localStorage.setItem(uiKey, JSON.stringify(state)); }
+    try { localStorage.setItem(keyFor(uiMode), JSON.stringify(state)); }
     catch (_) { /* A disclosure still works for this session. */ }
   }
   function buttonFor(id) {
@@ -1706,10 +1862,27 @@
     });
   });
 
+  function adoptLayout(e) {
+    var nextMode = e.matches ? 'compact' : 'wide';
+    if (nextMode === uiMode) return;
+    uiMode = nextMode;
+    state = readState(uiMode);
+    ['needs','goals','map','keys'].forEach(function (id) { paint(id, state[id] !== false); });
+    if (hud) hud.classList.remove('hud-more');
+    if (hudMore) {
+      hudMore.textContent = '•••';
+      hudMore.setAttribute('aria-expanded', 'false');
+    }
+  }
+  if (compactLayout.addEventListener) compactLayout.addEventListener('change', adoptLayout);
+
   var hud = document.getElementById('hud'), hudMore = document.getElementById('hudMore');
   if (hud && hudMore) hudMore.addEventListener('click', function () {
     var open = hud.classList.toggle('hud-more');
     hudMore.setAttribute('aria-expanded', String(open));
+    hudMore.setAttribute('aria-label', open ? 'Hide extra status information' :
+      'Show more status information');
+    hudMore.title = open ? '收起状态 · less status' : '更多状态 · more status';
     hudMore.textContent = open ? '×' : '•••';
   });
 
@@ -1753,12 +1926,27 @@
 
   // Help works immediately, while the larger game bundle is still loading. Keeping accessibility
   // state beside visual state also prevents a hidden sheet from remaining in the tab order.
+  var howReturnFocus = null;
+  function howFocusable(how) {
+    return Array.prototype.slice.call(how.querySelectorAll(
+      'button:not([disabled]),a[href],[tabindex]:not([tabindex="-1"])'));
+  }
   window.setHowtoOpen = function (open) {
     var how = document.getElementById('howto');
     if (!how) return;
+    if (open) howReturnFocus = document.activeElement;
     how.classList.toggle('on', !!open);
     how.setAttribute('aria-hidden', String(!open));
     how.inert = !open;
+    if (howOpen) howOpen.setAttribute('aria-expanded', String(!!open));
+    if (open) setTimeout(function () {
+      if (!how.inert && howClose) howClose.focus({ preventScroll:true });
+    }, 0);
+    else if (howReturnFocus && howReturnFocus.isConnected &&
+             typeof howReturnFocus.focus === 'function') {
+      var back = howReturnFocus; howReturnFocus = null;
+      setTimeout(function () { back.focus({ preventScroll:true }); }, 0);
+    }
   };
   var howOpen = document.getElementById('howtoOpen'), howClose = document.getElementById('howtoClose');
   if (howOpen) howOpen.addEventListener('click', function () { window.setHowtoOpen(true); });
@@ -1766,6 +1954,19 @@
   var howSheet = document.getElementById('howto');
   if (howSheet) howSheet.addEventListener('click', function (e) {
     if (e.target === howSheet) window.setHowtoOpen(false);
+  });
+  document.addEventListener('keydown', function (e) {
+    if (!howSheet || howSheet.inert) return;
+    if (e.key === 'Escape') { e.preventDefault(); window.setHowtoOpen(false); return; }
+    if (e.key !== 'Tab') return;
+    var items = howFocusable(howSheet);
+    if (!items.length) { e.preventDefault(); return; }
+    var first = items[0], last = items[items.length - 1], current = document.activeElement;
+    if (e.shiftKey && (current === first || !howSheet.contains(current))) {
+      e.preventDefault(); last.focus({ preventScroll:true });
+    } else if (!e.shiftKey && (current === last || !howSheet.contains(current))) {
+      e.preventDefault(); first.focus({ preventScroll:true });
+    }
   });
 })();
 </script>
@@ -1787,9 +1988,9 @@
 // nobody had open. Now the first thing registered is the thing that catches it, and whatever
 // broke is named on screen.
 (function () {
-  var FILES = ['math','perf','lazy','gl','vocab','career','story','pantry','faults','disrupt','home-life','stay','glyphs','build','rig','figure','fig-face','fig-hair','fig-tops','fig-bottoms','fig-outer','fig-acc','fig-uniform','weather','world','street','shop','pharmacy','market',
+  var FILES = ['math','perf','lazy','webgpu','gl','vocab','career','story','pantry','survive','faults','disrupt','home-life','stay','glyphs','build','rig','figure','fig-face','fig-hair','fig-tops','fig-bottoms','fig-outer','fig-acc','fig-uniform','weather','world','street','shop','pharmacy','market',
                'bank','bank-entry','bank-ticket','bank-waiting','bank-desks','bank-counters','bank-atms','bank-vip','bank-safe','bank-office',
-               'diner','hospital','hosp-floor1','hosp-floor2','hosp-floor3','hosp-floor4',
+               'diner','firestation','hospital','hosp-floor1','hosp-floor2','hosp-floor3','hosp-floor4',
                'hotel','hotel-lift','hotel-public','hotel-guests','hotel-service',
                // Per-floor architecture modules. These load AFTER the fit-out modules above, so
                // their builders compose second and their partitions land around furniture that is
@@ -1798,10 +1999,10 @@
                'hotel-f7','hotel-f8','hotel-f9','hotel-f10','hotel-f11','hotel-f12',
                'home-lobby','home-lift','home-corridor','home-entry','home-living','home-dining','home-kitchen','home-bedroom','home-second','home-bath','home-walls',
                'home-f3','home-f4','home-f5','home-f6','home-f7','home-f8','home-f9','home-f10','home-f11','home-roof',
-               'street-traffic','street-cycles','street-entry','street-alley','street-stall','street-road','street-retail','street-civic','street-west','street-hospital','street-bank','street-hotel','street-lane',
+               'street-traffic','street-cycles','street-entry','street-alley','street-stall','street-road','street-retail','street-civic','street-west','street-hospital','street-firestation','street-bank','street-hotel','street-lane',
                'mall-events','mall',
                'mall-jewel','mall-fashion','mall-shoes','mall-digital','mall-optical','mall-flowers','mall-coffee','mall-bakery','mall-pets','mall-restaurant','mall-beauty','mall-books','mall-sport','mall-home','mall-toys','mall-dessert','mall-cinema','mall-arcade',
-               'office-core','office-lift','office-b1','office-f1','office-f2','office-f3','office','office-f4','office-f5','office-f6','office-f7','office-roof',
+               'office-camera','office-core','office-lift','office-b1','office-f1','office-f2','office-f3','office','office-f4','office-f5','office-f6','office-f7','office-roof',
                'park','zoo-animals',
                'zoo-art-core','zoo-art-west','zoo-art-central','zoo-art-east',
                'zoo-art-infrastructure','zoo-art-tropical','zoo-art',
@@ -1815,11 +2016,22 @@
                'metro-platform','metro-edge','metro-doors','metro-train','metro-track','metro-schedule','metro-pa','metro-crowd',
                'train',
                'cabin','train-audio','speech','talk','cast-catalog','data','game'];
+  // Neutral resource identities and packets are authority-migration tools, not dependencies of the
+  // shipping WebGL renderer. Load them in dependency order before the WebGPU probe only for an
+  // explicit preview session; an ordinary launch performs no request, evaluation, or allocation
+  // for either experimental boundary.
+  var wantsFramePacket = false;
+  try { wantsFramePacket = new URLSearchParams(location.search).get('renderer') === 'webgpu'; }
+  catch (_) {}
+  if (wantsFramePacket)
+    FILES.splice(FILES.indexOf('webgpu'), 0, 'render-resources', 'frame-packet');
   // Everything a module is expected to have put on the table by the time the game starts. This
   // is the check that catches a half-stale build, which is otherwise invisible: the file loaded,
   // it ran, it simply is not the one the rest of the build was written against.
   var NEEDS = [
-    ['M', 'trs mul rotY'], ['Perf', 'init tick setAuto'], ['R', 'init resize draw'],
+    ['M', 'trs mul rotY'], ['Perf', 'init tick setAuto'],
+    ['WebGPUPreview', 'requested packetRecordRequested captureMesh captureSkinMesh releaseMesh captureTexture releaseTexture captureAtlas setScene beginFrame captureBatch captureDraw captureSkinnedGroup wantSkinBundles captureSkinBundle releaseSkinBundle skinBundleReady skinBundleState invalidateSkinFrame preparePacket discardPreparedPacket present status dispose'],
+    ['R', 'init resize draw resourceId framePacketStats'],
     ['Vocab', 'get stage count'],
     ['Career', 'weekday isWorkday rank pay toNext clockIn finishJob rollDay toSave load'],
     ['Story', 'heard level chapter check progress stoodIn toSave load'],
@@ -1830,6 +2042,7 @@
     ['Weather', 'tick grade draw move leaf fogScale disruptFor'],
     ['Build', 'scene'], ['World', 'things setBag setPart'],
     ['Street', 'things homes'], ['Shop', 'things GOODS SHELF'], ['Diner', 'things MENU setServed'],
+    ['FireStation', 'things PLAN OUT'],
     ['Pharmacy', 'things setNight OUT'], ['Market', 'things setNight OUT'],
     ['Bank', 'things tick setNight OUT'],
     ['Hospital', 'things setNight OUT'], ['Hospital2', 'things setNight OUT'],
@@ -1850,6 +2063,7 @@
     // silently. `HotelF3` is the odd name of the three and is spelled that way in the module.
     ['HotelF3', 'floor api'], ['Hotel8Fit', 'floor api'], ['Hotel10Fit', 'floor api'],
     ['Mall', 'things tick EVENTS eventAt NOTICES NOTICE_EN NOTICE_ORDER ADS AD_EN nextAd'],
+    ['OfficeCamera', 'index invalidate resolve update stepNear hidden hasHidden stats reset effectiveRoom cutawayHidden'],
     ['OfficeCore', 'FLOORS FLOOR_ORDER FLOOR_META ROUTES CONTRACT Fit Use Cast sceneFor'],
     ['OfficeLift', 'scene begin state syncLanding safeLanding toSave restore diagnostic'],
     ['OfficeB1', 'things tick setNight'], ['Office1', 'things tick setNight'],
@@ -1879,6 +2093,9 @@
     ['CastCatalog', 'assign note register ambientRigs validate inspect'],
     ['Data', 'NPCS USE USE_AT MALL_FOOD MALL_GOODS'],
   ];
+  if (wantsFramePacket) NEEDS.splice(2, 0,
+    ['RenderResources', 'VERSION MAX_LIVE MAX_LABEL claim id live retire trim dispose status'],
+    ['FramePacket', 'VERSION INSTANCE_FLOATS begin batch draw seal abort current claim release consume drop trim dispose status']);
   var failed = null;
 
   function show(what) {
@@ -1888,7 +2105,21 @@
     if (el) el.textContent = what;
     var boot = document.getElementById('boot');
     if (boot) boot.className = 'on';
+    setBootProgress(100, '加载失败 · LOAD FAILED');
   }
+
+  var progressEl = document.getElementById('loadProgress');
+  function setBootProgress(value, label) {
+    value = Math.max(0, Math.min(100, Math.round(value)));
+    if (!progressEl) return;
+    progressEl.classList.add('on');
+    progressEl.setAttribute('aria-valuenow', String(value));
+    var bar = progressEl.querySelector('i'), text = progressEl.querySelector('span');
+    if (bar) bar.style.width = value + '%';
+    if (text && label) text.textContent = label;
+  }
+  window.__setBootProgress = setBootProgress;
+  setBootProgress(3, '准备城市 · PREPARING CITY');
 
   // Registered before anything else loads, so a file that throws while it runs is caught here
   // rather than disappearing into the console.
@@ -1897,12 +2128,14 @@
     show((where ? where + ' line ' + e.lineno + ' — ' : '') + (e.message || 'script error'));
   });
 
-  // One token for the whole set, so every file in a given load is fetched fresh and together.
-  // Local development against files that change under you: correctness beats a warm cache.
-  var v = Date.now();
+  // One content version for the whole set. It preserves the all-or-nothing build contract while
+  // allowing unchanged scripts and assets to survive a reload in a production cache.
+  var v = '2026.08.15.25';
 
   function loadGame() {
   var last = null;
+  var loaded = 0;
+  setBootProgress(24, '打开街区 · OPENING THE NEIGHBOURHOOD');
   // Per-file boot attribution. `async=false` runs these in source order and a classic script's
   // load event fires *after* it has executed, so consecutive stamps differ by that file's own
   // download-plus-execute time. It is the only way to ask "what does loading the thirteen hotel
@@ -1915,6 +2148,9 @@
     s.async = false;                          // downloaded in parallel, still run in order
     s.addEventListener('load', function () {
       BM.files.push([name, +(performance.now() - BM.t0).toFixed(1)]);
+      loaded++;
+      setBootProgress(24 + loaded / FILES.length * 72,
+        '搭建城市 ' + loaded + '/' + FILES.length + ' · BUILDING CITY');
     });
     s.onerror = function () { show('js/' + name + '.js did not load at all'); };
     document.head.appendChild(s);
@@ -1924,6 +2160,7 @@
   // async=false runs them in order, so the last one's load event is the whole set being ready.
   last.onload = function () {
     if (failed) return;
+    setBootProgress(97, '检查世界 · CHECKING WORLD');
     var missing = [];
     NEEDS.forEach(function (n) {
       var mod;
@@ -1945,6 +2182,8 @@
       show('a stale or partial build — missing ' + missing.join(', '));
     // Every authored campus floor can be inspected directly without a second scene viewer.
     if (!missing.length) {
+      setBootProgress(100, '可以出发了 · READY');
+      setTimeout(function () { if (progressEl) progressEl.classList.remove('on'); }, 420);
       var previewParams = new URLSearchParams(location.search);
       var preview = previewParams.get('campusInterior');
       if (preview && CampusInteriors.places[preview] && window.__game) {
@@ -1967,9 +2206,9 @@
   // construction checks read the same validated revisions and coordinates.
   function loadZooBlueprint() {
     return Promise.all([
-      fetch('ZOO-EXPANSION-BLUEPRINT.json?v=' + v, { cache:'no-store' }),
-      fetch('ZOO-PENS-BUILDINGS-BLUEPRINT.json?v=' + v, { cache:'no-store' }),
-      fetch('UNIVERSITY-INTERIORS-BLUEPRINT.json?v=' + v, { cache:'no-store' }),
+      fetch('ZOO-EXPANSION-BLUEPRINT.json?v=' + v),
+      fetch('ZOO-PENS-BUILDINGS-BLUEPRINT.json?v=' + v),
+      fetch('UNIVERSITY-INTERIORS-BLUEPRINT.json?v=' + v),
     ]).then(function (responses) {
       if (!responses[0].ok) throw new Error('expansion HTTP ' + responses[0].status);
       if (!responses[1].ok) throw new Error('contents HTTP ' + responses[1].status);
@@ -1989,6 +2228,7 @@
         window.ZOO_BLUEPRINT = plan;
         window.ZOO_CONTENTS_BLUEPRINT = contents;
         window.UNIVERSITY_INTERIORS_BLUEPRINT = university;
+        setBootProgress(23, '读取城市蓝图 · READING CITY PLANS');
       }).catch(function (e) {
         show('runtime blueprints did not load — ' + e.message);
         throw e;
@@ -2007,16 +2247,20 @@
   // download must not be a black screen, so every path below ends in loadGame().
   var am = document.createElement('script');
   am.src = 'js/assets.js?v=' + v;
+  setBootProgress(6, '读取家具与人物 · LOADING MODELS');
   am.onerror = function () {
     console.warn('assets.js did not load; models disabled');
+    setBootProgress(18, '使用轻量模型 · USING LIGHTWEIGHT MODELS');
     loadZooBlueprint().then(loadGame).catch(function () {});
   };
   am.onload = function () {
     var t0 = performance.now();
+    setBootProgress(10, '准备家具与人物 · PREPARING MODELS');
     Assets.preload().then(function (r) {
       console.log('models: ' + r.loaded + ' loaded in ' +
                   Math.round(performance.now() - t0) + ' ms' +
                   (r.failed.length ? ', FAILED: ' + r.failed.join(' | ') : ''));
+      setBootProgress(18, '读取城市蓝图 · READING CITY PLANS');
       return loadZooBlueprint().then(loadGame);
     }).catch(function (e) {
       // A blueprint failure has already raised the visible boot error and must not be mistaken for
@@ -2046,11 +2290,20 @@
 // the stylesheet). Lives here rather than in js/game.js because it is presentation only and that
 // file is contended; the settings row that calls it is queued to the game lane.
 (function () {
-  var MIN = 0.85, MAX = 1.6;
+  var MIN = 0.9, MAX = 1.3;
+  var buttons = Array.prototype.slice.call(document.querySelectorAll('[data-ui-scale]'));
+  function paint(v) {
+    buttons.forEach(function (button) {
+      var on = Math.abs(Number(button.dataset.uiScale) - v) < .01;
+      button.classList.toggle('on', on);
+      button.setAttribute('aria-pressed', String(on));
+    });
+  }
   function apply(v) {
     v = Math.min(MAX, Math.max(MIN, Number(v) || 1));
     document.documentElement.style.setProperty('--ui-scale', String(v));
     try { localStorage.setItem('uiScale', String(v)); } catch (e) {}
+    paint(v);
     return v;
   }
   window.__setUiScale = apply;
@@ -2058,7 +2311,10 @@
     return Number(getComputedStyle(document.documentElement).getPropertyValue('--ui-scale')) || 1;
   };
   var saved; try { saved = localStorage.getItem('uiScale'); } catch (e) {}
-  if (saved) apply(saved);
+  apply(saved || 1);
+  buttons.forEach(function (button) {
+    button.addEventListener('click', function () { apply(button.dataset.uiScale); });
+  });
 })();
 </script>
 </body>

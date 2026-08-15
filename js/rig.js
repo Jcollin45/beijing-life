@@ -54,16 +54,28 @@ const Rig = (() => {
 
   function topo(parent) {
     const n = parent.length, done = new Uint8Array(n), order = [];
-    let guard = 0;
-    while (order.length < n && guard++ < n + 2) {
+    // glTF node trees are acyclic, but this is also a public arithmetic boundary used by tooling.
+    // An out-of-range parent used to become an opaque `undefined[0]` failure later; a self-parent or
+    // cycle was worse, because the unresolved joints were appended and multiplied through zero or
+    // last-frame scratch matrices, quietly folding the character into the origin.
+    for (let i = 0; i < n; i++) {
+      const p = parent[i];
+      if (!Number.isInteger(p) || p < -1 || p >= n)
+        throw new Error(`Rig: joint ${i} has invalid parent ${p}`);
+    }
+    while (order.length < n) {
+      let progressed = false;
       for (let i = 0; i < n; i++) {
         if (done[i]) continue;
         const p = parent[i];
-        if (p < 0 || done[p]) { done[i] = 1; order.push(i); }
+        if (p < 0 || done[p]) { done[i] = 1; order.push(i); progressed = true; }
+      }
+      if (!progressed) {
+        const unresolved = [];
+        for (let i = 0; i < n; i++) if (!done[i]) unresolved.push(i);
+        throw new Error(`Rig: cyclic parent graph at joints ${unresolved.join(', ')}`);
       }
     }
-    // A cycle would loop forever; take what resolved and let the rest fall back to rest pose.
-    for (let i = 0; i < n; i++) if (!done[i]) order.push(i);
     return order;
   }
 
@@ -777,6 +789,7 @@ const Rig = (() => {
       if (Math.abs(candidate - wanted) < Math.abs(lod - wanted)) lod = candidate;
     return lod;
   }
+  const previewRequested=()=>typeof WebGPUPreview!=='undefined'&&WebGPUPreview.requested;
 
       // Per-part colour multipliers for one look on one rig. `rig.tintMap` overrules the inference
       // outright — an array of colours or nulls, one per part — for the case where an asset is worth
@@ -882,7 +895,12 @@ const Rig = (() => {
       const rig = Assets.rig(name);
       if (!rig) return false;
       if (typeof Assets.touchRig === 'function') Assets.touchRig(name, opt && opt.frame);
-      const parts = Assets.uploadRig(name, opt && opt.lod !== undefined ? opt.lod : 0);
+      const lod=resolvedLod(rig,opt&&opt.lod!==undefined?opt.lod:0),previewOn=previewRequested(),
+        previewMeta=previewOn&&typeof Assets.rigPreviewDemand==='function'
+          ?Assets.rigPreviewDemand(name,lod)
+          :null;
+      if(previewMeta&&typeof R.wantSkinBundles==='function')R.wantSkinBundles([previewMeta]);
+      const parts = Assets.uploadRig(name,lod);
       if (!parts || !parts.length) return false;
       // A pose object straight out of figure.js is retargeted here; an array is taken as an
       // override list already built. Anything else means bind pose. Far skeletons use animation
@@ -914,7 +932,8 @@ const Rig = (() => {
       // Model, bones and all scene lighting are identical for every material part.  Bracket the
       // character so the renderer uploads those once; only texture/material state changes from a
       // face to a shirt or a shoe. Older renderer builds retain the one-part path for diagnostics.
-      const bracketed = typeof R.beginSkinned === 'function' && R.beginSkinned(model, bones);
+      const bracketed = typeof R.beginSkinned === 'function' &&
+        R.beginSkinned(model,bones,previewMeta);
       // Production callers change only the LOD. Material response belongs to the uploaded part and
       // can therefore be cached with it; allocating eight spread objects per resident per frame
       // otherwise becomes a steady stream of short-lived garbage on a populated mall floor.
@@ -962,7 +981,7 @@ const Rig = (() => {
         status.failed = items.length; status.failedItems = items.slice(); return status;
       }
 
-      const groups = new Map();
+      const groups = new Map(),previewOn=previewRequested();
       for (const item of items) {
         item.drawn = false;
         const n = item && item.n, name = n && n.rig;
@@ -971,11 +990,19 @@ const Rig = (() => {
         const lod = resolvedLod(rig, item.lod === undefined ? 0 : item.lod);
         const key = name + '|' + (rig.generation || 0) + '|lod' + lod;
         let g = groups.get(key);
-        if (!g) groups.set(key, g = { key, name, rig, lod, items:[] });
+        if (!g) groups.set(key, g = { key, name, rig, lod,
+          previewMeta:previewOn&&typeof Assets.rigPreviewDemand==='function'
+            ?Assets.rigPreviewDemand(name,lod)
+            :null,items:[] });
         g.items.push(item);
         if (typeof Assets.touchRig === 'function') Assets.touchRig(name, opt.frame);
       }
       status.groups = groups.size;
+      // Declare the complete post-cull owner/LOD working set before the first cached tier can ask
+      // for WebGPU residency. Admission may evict older off-frame owners, never a character that
+      // appears later merely because Map traversal reached another group first.
+      if(previewOn&&typeof R.wantSkinBundles==='function')
+        R.wantSkinBundles([...groups.values()].map(group=>group.previewMeta));
 
       const mark = item => {
         item.drawn = true;
@@ -1067,7 +1094,7 @@ const Rig = (() => {
               drawParts.push({ mesh:p.mesh, color:same ? first : colors, opt:po });
             }
             submitted = R.drawSkinnedMany(drawParts, scratch.models, scratch.palette,
-              boneCount, count);
+              boneCount,count,g.previewMeta);
           } catch (e) {
             if (!instRuntimeWarned.has(g.key)) {
               instRuntimeWarned.add(g.key);

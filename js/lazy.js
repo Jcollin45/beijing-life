@@ -34,28 +34,36 @@ const Lazy = (() => {
         throw new Error(`Lazy: ${name} asked for itself while it was still being built`);
       rec.building = true;
       const t = performance.now();
+      let built;
       try {
-        rec.mod = rec.build();
+        built = rec.build();
       } finally {
         rec.building = false;
       }
-      if (!rec.mod || typeof rec.mod !== 'object')
+      if (!built || typeof built !== 'object')
         throw new Error(`Lazy: ${name} built nothing usable`);
+      // The integrity check, moved from load time to build time. Same list, same failure, just
+      // asked at the only moment it can be asked without paying for the answer up front.
+      if (rec.expect) {
+        const missing = rec.expect.filter(k => built[k] === undefined);
+        if (missing.length) {
+          const err = `${name} is a stale or partial build — missing ${missing.join(', ')}`;
+          if (typeof Lazy.onstale === 'function') Lazy.onstale(err);
+          // The callback owns presentation, not validity. Publishing `built` before this check made
+          // the stale object permanent, and a callback that showed the boot card also let the
+          // original property read continue into unrelated TypeErrors. Never make a partial module
+          // resident and never hand it to its caller.
+          throw new Error(err);
+        }
+      }
+      // Commit only after every public-key contract has passed. From here on `built` is the one
+      // stable module object every proxy trap and onBuild subscriber is allowed to observe.
+      rec.mod = built;
       rec.ms = +(performance.now() - t).toFixed(1);
       // Who asked. A room that builds itself during boot is a bug of exactly the kind this file
       // exists to remove, and it is invisible without the stack that reached it: `Lazy.why('Mall')`
       // names the line that touched a shopping centre before anybody had walked into one.
       rec.stack = (new Error().stack || '').split('\n').slice(2, 7).join('\n');
-      // The integrity check, moved from load time to build time. Same list, same failure, just
-      // asked at the only moment it can be asked without paying for the answer up front.
-      if (rec.expect) {
-        const missing = rec.expect.filter(k => rec.mod[k] === undefined);
-        if (missing.length) {
-          const err = `${name} is a stale or partial build — missing ${missing.join(', ')}`;
-          if (typeof Lazy.onstale === 'function') Lazy.onstale(err);
-          else throw new Error(err);
-        }
-      }
       for (const fn of rec.after || []) fn(rec.mod);
       rec.after = null;
       return rec.mod;

@@ -16,6 +16,81 @@ Keep this file short. If something here stops changing, it belongs in one of the
 
 ---
 
+## NOW — read this and stop; the rest of the file is history
+
+This block exists because reading the whole of this file costs about 12,300 tokens, and a lead that
+opens it unwindowed pays that on every remaining turn of the session. Measured 2026-08-15. Everything
+below this section is kept for its **disproved** levers, which are worth not re-deriving; none of it
+is a current instruction. Read it with `offset`/`limit`, and only when you are about to touch the
+thing it describes.
+
+**The learning wave (2026-08-15) — four lanes landed and gate-passed, ONE LANE LEFT.** Contract is
+`LEARNING-PLAN.md`; it also holds the measured gap list that started this, which is the part worth
+reading before adding to the learning layer.
+
+| lane | file | state |
+|---|---|---|
+| A produce | `js/vocab.js` | **gate PASS** — typed `type` quiz kind, pinyin/tone normaliser, `gradeTyped`, `toneOf`, v3 save migrating v2 and v1. `.typecheck.js` 141/141 |
+| C talk | `js/talk.js` | **gate PASS** — 97 written asks re-served instead of retiring for good, plus 26 generated renderings / 58 new clips, all baked. `.talkcheck.js` 4 (all pre-existing `js/data.js` collisions) |
+| D survive | `js/survive.js` | **gate PASS** — rent/eviction, hunger→health→collapse, illness, dismissal. `.survivecheck.js` 30-day sim, every fail state reachable and escapable |
+| R roster | `js/data.js` | 1 of 5 collisions fixed, 4 referred — `.reports/R-roster.md` |
+| P pantry | `js/pantry.js` + dict rows | **gate PASS** — a spoiled lot is reachable, `.spoilcheck.js` 24/24 and failable at 9/24. Dictionary 1,930 → 1,935 |
+| W wiring | `js/game.js` | landed: typed card + guard, three-state tone feedback, 打字 and 难度 settings, `Survive.tick`/`rollDay`, health bar, 规矩 panel, escape routes, spoiled-food branch |
+
+**Decisions taken by the lead on 2026-08-15, when the owner handed over all of them:**
+1. **`SURVIVE.mode` defaults to `'real'`** (`js/survive.js:98`); `'gentle'` intact and switchable in
+   settings. `real.rent.flat` deliberately left at 450 — lane D's own 700–900 suggestion was
+   declined and then withdrawn on evidence.
+2. **同事 was NOT consolidated.** It would have saved 44 bake lines and cost 48 of 62 clips, leaving
+   four named colleagues silent.
+3. **`bake_person` no longer re-renders a whole person for one new line** (`.bake-voices.py:403`),
+   so a bake is additive by construction rather than by someone checking it against HEAD by hand.
+
+## What this wave learned the hard way — do not re-derive
+
+- **`.speechcheck.js` CANNOT FAIL on a silent generated line.** `missed` only records lines a run
+  actually asks for, and generated asks sit behind `GEN_GAP` (150 s) after authored turns are
+  exhausted. It returned `fails:[]` over 26 silent NPCs. Use `.talkcheck.js` plus direct manifest
+  enumeration for anything generated.
+- **The voice bake is not reproducible run to run.** One line measures 2.164 s at HEAD, 1.056 s in
+  `.audio-bake/before/`, and 1.258 s in this bake. The cause of the shortening is named —
+  `trim(a, floor=0.008, pad=0.03)` at `.bake-voices.py:134`, where `pad` is exactly the 0.031 s
+  lead-in against HEAD's 0.52 s — but *why* it differs from the version that produced HEAD is
+  unprovable, because **`.bake-voices.py` is untracked**. A build tool that can silently rewrite
+  1,313 audio files is not under version control. `给你。` moved more than trimming explains
+  (speech span 0.712 → 0.441 s) and is still unexplained.
+- **27 clips lost their uncommitted working-tree content and it is not recoverable** — no Time
+  Machine destination is configured on this machine. They now hold their committed content, which
+  is what the live site already serves, so nothing player-facing was lost. Cause: a `--force` bake
+  run whose cleanup used `git checkout --` on a path list mixing tracked and untracked files, which
+  git refuses wholesale. **Never clean up a bake with `git checkout` on a mixed path list.**
+- **Judge whether a file moved by hashing, never by mtime.** The Desktop is iCloud-synced and `bird`
+  runs at ~43% CPU, so timestamps churn on their own. An earlier reading of this as "a second
+  session is writing `js/game.js`" was wrong and held a lane back for nothing.
+
+**Verified before any push:** every one of the 1,365 manifest entries matches its file's real
+duration to within 50 ms, 0 files missing; no leading-slash asset paths in `index.html` or `js/*.js`;
+`.nojekyll` present.
+
+**STILL NOT DONE, and both are the next actions:**
+1. **Nothing has been pushed.** `git log -1` is `60d6dca`, so **no behaviour in this wave has been
+   read off `https://jcollin45.github.io/beijing-life/`** — which is the only place this project
+   counts a thing as verified.
+2. **Frame rate is unmeasured for the whole wave.** The machine has been on battery power, which
+   `.fpscheck.js` refuses to measure on, at load averages between 15 and 55 on 8 cores. Gate 2's
+   86 fps and 58 fps readings are **void, not noisy**. "60 fps or above, everywhere" is standing
+   constraint 1 and it is currently unverified for `js/game.js`'s new per-interaction work.
+
+**Owed and not measured:** a frame-rate number for the street district and an emissive-quad census
+(tickets E1/E2 in `STOREFRONT-UPGRADES.md`); the `uploadRig` budget fix of 2026-08-14 has **no frame
+time behind it at all**; per-word audio for a tone drill does not exist and would need an offline
+bake.
+
+**Hand off at ~400 turns or 150k context, whichever comes first**, and do the big orientation reads
+inside a subagent — a lead that reads pays for it on every later turn.
+
+---
+
 ## Standing constraints
 
 1. **60 fps or above, everywhere.** The owner's first requirement; outranks any visual gain.
@@ -23,6 +98,25 @@ Keep this file short. If something here stops changing, it belongs in one of the
 3. **No git.** No rollback. Back up before bulk edits; never leave a file unparseable.
 
 ## Current state — 2026-08-08
+
+### TRELLIS.2 offline asset authoring — 2026-08-13
+
+The requested integration targets **TRELLIS.2**, not the original TRELLIS. The official source is
+cached outside the runtime tree at `.cache/trellis-src/TRELLIS.2`, pinned to
+`75fbf0183001ed9876c8dbb35de6b68552ee08bd`; model weights are deliberately not cached on this
+Apple M3 machine. `tools/trellis/` now provides pinned download, Linux/NVIDIA generation, and a
+fail-closed PBR GLB-to-game-glTF staging bridge. It ships no model, CUDA code, inference, or network
+dependency to players. `npm run trellis:check` is the browser/GPU-free contract gate.
+
+No TRELLIS.2 output is in `Assets.MANIFEST`. Candidates remain under
+`assets/_staging/trellis/`, marked `productionEligible:false`, with source/GLB hashes and revision
+provenance. The stock generator is research-only for this project: BRIA RMBG-2.0, nvdiffrast/
+nvdiffrec, and the cubvh path have commercial-use/license blockers or unresolved scope. Promotion
+requires licensed/replaced worker dependencies plus the normal visual, topology, collision,
+interaction, image, triangle, and isolated PLAY-performance reviews. The official ZeroGPU demo was
+tried with an unbranded generated helmet reference but timed out before inference because no GPU was
+available; a real pilot GLB still needs a supported Linux/NVIDIA 24GB+ worker or authenticated hosted
+GPU. Do not bypass the generation sidecar or importer review flags to fake that result.
 
 **Mall wave 1 in flight.** Seven coder agents, one writer per file, across `js/mall.js` and the
 eighteen `js/mall-*.js` tenant modules. A gatekeeper agent is auditing them *and* the lead's own
@@ -333,6 +427,44 @@ So the owner's question is no longer "is the mall fast enough" — it is, and al
 **whether the mall should look like tier 2 rather than tier 3**, and the answer to that looks like
 yes, because tier 2 is free.
 
+### The hitch has a named mechanism: a rig tier is uploaded inside one frame — 2026-08-14
+
+Found by reading, not by timing, and it matches the tags the hitch log already caught.
+
+`Assets.uploadRig` (js/assets.js:1298) hands **every part of a tier to WebGL in one call** — an
+`R.skinMesh` per part plus a `texImage2D` and a `generateMipmap` per source image
+(js/gl.js:3333-3334), all synchronous. It is called from the draw path, on the frame that first
+needs that person: `js/rig.js:897` inside `draw()`, `js/rig.js:1015` inside the instanced path, and
+`js/game.js:1497` from the load promise, whose `.finally` immediately pumps the next of
+`MAX_RIG_LOADS = 2`. Nothing anywhere budgets it.
+
+The gate's own reproduced records are that shape: `wallMs 86, tex 6, mesh 6` walking into the mall
+cold, and `wallMs 193.9` with `assets:["MallOpticalCashierMaLijuan.lod.glb"]`. Six textures with
+mipmap generation in one frame is a 100 ms frame, and a cast streaming in behind
+`MAX_RIG_LOADS = 2` produces a run of them — which is what a 500 ms window averaging 125 ms is
+made of.
+
+**It also survives every ablation and every quality tier, which is the property this page says the
+answer must have.** The ladder turns down render scale, shadow size, bloom and AO; none of those
+change what an upload costs. Dropping props does not remove rig uploads. It explains the *no-NPC*
+arm of the variance collapse (no rigs, no uploads, tight repeats) and **not** the no-props arm,
+which is still unexplained.
+
+**Fixed, and NOT YET MEASURED.** `uploadRig` now spends at most `UPLOAD_MS = 4` a frame across all
+rigs and resumes on the next one, returning `null` until a tier is whole — which `rig.js:892`
+already handles by drawing the procedural figure. `opt.whole` bypasses it for the offline harnesses
+(`.castruntimecheck.js`, `.fullcastvisual.js`) which ask for three tiers inside one page
+evaluation. Check: `.rigmemorycheck.js` — `PASS upload budget · a costly tier took 6 frames, one
+part each`, and it fails with `a costly tier uploaded inside one frame` when `UPLOAD_MS` is raised
+to 4000, so it can fail. `node .bootcheck.js` clean.
+
+**What is not verified: any frame-time claim at all.** No `.fpscheck.js` run, nothing off
+jcollin45.github.io, and the change is unpushed. The machine was not measurable while this was
+written — `busyCores 5.58 of 8` against the harness's own 5.00 quiet bar, with another session's
+`chinesegame-audit` headless Chrome holding ~295% CPU. The measurement that settles it is a `PLAY`
+hitch census on a quiet machine, comparing the `mesh`/`texture` tag counts and worst `wallMs`
+before and after.
+
 Everything above this heading is the old, frozen-ladder investigation. It is kept because its
 disproved levers are still worth not re-deriving, but **it was answering the wrong question.**
 
@@ -530,25 +662,50 @@ row `| home | 21.1 | 53.2 | 22,353 | 165 |` was a measurement, not a ceiling.
   for the twelve decks the cast lane is populating. Counts are hardware-independent
   (`.framecost.js:8-11`), so this is enforceable under SwiftShader in the standing suite and does
   not need the Metal harness. Item 416.
-- **Per-deck primitive budget: 380 primitive calls per storey.** Item 417's numbers have drifted —
-  measured today across `js/home-*.js`, the spread is **223–422**, not the 124–422 recorded there
-  (`home-roof.js` is now 223, not 124). Three decks are over the budget and are the room lane's to
-  trim: `home-f7.js` 422, `home-f11.js` 414, `home-f3.js` 410. Everything else is ≤ 371.
+- **Per-deck primitive target: 3,200; hard budget: 3,500 built, floor-owned props.** The old 380 ceiling counted source
+  spellings of `box(`/`cyl(`/etc., so extracting an unchanged helper made a floor look cheaper and
+  glyph expansion was invisible. `.towercheck.js` now measures the primitives that actually reach
+  the renderer after every builder and loop has run. The accepted spread is **1,057–3,122**: F2 is
+  the peak at 3,122, followed by F12 at 3,024 and F7 at 3,007. The extra 378 props at the current
+  peak are reserved for measured, interactive additions; the draw-call and frame-time budgets still
+  apply independently, because one transparent or animated prop can cost more than many batched
+  opaque ones. A 2026-08-13 `PLAY=1 .fpscheck.js homeF0 homeF2 homeF7 homeRoof` run held F0, F2
+  and F7 at tier 0 with 0 late frames. Nine ordered alpha groups then batched the roof's skyline
+  washes without changing its 3,024 props: calls fell from 144 to 99, late frames from 2.6% to 0%,
+  and the roof returned from tier 1 to tier 0. The 3,500 ceiling therefore applies uniformly; it is
+  still guarded independently by draw-call and live frame-time checks. Item 417.
+- **Whole-game authored-scene headroom is proportional, not a global 3,500.** Street keeps its
+  existing 22,000-prop ceiling (19,556 current), and the mall keeps its per-tenant reviewed-growth
+  limits. `nonstreet-scene-static-check.js` now catalogues all other 77 authored scenes against
+  built renderer primitives: each gets 15% reviewed growth, rounded to 50 props and bounded to
+  100–600, while any older tighter owner cap remains the effective maximum. That leaves small
+  rooms such as Library at 665/765, large general scenes such as Airport at 5,627/6,227, and Zoo
+  deliberately frozen at its existing 5,580 blueprint ceiling. Office1 and Office3 use their last
+  reviewed exact prop inventories rather than canonising unrelated wall-ownership drift in the
+  dirty checkout. This is only safe spend for static detail that joins existing opaque batches;
+  new transparency, draw batches, movers/callbacks, lights or NPC rigs still require their own
+  reviewed limit and an isolated PLAY run.
+
+  An isolated 2026-08-13 PLAY sample of the heaviest representative destinations confirmed
+  **0 late frames and tier 0** for Airport (216 calls), Zoo (224), Campus (142), Metro (175),
+  Hotel F1 (90), Hospital F1 (180), FireStation (114), and Office F4 (78). This validates the
+  policy as controlled headroom, not permission to spend every scene to its ceiling at once.
 
 **Asset boot cost, measured and then cut.** `preload()` is awaited before the first game script
 runs, so anything in `ROOMS` for a `BOOT_ROOMS` room blocks the boot.
 
-- **Five of the eight `ROOMS` declarations were never placed by any scene**, and the audit that
-  claimed it was right. A sweep of every `model('…'` call in `js/` finds **four** distinct names
-  placed in the whole game — `chinese_stool`, `wall_clock` (js/diner.js), `wok`, `rice_cooker`
-  (js/home-kitchen.js). Item 413 says five; it is four.
-- Deleting the five cuts the **blocking** boot fetch from **5,268 KB to 1,148 KB (−78%, 4.6×)** (du -k; a byte-exact walk of the four survivors reads 1,102 KB):
+- **Five dead `ROOMS` declarations were removed**, and the branded imported cooker was later
+  replaced by code-native geometry. A sweep of every literal `model('…'` call now finds **four**
+  downloaded names placed in the game — `chinese_stool`, `wall_clock`,
+  `plastic_monobloc_chair`, and `wok`; only the first three eager room names total about 560 KB.
+- Removing the five dead declarations and the cooker's 588 KB runtime fetch cuts the
+  **blocking** boot set from **5,268 KB to about 560 KB (9.4× smaller)**:
   `potted_plant_02` 2,124 KB, `exterior_aircon_unit` 1,356 KB and `ceiling_fan` 640 KB were all in
   boot rooms. `potted_plant_01` (5,612 KB) and `steel_frame_shelves` were background-only.
-  That removes more than three times what adding the wok and the rice cooker cost (632 KB).
-- `Assets.warm()` fetched **all 18 manifest entries, ~15 MB**, for a game that places four. It now
-  follows the declarations (`ROOMS` ∪ `DECK_ROOMS`) — four names, ~1.1 MB. The manifest keeps all
-  18 deliberately: deleting a name from it does not merely stop a fetch, it makes `Assets.get`
+  The licensed cooker source and attribution remain auditable on disk but have zero runtime refs.
+- `Assets.warm()` once fetched **all manifest entries, ~15 MB**. It now follows the declarations
+  (`ROOMS` ∪ `DECK_ROOMS`) — four runtime names totaling about 863 KiB. The manifest keeps unused
+  neutral assets deliberately: deleting a name from it does not merely stop a fetch, it makes `Assets.get`
   return nothing and `js/build.js:73-75` return null **silently**, which is exactly the failure that
   left the kitchen with a floating spatula for a day (item 411).
 - **Eager materials: 695 KB measured on disk** for the eleven, colour + NormalGL (`js/assets.js`

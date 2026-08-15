@@ -101,7 +101,7 @@ const Classroom = Lazy('Classroom', () => {
       [0, H / 2, RZ, RX * 2, H, Math.PI], [-RX, H / 2, 0, RZ * 2, H, Math.PI / 2],
       [RX, H / 2, 0, RZ * 2, H, -Math.PI / 2], [0, H / 2, -RZ, RX * 2, H, 0],
     ]) wall(x, y, z, w, h, yaw, col.wall,
-      { mode: 4, mat: 'plaster', matScale: 2.4, matAmt: .34 });
+      { mode: 4, mat: 'plaster', matScale: .62, matAmt: .12 });
     // base trim round the room
     for (const [x, z, sx, sz] of [[0, RZ - .04, RX * 2, .08],
                                   [-RX + .04, 0, .08, RZ * 2], [RX - .04, 0, .08, RZ * 2],
@@ -126,10 +126,10 @@ const Classroom = Lazy('Classroom', () => {
     // pale sky and the smudge of the campus gives it depth — the same trick the office uses, so
     // the window reads as outside rather than as a lightbox.
     box(0, .52, -RZ + .10, RX * 2, 1.04, .20, col.wall,
-      { hard: true, gloss: G.paint, mat: 'plaster', matScale: 2.4, matAmt: .26 });
+      { hard: true, gloss: G.paint, mat: 'plaster', matScale: .62, matAmt: .12 });
     box(0, 1.06, -RZ + .16, RX * 2, .06, .30, col.white, { hard: true, gloss: .28 });
     box(0, H - .16, -RZ + .10, RX * 2, .32, .20, col.wall,
-      { hard: true, gloss: G.paint, mat: 'plaster', matScale: 2.4, matAmt: .26 });
+      { hard: true, gloss: G.paint, mat: 'plaster', matScale: .62, matAmt: .12 });
     box(0, 1.56, -RZ + .02, RX * 2 - .3, 1.10, .02, col.sky,
       { hard: true, mode: 1, glow: .07 });
     box(0, 1.18, -RZ + .015, RX * 2 - .3, .46, .02, col.haze,
@@ -363,6 +363,12 @@ const Classroom = Lazy('Classroom', () => {
           {hard:true,gloss:.22});
       }
     }
+    // The collection was detailed but untouchable: give the middle bay one shared interaction
+    // for all three sections, using the existing 看书 action rather than inventing classroom-only rules.
+    thing('书架', SX + .34, 1.30, 0, '书架上有中文书和词典。',
+      'There are Chinese books and dictionaries on the shelves.',
+      '书架 bookshelf. 词典 dictionary. Choose a book and read for an hour.',
+      { focus: [SX + 1.20, 0], reach: 1.35 });
 
     // ================================================================ 班级牌 · 课程表 beside the door
     // Both used to hang at x ≈ 1.5–2.2, which is inside the old full-width board, and both were

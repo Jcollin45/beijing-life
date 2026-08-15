@@ -22,6 +22,7 @@ Perf.init(q => {
   R.setRenderScale(q.scale);
   R.setShadowSize(q.shadow);
   R.setGlyphAssist(q.glyphAssist);
+  R.setAnisotropy(q.aniso);
   // The glow around every lit thing in the game, and the vignette under it. Off on the bottom two
   // tiers, where the frames it costs are frames the machine did not have.
   R.setPost(q.bloom > 0, q.bloom, q.bloom > 0 ? 0.30 : 0);
@@ -53,6 +54,7 @@ const FOV = 0.95;
 // the one you are standing in is the only one the loop touches, so the cost of having five is
 // the cost of the largest one.
 const PLACES = { home: World, street: Street, shop: Shop, pharmacy: Pharmacy, market: Market, diner: Diner,
+                 firestation: FireStation,
                  bank: Bank,
                  hospital: Hospital, hospital2: Hospital2, hospital3: Hospital3, hospital4: Hospital4,
                  hotelB1:HotelB1,hotel:Hotel,hotel2:Hotel2,hotel3:Hotel3,hotel4:Hotel4,
@@ -98,22 +100,265 @@ const P = { x: 2.30, z: 2.05, yaw: Math.PI * 0.85, vx: 0, vz: 0, phase: 0, speed
 // itself: something to do with the space bar, and a body that leaves the floor when you press it.
 const JUMP_V = 3.15, JUMP_G = 11.0;
 // The camera keeps a target and a damped current value, so drags, wheel steps and
-// keyboard orbit all resolve into one smooth motion instead of snapping per event.
+// keyboard orbit all resolve into one smooth motion instead of snapping per event. Direct look
+// input never coasts after release: in a small room that uncommanded extra turn is disorienting.
 const CAM = {
   yaw: Math.PI * 0.85, pitch: 0.34, dist: 4.4,
   tYaw: Math.PI * 0.85, tPitch: 0.34, tDist: 4.4,
   fx: 2.30, fz: 2.05,      // smoothed look-at point, trails the player slightly
   lookY: 1.10,             // height the camera aims at, roughly the player's chest
   fov: FOV,                // eased per place: a room frames tighter than a boulevard
-  spin: 0,                 // leftover rad/s after a flick, decays on its own
+  spin: 0,                 // reset latch for camera hand-offs; direct look never adds momentum
   assist: null,            // hospital room whose one-time doorway framing is currently armed
   slide: 0, rise: 0,       // obstruction recovery, applied to the eye without stealing orbit input
+  wallYaw: Math.PI * 0.85, // resolved full-radius shoulder angle at an authored deep shell
+  wallActive: false,
+  wallSide: 1,             // stable side for a direct load or a moving obstruction recovery
+  wallGoal: Math.PI * 0.85,// clear tangent approached when a corner cannot be taken in one frame
+  wallTransition: false,   // bounded activation/release; never teleport between shoulder lobes
+  wallReady: false,        // false on a place/title cut, where no previous rendered eye exists
+  wallDist: 4.4,           // rendered Street radius; may safely trail an outward wheel request
+  wallMode: null,          // explicit local track/pin state; the narrow solver never crosses lobes
+  wallFocusX: 2.30, wallFocusY: 1.10, wallFocusZ: 2.05,
+  wallFocusReady: false,
+  wallEyeX: 0, wallEyeY: 0, wallEyeZ: 0, wallEyeReady: false,
+  wallPitch: 0.34,         // rendered Street pitch; invalid pitch handoffs retain the safe value
+  wallPitchPinned: false,
+  wallModalCut: false,     // explicit Street dialogue cut; place/title cuts use wallReady instead
+  collisionDist: 4.4,      // last safe ray length; collision release owns a separate bounded dolly
+  collisionReady: false,
+  wallRadiusActive: false,
+  viewYaw: Math.PI * 0.85, // final sightline; camera-relative walking follows what is on screen
 };
+function resetStreetCameraState(state, yaw, dist, pitch, x, y, z) {
+  state.wallYaw = state.wallGoal = state.viewYaw = yaw;
+  state.wallDist = dist; state.wallPitch = pitch;
+  state.wallFocusX = x; state.wallFocusY = y; state.wallFocusZ = z;
+  state.wallActive = state.wallTransition = state.wallReady = false;
+  state.wallFocusReady = state.wallPitchPinned = state.wallModalCut = false;
+  state.wallEyeReady = false;
+  state.wallMode = null; state.wallSide = 1;
+  state.collisionReady = state.wallRadiusActive = false;
+  state.slide=state.rise=0;
+  return state;
+}
+function resetStreetCameraTopology(yaw, dist, pitch, x, y, z) {
+  resetStreetCameraState(CAM, yaw, dist, pitch, x, y, z);
+}
+function nearestCameraYaw(goal, current) {
+  if (!Number.isFinite(current)) return goal;
+  const delta=((goal-current+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;
+  return current+delta;
+}
+function transitionStreetDialogueCamera(state,action,camera,frame){
+  if(action==='open-failed'){
+    state.tYaw=state.wallReady?state.wallYaw:nearestCameraYaw(camera.yaw,state.yaw);
+    state.tPitch=state.wallReady?state.wallPitch:camera.pitch;
+    state.tDist=state.wallReady?state.wallDist:camera.dist;
+    state.lookY=camera.lookY;state.wallMode='modal-unframed';state.wallModalCut=false;
+  }else if(action==='resize-success'){
+    state.tPitch=frame.pitch;state.tDist=frame.dist;state.lookY=frame.lookY;
+  }else if(action==='resize-failed'){
+    state.wallMode='modal-unframed';state.wallModalCut=false;
+  }else if(action==='close'){
+    state.tYaw=nearestCameraYaw(camera.yaw,state.yaw);
+    state.tPitch=camera.pitch;state.tDist=camera.dist;state.lookY=camera.lookY;state.spin=0;
+    state.wallModalCut=false;state.wallMode='focus-pin';state.wallActive=true;
+    state.wallGoal=state.wallYaw;state.wallTransition=false;
+  }
+  return state;
+}
+function commitStreetModalCamera(state, foundYaw, frameYaw, tx, ty, tz, pitch, radius,
+                                  ex, ey, ez) {
+  const cutYaw=nearestCameraYaw(foundYaw,state.tYaw);
+  state.fx=state.wallFocusX=tx;state.wallFocusY=ty;
+  state.fz=state.wallFocusZ=tz;state.wallFocusReady=true;
+  state.tYaw=state.yaw=state.wallYaw=state.wallGoal=state.viewYaw=cutYaw;
+  state.pitch=state.wallPitch=pitch;state.dist=state.wallDist=radius;
+  state.wallEyeX=ex;state.wallEyeY=ey;state.wallEyeZ=ez;
+  state.wallEyeReady=state.wallReady=true;
+  state.wallActive=Math.abs(nearestCameraYaw(foundYaw,frameYaw)-frameYaw)>1e-9;
+  state.wallTransition=false;state.wallMode='modal-cut';state.wallModalCut=true;
+  state.collisionDist=radius;state.collisionReady=true;state.wallRadiusActive=false;
+  // A proved modal shot is atomic. Recovery offsets from the preceding orbit cannot be composed
+  // onto it without invalidating both endpoint clearance and speaker framing.
+  state.slide=state.rise=0;
+  return cutYaw;
+}
+function stepStreetDialogueResizeState(state, margin, now, result) {
+  const changed=Math.abs(margin-state.aspectMargin)>0.01;
+  if(!changed){
+    if(state.aspectFailedMargin!==null){
+      state.aspectFailedMargin=null;state.aspectRetries=0;state.aspectRetryAt=0;
+    }
+    return false;
+  }
+  const fresh=state.aspectFailedMargin!==margin;
+  const due=fresh||(state.aspectRetries<3&&now>=state.aspectRetryAt);
+  if(result===undefined)return due;
+  if(!due)return false;
+  if(result){
+    state.aspectMargin=margin;state.aspectFailedMargin=null;
+    state.aspectRetries=0;state.aspectRetryAt=0;
+  }else{
+    if(fresh)state.aspectRetries=0;
+    state.aspectFailedMargin=margin;state.aspectRetries++;
+    state.aspectRetryAt=now+250*(1<<Math.min(2,state.aspectRetries-1));
+  }
+  return true;
+}
+// Deterministic, allocation-free Street orbit transition. Geometry stays behind the two supplied
+// callbacks so this exact production function can also be executed against adversarial shells.
+function stepStreetCameraOrbit(state, input, hooks, out) {
+  const minRadius=1.70,radialRate=4,yawRate=1.8,probeStep=Math.PI/360;
+  const requestedRadius=Math.max(minRadius,input.requestedRadius);
+  let radius=state.wallReady&&Number.isFinite(state.wallDist)
+    ?Math.max(minRadius,state.wallDist):requestedRadius;
+  let yaw=state.wallReady&&Number.isFinite(state.wallYaw)?state.wallYaw:input.requestedYaw;
+  let active=!!state.wallActive,mode=null,valid=hooks.clear(yaw,radius,input);
+  out.focusPinned=false;
+  if(!valid){
+    const prefer=state.wallSide<0?-1:1,scan=Math.PI/36;
+    let found=false,foundYaw=yaw,foundSide=prefer;
+    for(let i=1;i<=72&&!found;i++)for(let pass=0;pass<2;pass++){
+      const side=pass? -prefer:prefer,candidate=yaw+side*scan*i;
+      if(!hooks.clear(candidate,radius,input))continue;
+      let blocked=yaw+side*scan*(i-1),clear=candidate;
+      for(let cut=0;cut<16;cut++){
+        const mid=(blocked+clear)*.5;
+        if(hooks.clear(mid,radius,input))clear=mid;else blocked=mid;
+      }
+      const safe=clear+side*Math.PI/1800;
+      foundYaw=hooks.clear(safe,radius,input)?safe:clear;
+      foundSide=side;found=true;break;
+    }
+    if(found&&hooks.chord(foundYaw,radius,state,input)){
+      yaw=foundYaw;state.wallSide=foundSide;valid=true;mode='project';
+    }
+  }
+  if(!valid){
+    mode='invalid-pin';active=true;out.focusPinned=true;
+    yaw=Number.isFinite(state.wallYaw)?state.wallYaw:input.requestedYaw;
+    radius=Math.max(minRadius,Number.isFinite(state.wallDist)?state.wallDist:requestedRadius);
+  }else{
+    const radialDelta=requestedRadius-radius,radialStep=radialRate*input.dt;
+    if(Math.abs(radialDelta)>1e-7){
+      const nextRadius=radius+Math.max(-radialStep,Math.min(radialStep,radialDelta));
+      if(hooks.clear(yaw,nextRadius,input)&&hooks.chord(yaw,nextRadius,state,input)){
+        radius=nextRadius;mode='radius-track';active=true;
+      }else{mode=radialDelta>0?'zoom-pin':'radius-pin';active=true;}
+    }else if(input.requestHitsOrbit){
+      mode='yaw-pin';active=true;
+    }else{
+      const delta=((input.requestedYaw-yaw+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;
+      const maxYawStep=yawRate*input.dt;
+      const nextYaw=yaw+Math.max(-maxYawStep,Math.min(maxYawStep,delta));
+      const arcDelta=((nextYaw-yaw+Math.PI)%(Math.PI*2)+Math.PI*2)%(Math.PI*2)-Math.PI;
+      const count=Math.max(1,Math.ceil(Math.abs(arcDelta)/probeStep));
+      let arcClear=true;
+      for(let i=0;i<=count;i++)if(!hooks.clear(yaw+arcDelta*i/count,radius,input)){
+        arcClear=false;break;
+      }
+      if(arcClear&&hooks.chord(nextYaw,radius,state,input)){
+        yaw=nextYaw;mode='release';
+        if(Math.abs(delta)<=maxYawStep+1e-9){yaw=input.requestedYaw;active=false;mode=null;}
+        else active=true;
+      }else{mode='yaw-pin';active=true;}
+    }
+  }
+  state.wallYaw=state.wallGoal=yaw;state.wallDist=radius;
+  state.wallActive=active;state.wallMode=mode;
+  state.wallTransition=active&&mode!=='radius-track';
+  out.yaw=yaw;out.radius=radius;out.active=active;out.mode=mode;
+  out.transition=state.wallTransition;out.resolvedYaw=active?yaw:input.requestedYaw;
+  return out;
+}
+function resolveStreetCollisionDistance(state, streetOrbit, walked, rawDistance, dt, epsilon) {
+  if(!streetOrbit){
+    state.collisionReady=false;state.wallRadiusActive=false;
+    return rawDistance;
+  }
+  const distance=walked&&state.collisionReady
+    ?Math.min(rawDistance,state.collisionDist+4*dt):rawDistance;
+  state.wallRadiusActive=rawDistance-distance>epsilon;
+  state.collisionDist=distance;state.collisionReady=true;
+  return distance;
+}
+function commitStreetCameraEye(state, streetOrbit, x, y, z) {
+  if(streetOrbit){
+    state.wallEyeX=x;state.wallEyeY=y;state.wallEyeZ=z;state.wallEyeReady=true;
+  }else state.wallEyeReady=false;
+  state.wallReady=!!streetOrbit;
+  return state.wallReady;
+}
+const streetOrbitStepInput={requestedYaw:0,requestedRadius:0,dt:0,requestHitsOrbit:false,
+  target:null,blockers:null,cp:1,sp:0,pitch:0};
+const streetOrbitStepOutput={yaw:0,radius:0,active:false,mode:null,transition:false,
+  focusPinned:false,resolvedYaw:0};
+const streetOrbitStepHooks={clear:streetOrbitClearAt,chord:streetOrbitProjectionChordClear};
+const streetOrbitDir=[0,0,0],streetOrbitTarget=[0,0,0];
+const streetOrbitEyeA=[0,0,0],streetOrbitEyeB=[0,0,0];
+const streetOrbitPrior={focusX:0,focusY:0,focusZ:0,pitch:0,yaw:0,radius:0,side:1,
+  active:false,mode:null,transition:false};
+function streetOrbitClearAt(yaw,radius,input){
+  streetOrbitDir[0]=-Math.sin(yaw)*input.cp;streetOrbitDir[1]=input.sp;
+  streetOrbitDir[2]=-Math.cos(yaw)*input.cp;
+  return !cameraOrbitEndpointBlocker(input.target,streetOrbitDir,radius,input.blockers)&&
+    cameraBlockLimit(input.target,streetOrbitDir,radius,input.blockers)>=radius-.005;
+}
+function streetOrbitProjectionChordClear(yaw,radius,state,input){
+  const c=Math.cos(input.pitch),s=Math.sin(input.pitch);
+  const dx=-Math.sin(yaw)*c,dy=s,dz=-Math.cos(yaw)*c;
+  const ex=input.target[0]+dx*radius,ey=input.target[1]+dy*radius;
+  const ez=input.target[2]+dz*radius;
+  if(!state.wallEyeReady)return true;
+  if(Math.hypot(ex-state.wallEyeX,ey-state.wallEyeY,ez-state.wallEyeZ)>25.2*input.dt+1e-6)
+    return false;
+  streetOrbitEyeA[0]=state.wallEyeX;streetOrbitEyeA[1]=state.wallEyeY;
+  streetOrbitEyeA[2]=state.wallEyeZ;streetOrbitEyeB[0]=ex;streetOrbitEyeB[1]=ey;
+  streetOrbitEyeB[2]=ez;
+  return cameraEyeChordClear(streetOrbitEyeA,streetOrbitEyeB,input.blockers);
+}
+function snapshotStreetCameraCandidate(state,out){
+  out.focusX=state.wallFocusX;out.focusY=state.wallFocusY;out.focusZ=state.wallFocusZ;
+  out.pitch=state.wallPitch;out.yaw=state.wallYaw;out.radius=state.wallDist;
+  out.side=state.wallSide;out.active=state.wallActive;out.mode=state.wallMode;
+  out.transition=state.wallTransition;return out;
+}
+function rollbackStreetCameraCandidate(state,prior){
+  state.wallFocusX=prior.focusX;state.wallFocusY=prior.focusY;state.wallFocusZ=prior.focusZ;
+  state.wallPitch=prior.pitch;state.wallYaw=state.wallGoal=prior.yaw;
+  state.wallDist=prior.radius;state.wallSide=prior.side;state.wallActive=true;
+  state.wallMode='combined-pin';state.wallTransition=true;
+}
+function proveStreetCameraCandidate(state,prior,target,blockers,dt){
+  if(!state.wallEyeReady)return true;
+  const c=Math.cos(state.wallPitch),s=Math.sin(state.wallPitch),yaw=state.wallYaw;
+  streetOrbitDir[0]=-Math.sin(yaw)*c;streetOrbitDir[1]=s;
+  streetOrbitDir[2]=-Math.cos(yaw)*c;
+  const ex=target[0]+streetOrbitDir[0]*state.wallDist;
+  const ey=target[1]+streetOrbitDir[1]*state.wallDist;
+  const ez=target[2]+streetOrbitDir[2]*state.wallDist;
+  if(cameraOrbitEndpointBlocker(target,streetOrbitDir,state.wallDist,blockers)||
+      cameraBlockLimit(target,streetOrbitDir,state.wallDist,blockers)<state.wallDist-.005||
+      Math.hypot(ex-state.wallEyeX,ey-state.wallEyeY,ez-state.wallEyeZ)>25.2*dt+1e-6){
+    rollbackStreetCameraCandidate(state,prior);return false;
+  }
+  streetOrbitEyeA[0]=state.wallEyeX;streetOrbitEyeA[1]=state.wallEyeY;
+  streetOrbitEyeA[2]=state.wallEyeZ;streetOrbitEyeB[0]=ex;streetOrbitEyeB[1]=ey;
+  streetOrbitEyeB[2]=ez;
+  if(cameraEyeChordClear(streetOrbitEyeA,streetOrbitEyeB,blockers))return true;
+  rollbackStreetCameraCandidate(state,prior);return false;
+}
 const eye = new Float32Array(3);
+const cameraHit = { blocker: null, limit: 0 }; // reused hot-path owner report from cameraBlockLimit
+const officeCameraView = { dir:[0, 0, 0], eye:[0, 0, 0] }; // shared-kernel result, no frame allocation
+const officeCameraBody = [0, 0], officeCameraOptions = { dt:0, floorY:0, wallsOff:false };
 const keys = {};
 // Kept separate from physical keys so lifting a thumb cannot cancel a key still held on a
-// keyboard attached to a tablet. Both maps feed the same movement code below.
-const touchKeys = {};
+// keyboard attached to a tablet. Unlike WASD, a thumbstick has useful distance: the inner ring is
+// a careful indoor walk and the outer ring blends continuously into a run.
+const touchAxes = { x: 0, z: 0, run: 0 };
 // camera basis, rebuilt every frame and reused for cursor picking
 const cam = { fwd: [0, 0, 1], right: [1, 0, 0], up: [0, 1, 0], aspect: 1 };
 const mouse = { x: -1, y: -1, inside: false };
@@ -145,7 +390,17 @@ let sitting = null;
 // decoration: nothing you could buy in a week made a dent in it, so none of the prices meant
 // anything. One shift in the pocket and a fridge with two meals left in it is a position — you
 // can eat for a couple of days, and then you have to go to work.
-let money = 260, day = 1, t0 = performance.now(), frameHold = false;
+// DOMHighResTimeStamp is non-negative and starts at navigation. One trillion milliseconds is
+// more than thirty-one years of one uninterrupted page lifetime, yet remains comfortably below
+// the unsafe/overflow magnitudes diagnostics can pass as ordinary finite Numbers.
+const MAX_FRAME_TIMESTAMP = 1e12;
+// A real rAF clock is monotonic, but an acceptance driver can call frame() with an otherwise valid
+// timestamp years in the future and then return to the browser clock. Treat a gap over one minute
+// as a discontinuity: no game controller needs to integrate a hidden minute in one sample, and a
+// rejected future sample must not strand the logical render clock there for years.
+const MAX_FRAME_FORWARD_GAP = 60_000;
+let money = 260, day = 1, t0 = performance.now(), frameNow = t0,
+    frameTimeReady = true, frameHold = false;
 // 房租, off the top every morning. Without something pulling the other way a wallet only ever
 // fills up and the prices stop being decisions: one shift covers the rent and a day's food with
 // room to spare, so the pressure is gentle, but it is there.
@@ -191,7 +446,7 @@ const stockOf = () => Pantry.meals(day);
 // is a fridge that is empty for every test in the suite — and, more to the point, the starting
 // state of a flat is a fact about the flat and not about the menu in front of it.
 Pantry.seed(day);
-let showBody = true;              // off only from the screenshot harness
+let showBody = true;              // master switch; screenshot harnesses may turn it off
 let drawnProps = 0;               // how many props survived culling, for profiling
 // Scratch for the instanced path: the visible members of one batch, 26 floats each, refilled
 // per batch per frame and grown when a batch outgrows it. One allocation that settles rather
@@ -220,6 +475,9 @@ let hudAcc = 0;                   // HUD refreshes a few times a second, not eve
 
 const $ = s => document.querySelector(s);
 const labelHost = $('#labels');
+const promptEl = $('#prompt'), promptTextEl = $('#promptText');
+const promptUseEl = $('#promptUse'), promptUseTextEl = $('#promptUseText');
+let promptVisible = false, promptWordHTML = '', promptUseHTML = '', promptUseOff = true;
 
 function setSurfaceOpen(selector, open) {
   const el = $(selector);
@@ -228,12 +486,84 @@ function setSurfaceOpen(selector, open) {
   el.inert = !open;
 }
 
+// A modal is not contained merely because it says `aria-modal`: keyboard focus can still tab
+// straight into the live HUD behind it unless the surface owns the focus cycle. Keep that contract
+// in one place for the four game overlays which do not already have their own picker hand-off.
+// `modalReturnTarget` follows an older modal's remembered opener during a modal-to-modal hand-off
+// (notebook -> review card, pause -> phone), so closing the replacement never focuses a hidden
+// close button.
+const MODAL_ROOTS = ['#pause','#card','#talk','#book','#pick','#flightExperience'];
+const modalFocusBack = new Map();
+function modalReturnTarget(node) {
+  for (const selector of MODAL_ROOTS) {
+    const root = $(selector);
+    if (root && node && root.contains(node) && modalFocusBack.has(selector))
+      return modalFocusBack.get(selector);
+  }
+  return node;
+}
+function activeModalRoot() {
+  for (const selector of MODAL_ROOTS) {
+    const root = $(selector);
+    if (root && !root.inert && root.getAttribute('aria-hidden') === 'false') return root;
+  }
+  return null;
+}
+function modalFocusable(root) {
+  return [...root.querySelectorAll('button:not([disabled]),input:not([disabled]),select:not([disabled]),'
+    + 'textarea:not([disabled]),a[href],[role="button"]:not([aria-disabled="true"]),'
+    + '[tabindex]:not([tabindex="-1"])')]
+    .filter(el => !el.hidden && el.getAttribute('aria-hidden') !== 'true' && !el.inert);
+}
+function setModalOpen(selector, open, initialFocus) {
+  const root = $(selector);
+  if (!root) return;
+  if (open) {
+    modalFocusBack.set(selector, modalReturnTarget(document.activeElement));
+    setSurfaceOpen(selector, true);
+    syncGameplayAccessibility();
+    queueMicrotask(() => {
+      if (root.inert) return;
+      const first = initialFocus ? root.querySelector(initialFocus) : null;
+      (first || modalFocusable(root)[0] || root).focus?.({ preventScroll:true });
+    });
+    return;
+  }
+  setSurfaceOpen(selector, false);
+  syncGameplayAccessibility();
+  const back = modalFocusBack.get(selector);
+  queueMicrotask(() => {
+    if (activeModalRoot()) return;
+    if (back && back.isConnected && typeof back.focus === 'function')
+      back.focus({ preventScroll:true });
+  });
+}
+
+// Trap only the boundary keys. Everything between the first and last control keeps the browser's
+// native tab order, including range inputs and dynamically generated answer buttons.
+addEventListener('keydown', e => {
+  if (e.key !== 'Tab') return;
+  const root = activeModalRoot();
+  if (!root) return;
+  const items = modalFocusable(root);
+  if (!items.length) { e.preventDefault(); root.focus?.({ preventScroll:true }); return; }
+  const first = items[0], last = items[items.length - 1], current = document.activeElement;
+  if (e.shiftKey && (current === first || !root.contains(current))) {
+    e.preventDefault(); last.focus({ preventScroll:true });
+  } else if (!e.shiftKey && (current === last || !root.contains(current))) {
+    e.preventDefault(); first.focus({ preventScroll:true });
+  }
+});
+
 // The renderer and HUD are alive behind the title reel, but they are not yet a user interface.
 // Keep that background machinery out of the accessibility tree until PLAY is pressed.
 const GAMEPLAY_SURFACES = ['#hud','#flightStatus','#needs','#goals','#map','#labels',
-  '#doing','#prompt','#toast','#keys','#touchControls'];
+  '#doing','#prompt','#toast','#coach','#keys','#touchControls'];
 function setGameplayAccessible(open) {
   for (const selector of GAMEPLAY_SURFACES) setSurfaceOpen(selector, open);
+}
+function syncGameplayAccessibility() {
+  setGameplayAccessible(started && !activeModalRoot());
 }
 setGameplayAccessible(false);
 
@@ -374,7 +704,8 @@ Lazy.onBuild('Train', () => {
       hz: w.hz, place: 'train', look: w.look, temper: w.temper,
       // The seat's own yaw, so they face the way the seat faces — down the car, not across it —
       // and they keep it when the player walks past. See `faceLock` in updateNPCs.
-      seatY: 0.49, faceLock: true, rider: true, gone: !!w.off,
+      // Fallback before the room resolver runs; the resolver measures the same .625 m cushion.
+      seatY: 0.625, faceLock: true, rider: true, gone: !!w.off,
       // Getting on and off happens inside a nine-second dwell, and at the old 0.86 a passenger
       // crossing the car was still on their feet when the doors shut and had to be snapped into
       // their seat by `settleRiders`. Still slower than the concourse: you shuffle in a carriage.
@@ -1266,6 +1597,24 @@ function initNPC(n, i) {
   // Casting is location-owned, so resolve the location before asking the catalog. Everybody was
   // in the hutong until there were rooms to be in; that remains the fallback for old roster rows.
   n.place = n.place || 'street';
+  // Two places per person. `n.place` is where they belong: authored, constant, and part of the
+  // save key. `n.curPlace` says where they are instead, and is **absent** for everybody who is
+  // where they belong — which is everybody who has no spot naming another room, and everybody who
+  // does but is currently home. `n.roams` records who can ever leave, so a row written before this
+  // existed takes exactly the code path it took before. CITY-LIFE.md 3.1.
+  //
+  // Absent rather than equal-to-`place` is the whole point, and it is not tidiness. Wave 1 set it
+  // here unconditionally, so `npcRoom` never fell through to `n.place` again — and `.audit.js`
+  // isolates a figure for a portrait by writing `q.place='audit-away'` on everybody else at 23
+  // sites. Those writes stopped moving anyone. The harness still exited 0 with `errors: []` and
+  // produced a shot with six figures in it instead of one, which is the worst failure shape there
+  // is: green, and useless. A field that shadows `place` has to be empty in the common case.
+  //
+  // Not `n.here` either: `courier.here` is a shipped boolean with readers in three harnesses and a
+  // setter in .audit.js, and an NPC field of that name overloads it into a permanently truthy place
+  // string. Wave 1 did rename the courier's flag instead and put two harnesses red — the failure is
+  // silent rather than an error, which is exactly why the new field is the one that moves.
+  n.roams = !!(n.spots && n.spots.some(s => s.place && s.place !== n.place));
   // An animal has no face, no wardrobe and no age in its hair — everything `makeLook` derives is
   // about being a person, and none of it has an answer for a penguin. `makeAnimal` is the same
   // idea one table smaller: the species out of `ANIMALS`, plus whatever this individual overrides,
@@ -1439,6 +1788,9 @@ if (typeof MetroCast !== 'undefined') for (const n of MetroCast) NPCS.push(n);
 // files load before data.js/game.js and contribute a static roster without reaching into this
 // file's private addNPC/initNPC functions.
 if (typeof HospitalCast !== 'undefined') for (const n of HospitalCast) NPCS.push(n);
+// Fire-station staff are owned by the station module so their patrol spots stay aligned with
+// its measured apparatus floor, watch desk and crew rooms.
+if (typeof FireStationCast !== 'undefined') for (const n of FireStationCast) NPCS.push(n);
 // The bank currently ships its hall before its recurring staff dialogue, but keeping the same
 // room-owned roster hook makes teller/guard additions safe and costs nothing while it is empty.
 if (typeof BankCast !== 'undefined') for (const n of BankCast) NPCS.push(n);
@@ -1455,6 +1807,10 @@ if (typeof AirportAmbientCast !== 'undefined')
   for (const n of AirportAmbientCast) NPCS.push(n);
 
 NPCS.forEach(initNPC);
+// The clock is already running at boot (14:00, or whatever a save restores before setPlace runs),
+// so a resident whose current spot is in another room must not spend the first frame standing on
+// that room's coordinates inside this one.
+settleResidents();
 
 // Four social stories, all cast from people who were already in the public roster.  Leaders keep
 // their authored routes; followers borrow a small formation offset only during their group's
@@ -1502,11 +1858,10 @@ const SET = { sens: 1, clock: 1, assist: false, fps: true, speech: true, ambienc
   // 3.2 flashes per second on a lit floor in the darkest room in the mall, over the 3/s
   // photosensitivity line, and no setting existed to turn it down.
   motion: 'auto',
-  // Walls down, the way a doll's house is played with. Only the flat's interior partitions carry
-  // the `partition` flag, so the building's own envelope, the floor, the ceiling, the furniture
-  // and the player all stay — you are still enclosed, you can just see in. It is a drawing
-  // setting and nothing else: `hiddenProp` is consulted from the three paint loops only, and the
-  // colliders come from `A.stop`, which this never touches. A wall you cannot see still stops you.
+  // Walls down, the way a doll's house is played with. Supported interiors mark their upper
+  // partitions (and, where an overview rises above a boxed soffit, that soffit's render pieces),
+  // while the floor, furniture, player and every collider stay. It is a drawing setting and
+  // nothing else: a wall you cannot see still stops you walking through it.
   wallsOff: false,
   // Not a setting about playing the game — a setting about testing it. It lives here rather than
   // in the save so that wiping the save does not silently switch it off mid-session, and so that
@@ -1514,6 +1869,17 @@ const SET = { sens: 1, clock: 1, assist: false, fps: true, speech: true, ambienc
   tester: false };
 try { Object.assign(SET, JSON.parse(localStorage.getItem(SETKEY)) || {}); }
 catch (e) { /* nothing saved yet, or storage is blocked */ }
+// Settings live outside the main save and can outlast several game versions. Treat the stored
+// object as input, not as trusted state: a string in `sens` used to reach `.toFixed()` when the
+// pause sheet opened and take the whole settings UI down, while the string "false" in `tester`
+// was truthy enough to enable the unlimited purse.
+SET.sens = Number.isFinite(SET.sens) ? clamp(SET.sens, .40, 2.20) : 1;
+SET.clock = Number.isFinite(SET.clock) ? clamp(SET.clock, .25, 3) : 1;
+SET.quality = Number.isSafeInteger(SET.quality) && SET.quality >= -1 &&
+  SET.quality < Perf.levels.length ? SET.quality : -1;
+for (const key of ['assist','fps','speech','ambience','wallsOff','tester'])
+  SET[key] = SET[key] === true;
+if (!['auto','reduced','full'].includes(SET.motion)) SET.motion = 'auto';
 
 // ---------------------------------------------------------------- the tester's wallet
 // Unlimited money, so the half of the game that sits behind a price can be reached without first
@@ -1569,11 +1935,17 @@ function applySettings() {
 function makeLabel(th) {
   const d = document.createElement('div');
   d.className = 'lbl';
+  d.setAttribute('role', 'button');
+  d.tabIndex = -1; // nearby interactions own keyboard focus; do not add hundreds of tab stops
   d.setAttribute('aria-hidden', 'true');
   d.innerHTML = '<div class="hz"></div><div class="py"></div><div class="en"></div>';
   // the label is a button — but a press that travels is still a camera drag,
   // so it goes through exactly the same press pipeline as the canvas
   d.addEventListener('pointerdown', e => beginPress(e, th));
+  d.addEventListener('click', e => {
+    // Assistive technology dispatches a zero-detail click without a pointerdown.
+    if (e.detail === 0 && !worldInputLocked()) openWord(th.hz);
+  });
   d.addEventListener('pointerenter', () => { hoverLabel = th; });
   d.addEventListener('pointerleave', () => { if (hoverLabel === th) hoverLabel = null; });
   labelHost.appendChild(d);
@@ -1592,24 +1964,56 @@ function makeLabel(th) {
 // This is not caching a computation: the arithmetic still runs every frame, and the label still
 // follows the object exactly as before. It is only the DOM write that is skipped when it would
 // change nothing.
+// `opacity:0` hides a label from the eye and from nothing else. Measured in `street`: 741 of the
+// 748 label elements were invisible and all 748 were still in the layout and paint trees, and the
+// renderer's main thread spent 407 ms of a 5.6 s window in Layout with the overlay present against
+// 56 ms with it gone (Chrome trace, `.reports/labels-reshape.md`). So a hidden label leaves the
+// layout tree as well, once its fade has finished — `display:none` costs one more cached write on
+// the frame a label stops being a candidate, and nothing at all on the frames in between.
+//
+// The fade is why this is two-stage rather than one line. `display` is not an animatable property:
+// hiding in the same frame the opacity drops would cut the 0.16 s fade-out, and showing in the
+// same frame the opacity rises would cut the fade-in, because an element that was `display:none`
+// has no previous computed style for the transition to run from. So the fade-out gets its 200 ms
+// before the element leaves layout, and a label comes back into layout at zero and rises on the
+// next frame. Both fades survive; a label appears one frame (16 ms) later than it used to.
 function labelState(th) {
-  return th._lb || (th._lb = { op: -1, l: '', t: '', pe: '', ah: 'true', near: null });
+  return th._lb || (th._lb = { op: -1, l: '', t: '', pe: '', ah: 'true', near: null, d: '', fade: 0 });
 }
+// Labels part-way through their fade-out, waiting to leave the layout tree. The deferred
+// `display:none` is written by a LATER call to `labelHide`, and most callers make one: the
+// per-frame loop runs over every thing in the room you are standing in. The sweep in `setPlace`
+// does not — it calls `labelHide` once per thing and that thing is then out of `scene.things` for
+// good, so a label that was on screen when you walked out would wait for a second call that never
+// comes and stay in the layout tree for the rest of the session. Draining this set once a frame is
+// what lets the fade-out play for those too, instead of cutting it on the way out of a room.
+// Never more than a handful of entries: only labels inside their 200 ms window are in it.
+const labelFading = new Set();
 function labelHide(th) {
   const s = labelState(th);
-  if (s.op === 0 && s.pe === 'none' && s.ah === 'true') return;
+  if (s.op === 0 && s.pe === 'none' && s.ah === 'true' && s.d === 'none') return;
   if (!th.el) return;
-  if (s.op !== 0) th.el.style.opacity = s.op = 0;
+  // A label that has never been shown has nothing to fade out, and goes straight out of layout.
+  if (s.op !== 0) { const was = s.op; th.el.style.opacity = s.op = 0; if (was > 0) s.fade = t0; }
   if (s.pe !== 'none') th.el.style.pointerEvents = s.pe = 'none';
   if (s.ah !== 'true') { th.el.setAttribute('aria-hidden', 'true'); s.ah = 'true'; }
+  if (s.d === 'none') { labelFading.delete(th); return; }
+  if (t0 - s.fade >= 200) { th.el.style.display = s.d = 'none'; labelFading.delete(th); }
+  else labelFading.add(th);
 }
 function labelShow(th, left, top, op) {
   const s = labelState(th);
   if (!th.el) return;
   const st = th.el.style;
+  // Unconditionally: a label re-shown part-way through its fade-out is still in the set, still in
+  // layout (so the branch below does not fire), and would be hidden again by the next drain.
+  labelFading.delete(th);
   if (s.l !== left) st.left = s.l = left;
   if (s.t !== top) st.top = s.t = top;
-  if (s.op !== op) st.opacity = s.op = op;
+  // Back in the layout tree at zero: the position is already written above, so the frame it spends
+  // invisible is the frame it would have spent at opacity 0 anyway, and the fade starts next frame.
+  if (s.d !== '') { st.display = s.d = ''; st.opacity = s.op = 0; }
+  else if (s.op !== op) st.opacity = s.op = op;
   if (s.pe !== 'auto') st.pointerEvents = s.pe = 'auto';
   if (s.ah !== 'false') { th.el.setAttribute('aria-hidden', 'false'); s.ah = 'false'; }
 }
@@ -1632,6 +2036,7 @@ function paintLabel(th) {
   th.el.querySelector('.hz').textContent = th.hz;
   th.el.querySelector('.py').textContent = st < 2 ? e.py : '';
   th.el.querySelector('.en').textContent = st < 1 ? e.en : '';
+  th.el.setAttribute('aria-label', `${th.hz}${e.py ? `, ${e.py}` : ''}${e.en ? `, ${e.en}` : ''}`);
   th.el.classList.toggle('mastered', st === 2);
 }
 
@@ -1649,6 +2054,12 @@ function adoptThing(placeName, th) {
   if (!thingOf[th.hz]) thingOf[th.hz] = th;
   makeLabel(th);
   paintLabel(th);
+  // Out of the layout tree until something asks for it. A room built while you are standing in a
+  // different one — which is every room, because they build lazily — misses both the per-frame
+  // loop (it walks `scene.things`) and `setPlace`'s sweep (it already ran), so its labels would sit
+  // in the document at `opacity:0` for the rest of the session having never been through
+  // `labelHide` once. Measured: 5-7 such labels per room change in `street`.
+  labelHide(th);
 }
 
 function adopt(placeName) {
@@ -1685,7 +2096,7 @@ function setPause(on) {
   if (paused === on) return;
   paused = on;
   $('#pause').classList.toggle('on', paused);
-  setSurfaceOpen('#pause', paused);
+  setModalOpen('#pause', paused, '#pResume');
   // The arrival announcement follows the same clock as the train. Suspending its AudioContext
   // here keeps a pause from letting the voice finish while the open-door timer stands still.
   TrainAudio.pause(paused);
@@ -1694,6 +2105,7 @@ function setPause(on) {
   if (paused) {
     for (const k in keys) keys[k] = false;
     resetTouchMove();
+    cancelPress();
   }
   if (paused) syncSettings();
   else { resetConfirm(); newGameConfirm(); }
@@ -1703,7 +2115,8 @@ function setPause(on) {
 const qSeg = $('#setQ');
 function syncSettings() {
   qSeg.innerHTML = [{ name:'自动', en:'auto' }].concat(Perf.levels)
-    .map((l, i) => `<button data-q="${i - 1}" title="${l.en}">${l.name}</button>`).join('');
+    .map((l, i) => `<button type="button" data-q="${i - 1}" title="${l.en}"` +
+      ` aria-pressed="${i - 1 === SET.quality}">${l.name}</button>`).join('');
   qSeg.querySelectorAll('button').forEach(b => {
     b.classList.toggle('on', +b.dataset.q === SET.quality);
     b.onclick = () => {
@@ -1711,15 +2124,35 @@ function syncSettings() {
       applySettings(); saveSettings(); syncSettings();
     };
   });
+  const motionSeg = $('#setMotion');
+  if (motionSeg) {
+    motionSeg.innerHTML = [
+      ['auto','自动','follow system'], ['reduced','减少','reduced'], ['full','完整','full'],
+    ].map(([key, name, en]) => `<button type="button" data-motion="${key}" title="${en}"` +
+      ` aria-pressed="${key === SET.motion}">${name}</button>`).join('');
+    motionSeg.querySelectorAll('button').forEach(b => {
+      b.classList.toggle('on', b.dataset.motion === SET.motion);
+      b.onclick = () => {
+        SET.motion = b.dataset.motion;
+        if (window.MotionSafety && window.MotionSafety.invalidate) window.MotionSafety.invalidate();
+        saveSettings(); syncSettings();
+      };
+    });
+  }
   $('#setSens').value = Math.round(SET.sens * 100);
   $('#setSensV').textContent = SET.sens.toFixed(2).replace(/0$/, '') + '×';
   $('#setClock').value = Math.round(SET.clock * 100);
   $('#setClockV').textContent = SET.clock.toFixed(2).replace(/0$/, '') + '×';
-  $('#setAssist').classList.toggle('on', SET.assist);
-  $('#setSpeech').classList.toggle('on', SET.speech);
-  $('#setAmbience').classList.toggle('on', SET.ambience);
-  $('#setFps').classList.toggle('on', SET.fps);
-  $('#setWalls').classList.toggle('on', SET.wallsOff);
+  $('#setSens').setAttribute('aria-valuetext', `${SET.sens.toFixed(2).replace(/0$/, '')} times`);
+  $('#setClock').setAttribute('aria-valuetext', `${SET.clock.toFixed(2).replace(/0$/, '')} times`);
+  for (const [id, on] of [['#setAssist',SET.assist],['#setSpeech',SET.speech],
+    ['#setAmbience',SET.ambience],['#setFps',SET.fps],['#setWalls',SET.wallsOff],
+    ['#setType',Vocab.typing()],['#setSurvive',Survive.mode === 'real']]) {
+    const button = $(id);
+    if (!button) continue;
+    button.classList.toggle('on', on);
+    button.setAttribute('aria-pressed', String(on));
+  }
 }
 
 function bindRange(id, key, after) {
@@ -1741,6 +2174,45 @@ function bindToggle(id, key, after) {
 }
 bindToggle('#setAssist', 'assist');
 bindToggle('#setSpeech', 'speech');
+// 打字 — typed production. The flag itself lives in js/vocab.js and persists its own key, so this
+// is only the switch, and the row is built here rather than in index.html so that one lane owns
+// the whole feature. Default on; off, the recall check is exactly what it always was.
+{
+  const assistRow = $('#setAssist') && $('#setAssist').closest('.srow');
+  if (assistRow && assistRow.parentNode) {
+    const row = document.createElement('div');
+    row.className = 'srow';
+    row.innerHTML = '<div class="lab"><b>打字</b><span>Once a word is familiar, type its pinyin ' +
+      'instead of picking one of four. Tone numbers are accepted and never required.</span></div>' +
+      '<button class="tog" id="setType" type="button" aria-label="type the pinyin"' +
+      ' aria-pressed="true"></button>';
+    assistRow.parentNode.insertBefore(row, assistRow.nextSibling);
+    row.querySelector('#setType').addEventListener('click', () => {
+      Vocab.setTyping(!Vocab.typing());
+      syncSettings();
+    });
+    // 生存 — how hard the landlord, the hunger and the illness are. Both tables are live in
+    // js/survive.js and 宽松 is fully supported; the setting rides in the save with everything
+    // else survive.js owns, so it does not need a key of its own.
+    const hard = document.createElement('div');
+    hard.className = 'srow';
+    hard.innerHTML = '<div class="lab"><b>生存</b><span>严格 · rent, hunger and illness at full ' +
+      'strength. Off is 宽松 — the same rules with gentler numbers.</span></div>' +
+      '<button class="tog" id="setSurvive" type="button" aria-label="strict survival"' +
+      ' aria-pressed="true"></button>';
+    row.parentNode.insertBefore(hard, row.nextSibling);
+    hard.querySelector('#setSurvive').addEventListener('click', () => {
+      Survive.mode = Survive.mode === 'real' ? 'gentle' : 'real';
+      saveGame();
+      syncSettings();
+      toast(Survive.mode === 'real' ? '严格 · survival at full strength'
+                                    : '宽松 · gentler rent, hunger and illness');
+    });
+    // Both rows are built after the panel was last synced, so paint them now rather than leaving
+    // them looking off until the player happens to open the pause sheet.
+    syncSettings();
+  }
+}
 // The room beds, off at the switch. Ambience is the most personal setting in the game — what reads
 // as a street to one person is a noise to another — so it gets its own toggle rather than being
 // tuned until nobody minds it.
@@ -1768,10 +2240,12 @@ function toggleWalls() {
     // enough to read the plan, short of the fully overhead pose, and pulled back far enough to
     // hold a 12 m plate without losing the figure. A new scene declares `far` and `pitch` and
     // gets an opening shot in proportion to its own footprint.
-    const dhc = dollHouse();
-    if (dhc) { CAM.tPitch = dhc.pitch * 0.814; CAM.tDist = dhc.far * 0.686; }
+    syncDollHouseCamera(place,CAM,true);
   } else if (CAM.wallsWas) {
     CAM.tPitch = CAM.wallsWas.pitch; CAM.tDist = CAM.wallsWas.dist; CAM.wallsWas = null;
+    CAM.dollhouseFocus = null;
+  } else {
+    CAM.dollhouseFocus = null;
   }
   saveSettings(); syncSettings();
   // The panel is over a frozen frame, so say what changed rather than leaving the player to
@@ -1836,6 +2310,9 @@ $('#pNew').addEventListener('click', () => {
   // here or a new game starts with somebody else's fortnight already written in it.
   try { localStorage.removeItem(DIARY_KEY); } catch (_) {}
   try { localStorage.removeItem('bjlife.flightpassport.v1'); } catch (_) {}
+  try { localStorage.removeItem('bjlife.mall.pets.v1'); } catch (_) {}
+  try { localStorage.removeItem('bjlife.mall.optical.v1'); } catch (_) {}
+  try { localStorage.removeItem('bjlife.mall.digital.v1'); } catch (_) {}
   try { Talk.reset(); } catch (_) {}
   Vocab.reset();                          // the words as well: a new game is a new student
   location.reload();
@@ -1845,6 +2322,7 @@ $('#pNew').addEventListener('click', () => {
 // already asking, which is the only reliable moment to teach anything.
 let skyPick = -1;
 $('#sky').addEventListener('click', () => {
+  if (worldInputLocked()) return;
   const w = Weather.now;
   const pair = [w.hz, w.season.hz];
   skyPick = (skyPick + 1) % pair.length;
@@ -1854,7 +2332,10 @@ $('#sky').addEventListener('click', () => {
 // The due count is an invitation, not just telemetry. Keyboard players still have R; pointer and
 // touch players can enter the exact same review flow by pressing the count itself.
 $('#revw').addEventListener('click', () => {
-  if (started && !paused && !cardOpen && !talkOpen) review();
+  if (!worldInputLocked()) review();
+});
+$('#words').addEventListener('click', () => {
+  if (!worldInputLocked()) toggleBook();
 });
 $('#pResume').addEventListener('click', () => setPause(false));
 $('#pBook').addEventListener('click', () => { setPause(false); if (!bookOpen) toggleBook(); });
@@ -1880,6 +2361,16 @@ addEventListener('keydown', e => {
     if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); $('#start').click(); }
     return;
   }
+  // Real controls keep their native keyboard contract. In particular, Space on a focused HUD,
+  // quiz or settings button must activate that button rather than make the player jump. Text
+  // controls own every key except Escape; chooser rows use role=button and provide the same
+  // Enter/Space activation locally, while their arrows still bubble to Pick below.
+  const keyTarget = e.target && typeof e.target.closest === 'function' ? e.target : null;
+  const textControl = keyTarget && keyTarget.closest(
+    'input,select,textarea,[contenteditable]:not([contenteditable="false"])');
+  const nativeAction = keyTarget && keyTarget.closest('button,a[href],[role="button"]');
+  if (e.key !== 'Escape' && (textControl ||
+      (nativeAction && (e.key === 'Enter' || e.key === ' ')))) return;
   // Paused, the only key that does anything is the one that unpauses.
   if (paused) {
     if (e.key === 'Escape' || e.key === 'Enter') { e.preventDefault(); setPause(false); }
@@ -1895,21 +2386,39 @@ addEventListener('keydown', e => {
     if (mk === 'q' || e.key === 'Enter') { e.preventDefault(); Pick.confirm(); return; }
     return;
   }
+  // The seat-back/cockpit screen is a modal too. Its real buttons were already usable by pointer,
+  // but every gameplay shortcut leaked through it; Escape is its one global key while it is open.
+  if (flightExperienceOpen()) {
+    if (e.key === 'Escape') { e.preventDefault(); closeFlightExperience(); }
+    return;
+  }
   // Leave Tab to the browser: the HUD, dialogue choices and settings are real controls and must
-  // remain keyboard reachable. B is the mnemonic notebook shortcut (book / 生词本).
-  if (e.key === 'b' || e.key === 'B') { e.preventDefault(); toggleBook(); return; }
+  // remain keyboard reachable. B is the mnemonic notebook shortcut (book / 生词本); Shift+B is
+  // the building directory while you are inside 十八号楼. Keeping the modifier makes the two
+  // commands reachable instead of letting the earlier notebook branch swallow the directory.
+  if (e.key === 'b' || e.key === 'B') {
+    e.preventDefault();
+    if (e.repeat) return;
+    if (bookOpen) { toggleBook(); return; }
+    if (doing || cardOpen || talkOpen) return;
+    if (e.shiftKey) { if (place === 'home') openBuildingMap(); return; }
+    toggleBook(); return;
+  }
   // P steps through the quality levels by hand and back to automatic, for when you would rather
   // have the sharper picture than the smoother one, or the other way about.
   if (e.key === 'p' || e.key === 'P') {
+    e.preventDefault();
+    if (e.repeat || cardOpen || talkOpen || bookOpen) return;
     Perf.cycle();
     toast(`画质 · quality: ${Perf.auto ? '自动 auto' : Perf.q.en}`);
     return;
   }
-  // V drops the flat's walls, the way a doll's house opens. Paired with the toggle in the pause
+  // V drops a supported interior's walls, the way a doll's house opens. Paired with the pause
   // menu rather than replacing it — the menu is where a player finds it, the key is how they use
   // it once they know. V is free: nothing else in the game claims it.
   if (e.key === 'v' || e.key === 'V') {
     e.preventDefault();
+    if (e.repeat || cardOpen || talkOpen || bookOpen) return;
     toggleWalls();
     return;
   }
@@ -1920,15 +2429,6 @@ addEventListener('keydown', e => {
     } else if (started) setPause(true);   // not over the title screen, which is its own pause
     return;
   }
-  // Shift+4 — the ¥ key is on 4 on a Chinese layout and $ on this one, so whichever keyboard is
-  // under your hands the money key is the money key. Deliberately a shifted key: nothing in the
-  // game uses one, so a learner reaching for the quiz answers 1-4 cannot fall into tester mode,
-  // and no browser has claimed it the way it has claimed most Ctrl combinations.
-  if (e.key === '$' || e.key === '￥' || e.key === '¥') {
-    e.preventDefault(); setTester(!SET.tester); return;
-  }
-  // M for 手机: the phone is in your pocket, so it opens wherever you are standing.
-  if (e.key === 'm' || e.key === 'M') { e.preventDefault(); if (started) openPhone(); return; }
   if (talkOpen && e.key >= '1' && e.key <= '4') {
     e.preventDefault(); reply(+e.key - 1); return;
   }
@@ -1940,21 +2440,33 @@ addEventListener('keydown', e => {
   // you, so neither steals a key from the rest of the game.
   if (talkOpen && k === 'l') { e.preventDefault(); againTalk(); return; }
   if (talkOpen && k === 't') { e.preventDefault(); translateTalk(); return; }
-  if (k === 'e') { e.preventDefault(); talkOpen ? closeTalk() : cardOpen ? closeCard() : interact(); return; }
+  if (k === 'e') {
+    e.preventDefault();
+    talkOpen ? closeTalk() : cardOpen ? closeCard() : bookOpen ? toggleBook() : interact();
+    return;
+  }
+  // A visible modal owns every remaining shortcut. Its dedicated answers, replay/translation and
+  // close keys were handled above; nothing below may steer or mutate the world behind it.
+  if (cardOpen || talkOpen || bookOpen) return;
+  // Shift+4 — the ¥ key is on 4 on a Chinese layout and $ on this one, so whichever keyboard is
+  // under your hands the money key is the money key. Deliberately a shifted key: nothing in the
+  // game uses one, so a learner reaching for the quiz answers 1-4 cannot fall into tester mode,
+  // and no browser has claimed it the way it has claimed most Ctrl combinations.
+  if (e.key === '$' || e.key === '￥' || e.key === '¥') {
+    e.preventDefault(); if (!e.repeat) setTester(!SET.tester); return;
+  }
+  // M for 手机: the phone is in your pocket, so it opens wherever you are standing.
+  if (e.key === 'm' || e.key === 'M') {
+    e.preventDefault(); if (!e.repeat) openPhone(); return;
+  }
   if (k === 'q') { e.preventDefault(); startUse(useThing); return; }
-  if (k === 'r') { e.preventDefault(); if (!cardOpen && !talkOpen) review(); return; }
+  if (k === 'r') { e.preventDefault(); review(); return; }
   if (k === 'f') { e.preventDefault(); recenterCamera(); return; }
   // 465. Tab steps through everything usable within reach, so no fixture ever needs the camera
   // aimed at it — a tap, a switch, a lift button in a row of them. Only while the world has
   // focus: a card, a conversation or a quiz owns Tab for its own rows (item 468).
-  if (k === 'tab' && started && !cardOpen && !talkOpen && !quiz) {
+  if (k === 'tab' && started && !quiz) {
     e.preventDefault(); cycleNear(); return;
-  }
-  // 470. 楼层表 — the whole building on one screen, from anywhere in it.
-  if (k === 'b') {
-    e.preventDefault();
-    if (started && place === 'home' && !cardOpen && !talkOpen) openBuildingMap();
-    return;
   }
   // Space jumps. preventDefault unconditionally, even when `jump()` refuses: the page would
   // otherwise scroll, and if a touch button happens to hold focus the browser would fire its
@@ -1986,6 +2498,15 @@ addEventListener('keyup', e => { keys[e.key.toLowerCase()] = false; });
 addEventListener('blur', () => {
   for (const k in keys) keys[k] = false;
   resetTouchMove();
+  cancelPress();
+});
+document.addEventListener('visibilitychange', () => {
+  if (!document.hidden) return;
+  // Mobile app-switching is not required to dispatch `blur`. Never resume a hidden tab with a
+  // latched key, thumbstick or camera pointer from a finger that no longer exists.
+  for (const k in keys) keys[k] = false;
+  resetTouchMove();
+  cancelPress();
 });
 
 // ---------------------------------------------------------------- touch controls
@@ -1994,35 +2515,49 @@ addEventListener('blur', () => {
 // synthesising KeyboardEvents, so there is no browser-dependent trust or focus behaviour.
 const touchMove = $('#touchMove'), touchThumb = touchMove && touchMove.querySelector('.thumb');
 const touchLook = $('#touchLook'), touchUse = $('#touchUse'), touchReview = $('#touchReview');
-let touchPointer = null;
+let touchPointer = null, touchRect = null;
 
 function resetTouchMove() {
   touchPointer = null;
-  for (const k in touchKeys) touchKeys[k] = false;
+  if (typeof touchRect !== 'undefined') touchRect = null;
+  touchAxes.x = touchAxes.z = touchAxes.run = 0;
   if (touchMove) touchMove.classList.remove('active');
   if (touchThumb) touchThumb.style.transform = 'translate(0px,0px)';
 }
 
+const TOUCH_DEAD = 0.18, TOUCH_RUN_AT = 0.72;
+// Pure thumbstick response, kept independent of DOM coordinates so the live control and the
+// browser-free regression gate exercise the same curve. The radial dead zone cannot bias a
+// diagonal, and both walking strength and run blend are continuous at their thresholds.
+function touchStick(dx, dy, radius) {
+  const d = Math.hypot(dx, dy);
+  if (!(d > 0) || !(radius > 0)) return { x: 0, z: 0, run: 0 };
+  const u = clamp(d / radius, 0, 1);
+  const strength = clamp((u - TOUCH_DEAD) / (1 - TOUCH_DEAD), 0, 1);
+  const run = clamp((u - TOUCH_RUN_AT) / (1 - TOUCH_RUN_AT), 0, 1);
+  return { x: dx / d * strength, z: -dy / d * strength, run };
+}
+
 function steerTouch(e) {
   if (!touchMove) return;
-  const r = touchMove.getBoundingClientRect();
+  const r = touchRect || (touchRect = touchMove.getBoundingClientRect());
   let dx = e.clientX - (r.left + r.width / 2);
   let dy = e.clientY - (r.top + r.height / 2);
   const radius = Math.max(24, r.width * 0.34), d = Math.hypot(dx, dy);
   if (d > radius) { dx *= radius / d; dy *= radius / d; }
   if (touchThumb) touchThumb.style.transform = `translate(${dx.toFixed(1)}px,${dy.toFixed(1)}px)`;
-  const dead = radius * 0.20;
-  touchKeys.a = dx < -dead; touchKeys.d = dx > dead;
-  touchKeys.w = dy < -dead; touchKeys.s = dy > dead;
-  // The outer ring is a natural run gesture and leaves the centre as a careful indoor walk.
-  touchKeys.shift = d > radius * 0.82;
+  const q = touchStick(dx, dy, radius);
+  touchAxes.x = q.x; touchAxes.z = q.z; touchAxes.run = q.run;
 }
 
 if (touchMove) {
   touchMove.addEventListener('pointerdown', e => {
-    if (!started || paused || touchPointer !== null) return;
+    if (worldInputLocked() || touchPointer !== null) return;
     e.preventDefault(); e.stopPropagation();
     touchPointer = e.pointerId;
+    if (typeof touchRect !== 'undefined') touchRect =
+      typeof touchMove.getBoundingClientRect === 'function'
+        ? touchMove.getBoundingClientRect() : { left:0, top:0, width:116, height:116 };
     touchMove.classList.add('active');
     try { touchMove.setPointerCapture(e.pointerId); } catch (_) {}
     steerTouch(e);
@@ -2048,7 +2583,7 @@ if (touchMove) {
 // conditions that zero the walk input, so jumping cannot be the one gesture that reaches through
 // a modal — and `startUse` puts hands on an object, which should not then float away from it.
 function jump() {
-  if (!started || paused || cardOpen || talkOpen || Pick.isOpen) return false;
+  if (worldInputLocked()) return false;
   // `act` is what the body is physically doing — sitting, lying, holding something. `sleepKind`
   // would read better here and is NOT in scope: it is a const inside the draw, and referencing it
   // would throw at runtime while `node --check` passed the file. `act` is the module-level truth.
@@ -2059,10 +2594,18 @@ function jump() {
 }
 
 function touchAction(kind) {
-  if (!started || paused) return;
+  // The look/use button doubles as the established close gesture for the two reading surfaces.
+  // `worldInputLocked()` includes both of them, so this hand-off must happen before the shared
+  // world lock or the close branches immediately below can never be reached on touch.
+  if (kind === 'look' && (talkOpen || cardOpen)) {
+    resetTouchMove();
+    talkOpen ? closeTalk() : closeCard();
+    return;
+  }
+  if (worldInputLocked()) return;
   resetTouchMove();
   if (kind === 'jump') { jump(); return; }
-  if (kind === 'look') { talkOpen ? closeTalk() : cardOpen ? closeCard() : interact(); return; }
+  if (kind === 'look') { interact(); return; }
   if (kind === 'use') { startUse(useThing); return; }
   if (kind === 'review') { if (!cardOpen && !talkOpen) review(); return; }
   if (kind === 'pause') setPause(true);
@@ -2083,21 +2626,40 @@ function paintTouchReady() {
   touchReadySig = sig;
   touchLook.classList.toggle('ready', !!activeThing);
   touchUse.classList.toggle('ready', !!useThing);
+  touchLook.setAttribute('aria-disabled', String(!activeThing));
+  touchUse.setAttribute('aria-disabled', String(!useThing));
 }
 
 // A press is a drag if it travels; otherwise it is a click on whatever is under it.
-let down = false, lx = 0, ly = 0, travel = 0, pressed = null;
-let pressBtn = 0, dragT = 0;
+let down = false, lookPointer = null, lx = 0, ly = 0, travel = 0, pressed = null;
+let pressBtn = 0;
 const DRAG_SLOP = 6;   // px
+
+function cancelPress(e) {
+  if (e && lookPointer !== null && e.pointerId !== lookPointer) return false;
+  down = false; lookPointer = null; pressed = null; CAM.spin = 0;
+  return true;
+}
 
 // Look sensitivity is per-pixel, tuned so the same gesture feels the same at any
 // window size, and finer as you zoom in, where small angles matter more.
 function lookSens() {
-  return 0.0042 * SET.sens * (760 / Math.max(360, cv.clientHeight)) * (0.55 + CAM.tDist / 9);
+  // A room cap changes the distance the player actually sees without overwriting their chosen
+  // zoom. Use that resolved distance here too. The old `CAM.tDist` stayed at 4.4 m in the 1.9 m
+  // study shot, making the tightest room pan about a third faster than a deliberate close zoom.
+  const effectiveDist = dollHouse() ? CAM.tDist
+    : Math.min(CAM.tDist, Number.isFinite(CAM.near) ? CAM.near : CAM.tDist);
+  return 0.0042 * SET.sens * (760 / Math.max(360, R.cssH || cv.clientHeight)) *
+    (0.55 + effectiveDist / 9);
 }
-function orbit(dx, dy) {
+// Ordinary pointer samples are far below these bounds; they exist for a coalesced event after a
+// stalled frame. Seventeen degrees of yaw / thirteen of pitch keeps recovery under the hand
+// without allowing one delayed sample to become a camera whip.
+const MAX_LOOK_YAW_STEP = 0.30, MAX_LOOK_PITCH_STEP = 0.22;
+function orbit(dx, dy, direct = false) {
+  if (!Number.isFinite(dx) || !Number.isFinite(dy)) return;
   const s = lookSens();
-  CAM.tYaw -= dx * s;
+  CAM.tYaw += clamp(-dx * s, -MAX_LOOK_YAW_STEP, MAX_LOOK_YAW_STEP);
   // 512. 1.22 rad is 70 degrees, and the ceiling limiter answers that in a 2.60 m room with a
   // 1.55 m top-down of the player's own head. It is legible as a plan view and it was never
   // chosen as one — the wheel simply ran out of travel there. 1.05 rad is 60 degrees, which is
@@ -2106,68 +2668,143 @@ function orbit(dx, dy) {
   // nearly overhead or the near rooms are read through the far ones; 60 degrees leaves the far half
   // of a 12 m plate behind the near half of it.
   const dh = dollHouse();
-  CAM.tPitch = clamp(CAM.tPitch + dy * s * 0.72, 0.05, dh ? dh.pitch : 1.05);
+  const pitchStep = clamp(dy * s * 0.72, -MAX_LOOK_PITCH_STEP, MAX_LOOK_PITCH_STEP);
+  CAM.tPitch = clamp(CAM.tPitch + pitchStep, 0.05, dh ? dh.pitch : 1.05);
+  // Pointer and trackpad motion already arrive as a stream of small samples. Following those
+  // samples directly keeps the view under the hand and leaves no damped remainder to finish after
+  // release. Scripted framing alone uses the target-only path and the bounded settle below.
+  if (direct) { CAM.yaw = CAM.tYaw; CAM.pitch = CAM.tPitch; }
+}
+const CAMERA_YAW_RATE = 2.40, CAMERA_PITCH_RATE = 1.80, CAMERA_DOLLY_RATE = 2.80;
+// Exponential settling gives small corrections a soft landing, but by itself a large scripted
+// target can move forty degrees in one frame. Add a physical rate ceiling, using the same pure
+// scalar path for angles and distance so automatic handoffs remain frame-rate independent.
+function settleCameraAxis(current, target, ease, maxRate, dt) {
+  if (!Number.isFinite(target)) return Number.isFinite(current) ? current : 0;
+  if (!Number.isFinite(current)) return target;
+  const step = clamp((target - current) * ease, -maxRate * dt, maxRate * dt);
+  return current + step;
+}
+// Manual yaw is intentionally unwrapped: several turns in one direction must not hit a numeric
+// seam. Scripted framing names a conventional angle, so move that request onto the nearest turn
+// rather than assigning it and making the camera unwind every revolution the player accumulated.
+function aimCameraYaw(yaw) {
+  if (Number.isFinite(yaw)) {
+    if (Number.isFinite(CAM.tYaw)) CAM.tYaw += angleDelta(yaw, CAM.tYaw);
+    else CAM.tYaw = yaw;
+  }
+  CAM.spin = 0;
 }
 // Swing back behind the player, whichever way they are facing.
 function recenterCamera() {
-  CAM.tYaw += angleDelta(P.yaw, CAM.tYaw);
+  aimCameraYaw(P.yaw);
   CAM.tPitch = 0.36;
-  CAM.spin = 0;
 }
 
-function trackMouse(e) {
+function resetRoomCameraState() {
+  CAM.near = CAM.rlook = CAM.px = CAM.pz = CAM.plift = undefined;
+}
+
+let canvasRect = { left:0, top:0, width:0, height:0 };
+function refreshCanvasRect() {
   const r = cv.getBoundingClientRect();
-  mouse.x = e.clientX - r.left;
-  mouse.y = e.clientY - r.top;
-  mouse.inside = mouse.x >= 0 && mouse.y >= 0 && mouse.x <= r.width && mouse.y <= r.height;
+  canvasRect = { left:r.left, top:r.top, width:r.width, height:r.height };
+}
+function trackMouse(e) {
+  const w = canvasRect.width || R.cssW || cv.width;
+  const h = canvasRect.height || R.cssH || cv.height;
+  mouse.x = e.clientX - canvasRect.left;
+  mouse.y = e.clientY - canvasRect.top;
+  mouse.inside = mouse.x >= 0 && mouse.y >= 0 && mouse.x <= w && mouse.y <= h;
 }
 
 // `th` is set when the press landed on a world label rather than the canvas
 function beginPress(e, th) {
+  if (worldInputLocked()) { cancelPress(); return; }
+  if (down && e.pointerId !== lookPointer) return;
+  if (e.cancelable) e.preventDefault();
+  lookPointer = e.pointerId;
   down = true; travel = 0; lx = e.clientX; ly = e.clientY; pressed = th || null;
-  pressBtn = e.button; dragT = performance.now(); CAM.spin = 0;   // grab stops any glide
+  pressBtn = e.button; CAM.spin = 0;
+  if (typeof refreshCanvasRect === 'function') refreshCanvasRect();
   trackMouse(e);
   // capture on the canvas even for label presses, so a drag keeps steering the camera
   try { cv.setPointerCapture(e.pointerId); } catch (err) { /* older pointer impls */ }
 }
 
-cv.addEventListener('pointerdown', e => beginPress(e, null));
-cv.addEventListener('pointerup', e => {
+cv.addEventListener('pointerdown', e => {
+  // Preserve the card's established click-outside dismissal without letting that same gesture
+  // select a world object or begin an orbit behind the modal.
+  if (cardOpen && e.button === 0) { e.preventDefault(); closeCard(); cancelPress(); return; }
+  beginPress(e, null);
+});
+
+function endPress(e) {
+  if (e.pointerId !== lookPointer) return;
+  if (worldInputLocked()) { cancelPress(); return; }
   if (down && travel < DRAG_SLOP) {
     CAM.spin = 0;
     if (pressBtn === 0) {                  // right-drag is look-only, never a click
       trackMouse(e);
-      const th = Pick.isOpen ? null : (pressed || pickUnderCursor());
+      const th = pressed || pickUnderCursor();
       if (th) openWord(th.hz);
-      else if (cardOpen) closeCard();
     }
   }
-  down = false; pressed = null;
-});
-cv.addEventListener('pointercancel', () => { down = false; pressed = null; CAM.spin = 0; });
-cv.addEventListener('pointermove', e => {
+  // The camera stops with the gesture. A previous flick could add almost forty degrees of yaw
+  // after release, and diagonal drags curved because only yaw kept moving.
+  cancelPress();
+}
+
+function movePress(e) {
+  if (worldInputLocked()) { cancelPress(); return; }
+  if (e.cancelable) e.preventDefault();
   trackMouse(e);
-  if (!down) return;
+  if (!down || e.pointerId !== lookPointer) return;
   const dx = e.clientX - lx, dy = e.clientY - ly;
   travel += Math.abs(dx) + Math.abs(dy);
   if (travel < DRAG_SLOP) return;          // hold still and it stays a click
-  orbit(dx, dy);
-  // Remember how fast the gesture was moving so a flick keeps gliding on release.
-  const ms = performance.now(), gap = Math.max(8, ms - dragT);
-  CAM.spin = lerp(CAM.spin, clamp(-dx * lookSens() / (gap / 1000), -4.5, 4.5), 0.45);
-  dragT = ms;
+  orbit(dx, dy, true);
+  coachAdvance(1);
   lx = e.clientX; ly = e.clientY;
-});
+}
+
+cv.addEventListener('pointerup', endPress);
+cv.addEventListener('pointercancel', e => cancelPress(e));
+cv.addEventListener('lostpointercapture', e => cancelPress(e));
+cv.addEventListener('pointermove', movePress);
+cv.addEventListener('pointerenter', refreshCanvasRect);
+addEventListener('resize', refreshCanvasRect, { passive:true });
+// Capturing a label press on the canvas is legal in current pointer implementations, but older
+// ones can reject cross-element capture. Window fallbacks keep that press clickable/draggable and,
+// most importantly, cannot leave the camera latched after release. Captured canvas events bubble
+// here too, so the target guard avoids doing the same sample twice.
+addEventListener('pointermove', e => { if (down && e.target !== cv) movePress(e); });
+addEventListener('pointerup', e => { if (down && e.target !== cv) endPress(e); });
+addEventListener('pointercancel', e => { if (down) cancelPress(e); });
 cv.addEventListener('pointerleave', () => { mouse.inside = false; });
 // Right-drag should orbit without the browser menu interrupting it.
 cv.addEventListener('contextmenu', e => e.preventDefault());
+const WHEEL_DELTA_CAP = 120;
+function wheelDeltaPx(value, mode, pageSize) {
+  if (!Number.isFinite(value)) return 0;
+  // DOM_DELTA_LINE and DOM_DELTA_PAGE otherwise make one mouse notch tens of times stronger in
+  // one browser than another. Cap a single event as well: a resumed trackpad stream must not turn
+  // into a one-frame camera whip just because its queued deltas were coalesced.
+  const unit = mode === 1 ? 16 : mode === 2 ? Math.max(360, pageSize || 0) : 1;
+  return clamp(value * unit, -WHEEL_DELTA_CAP, WHEEL_DELTA_CAP);
+}
 cv.addEventListener('wheel', e => {
   e.preventDefault();
+  if (worldInputLocked()) return;
+  const dx = wheelDeltaPx(e.deltaX, e.deltaMode, cv.clientWidth);
+  const dy = wheelDeltaPx(e.deltaY, e.deltaMode, cv.clientHeight);
   // Trackpads: a pinch arrives as ctrl+wheel, and a sideways two-finger scroll orbits.
-  if (!e.ctrlKey && Math.abs(e.deltaX) > Math.abs(e.deltaY) * 1.6) {
-    CAM.tYaw -= e.deltaX * 0.0032; CAM.spin = 0; return;
+  if (!e.ctrlKey && Math.abs(dx) > Math.abs(dy) * 1.6) {
+    // Feed the same path as a drag so room distance, viewport size and the sensitivity setting
+    // apply here too. At the default camera 0.75 preserves the old trackpad scale.
+    orbit(dx * 0.75, 0, true); CAM.spin = 0; return;
   }
-  const step = (e.ctrlKey ? e.deltaY * 0.020 : e.deltaY * 0.0052);
+  const step = (e.ctrlKey ? dy * 0.020 : dy * 0.0052);
   // Proportional zoom: the same gesture moves less when you are already close in.
   // The near limit keeps the whole body, head included, inside the frame.
   // A room may cap its own zoom-out, for the same reason it may set its own camera: 6.8m back in
@@ -2206,10 +2843,12 @@ let hideX = 0, hideZ = 0, room = World.zones[0];
 // in. A zone may declare `cut` when its walkable plate contains something the player can never
 // stand in — the corridor on deck 2 is a 12.00 x 3.00 m plate with two lift shafts owning
 // 1.30 m of its depth. Derefed once a frame beside hideX/hideZ, never per prop.
-let cutRoom = World.zones[0];
+let cutRoom = World.zones[0], cutOwnerRoom = room;
 // The exact point lights submitted this frame. Empty outside diagnostic reads; populated from the
 // already-ranked list, so exposing it adds no renderer walk and lets mall QA prove shop ownership.
 let selectedLightDebug = [];
+let selectedLightDebugScene = null, selectedLightDebugAt = 0;
+const OFFICE_NO_LIGHT_DEBUG=Object.freeze([]);
 // BEGIN MALL_LIGHT_HYSTERESIS
 // The mall owns far more local lamps than the shader's eight slots. Re-sorting them every frame
 // made nearly tied lamps exchange slots as the camera eased across a shopfront, which reads as a
@@ -2399,6 +3038,31 @@ function dollHouse() {
   if (!d) return null;
   return (!d.levels || (scene.level && d.levels.includes(scene.level()))) ? d : null;
 }
+// A persistent walls-down preference must produce the same camera on a direct load or lift
+// transition as it does when V is pressed after arrival. This helper also owns the inverse handoff:
+// an unsupported destination never inherits an office overview, and walls-up never retains a
+// stale building-centre focus. Kept pure enough for the browser-free office gate to execute it.
+function syncDollHouseCamera(activePlace, camera, setting) {
+  const d = setting && Build.DOLLHOUSE[activePlace];
+  if (d) {
+    if (!camera.wallsWas) camera.wallsWas = { pitch:camera.tPitch, dist:camera.tDist };
+    camera.tPitch = d.pitch * .814;
+    camera.tDist = d.far * .686;
+    camera.dollhouseFocus = d.focus || null;
+  } else {
+    camera.dollhouseFocus = null;
+    // A place cut has just supplied its own authored pitch/distance, so the snapshot from the old
+    // coordinate space must not overwrite it if the preference is later switched off here.
+    camera.wallsWas = null;
+  }
+  return d || null;
+}
+// HOME's authored upper-deck cutaway is also its continuous camera-shell contract. Kept pure so
+// the pan gate can exercise the exact level/lift boundary without constructing a scene.
+function homeCutawayCamera(activePlace, activeScene, activeRoom) {
+  return activePlace === 'home' && !!activeScene.cutaway && !!activeScene.level &&
+    activeScene.level() >= 2 && activeRoom.id !== 'lift';
+}
 function hiddenAt(px, pz) {
   return (hideX > 0 && px > cutRoom.x1 - 0.42) || (hideX < 0 && px < cutRoom.x0 + 0.42) ||
          (hideZ > 0 && pz > cutRoom.z1 - 0.42) || (hideZ < 0 && pz < cutRoom.z0 + 0.42);
@@ -2406,6 +3070,9 @@ function hiddenAt(px, pz) {
 // Tagged parts hide as one object, so a fixture never loses half of itself to the cutaway.
 function hiddenProp(p) {
   if (p.renderHidden) return true;
+  // The office camera preserves the requested orbit and briefly folds only the local fixture
+  // parts actually between the eye and the body into the same color/shadow/picking cut contract.
+  if (OfficeCamera.hidden(scene, p)) return true;
   // Another floor's geometry, in a building where every floor stands in the same (x, z). `-1` and
   // `undefined` are never culled: the first is anything riding the lift car, the second is the
   // shell — the building's own envelope belongs to every deck.
@@ -2427,6 +3094,10 @@ function hiddenProp(p) {
   // never cut then either; and `blocker` keeps the eye inside the perimeter (js/hotel.js:181-184),
   // so cutting those walls away was never doing useful work. This restores what the shell had
   // before camera rooms existed. Nothing that does not set the flag can reach this line.
+  const doll=dollHouse();
+  // Only an explicitly registered ceiling owner may reach this path. `dollhouseCeiling` is never
+  // inferred from height/tag, so tall plants, art, furniture and the player remain in the plan.
+  if (doll && doll.ceiling && p.dollhouseCeiling) return true;
   if (p.nocut) return false;
   // Walls down. The flag is set where the partitions are built — js/home-walls.js, and the two
   // room files that stood their own wall before that module existed — so this is a set the room
@@ -2450,8 +3121,8 @@ function hiddenProp(p) {
   // prop's own matrix translation — the same point every untagged prop is already judged by, and
   // the point the prop actually occupies. The group is used only where it is provably local, so
   // a genuine fixture still hides whole and nothing gains a vote it did not have before.
-  const b = p.tag && scene.tagBox[p.tag];
-  return b && b.x0 >= room.x0 && b.x1 <= room.x1 && b.z0 >= room.z0 && b.z1 <= room.z1
+  const b = p.tag && scene.tagBox[p.tag], owner = cutOwnerRoom || room;
+  return b && b.x0 >= owner.x0 && b.x1 <= owner.x1 && b.z0 >= owner.z0 && b.z1 <= owner.z1
     ? hiddenAt(b.cx, b.cz) : hiddenAt(p.m[12], p.m[14]);
 }
 
@@ -2462,9 +3133,11 @@ function hiddenProp(p) {
 // `padOv` overrides every blocker's own pad. The camera never passes it — a building mass wants
 // its 0.4 m of margin. The label occlusion test does: it is asking "is there a wall on this line",
 // not "may the eye go here", and an inflated blocker seals doorways a label can legitimately be
-// read through.
-function cameraBlockLimit(origin, dir, maxDist, blockers, padOv) {
+// read through. `hitOut`, when supplied, names the blocker that furnished the nearest limit; the
+// outdoor solver uses that authored identity to distinguish a deep shell from a compact gate.
+function cameraBlockLimit(origin, dir, maxDist, blockers, padOv, hitOut) {
   let limit = maxDist;
+  if (hitOut) { hitOut.blocker = null; hitOut.limit = maxDist; }
   for (const b of blockers || []) {
     let t0 = 0, t1 = maxDist, hit = true;
     // How far outside its own footprint a blocker pushes the eye. 0.4 m is right for the thing
@@ -2489,11 +3162,95 @@ function cameraBlockLimit(origin, dir, maxDist, blockers, padOv) {
     // (x, z) footprint — see APARTMENT-TENANT.md §3 — so a partition declared without a floor
     // would block the eye on all twelve. Every existing blocker omits it and spans everything,
     // which is what a building mass wants.
-    const eyeY = origin[1] + dir[1] * t0;
-    if (hit && t0 > 0.2 && eyeY < b.top && (b.bot === undefined || eyeY >= b.bot))
-      limit = Math.min(limit, t0 - 0.05);
+    // If the target begins only inside the *padding*, do not let the old 20 cm grace interval
+    // hide a later crossing of the authored physical mass. A target actually inside the mass may
+    // still escape it; otherwise solve against the unpadded entry even when it is very close.
+    let entry=t0;
+    if(hit&&entry<=.2){
+      const insidePhysical=origin[0]>=b.x0&&origin[0]<=b.x1&&
+        origin[2]>=b.z0&&origin[2]<=b.z1&&origin[1]<b.top&&
+        (b.bot===undefined||origin[1]>=b.bot);
+      // An eye already well inside a physical mass may escape. At (or within one micron of) a
+      // face, however, direction distinguishes escape from immediate ingress: inward must clamp
+      // to zero while outward remains free. This closes the former t0<=.2 boundary blind spot.
+      const edge=1e-6,boundaryIngress=insidePhysical&&(
+        Math.abs(origin[0]-b.x0)<=edge&&dir[0]>0||Math.abs(origin[0]-b.x1)<=edge&&dir[0]<0||
+        Math.abs(origin[2]-b.z0)<=edge&&dir[2]>0||Math.abs(origin[2]-b.z1)<=edge&&dir[2]<0);
+      if(insidePhysical&&!boundaryIngress)hit=false;
+      else if(boundaryIngress)entry=0;
+      else{
+        let p0=-Infinity,p1=Infinity,physical=true;
+        for(const [i,lo,hi] of [[0,b.x0,b.x1],[2,b.z0,b.z1]]){
+          if(Math.abs(dir[i])<1e-5){if(origin[i]<lo||origin[i]>hi){physical=false;break;}continue;}
+          let pa=(lo-origin[i])/dir[i],pb=(hi-origin[i])/dir[i];
+          if(pa>pb){const q=pa;pa=pb;pb=q;}p0=Math.max(p0,pa);p1=Math.min(p1,pb);
+          if(p1<p0){physical=false;break;}
+        }
+        if(physical&&p1>edge&&p0<=maxDist)entry=Math.max(0,p0);else hit=false;
+      }
+    }
+    const eyeY = origin[1] + dir[1] * entry;
+    if (hit && entry >= 0 && eyeY < b.top && (b.bot === undefined || eyeY >= b.bot)) {
+      const next = Math.max(0,entry - 0.05);
+      if (next < limit) {
+        limit = next;
+        if (hitOut) hitOut.blocker = b;
+      }
+    }
   }
+  if (hitOut) hitOut.limit = limit;
   return limit;
+}
+
+// `cameraBlockLimit` lets a target already inside physical mass escape, but now distinguishes that
+// from immediate inward travel at a face and from a target sitting only inside camera padding.
+// An authored outdoor orbit shell still has one extra case: when HOME's target enters only the
+// apartment's 40 cm margin, the slab interval starts at zero; an eye that also ends inside that
+// padded shell is not clear even though no physical face lies ahead. Keep that endpoint ownership
+// test out of the general limiter so compact gates and narrow-pad label rays remain unchanged.
+// An endpoint that has genuinely left the padded footprint is allowed, which is exactly how the
+// full-radius tangent slides along the facade.
+function cameraOrbitEndpointBlocker(origin, dir, dist, blockers) {
+  const ex = origin[0] + dir[0] * dist;
+  const ey = origin[1] + dir[1] * dist;
+  const ez = origin[2] + dir[2] * dist;
+  for (const b of blockers || []) {
+    if (b.orbit !== true) continue;
+    const pad = b.pad === undefined ? 0.4 : b.pad;
+    if (ex >= b.x0 - pad && ex <= b.x1 + pad &&
+        ez >= b.z0 - pad && ez <= b.z1 + pad &&
+        ey < b.top && (b.bot === undefined || ey >= b.bot)) return b;
+  }
+  return null;
+}
+
+// Exact segment/AABB rejection for Street camera state handoffs. Endpoints can both be legal while
+// the eye chord between them crosses a facade; every focus/projection step proves this swept path.
+function cameraEyeChordClear(a, b, blockers) {
+  const dx=b[0]-a[0],dy=b[1]-a[1],dz=b[2]-a[2];
+  blockerLoop: for(const blocker of blockers||[]){
+    const pad=blocker.pad===undefined?.4:blocker.pad;
+    let lo=0,hi=1,enter,exit,swap;
+    const x0=blocker.x0-pad,x1=blocker.x1+pad;
+    if(Math.abs(dx)<1e-10){if(a[0]<x0||a[0]>x1)continue;}
+    else{enter=(x0-a[0])/dx;exit=(x1-a[0])/dx;
+      if(enter>exit){swap=enter;enter=exit;exit=swap;}
+      lo=Math.max(lo,enter);hi=Math.min(hi,exit);if(hi<lo)continue;}
+    const z0=blocker.z0-pad,z1=blocker.z1+pad;
+    if(Math.abs(dz)<1e-10){if(a[2]<z0||a[2]>z1)continue;}
+    else{enter=(z0-a[2])/dz;exit=(z1-a[2])/dz;
+      if(enter>exit){swap=enter;enter=exit;exit=swap;}
+      lo=Math.max(lo,enter);hi=Math.min(hi,exit);if(hi<lo)continue;}
+    const y0=blocker.bot===undefined?-Infinity:blocker.bot,y1=blocker.top;
+    if(Math.abs(dy)<1e-10){if(a[1]<y0||a[1]>y1)continue;}
+    else{enter=(y0-a[1])/dy;exit=(y1-a[1])/dy;
+      if(enter>exit){swap=enter;enter=exit;exit=swap;}
+      lo=Math.max(lo,enter);hi=Math.min(hi,exit);if(hi<lo)continue blockerLoop;}
+    // A margin-authored tangent is strictly outside. Ignore a sole t=0/t=1 boundary touch,
+    // while still rejecting any positive-length entry into the padded blocker shell.
+    if(lo<=hi&&hi>1e-7&&lo<1-1e-7)return false;
+  }
+  return true;
 }
 
 // The flat's interior partitions, as occluders for the LABEL test only — never for the camera.
@@ -2558,9 +3315,68 @@ const startButton = $('#start');
 const startFreshButton = $('#startFresh');
 const RECOVERY_SAVEKEY = 'bjlife.save.recovery.v1';
 const RECOVERY_AUTOSTART = 'bjlife.recovery.autostart';
+const ENTRY_SAVEKEY = 'bjlife.save.v1';
+function savedEntry() {
+  try {
+    const s = JSON.parse(localStorage.getItem(ENTRY_SAVEKEY));
+    return s && s.v === 1 && Number.isSafeInteger(s.day) && s.day >= 1 &&
+      Number.isFinite(s.minutes) && Number.isFinite(s.money) && Number.isFinite(s.stock) ? s : null;
+  } catch (_) { return null; }
+}
+const entrySave = savedEntry();
 startButton.disabled = false;
-startButton.textContent = '进入 · PLAY';
-if (startFreshButton) startFreshButton.disabled = false;
+startButton.textContent = entrySave ? `继续 · CONTINUE — DAY ${entrySave.day}` : '进入 · PLAY';
+if (startFreshButton) {
+  startFreshButton.disabled = false;
+  startFreshButton.hidden = !entrySave;
+}
+
+// A three-beat guide teaches the actual interaction rhythm, then disappears for good. It is
+// intentionally triggered by real movement/inspection/use paths below rather than by a timer.
+const COACH_KEY = 'bjlife.coach.v1';
+let coachStep = -1;
+function coachCopy(step) {
+  const touch = matchMedia('(any-pointer:coarse)').matches;
+  return touch ? [
+    ['拖动左侧圆盘移动，拖动画面看四周。','Move with the left stick; drag the world to look.'],
+    ['走近一个名字，点“看看”。','Approach a label, then tap LOOK.'],
+    ['站在能使用的东西旁边，点“使用”。','Stand by something useful, then tap USE.'],
+  ][step] : [
+    ['用 WASD 移动，拖动画面看四周。','Move with WASD; drag the world to look.'],
+    ['走近一个名字，按 E 看看。','Approach a label, then press E.'],
+    ['站在能使用的东西旁边，按 Q。','Stand by something useful, then press Q.'],
+  ][step];
+}
+function renderCoach() {
+  const el = $('#coach');
+  if (!el || coachStep < 0) return;
+  const copy = coachCopy(coachStep);
+  $('#coachText').innerHTML = `${copy[0]}<small>${copy[1]}</small>`;
+  el.querySelectorAll('.coachDots i').forEach((dot, i) => dot.classList.toggle('on', i <= coachStep));
+  el.classList.add('on');
+}
+function finishCoach(skipped = false) {
+  if (coachStep < 0) return;
+  coachStep = -1;
+  $('#coach')?.classList.remove('on');
+  try { localStorage.setItem(COACH_KEY, 'done'); } catch (_) {}
+  if (!skipped) toast('可以自己走了 · <span class="dim">you know the rhythm — explore freely</span>');
+}
+function coachAdvance(next) {
+  if (coachStep < 0 || next <= coachStep) return;
+  if (next >= 3) { finishCoach(false); return; }
+  coachStep = next;
+  renderCoach();
+}
+function maybeStartCoach() {
+  if (entrySave) return;
+  let done = false;
+  try { done = localStorage.getItem(COACH_KEY) === 'done'; } catch (_) {}
+  if (done) return;
+  coachStep = 0;
+  renderCoach();
+}
+$('#coachSkip')?.addEventListener('click', () => finishCoach(true));
 
 function unlockStartAudio() {
   // This click is the browser's permission to make sound later. Nothing plays on the title
@@ -2610,6 +3426,7 @@ function revealPlayableGame() {
   // Brings the HUD up. Everything in #ui is held at zero opacity until this lands, so that the
   // title screen is not sharing the frame with a clock and a line map.
   document.body.classList.add('playing');
+  maybeStartCoach();
 }
 
 function enterFromTitle(autoRecovery = false) {
@@ -2637,7 +3454,20 @@ function enterFromTitle(autoRecovery = false) {
 }
 
 startButton.onclick = () => enterFromTitle(false);
+let freshArmed = false, freshArmTimer = 0;
 if (startFreshButton) startFreshButton.onclick = () => {
+  if (!freshArmed) {
+    freshArmed = true;
+    startFreshButton.classList.add('on');
+    startFreshButton.textContent = '确定？· TAP AGAIN TO RESTART';
+    clearTimeout(freshArmTimer);
+    freshArmTimer = setTimeout(() => {
+      freshArmed = false;
+      startFreshButton.classList.remove('on');
+      startFreshButton.textContent = '重新开始 · START FRESH';
+    }, 4500);
+    return;
+  }
   archiveSavedLife('start-fresh');
   location.reload();
 };
@@ -2760,10 +3590,8 @@ function titleCamera(now) {
 // Put back everything the title moved. Without this, pressing PLAY on the fourth shot starts
 // the game on the Bund at half past seven in the evening with no flight and ¥260.
 function endTitle() {
-  // The rest of the model library, pulled down quietly from here. Boot only fetched what the
-  // five rooms built at load needed; this is everything else, and it has the whole time somebody
-  // spends walking around their flat to arrive before any of it is asked for.
-  if (typeof Assets !== 'undefined') Assets.warm();
+  // Do not warm the model catalogue here. setPlace owns the room-scoped demand gate, so pressing
+  // PLAY cannot make unrelated rooms' models resident for the rest of the session.
   setPlace(BOOT.place, { x: BOOT.x, z: BOOT.z, yaw: BOOT.yaw });
   minutes = BOOT.minutes;
   // And then, if there is one, the life that was already under way — over the top of the defaults,
@@ -2781,6 +3609,8 @@ function endTitle() {
     CAM.tPitch = CAM.pitch = BOOT.camPitch;
     CAM.tDist = CAM.dist = BOOT.camDist;
     CAM.lookY = 1.10;
+    resetStreetCameraTopology(BOOT.camYaw, BOOT.camDist, BOOT.camPitch,
+      P.x, CAM.lookY + (P.lift || 0), P.z);
   }
   if (shotCut) shotCut.style.opacity = 0;
 }
@@ -2790,14 +3620,16 @@ function closeCard() {
   cardOpen = false; cardWord = null; quiz = null; revealTok++;
   act = null;                     // let the body ease back up to standing
   $('#card').classList.remove('on', 'asking');
-  setSurfaceOpen('#card', false);
+  setModalOpen('#card', false);
 }
 
 function fmtIn(ms) {
   const s = Math.round(ms / 1000);
   if (s < 60) return Math.max(1, s) + 's';
   const m = Math.round(s / 60);
-  return m < 60 ? m + 'm' : Math.round(m / 60) + 'h';
+  if (m < 60) return m + 'm';
+  const h = Math.round(m / 60);
+  return h < 48 ? h + 'h' : Math.round(h / 24) + 'd';
 }
 
 function feedback(text, cls) {
@@ -2828,10 +3660,15 @@ function showWord(hz) {
     ['全部提示 · full help', '拼音 · pinyin only', '已掌握 · mastered'][st];
 }
 
-// The recall check: hanzi (or a gloss) and four choices, nothing else.
+// The recall check: hanzi (or a gloss) and four choices, nothing else — unless the word has been
+// met often enough to be produced rather than recognised, in which case there are no choices at
+// all and you type it. `wantsType` is the whole gate: with the typing setting off it is never
+// true, and `quiz(hz, 'type')` hands back an ordinary four-option card anyway.
 function ask(hz) {
-  const q = Vocab.quiz(hz);
-  if (!q || q.options.length < 2) { showWord(hz); return; }
+  const q = Vocab.quiz(hz, Vocab.wantsType(hz) ? 'type' : undefined);
+  if (!q) { showWord(hz); return; }
+  if (q.kind === 'type') { askTyped(hz, q); return; }
+  if (!q.options || q.options.length < 2) { showWord(hz); return; }
   quiz = { hz, q, answered: false };
   const c = $('#card');
   c.classList.add('asking');
@@ -2855,7 +3692,6 @@ function answer(i) {
   if (!quiz || quiz.answered) return;
   quiz.answered = true;
   const { hz, q } = quiz;
-  const e = Vocab.get(hz);
   const correct = i === q.answer;
 
   const opts = $('#card .opts');
@@ -2864,11 +3700,84 @@ function answer(i) {
   if (btns[q.answer]) btns[q.answer].classList.add('good');
   if (!correct && btns[i]) btns[i].classList.add('bad');
 
-  const res = Vocab.grade(hz, correct);
+  settle(hz, correct, Vocab.grade(hz, correct), '');
+}
+
+// 打出拼音. The same card with the choices taken away: production, which is the one thing four
+// buttons can never test. Tone digits are accepted and never required — nihao, ni3hao3 and nǐhǎo
+// are one answer.
+function askTyped(hz, q) {
+  quiz = { hz, q, answered: false, typed: true };
+  const c = $('#card');
+  c.classList.add('asking');
+  c.querySelector('.hz').textContent = '？';
+  c.querySelector('.py').textContent = '';
+  c.querySelector('.en').textContent = '拼写 · type it';
+  c.querySelector('.qh').textContent = q.hint;
+  const qp = c.querySelector('.qp');
+  qp.textContent = q.prompt;
+  qp.className = 'qp small';
+  const opts = c.querySelector('.opts');
+  opts.style.pointerEvents = '';
+  // Autocorrect is the enemy here: an autocapitalising keyboard is harmless because case is
+  // normalised away, but a phone helpfully turning `nihao` into a proper noun is a wrong answer
+  // the player never typed.
+  opts.innerHTML =
+    `<input class="typed" id="typedIn" type="text" autocomplete="off" autocapitalize="off"` +
+    ` autocorrect="off" spellcheck="false" aria-label="type the pinyin"` +
+    ` placeholder="nihao / ni3hao3 / nǐhǎo"` +
+    ` style="width:100%;box-sizing:border-box;padding:11px 13px;font:inherit;font-size:17px;` +
+    `letter-spacing:.02em;color:inherit;background:rgba(255,255,255,.06);` +
+    `border:1px solid rgba(255,255,255,.22);border-radius:9px;outline:none">` +
+    `<button class="opt" id="typedGo" type="button" style="margin-top:8px">` +
+    `<span class="txt">回答 · answer</span></button>`;
+  const input = opts.querySelector('#typedIn');
+  const go = () => answerTyped(input.value);
+  opts.querySelector('#typedGo').onclick = go;
+  input.addEventListener('keydown', e => {
+    if (e.key === 'Enter') { e.preventDefault(); go(); }
+  });
+  input.focus();
+  feedback('');
+}
+
+function answerTyped(text) {
+  if (!quiz || quiz.answered) return;
+  const said = String(text == null ? '' : text).trim();
+  if (!said) return;                    // a stray Enter must not spend a schedule
+  quiz.answered = true;
+  const { hz } = quiz;
+  const opts = $('#card .opts');
+  opts.style.pointerEvents = 'none';
+  const wasProduced = Vocab.produced(hz);
+  // gradeTyped grades AND moves the schedule. Never call Vocab.grade after it.
+  const res = Vocab.gradeTyped(hz, said);
+  if (!res) { quiz = null; showWord(hz); return; }
+
+  // Three states, three messages. `null` is not a failure: somebody who types `nihao` knows the
+  // word, and telling them off for it is exactly what this feature must not do.
+  let tone = '';
+  if (res.correct) {
+    const tones = Vocab.toneOf(hz);
+    if (res.toneCorrect === true) tone = ' 声调也对 · tones right too.';
+    else if (res.toneCorrect === false)
+      tone = ` 声调不对 · tones: <b>${res.expected}</b>${tones.length ? ` (${tones.join('-')})` : ''}.`;
+    else if (tones.length)
+      tone = ` 声调 · <b>${res.expected}</b> (${tones.join('-')}) — tones are optional here.`;
+  }
+  if (!wasProduced && Vocab.produced(hz))
+    toast(`会写了 · <span class="hz">${hz}</span> &nbsp;you can produce this one now`);
+  settle(hz, res.correct, res, tone);
+}
+
+// Both answer paths end the same way: the schedule has already moved, so say what it did and then
+// open the word back up. `extra` is the line only a typed answer has.
+function settle(hz, correct, res, extra) {
+  const e = Vocab.get(hz);
   refreshUI();
 
   if (correct) {
-    if (res.retired) toast(`记住了 · <span class="hz">${hz}</span> &nbsp;retired from review`);
+    if (res.retired) toast(`记住了 · <span class="hz">${hz}</span> &nbsp;now in long-term review`);
     else if (res.promoted) toast(res.stage === 2
       ? `已掌握 · <span class="hz">${hz}</span> &nbsp;the game stops translating it`
       : `进步 · <span class="hz">${hz}</span> &nbsp;English hidden from now on`);
@@ -2882,9 +3791,10 @@ function answer(i) {
     if (tok !== revealTok || !cardOpen || cardWord !== hz) return;
     quiz = null;
     showWord(hz);
-    feedback(correct
+    feedback((correct
       ? `对了 · correct. Next check in ${fmtIn(res.nextIn)}.`
-      : `不对 · <b>${hz}</b> is ${e.py} — ${e.en}. It comes back in ${fmtIn(res.nextIn)}.`,
+      : `不对 · <b>${hz}</b> is ${e.py} — ${e.en}. It comes back in ${fmtIn(res.nextIn)}.`)
+      + (extra || ''),
       correct ? 'win' : 'lose');
   }, correct ? 500 : 1100);
 }
@@ -2892,13 +3802,15 @@ function answer(i) {
 // Every route into the card goes through here.
 function openWord(hz) {
   const e = Vocab.get(hz);
-  if (!e || doing) return;      // an action owns the body until it ends
+  if (!e || doing || paused || talkOpen || bookOpen || Pick.isOpen ||
+      flightExperienceOpen()) return;      // an action or another modal owns the body/UI
   revealTok++;
   quiz = null;
   cardWord = hz;
   cardOpen = true;
   $('#card').classList.add('on');
-  setSurfaceOpen('#card', true);
+  setModalOpen('#card', true, '#cardClose');
+  coachAdvance(2);
 
   // only play a physical interaction when you are actually standing next to it
   // (clicking something across the room should not teleport you into it)
@@ -2909,11 +3821,11 @@ function openWord(hz) {
     showWord(hz);
     feedback('新词 · first meeting. It will come back for a recall check shortly.');
     toast(`新词 · new word &nbsp;<span class="hz">${hz}</span> &nbsp;${e.py} — ${e.en}`);
-  } else if (Vocab.retired(hz)) {
-    showWord(hz);
-    feedback('记住了 · this one is yours. No more checks.', 'win');
   } else if (Vocab.isDue(hz)) {
     ask(hz);
+  } else if (Vocab.retired(hz)) {
+    showWord(hz);
+    feedback(`已掌握 · mastered. A light refresher returns in ${fmtIn(Vocab.dueIn(hz))}.`, 'win');
   } else {
     showWord(hz);
     feedback(`下次复习 · next check in ${fmtIn(Vocab.dueIn(hz))}. Looking again is free; recalling is what counts.`);
@@ -2948,6 +3860,11 @@ function review() {
 // vocabulary has earned: `sentenceHTML` puts pinyin over what you have not mastered and leaves the
 // rest bare. The English sits behind a button, because a translation you needed and a translation
 // you did not are two different pieces of evidence about the same sentence.
+function conversationMargin() {
+  const cssW = R.cssW || cv.clientWidth || 0, cssH = R.cssH || cv.clientHeight || 1;
+  const halfHFov = Math.atan(Math.tan(0.82 / 2) * cssW / Math.max(1, cssH));
+  return cssW >= 980 && halfHFov >= 0.48 ? 1.18 : 0.34;
+}
 function conversationFrame(n) {
   const dx = n.x - P.x, dz = n.z - P.z, near = Math.max(0.5, Math.hypot(dx, dz));
   const yaw = near > 0.06 ? Math.atan2(dx, dz) : P.yaw;
@@ -2957,30 +3874,68 @@ function conversationFrame(n) {
   // 1.18 m puts the whole head-and-shoulders silhouette in the 300 px gutter at 1280 wide.
   // At 0.90 the eye line landed correctly but the dialogue card still covered half the face —
   // technically composed, visually no better than leaving the ordinary follow camera in place.
-  const margin = (R.cssW || cv.clientWidth || 0) >= 980 ? 1.18 : 0.34;
+  const margin = conversationMargin();
   const rightX = -Math.cos(yaw), rightZ = Math.sin(yaw);
   return {
     focus: [n.x + rightX * margin, n.z + rightZ * margin],
-    yaw, pitch: 0.16, dist: clamp(3.08 + near * 0.18, 3.20, 3.58), lookY: 1.38,
+    yaw, pitch: 0.16, dist: clamp(3.08 + near * 0.18, 3.20, 3.58), lookY: 1.38, margin,
   };
 }
+function cutStreetTalkCamera(n, frame) {
+  if (place !== 'street' || !scene || !scene.blockers || !scene.blockers.length) return false;
+  const target=[frame.focus[0],frame.lookY+(P.lift||0),frame.focus[1]];
+  const cp=Math.cos(frame.pitch),sp=Math.sin(frame.pitch),radius=frame.dist;
+  const candidateClear=yaw=>{
+    const q=[-Math.sin(yaw)*cp,sp,-Math.cos(yaw)*cp];
+    if(cameraOrbitEndpointBlocker(target,q,radius,scene.blockers)||
+        cameraBlockLimit(target,q,radius,scene.blockers)<radius-.005)return null;
+    const ex=target[0]+q[0]*radius,ey=target[1]+q[1]*radius,ez=target[2]+q[2]*radius;
+    const vx=n.x-ex,vy=1.38+(n.lift||0)-ey,vz=n.z-ez;
+    const length=Math.hypot(vx,vy,vz)||1,look=[vx/length,vy/length,vz/length];
+    if(cameraBlockLimit([ex,ey,ez],look,length,scene.blockers,0)<length-.005)return null;
+    return {yaw,eye:[ex,ey,ez]};
+  };
+  let found=null;
+  // A conversation is a user-triggered modal cut, so it may choose another full-radius lobe. It
+  // still has to prove both the new eye endpoint and an unobstructed ray back to the speaker.
+  for(let i=0;i<=720&&!found;i++){
+    const amount=i*Math.PI/360;
+    for(const side of i?[1,-1]:[1]){
+      found=candidateClear(frame.yaw+side*amount);
+      if(found)break;
+    }
+  }
+  if(!found)return false;
+  commitStreetModalCamera(CAM,found.yaw,frame.yaw,target[0],target[1],target[2],
+    frame.pitch,radius,found.eye[0],found.eye[1],found.eye[2]);
+  return true;
+}
 function openTalk(n) {
+  if (paused || cardOpen || bookOpen || Pick.isOpen || flightExperienceOpen()) return;
   const nx = Talk.next(n);
   if (!nx) return;
   const camera = { yaw: CAM.tYaw, pitch: CAM.tPitch, dist: CAM.tDist, lookY: CAM.lookY };
+  const frame = conversationFrame(n);
   talkAt = { n, at: nx.at, turn: nx.turn, script: nx.script, of: nx.script.turns.length,
              heard: 0, translated: false, answered: false, camera,
-             frame: conversationFrame(n) };
+             frame, aspectMargin:frame.margin, aspectFailedMargin:null,
+             aspectRetries:0, aspectRetryAt:0 };
   talkOpen = true;
-  // This is a target rather than a cut. The ordinary camera damping moves into the shot while
-  // the panel opens, and closeTalk restores the player's orbit target for the same smooth handoff.
+  // Street dialogue is an explicit user-triggered modal cut. Other places retain the ordinary
+  // damped target, and closeTalk restores the player's saved orbit target.
   CAM.tYaw += angleDelta(talkAt.frame.yaw, CAM.tYaw);
   CAM.tPitch = talkAt.frame.pitch;
   CAM.tDist = talkAt.frame.dist;
   CAM.lookY = talkAt.frame.lookY;
   CAM.spin = 0;
+  const framed = cutStreetTalkCamera(n,talkAt.frame);
+  if(place==='street'&&!framed){
+    // Future authored geometry may have no verified full-radius speaker shot. Never leave the
+    // unsafe requested yaw armed: hold the last rendered state and expose the failed composition.
+    transitionStreetDialogueCamera(CAM,'open-failed',camera,talkAt.frame);
+  }
   $('#talk').classList.add('on');
-  setSurfaceOpen('#talk', true);
+  setModalOpen('#talk', true, '#talkClose');
   renderTalk();
   sayTalk(nx.turn.ask[0]);
 }
@@ -3120,30 +4075,66 @@ function closeTalk() {
   if (!talkOpen) return;
   const camera = talkAt && talkAt.camera;
   talkOpen = false; talkAt = null;
+  CAM.wallModalCut = false;
   if (camera) {
-    CAM.tYaw = camera.yaw;
-    CAM.tPitch = camera.pitch;
-    CAM.tDist = camera.dist;
-    CAM.lookY = camera.lookY;
-    CAM.spin = 0;
+    if(place==='street'){
+      // Retain the last verified dialogue eye and let the requested focus/yaw return only through
+      // the ordinary chord-checked tracker. Closing a modal never revives a stale route goal.
+      transitionStreetDialogueCamera(CAM,'close',camera,null);
+    }else{
+      CAM.tYaw=camera.yaw;CAM.tPitch=camera.pitch;CAM.tDist=camera.dist;
+      CAM.lookY=camera.lookY;CAM.spin=0;
+    }
   }
   $('#talk').classList.remove('on');
-  setSurfaceOpen('#talk', false);
+  setModalOpen('#talk', false);
 }
-let toastT = 0;
-function toast(html) {
+let toastT = 0, toastCurrent = '', toastQueue = [];
+function showNextToast() {
+  const next = toastQueue.shift();
+  if (!next) { toastCurrent = ''; return; }
   const el = $('#toast');
-  el.innerHTML = html; el.style.opacity = 1;
+  toastCurrent = next;
+  el.innerHTML = next;
+  el.style.opacity = 1;
+  const plain = el.textContent || '';
+  const hold = clamp(2300 + plain.length * 18, 2800, 4700);
   clearTimeout(toastT);
-  toastT = setTimeout(() => el.style.opacity = 0, 3200);
+  toastT = setTimeout(() => {
+    el.style.opacity = 0;
+    toastT = setTimeout(showNextToast, 220);
+  }, hold);
+}
+function toast(html) {
+  html = String(html || '');
+  if (!html) return;
+  // Repeated warnings extend the message already on screen; different events wait their turn
+  // instead of erasing one another in the same story beat.
+  if (html === toastCurrent) {
+    const el = $('#toast');
+    el.style.opacity = 1;
+    clearTimeout(toastT);
+    toastT = setTimeout(() => {
+      el.style.opacity = 0;
+      toastT = setTimeout(showNextToast, 220);
+    }, 3200);
+    return;
+  }
+  if (toastQueue.includes(html)) return;
+  toastQueue.push(html);
+  if (toastQueue.length > 4) toastQueue.splice(0, toastQueue.length - 4);
+  if (!toastCurrent) showNextToast();
 }
 
 // ---------------------------------------------------------------- notebook
 function toggleBook() {
+  if (!bookOpen && (doing || cardOpen || talkOpen || Pick.isOpen ||
+      flightExperienceOpen())) return false;
   bookOpen = !bookOpen;
   $('#book').classList.toggle('on', bookOpen);
-  setSurfaceOpen('#book', bookOpen);
+  setModalOpen('#book', bookOpen, '#bookClose');
   if (bookOpen) renderBook();
+  return true;
 }
 // The twelve topics the dictionary's fourth column already carries (`Vocab.TOPICS`), named. The
 // notebook was one flat list sorted by how well you knew each word, which is the right order for
@@ -3157,10 +4148,72 @@ const BOOK_TOPICS = {
   money:['钱','money'], work:['工作','work'], social:['交际','people'],
   transport:['交通','transport'], weather:['天气','weather'], home:['家里','indoors'],
 };
+let bookFilter = 'all', bookQuery = '';
+const bookFilters = $('#bookFilters');
+if (bookFilters) bookFilters.addEventListener('click', e => {
+  const button = e.target.closest('[data-book-filter]');
+  if (!button) return;
+  bookFilter = button.dataset.bookFilter;
+  renderBook();
+});
+const bookSearch = $('#bookSearch');
+if (bookSearch) bookSearch.addEventListener('input', e => {
+  bookQuery = e.target.value.trim().toLocaleLowerCase();
+  renderBook();
+});
+
+// 规矩. Every rule the survival layer holds you to, in the language it is being taught in, in the
+// place the player already opens to read — a system you cannot read is a difficulty setting, not a
+// lesson. Built here rather than in index.html so the whole feature has one owner.
+function renderRulesPanel(after) {
+  if (!after || !after.parentNode) return;
+  let host = $('#bookRules');
+  if (!host) {
+    host = document.createElement('div');
+    host.id = 'bookRules';
+    host.style.cssText = 'margin-top:14px';
+    after.parentNode.insertBefore(host, after.nextSibling);
+  }
+  const home = Survive.home(), rent = Survive.rentDue(), ill = Survive.ill();
+  const state = [
+    `${home.hz} · ${home.en}`,
+    `身体 ${Survive.health()}`,
+    ill ? `${ill.hz} · ${ill.en}` : '没生病 · well',
+    rent.owed ? `欠房租 ${rent.owed}元 · ¥${rent.owed} owed` : `房租 ${rent.amount}元 · rent ¥${rent.amount}`,
+    Survive.employed() ? '有工作 · employed' : '没工作 · out of work',
+  ].join(' &nbsp;·&nbsp; ');
+  host.innerHTML =
+    `<h3 style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;opacity:.58;` +
+    `font-weight:600;margin:17px 0 7px">规矩 · house rules</h3>` +
+    `<div style="font-size:12px;opacity:.72;margin-bottom:9px">${state}</div>` +
+    Survive.rules().map(r =>
+      `<div style="display:flex;gap:10px;align-items:baseline;padding:4px 0;font-size:13px">` +
+      `<b style="flex:0 0 auto">${r.hz}</b>` +
+      `<span style="opacity:.62;font-size:12px">${r.en}</span></div>`).join('');
+}
 
 function renderBook() {
   renderStoryPanel();
-  const list = Vocab.everything();
+  const everything = Vocab.everything();
+  const stats = $('#bookStats');
+  const dueCount = everything.filter(w => w.due).length;
+  const masteredCount = everything.filter(w => w.st === 2).length;
+  if (stats) stats.innerHTML = [
+    [everything.length,'见过 · MET'],[dueCount,'到期 · DUE'],[masteredCount,'熟练 · MASTERED'],
+  ].map(([n,label]) => `<div class="stat"><b>${n}</b><span>${label}</span></div>`).join('');
+  renderRulesPanel(stats);
+  if (bookFilters) bookFilters.querySelectorAll('[data-book-filter]').forEach(button => {
+    const on = button.dataset.bookFilter === bookFilter;
+    button.classList.toggle('on', on);
+    button.setAttribute('aria-selected', String(on));
+  });
+  const list = everything.filter(w => {
+    if (bookFilter === 'due' && !w.due) return false;
+    if (bookFilter === 'learning' && w.st === 2) return false;
+    if (bookFilter === 'mastered' && w.st !== 2) return false;
+    if (!bookQuery) return true;
+    return `${w.hz} ${w.py} ${w.en} ${w.topic || ''}`.toLocaleLowerCase().includes(bookQuery);
+  });
   const host = $('#bookList');
   const rowHTML = w => `
     <div class="row${w.due ? ' due' : ''}${w.retired ? ' done' : ''}" data-hz="${w.hz}">
@@ -3181,13 +4234,28 @@ function renderBook() {
   // Most rows in the file carry no fourth column at all, so this bucket is large and must exist.
   const rest = list.filter(w => !w.due && !w.topic);
   if (rest.length) groups.push(['其他', 'everything else', rest]);
-  const head = (hz, en, n) => `<h3 style="font-size:10px;letter-spacing:.14em;text-transform:uppercase;`
-    + `opacity:.34;font-weight:500;margin:16px 0 6px">${hz} · ${en} <b style="opacity:.7">${n}</b></h3>`;
+  const head = (hz, en, n) => `<h3 style="font-size:11px;letter-spacing:.12em;text-transform:uppercase;`
+    + `opacity:.58;font-weight:600;margin:17px 0 7px">${hz} · ${en} <b style="opacity:.8">${n}</b></h3>`;
   host.innerHTML = list.length
     ? groups.map(([hz, en, ws]) => head(hz, en, ws.length) + ws.map(rowHTML).join('')).join('')
-    : '<div style="opacity:.4;font-size:12.5px;line-height:1.8">Nothing yet. Walk up to something and press E.</div>';
-  host.querySelectorAll('.row.due').forEach(r => {
-    r.onclick = () => openWord(r.dataset.hz);
+    : `<div id="bookEmpty">${everything.length
+      ? '没有符合条件的词 · No words match this view.'
+      : '还没有生词。走近一个名字，按 E 看看。<br>Meet something in the world to begin.'}</div>`;
+  host.querySelectorAll('.row').forEach(r => {
+    // Every row can reopen its word; due rows start a recall and the rest are free study.
+    r.setAttribute('role', 'button');
+    r.tabIndex = 0;
+    r.setAttribute('aria-label', `${r.classList.contains('due') ? '复习' : '查看'} ${r.dataset.hz}`);
+    const openRow = () => {
+      // Do not stack two aria-modal surfaces. The word card replaces the notebook for this recall.
+      if (bookOpen) toggleBook();
+      openWord(r.dataset.hz);
+    };
+    r.onclick = openRow;
+    r.onkeydown = e => {
+      if (e.key !== 'Enter' && e.key !== ' ') return;
+      e.preventDefault(); openRow();
+    };
   });
 }
 
@@ -3470,7 +4538,7 @@ function actionKind(a, def, th) {
   if (a.hold === 'book') return 'read';
   if (type === 'walk') return def.hospitalRehab ? 'rehab' : 'stairs';
   if (type === 'lie') {
-    const sleeping = def.hotel || /^(床|枕头|和平饭店|客栈|病床)$/.test(hz)
+    const sleeping = def.hotel || /^(床|枕头|沪岚饭店|客栈|病床)$/.test(hz)
       || /睡|住一晚/.test(def.zh || '');
     return sleeping ? 'sleep' : 'rest';
   }
@@ -4632,12 +5700,21 @@ function mallCrowdState() {
     afterHours:awake.filter(n=>n.mallAfterHours).map(n=>({role:n.mallAfterHours,
       held:npcHeldItem(n),x:+n.x.toFixed(2),z:+n.z.toFixed(2)})),shops};
 }
+// Where this person is standing this minute. `n.place` for everybody who is where they belong, so
+// every gate below reads exactly the value it always read.
+//
+// `curPlaceOf` records which authored `place` the settle was made against, and it is what keeps
+// `n.place` authoritative: anything that reassigns `place` at runtime — `.audit.js` isolating one
+// figure, a future harness doing the same — invalidates the override rather than being silently
+// ignored by it. Without that pair the shadow is permanent and the write does nothing.
+function npcRoom(n) { return (n.curPlace && n.curPlaceOf === n.place) ? n.curPlace : n.place; }
+
 function npcAwake(n) {
   // Item 334. Twelve floors share one footprint and one NPC list, so a resident authored for the
   // fourth floor was drawn on all twelve — the cast lane had to park sixteen of seventeen people
   // on the always-live decks to hide it. `deck` is only set by rows that belong to one storey;
   // everyone else is unaffected.
-  if (n.place === 'home' && n.deck !== undefined && World.level() !== n.deck) return false;
+  if (npcRoom(n) === 'home' && n.deck !== undefined && World.level() !== n.deck) return false;
   // Item 330. `days` is Date.getDay() order — 0 Sunday, 6 Saturday, matching .homecastcheck.js:121
   // — and `day` counts from 1 on a Monday, the same origin js/disrupt.js:158 reads weekends off.
   // Without this the weekday/weekend split in js/data.js is decoration.
@@ -4736,11 +5813,11 @@ const NPC_SEAT_ACTS = new Set([...NPC_SEAT_REQUIRED, ...NPC_SEAT_OPTIONAL]);
 const npcSeatClaims = [];
 
 function npcSeatFloor(n, sp, room) {
-  if (n.place === 'mall' && typeof Mall !== 'undefined')
+  if (npcRoom(n) === 'mall' && typeof Mall !== 'undefined')
     return Mall.deckY(n.mallFloor || 1) || 0;
   // A berthed metro car is a second floor inside the station.  Its riders are moved with the car
   // and carry that floor explicitly; Metro.liftAt only describes the platform and stairs.
-  if (n.place === 'metro' && Number.isFinite(n.lift)) return n.lift;
+  if (npcRoom(n) === 'metro' && Number.isFinite(n.lift)) return n.lift;
   if (room && typeof room.liftAt === 'function') {
     const y = room.liftAt(sp.at[0], sp.at[1]);
     if (Number.isFinite(y)) return y;
@@ -4751,7 +5828,7 @@ function npcSeatFloor(n, sp, room) {
 function resolveNPCSeat(n, sp) {
   const act = n.act || (sp && sp.act);
   if (n.animal || !sp || !Array.isArray(sp.at) || !NPC_SEAT_ACTS.has(act)) return null;
-  const room = PLACES[n.place];
+  const room = PLACES[npcRoom(n)];
   if (!room || !Array.isArray(room.props)) return null;
   const floor = npcSeatFloor(n, sp, room), x = sp.at[0], z = sp.at[1];
   const authoredHere = Number.isFinite(sp.seatY) ? sp.seatY : null;
@@ -4821,10 +5898,10 @@ function resolveNPCSeat(n, sp) {
 
 function claimNPCSeat(n, support) {
   for (const q of npcSeatClaims) {
-    if (q.place !== n.place || Math.abs(q.floor - support.floor) > .12) continue;
+    if (q.place !== npcRoom(n) || Math.abs(q.floor - support.floor) > .12) continue;
     if (Math.hypot(q.x - support.x, q.z - support.z) < .44) return false;
   }
-  npcSeatClaims.push({ place:n.place, floor:support.floor, x:support.x, z:support.z, n });
+  npcSeatClaims.push({ place:npcRoom(n), floor:support.floor, x:support.x, z:support.z, n });
   return true;
 }
 
@@ -5042,11 +6119,15 @@ function mallAccessibilityState() {
     kinds:[...new Set(actors.map(q=>q.kind))].sort(),route:'entrance-to-lift'};
 }
 
-function campusStaticSpotNow(n) {
+// The spot whose window covers the current hour. A window that runs past midnight is written past
+// 24, the same wrapping rule `npcAwake` uses; falling back to the first spot leaves somebody with
+// a gap in their day standing where their day starts rather than nowhere.
+function spotNow(n) {
   const h = minutes / 60;
   return n.spots.find(q => q.h1 > 24 ? (h >= q.h0 || h < q.h1 - 24)
                                      : (h >= q.h0 && h < q.h1)) || n.spots[0];
 }
+const campusStaticSpotNow = spotNow;
 function snapCampusStaticNPC(n, sp = campusStaticSpotNow(n)) {
   n.campusStaticSpot = sp;
   n.campusStaticPending = null;
@@ -5062,6 +6143,59 @@ function snapCampusStaticNPC(n, sp = campusStaticSpotNow(n)) {
 function syncCampusStaticNPCs() {
   for (const n of NPCS) if (n.place === 'campus' && n.campusStatic)
     snapCampusStaticNPC(n);
+}
+
+// A resident is simply *at* whichever room the current hour's spot names. There is no travel
+// simulation here: no pathfinding between buildings, no travel time, and nobody walking out of a
+// door you are watching. The move happens off-camera on the setPlace seam, behind the one-frame
+// veil, exactly as `syncCampusStaticNPCs` above settles the campus tableaux.
+//
+// ponytail: snap-on-seam, no visible exit walk. Upgrade path if it reads wrong — `updateHomeRoutine`
+// (js/game.js:5561) already implements leaving and entering through `n.home.{inside,outside}`;
+// generalise that to a per-place exit point rather than writing anything new. Do it only when a
+// resident is reported popping out of existence in front of the player. CITY-LIFE.md 3.3.
+function settleResident(n, sp = spotNow(n)) {
+  const from = npcRoom(n), to = sp.place || n.place;
+  if (to !== from) {
+    // Cleared, not set to `n.place`, when they are home again: see the note in initNPC.
+    n.curPlace = to === n.place ? undefined : to;
+    n.curPlaceOf = n.place;
+    if (to === 'mall') n.mallFloor = sp.mallFloor || n.mallFloor || 1;
+    if (n.th) {
+      n.th.mallFloor = to === 'mall' ? (n.mallFloor || 1) : undefined;
+      if (n.lines) moveThing(n.th, from, to);
+    }
+  }
+  n.x = sp.at[0]; n.z = sp.at[1];
+  n.face = sp.face; n.yaw = sp.face === undefined ? n.yaw : sp.face;
+  n.spot = sp; n.errand = null; n.wait = 0; n.leg = 0; n.ground = 0; n.animGround = 0;
+  if (n.th) {
+    n.th.pos[0] = n.x; n.th.pos[2] = n.z;
+    n.th.focus[0] = n.x; n.th.focus[1] = n.z;
+  }
+}
+// Only the rows that authored a spot in another room. Everybody else is exactly where they were,
+// so this loop is the whole per-seam cost of the resident layer.
+function settleResidents() {
+  // `n.home` rows are excluded: their position belongs to `updateHomeRoutine`'s threshold walk
+  // through js/street.js's own door, and snapping one onto a spot mid-transition would put them
+  // through the wall they are walking round. Giving a street resident an itinerary in another
+  // building is a wave-2 problem and wants that routine generalised, not overridden here.
+  for (const n of NPCS) if (n.roams && n.spots && !n.home) settleResident(n);
+}
+// A person's interaction record is filed under one room (`queueThing`, js/game.js:1523), so moving
+// the person moves the record: out of whichever list holds it — the built room's, or the queue for
+// a room nobody has walked into yet — and into the destination's. The label element itself was made
+// once by `adoptThing` and travels with the record, so nothing is rebuilt.
+function moveThing(th, from, to) {
+  if (from === to) return;
+  for (const list of [PLACES[from] && PLACES[from].things, pendingThings[from]]) {
+    const i = list ? list.indexOf(th) : -1;
+    if (i >= 0) list.splice(i, 1);
+  }
+  th.place = to;
+  if (adopted.has(to)) PLACES[to].things.push(th);
+  else (pendingThings[to] = pendingThings[to] || []).push(th);
 }
 function campusStaticTarget(n) {
   const scheduled = campusStaticSpotNow(n);
@@ -5142,10 +6276,17 @@ function npcTarget(n) {
     n.spot = null;
     return n.patrol[n.leg % n.patrol.length];
   }
-  const h = minutes / 60;
-  // Same wrapping rule as `awake` above: a spot that runs past midnight is written past 24.
-  const sp = n.spots.find(q => q.h1 > 24 ? (h >= q.h0 || h < q.h1 - 24)
-                                         : (h >= q.h0 && h < q.h1)) || n.spots[0];
+  // The hour's spot, and the room it names. `place` on a spot is optional: omitted it inherits
+  // `n.place`, so a roster row written before CITY-LIFE.md 3.2 resolves exactly as it always did.
+  let sp = spotNow(n);
+  if (n.roams) {
+    const here = npcRoom(n);
+    const inHere = q => (q.place || n.place) === here;
+    // A spot in another building is not a destination in this one, and a straight line to it would
+    // be a walk through several walls. While the player is standing here the resident holds their
+    // last spot in this room; `settleResidents` moves them on the next seam, behind the veil.
+    if (!inHere(sp)) sp = (n.spot && inHere(n.spot)) ? n.spot : (n.spots.find(inHere) || sp);
+  }
   n.face = sp.face; n.spot = sp;
   const support = resolveNPCSeat(n, sp);
   if (support && support.supported) n.seatCandidate = support;
@@ -5897,6 +7038,143 @@ function speechMouth(now, seed) {
   return clamp(syllable * (0.20 + 0.80 * phrase), 0, 1);
 }
 
+// ---------------------------------------------------------------- street personal space
+// Street routes are deliberately sparse, so a recycled flat list is cheaper than the mall's
+// spatial hash. Snapshot before anybody moves to keep passing decisions independent of roster
+// order. Only moving patrols consume this list; scheduled, seated and conversational people remain
+// exactly where their authored routine put them and are obstacles rather than displaced actors.
+const STREET_SPACE_NEAR = 1.28, STREET_SPACE_STEER = 1.05;
+const STREET_SPACE_PERSONAL = .58, STREET_SPACE_PREDICT = .78;
+const streetSpacePeople = [];
+function rebuildStreetSpacePeople() {
+  streetSpacePeople.length = 0;
+  if (place !== 'street') return;
+  for (const n of NPCS) {
+    if (!n.awake || n.animal || n.place !== 'street') continue;
+    n._streetSnapX = n.x; n._streetSnapZ = n.z;
+    n._streetSnapYaw = n.yaw || 0; n._streetSnapGround = n.ground || 0;
+    streetSpacePeople.push(n);
+  }
+}
+
+// The mall established the human envelope used here: notice a possible encounter at 1.05 m,
+// predict it for .78 s while neighbours are within 1.28 m, and never intentionally enter the
+// .58 m centre circle. Stable identity chooses the passing side; no clock, route leg or RNG state
+// participates, so the same encounter resolves the same way at every visit and display rate.
+function streetCrowdAvoidance(n, yaw, speed) {
+  const fx = Math.sin(yaw), fz = Math.cos(yaw), rx = Math.cos(yaw), rz = -Math.sin(yaw);
+  let turn = 0, pace = 1, active = false;
+  n._streetPlayerPass = undefined;
+  const consider = (x, z, avoidId, otherYaw, otherGround, alwaysYield) => {
+    const dx = x - n.x, dz = z - n.z, d2 = dx * dx + dz * dz;
+    if (d2 > STREET_SPACE_NEAR * STREET_SPACE_NEAR) return;
+    const d = Math.sqrt(Math.max(d2, 1e-6));
+    const ahead = (fx * dx + fz * dz) / d;
+    const side = (rx * dx + rz * dz) / d;
+    if (ahead < -.28 && d > STREET_SPACE_PERSONAL) return;
+    const ovx = Math.sin(otherYaw || 0) * otherGround;
+    const ovz = Math.cos(otherYaw || 0) * otherGround;
+    const rvx = ovx - fx * speed, rvz = ovz - fz * speed;
+    const rv2 = rvx * rvx + rvz * rvz;
+    const closing = dx * rvx + dz * rvz;
+    const eta = rv2 > 1e-5 ? clamp(-closing / rv2, 0, STREET_SPACE_PREDICT) : 0;
+    const miss = Math.hypot(dx + rvx * eta, dz + rvz * eta);
+    const predicted = closing < 0 && miss < .72;
+    const strength = Math.max(clamp((STREET_SPACE_STEER - d) / .72, 0, 1),
+      predicted ? clamp((.72 - miss) / .46, 0, 1) *
+        clamp((STREET_SPACE_NEAR - d) / .72, 0, 1) : 0);
+    if (strength <= 0) return;
+    active = true;
+    let pass;
+    if (Math.abs(side) > .08) pass = side > 0 ? -1 : 1;
+    else {
+      const ofx = Math.sin(otherYaw || 0), ofz = Math.cos(otherYaw || 0);
+      const aligned = fx * ofx + fz * ofz > .35;
+      pass = aligned ? (n.avoidId < avoidId ? -1 : 1)
+        : ((n.avoidId + avoidId) & 1 ? 1 : -1);
+    }
+    // When a player encounter offers unequal room, prefer the open side. This is only a
+    // corrected-step probe: ordinary patrol movement still never consults street collision.
+    if (alwaysYield && typeof scene !== 'undefined' && scene.clampMove) {
+      const room = sign => {
+        const q = scene.clampMove(n.x, n.z,
+          n.x + rx * sign * .72, n.z + rz * sign * .72, .30);
+        return (q[0] - n.x) * rx * sign + (q[1] - n.z) * rz * sign;
+      };
+      const rightRoom = room(1), leftRoom = room(-1);
+      if (Math.abs(rightRoom - leftRoom) > .025) pass = rightRoom > leftRoom ? 1 : -1;
+    }
+    if (alwaysYield) n._streetPlayerPass = pass;
+    turn += pass * strength * (.48 + .30 * Math.max(0, ahead));
+    const yields = alwaysYield || otherGround < .08 || n.avoidId > avoidId;
+    if (yields && (ahead > -.05 || d < .66)) {
+      const clearance = clamp((d - (STREET_SPACE_PERSONAL - .04)) / .48, 0, 1);
+      pace = Math.min(pace, lerp(1, clearance, strength));
+    }
+  };
+  for (const other of streetSpacePeople) if (other !== n)
+    consider(other._streetSnapX, other._streetSnapZ, other.avoidId,
+      other._streetSnapYaw, other._streetSnapGround, false);
+  // The player owns priority. Moving people sidestep them; player controls never acquire an
+  // invisible NPC collider and conversations already reduce the engaged actor's requested pace to 0.
+  consider(P.x, P.z, 104729, P.yaw, 0, true);
+  n._streetAvoidTurn = clamp(turn, -.82, .82);
+  n._streetAvoidPace = pace;
+  n._streetAvoidActive = active;
+}
+
+// Last-centimetre guard for a moving street patrol. It never advances a route or moves the player,
+// a sitter, a scheduled static actor or an engaged speaker. The caller clamps only a step this
+// function or the predictive steering actually corrected, leaving all established street routes
+// byte-for-byte on their former integration path when nobody is near them.
+function streetClipCrowdMove(n, ox, oz, nx, nz, dt) {
+  let outX = nx, outZ = nz, corrected = false;
+  const clip = (cx, cz, avoidId, otherYaw, otherGround, alwaysYield) => {
+    cx += Math.sin(otherYaw || 0) * otherGround * dt;
+    cz += Math.cos(otherYaw || 0) * otherGround * dt;
+    // Both walkers can correct after the immutable frame snapshot. Eleven millimetres absorbs
+    // that numerical half-step so the public .58 m circle remains hard without changing by Hz.
+    const personal = STREET_SPACE_PERSONAL + .011;
+    let px = ox - cx, pz = oz - cz, start = Math.hypot(px, pz);
+    if (start < personal) {
+      let push;
+      if (start < 1e-5) {
+        const side = ((n.avoidId + avoidId) & 1) ? 1 : -1;
+        px = Math.cos(n.yaw || 0) * side; pz = -Math.sin(n.yaw || 0) * side;
+        start = 1; push = Math.min(.026, Math.max(0, dt || 0) * .90);
+      } else push = Math.min(.026, Math.max(0, dt || 0) * .90,
+        personal - start + .002);
+      outX += px / start * push; outZ += pz / start * push; corrected = true;
+      return;
+    }
+    const vx = outX - ox, vz = outZ - oz, a = vx * vx + vz * vz;
+    if (a < 1e-9) return;
+    const b = 2 * (px * vx + pz * vz);
+    const c = px * px + pz * pz - personal * personal;
+    const disc = b * b - 4 * a * c;
+    if (disc < 0) return;
+    const enter = (-b - Math.sqrt(disc)) / (2 * a);
+    if (enter < 0 || enter > 1) return;
+    const ux = px / start, uz = pz / start, inward = vx * ux + vz * uz;
+    let tx = vx - ux * Math.min(0, inward), tz = vz - uz * Math.min(0, inward);
+    const step = Math.sqrt(a), tangent = Math.hypot(tx, tz);
+    if (tangent < step * .16) {
+      const side = alwaysYield && n._streetPlayerPass !== undefined
+        ? n._streetPlayerPass : ((n.avoidId + avoidId) & 1) ? 1 : -1;
+      tx = uz * side; tz = -ux * side;
+    } else { tx /= tangent; tz /= tangent; }
+    const travel = Math.max(step * .58, Math.min(step, tangent));
+    outX = ox + tx * travel; outZ = oz + tz * travel;
+    n._streetTangentYaw = Math.atan2(tx, tz); corrected = true;
+  };
+  for (const other of streetSpacePeople) if (other !== n)
+    clip(other._streetSnapX, other._streetSnapZ, other.avoidId,
+      other._streetSnapYaw, other._streetSnapGround, false);
+  clip(P.x, P.z, 104729, P.yaw, 0, true);
+  n._streetClipX = outX; n._streetClipZ = outZ;
+  return corrected;
+}
+
 // A tiny spatial hash for the mall's moving crowd. Pairwise avoidance over 144 people is the
 // square-law behaviour that ruins a 60 Hz budget; nine neighbouring one-metre cells contain only
 // the people who can actually collide. Buckets are recycled every frame, so this also avoids a
@@ -6174,6 +7452,7 @@ function mallClearStaticDetour(n) {
 
 function updateNPCs(dt, now) {
   rebuildMallSpaceGrid();
+  rebuildStreetSpacePeople();
   // Claims live for one simulation frame. Rebuilding this compact list is cheaper and safer than
   // leaving ownership on schedule objects across room changes; only awake people in the current
   // room can reserve a physical slot.
@@ -6186,7 +7465,7 @@ function updateNPCs(dt, now) {
     // Awake means "in the place you are standing in, during their own hours". Tested against a
     // hard-coded 'street' it was impossible for anyone to be indoors.
     const wasAwake = !!n.awake;
-    n.awake = place === n.place && npcAwake(n);
+    n.awake = place === npcRoom(n) && npcAwake(n);
     // Off-camera campus schedule changes are true snaps. Keeping this before the awake early-out
     // means the next campus visit is already staged even if several clock windows passed elsewhere.
     if (n.campusStatic && place !== 'campus') campusStaticTarget(n);
@@ -6241,6 +7520,10 @@ function updateNPCs(dt, now) {
     let want = 0, faceYaw = n.yaw;
 
     const leg = n.errand && n.errand.length ? n.errand[0] : null;
+    // Street personal space belongs only to ordinary moving patrols. Home-threshold transitions,
+    // timed errands, formations, seats and conversations retain their exact authored choreography.
+    const streetPatrolMoving = n.place === 'street' && !!n.patrol && !leg && !formationLeader &&
+      !engaged && !n.seatCandidate && (!n.homePhase || n.homePhase === 'out');
     // Mall patrol points sit beside real counters, tables and display collision. Half a metre is a
     // convincing browse position and prevents a legal-but-razor-thin sanitized point from becoming
     // an orbit that can never satisfy the generic thirty-centimetre routine threshold.
@@ -6320,7 +7603,11 @@ function updateNPCs(dt, now) {
       mallCrowdAvoidance(n, faceYaw, want);
       faceYaw += n._avoidTurn;
       want *= n._avoidPace;
-    }
+    } else if (streetPatrolMoving && want > 0) {
+      streetCrowdAvoidance(n, faceYaw, want);
+      faceYaw += n._streetAvoidTurn;
+      want *= n._streetAvoidPace;
+    } else n._streetAvoidActive = false;
     // Turning to face whoever is talking to them is most of what makes them feel present.
     const near = npcPlayerDistance(n);
     // `faceLock` is somebody holding a heading no matter who walks up. The screenshot harness
@@ -6393,6 +7680,17 @@ function updateNPCs(dt, now) {
           ? Mall.clampUpper(ox,oz,nx,nz,radius,n.mallFloor) : Mall.clampMove(ox,oz,nx,nz,radius);
         staticCorrectionX=preClampX-nx; staticCorrectionZ=preClampZ-nz;
         staticLoss2=staticCorrectionX*staticCorrectionX+staticCorrectionZ*staticCorrectionZ;
+      } else if (streetPatrolMoving) {
+        n._streetTangentYaw = undefined;
+        const clipped = streetClipCrowdMove(n, ox, oz, nx, nz, dt);
+        nx = n._streetClipX; nz = n._streetClipZ;
+        if (n._streetTangentYaw !== undefined)
+          n.yaw = angleLerp(n.yaw, n._streetTangentYaw, 1 - Math.exp(-dt / .10));
+        // Ordinary street movement has never consulted static collision. Preserve that contract
+        // unless personal-space steering changed this exact step; then keep the sidestep within the
+        // same player-authoritative walkable map instead of trading a person overlap for a wall.
+        if (clipped || n._streetAvoidActive)
+          [nx,nz] = scene.clampMove(ox,oz,nx,nz,.30);
       }
       n.x=nx;n.z=nz;
       covered=Math.hypot(nx-ox,nz-oz)/Math.max(dt,1e-4);
@@ -6738,21 +8036,54 @@ function npcPlayerDistance(n) {
   return Math.hypot(n.x-P.x,n.z-P.z,(n.lift||0)-(P.lift||0));
 }
 
-function npcRenderRange(n, eye, q) {
+function npcRenderRange(n, eye, q, commitLens = false) {
   if (!n.awake) return -1;
   const d = Math.hypot(n.x-eye[0],n.z-eye[2],(n.lift||0)-(P.lift||0));
   // Nobody is drawn on top of the lens, and nobody past the crowd distance.
   if (d < 0.80 || d > q.npcFar) return -1;
-  const vp = R.vp;
-  if (!vp) return d;
   // Head height rather than the floor, so somebody close and to one side is not culled by their
   // own feet leaving the bottom of the frame.
   const r = (n.animal ? Math.max(n.look.tall, n.look.foot || 0) : n.look.tall || 1.75) * 0.62 + 0.35;
   const cy = (n.lift || 0) + r;
+  // A close person whose centre is already below the viewport contributes only a severed scalp,
+  // face or shoulder at the bottom edge. The old 0.80 m centre-distance test missed both a child
+  // 1.27 m from the HOME tangent eye and a static adult at 1.64 m. Judge this in the camera basis,
+  // not `R.vp`: npcRange is also used while the sun shadow matrix may be installed, and body,
+  // held props and the fake contact shadow must all make the same decision.
+  //
+  // Scale the near band by the actor's existing conservative sphere. A small dead band keeps a
+  // walking figure from flickering at the edge: once hidden it must be materially farther away
+  // before reappearing. Animals keep the established enclosure/LOD policy; their footprints and
+  // body proportions are not described by this upright-human test.
+  const dx = n.x - eye[0], dy = cy - eye[1], dz = n.z - eye[2];
+  const forward = dx * cam.fwd[0] + dy * cam.fwd[1] + dz * cam.fwd[2];
+  const up = dx * cam.up[0] + dy * cam.up[1] + dz * cam.up[2];
+  const fy = 1 / Math.tan(CAM.fov / 2);
+  const wasLensHidden = !!n._lensHidden;
+  // At the previous 2.45/2.65 radii and .06/.16 edge margins a child reappeared as a severed
+  // head and upper back: its centre had technically crossed the viewport edge, but only by eleven
+  // centimetres. Require either a materially smaller projection or a centre well inside the frame
+  // before restoring the whole actor.
+  const lensBand = r * (wasLensHidden ? 3.40 : 3.15);
+  const bottomPad = r * (wasLensHidden ? 0.60 : 0.45);
+  // The frustum sphere was already the authority for whether an actor might touch the image. Use
+  // the same conservative bound at the near plane too, including centres behind the eye; otherwise
+  // a head or an animal muzzle can survive while the rest of its body is clipped away.
+  const clipNear = (Number.isFinite(scene.near) ? scene.near : 0.05) + 0.02;
+  const crossesNear = forward - r <= clipNear;
+  const lowerHuman = !n.animal && up < -forward / fy + bottomPad && forward < lensBand;
+  const lensHidden = crossesNear || lowerHuman;
+  // updateNPCs asks this function for animation LOD before the current camera solve. It may use the
+  // predicate, but only the post-camera colour pass may commit hysteresis for the next frame;
+  // shadow, body, held props and contact-shadow calls then share one stable decision.
+  if (commitLens && !n.animal) n._lensHidden = lensHidden;
+  if (lensHidden) return -1;
+  const vp = R.vp;
+  if (!vp) return d;
   const w = vp[3] * n.x + vp[7] * cy + vp[11] * n.z + vp[15];
   if (w + r < 0.05) return -1;
   if (w > r) {
-    const fy = 1 / Math.tan(CAM.fov / 2), fx = fy / cam.aspect;
+    const fx = fy / cam.aspect;
     const x = vp[0] * n.x + vp[4] * cy + vp[8] * n.z + vp[12];
     if (Math.abs(x) > w + r * fx) return -1;
     const y = vp[1] * n.x + vp[5] * cy + vp[9] * n.z + vp[13];
@@ -6762,9 +8093,9 @@ function npcRenderRange(n, eye, q) {
 }
 
 // Returns the distance, because the caller needs it for the LOD anyway, or -1 for "skip".
-function npcRange(n, eye, q) {
+function npcRange(n, eye, q, commitLens = false) {
   if (!n.pose) return -1;
-  return npcRenderRange(n, eye, q);
+  return npcRenderRange(n, eye, q, commitLens);
 }
 
 // The realistic near figures cannot be put through the primitive collector: every vertex also
@@ -7050,7 +8381,7 @@ function drawNPCs(eye, forShadow) {
     // to read them as a person, and the seat they are in is hidden anyway. The same reasoning the
     // renderer already applies to a wall the camera has backed out through: whatever stands between
     // you and the room is not drawn. Off-screen is handled there too — see npcRange.
-    const d = npcRange(n, eye, q);
+    const d = npcRange(n, eye, q, !forShadow);
     if (d < 0) continue;
     if (n.animal) {
       // The LOD distances are tuned against a person, so they are read against this animal's own
@@ -7213,6 +8544,7 @@ const light = { dir: SKYKEYS[4].dir, col: SKYKEYS[4].col, amt: 1.7,
                 sky: SKYKEYS[4].sky, gnd: SKYKEYS[4].gnd, bg: SKYKEYS[4].bg,
                 glass: SKYKEYS[4].glassRGB, city: SKYKEYS[4].cityRGB,
                 skyA: SKYKEYS[4].zenRGB, skyB: SKYKEYS[4].horRGB, day: 1 };
+const homeNearCity = [0, 0, 0];              // reused HOME skyline tint; avoids one array per frame
 
 function daylight(mins) {
   const h = (mins / 60) % 24;
@@ -7258,11 +8590,30 @@ const needHost = $('#needs');
 for (const n of NEEDS) {
   const d = document.createElement('div');
   d.className = 'need'; d.dataset.k = n.k;
+  d.setAttribute('role', 'meter');
+  d.setAttribute('aria-label', `${n.hz} · ${n.en}`);
+  d.setAttribute('aria-valuemin', '0');
+  d.setAttribute('aria-valuemax', '100');
   d.innerHTML = `<span class="nz">${n.hz}</span><span class="tk"><i></i></span>`;
   d.title = `${n.hz} ${n.py} — ${n.en}`;
   needHost.appendChild(d);
   n.el = d; n.fill = d.querySelector('i');
 }
+// 身体. The sixth bar, and the only one that is not a need: nothing you do fills it directly, it
+// is the sum of what the other five have been doing to you, and it is the number that can end a
+// run. Built the same way so the panel keeps one shape, and owned by js/survive.js.
+const healthMeter = (() => {
+  const d = document.createElement('div');
+  d.className = 'need'; d.dataset.k = 'health';
+  d.setAttribute('role', 'meter');
+  d.setAttribute('aria-label', '身体 · health');
+  d.setAttribute('aria-valuemin', '0');
+  d.setAttribute('aria-valuemax', '100');
+  d.innerHTML = '<span class="nz">身体</span><span class="tk"><i></i></span>';
+  d.title = '身体 shēntǐ — health';
+  needHost.appendChild(d);
+  return { el: d, fill: d.querySelector('i') };
+})();
 
 function decay(mins) {
   const hours = mins / 60;
@@ -7275,7 +8626,9 @@ function decay(mins) {
     if (n.k === 'rest' && P.speed > 1.6) r *= 1.7;          // running tires you out
     if (n.k === 'mood' && (needs.clean < 20 || needs.food < 20)) r *= 2.0;
     if (n.k === 'rest' || n.k === 'mood') r *= tired;
-    needs[n.k] = clamp(needs[n.k] - r * hours, 0, 100);
+    // Being ill is not a separate meter you watch, it is the day being harder: rest and mood run
+    // down faster until it passes. js/survive.js owns that number and never touches `needs`.
+    needs[n.k] = clamp(needs[n.k] - r * hours * Survive.drainMul(n.k), 0, 100);
   }
   // And the state of the room you are standing in, not only the state of the person. `decay`
   // already doubled the mood rate on a filthy player; the flat's own mess was in that sum nowhere.
@@ -7292,6 +8645,53 @@ function decay(mins) {
     if (needs[n.k] < 22 && !warned[n.k]) { warned[n.k] = 1; say(n.warn, n.wtr); }
     if (needs[n.k] > 45) warned[n.k] = 0;
   }
+  // 身体, on the same clock, and free: Survive.tick accumulates and only does arithmetic every
+  // three in-game minutes. `cold` is the season and the sky because js/weather.js has no
+  // temperature (js/weather.js:37-48), and `warm` is coat *ownership* — nothing in this game
+  // records what the player is wearing, and owning one is the honest reading of "dressed for a
+  // Beijing winter" as well as the one legible action: buy a coat.
+  for (const e of Survive.tick(mins, {
+        day, needs, money,
+        cold: Weather.now.season.warm < 0.6 || Weather.now.kind === 'snow',
+        outdoors: !scene.indoor,
+        warm: mallBought.includes('大衣') || mallBought.includes('外套') }))
+    surviveEvent(e);
+}
+
+// Everything js/survive.js reports comes back through here. That module never touches money, the
+// HUD or a room — it hands back an event with both languages on it, and this is the one place that
+// turns it into a line you hear, a number off the wallet and something to look back at.
+const SURVIVE_TAG = { 'rent-paid':'rent', 'rent-missed':'rent', evicted:'rent', ill:'health',
+  well:'health', health:'health', collapse:'health', demote:'work', fired:'work',
+  'work-warning':'work' };
+const SURVIVE_LOUD = new Set(['rent-missed','evicted','ill','health','collapse','demote','fired']);
+// Survive owns when discipline happens; Career is the sole owner of rank and therefore carries it
+// out. Keep this adapter small and synchronous so each returned event can make at most one Career
+// mutation before the matching message, diary entry and save become observable.
+function applyCareerConsequence(e) {
+  if (!e) return e;
+  if (e.type === 'demote') Career.demote();
+  else if (e.type === 'fired') Career.dismiss();
+  return e;
+}
+function surviveEvent(e) {
+  e = applyCareerConsequence(e);
+  if (!e) return;
+  // A dismissed employee does not carry an old whiteboard assignment through the waiting period
+  // and back into a new hire. Completion revalidates employment as well, so an overtime action
+  // crossing this midnight cannot still pay or count the assignment captured before dismissal.
+  if (e.type === 'fired') job = null;
+  if (e.charge) {
+    const cash = Math.min(money, e.charge);
+    money -= cash;
+    // Rent has come out of cash first and the account second since the bank landed. A hospital
+    // bill takes what is in your pocket and no more — survive.js already capped it at that.
+    if (e.type === 'rent-paid' && e.charge > cash) bankPayRent(e.charge - cash);
+  }
+  say(e.hz, e.en);
+  logDiary(e.hz, e.en, SURVIVE_TAG[e.type] || 'health');
+  if (SURVIVE_LOUD.has(e.type)) toast(`${e.hz} &nbsp;${e.en}`);
+  updateHud();
 }
 
 // One place advances time, so an action that burns three hours also burns three hours of needs.
@@ -7310,16 +8710,15 @@ function advanceTime(mins) {
       logDiary(`昨天没去上班，第${gone.missed}次了。`,
                `Missed work yesterday — ${gone.missed} ${gone.missed === 1 ? 'time' : 'times'} now.`,
                'work');
-    // Rent, every morning, whether you were awake for it or slept through it. Cash is used first
-    // for backwards compatibility, then the bank account covers the shortfall. Otherwise moving
-    // every note into the new account at 23:59 would make rent disappear without reducing wealth.
-    const cashPaid = Math.min(money, RENT);
-    money -= cashPaid;
-    const accountPaid = bankPayRent(RENT-cashPaid);
-    const paid = cashPaid+accountPaid;
-    say(paid < RENT ? `房租${RENT}块，只交了${Math.round(paid)}块。` : `房租${RENT}块，交了。`, paid < RENT
-      ? `Rent is ${RENT} kuai. You could only find ${Math.round(paid)}.`
-      : `Rent, ${RENT} kuai. Paid.`);
+    // Rent, illness, and the manager's patience — all of it js/survive.js's, all of it once a day.
+    // This replaced a flat ¥60 a morning that could not be missed and cost nothing to miss: the
+    // weekly demand is ¥450 against that ¥420, so the money is the same game and the arrears,
+    // the eviction and the way back are new. `money` is cash plus whatever is in the account,
+    // because moving every note into the bank at 23:59 must not make rent disappear.
+    for (const e of Survive.rollDay(ended, {
+          money: money + (bankAccount.opened ? bankAccount.balance : 0),
+          needs, missed: Career.missed(), canDemote: Career.rank() !== Career.RANKS[0] }))
+      surviveEvent(e);
     // The diary opens every day with the same two facts — what day it is and what the sky is
     // doing — because that is how a real one opens, and because it puts the season's word and the
     // weather's word in front of you once a day whether or not you went outside.
@@ -7332,7 +8731,6 @@ function advanceTime(mins) {
     // mattered, which is the whole argument for not teaching it on a flashcard.
     const dis = Disrupt.metroNotice(day, 8 * 60);
     if (dis) logDiary(dis.hz, dis.en, 'metro');
-    if (paid >= RENT) logDiary(`交了房租，${RENT}块。`, `Paid the rent, ${RENT} kuai.`, 'rent');
     // 坏了. The fish you bought on Monday and did not cook is not in the fridge on Thursday, and
     // being told is the difference between a simulation and a bug — a fridge that silently
     // deletes twenty kuai of shopping is theft as far as the player is concerned, however
@@ -7401,8 +8799,23 @@ function updateNeeds() {
   for (const n of NEEDS) {
     const v = needs[n.k];
     n.fill.style.width = v.toFixed(1) + '%';
+    const rounded = String(Math.round(v));
+    if (n.el.getAttribute('aria-valuenow') !== rounded)
+      n.el.setAttribute('aria-valuenow', rounded);
     n.el.classList.toggle('low', v < 40 && v >= 18);
     n.el.classList.toggle('crit', v < 18);
+  }
+  const h = Survive.health(), ill = Survive.ill();
+  healthMeter.fill.style.width = h.toFixed(1) + '%';
+  if (healthMeter.el.getAttribute('aria-valuenow') !== String(h))
+    healthMeter.el.setAttribute('aria-valuenow', String(h));
+  healthMeter.el.classList.toggle('low', h < 60 && h >= 30);
+  healthMeter.el.classList.toggle('crit', h < 30);
+  // What is wrong with you, in the language you are learning it in, on the bar itself.
+  const title = ill ? `${ill.hz} ${ill.py} — ${ill.en}` : '身体 shēntǐ — health';
+  if (healthMeter.el.title !== title) {
+    healthMeter.el.title = title;
+    healthMeter.el.querySelector('.nz').textContent = ill ? ill.hz : '身体';
   }
 }
 
@@ -7442,8 +8855,10 @@ const DAILY_EXTRA = [
 // rather than as a flashcard.
 //
 // Three questions, all of them reads, none of them an event that fires at anybody:
-//   · `Disrupt.hotelBias(day)` — whether today produces a hotel-shaped errand, and which of the
-//     three it is. 0.18 with nothing due, 0.62 with the hotel word list overdue.
+//   · `Disrupt.hotelBias(day)` / `homeBias(day)` — whether today produces a place-shaped
+//     errand. The established hotel roll owns the single errand slot; when home independently
+//     calls on that same day it supplies the destination and event. Two probabilities therefore
+//     never turn one occasional city beat into near-daily chores.
 //   · `Vocab.dueTopics()` — what the day could be *about*, heaviest topic first.
 //   · `Disrupt.serviceDue()` — how much counter language is waiting, which is the one thing that
 //     is better practised by talking to somebody than by doing anything on your own.
@@ -7460,13 +8875,24 @@ const DAILY_EXTRA = [
 // override, which is the rule the rest of the codebase follows.
 function stageDay(forDay) {
   const out = { errand:null, extra:null };
-  let bias = null;
-  try {
-    if (typeof Disrupt !== 'undefined' && Disrupt.hotelBias) bias = Disrupt.hotelBias(forDay);
-  } catch (_) { bias = null; }
-  if (bias && bias.on && bias.event)
-    out.errand = { key:bias.event.key, hz:bias.event.hz, en:bias.event.en,
+  // Ask one queue at a time. The hotel roll remains the slot gate, preserving the documented
+  // .18–.62 overall cadence. On a slotted day, an independently active home queue replaces the
+  // destination; its due words change which errands surface without increasing the workload.
+  // Separate try blocks mean a broken optional home queue falls back to the hotel event.
+  const ask = (at, method) => {
+    try {
+      if (typeof Disrupt === 'undefined' || typeof Disrupt[method] !== 'function') return null;
+      const bias = Disrupt[method](forDay);
+      return bias && bias.on && bias.event ? { at, bias } : null;
+    } catch (_) { return null; }
+  };
+  const hotel = ask('hotel', 'hotelBias');
+  const staged = hotel ? (ask('home', 'homeBias') || hotel) : null;
+  if (staged) {
+    const { at, bias } = staged;
+    out.errand = { place:at, key:bias.event.key, hz:bias.event.hz, en:bias.event.en,
                    due:+(bias.due || 0).toFixed(3) };
+  }
   // The third beat. Counter language first, because 结账/押金/退房 are said to a person and cannot
   // honestly be revised alone; otherwise the heaviest due topic picks the beat it belongs to.
   let service = 0, topics = [];
@@ -7485,16 +8911,29 @@ function stageDay(forDay) {
   return out;
 }
 
+// The first staged-errand saves predate destinations and can only have meant the hotel. Keep that
+// migration beside the producer and renderer so the accepted shape cannot drift between them.
+// Unknown destinations are dropped instead of becoming arbitrary place ids from localStorage.
+function normaliseDailyErrand(s) {
+  if (!s || typeof s !== 'object' ||
+      typeof s.key !== 'string' || typeof s.hz !== 'string' || typeof s.en !== 'string' ||
+      (s.place !== undefined && s.place !== 'home' && s.place !== 'hotel')) return null;
+  return { place:s.place === 'home' ? 'home' : 'hotel',
+           key:s.key.slice(0, 24), hz:s.hz.slice(0, 24), en:s.en.slice(0, 80),
+           due:Math.max(0, Math.min(1, Number(s.due) || 0)) };
+}
+
 function dailyPlan(forDay = day) {
   const n = Math.max(0, (forDay | 0) - 1);
   const staged = daily && daily.day === (forDay | 0) ? daily : null;
-  // A staged hotel errand replaces the day's city goal rather than being added to it: three beats
-  // is the shape of this list and a fourth would make a due word cost the player more of the day
-  // than an undue one. The hotel is a real place on the travel list with a real cost in minutes,
-  // so this is an errand across the city exactly like the row it stands in for.
+  // A staged errand replaces the day's city goal rather than being added to it: three beats is
+  // the shape of this list and a fourth would make a due word cost more of the day than an undue
+  // one. Saves written before `place` existed are hotel errands, preserving their old destination.
+  const errandPlace = staged && staged.errand && staged.errand.place === 'home' ? 'home' : 'hotel';
   const city = staged && staged.errand
-    ? { type:'visit', key:'hotel', zh:`去酒店：${staged.errand.hz}`,
-        en:`the hotel — ${staged.errand.en}` }
+    ? { type:'visit', key:errandPlace,
+        zh:`${errandPlace === 'home' ? '回家看看' : '去酒店'}：${staged.errand.hz}`,
+        en:`${errandPlace === 'home' ? 'home' : 'the hotel'} — ${staged.errand.en}` }
     : DAILY_CITY[(n * 3 + 2) % DAILY_CITY.length];
   // 'service' is not one of the twelve topics — it is js/disrupt.js's four-topic measure of
   // counter language — so it names the conversation row directly. Everything else is a real topic
@@ -7621,6 +9060,16 @@ const shopItems = () => [
   ...Object.keys(Shop.SHELF).reduce((a, k) => a.concat(Shop.SHELF[k]), []),
 ];
 const goodsFor = hz => shopItems().find(g => g.hz === hz) || null;
+// Mall deliveries survive a reload by name just like phone orders, but they belong to a separate
+// catalogue.  Do not fall back to an arbitrary row: a removed product cancels cleanly instead of
+// turning a prepaid quilt into the first dish or supermarket item in today's tables.
+const mallGoodsFor = hz => {
+  for (const shop in MALL_GOODS) {
+    const item = MALL_GOODS[shop].find(g => g.hz === hz);
+    if (item) return item;
+  }
+  return null;
+};
 const basketTotal = () => basket.reduce((s, g) => s + g.price, 0);
 // 三 → 三份, and a bare count of things in the basket. Chinese counts everything with a
 // measure word and 件 is the one for shop goods.
@@ -7630,6 +9079,25 @@ const menuDish = () => dishByHz(chosen);
 // One monotonic clock for the kitchen. `minutes` wraps at midnight, so an order placed at 23:58
 // that takes six minutes would otherwise be waiting for a time that never comes round again.
 const clockNow = () => day * 1440 + minutes;
+
+// A paid meal is property, but the waitress carrying it is a live controller. Save only the menu
+// headword and kitchen clock; if it was already in her hands, a rebuilt room puts it safely on the
+// table instead of trying to reconstruct her route halfway through.
+function dinerOrderToSave() {
+  return order ? { dish:order.dish.hz, state:order.state, at:order.at } : null;
+}
+function dinerOrderFromSave(s) {
+  if (!s || typeof s !== 'object' || Array.isArray(s) || typeof s.dish !== 'string' ||
+      !Number.isFinite(s.at) || !['cooking', 'coming', 'ready'].includes(s.state)) return null;
+  // `dishByHz` deliberately falls back for the menu picker. Saved input must not: a removed or
+  // forged headword costs only this optional record rather than turning into beef noodles.
+  const dish = dishByHz(s.dish);
+  if (!dish || dish.hz !== s.dish) return null;
+  const state = s.state === 'coming' ? 'ready' : s.state;
+  return { dish, state,
+           at:state === 'cooking'
+             ? clamp(s.at, clockNow(), clockNow() + Math.max(1, dish.cook)) : clockNow() };
+}
 
 // Order a dish: takes the money, tells the kitchen, and starts the clock on it. Returns a
 // [zh, tr] reason it could not, or null if it went through.
@@ -7702,9 +9170,22 @@ function deliver() {
 //   door   — the door is open and he is standing in it, waiting to be paid
 const WAIMAI_FEE = 4;             // 配送费 on a meal off the 餐馆's board
 const PAOTUI_FEE = 7;             // an errand runner does your shopping as well, so he costs more
+const MALL_SHIP_MINS = 45;        // bulky mall goods are prepaid and go straight to the locker
 const RIDER_WAIT = 180;           // in-game minutes he will stand on your landing before leaving
 let delivery = null;              // { kind, item, fee, total, at, gone, state }
 const courier = NPCS.find(n => n.courier);
+
+// A shop checkout, not the phone, is the producer.  Ownership, effects, receipt and the one charge
+// all happen at the till; this only schedules the physical parcel already paid for there.  The
+// single delivery slot keeps the existing one-order-at-a-time rule honest across both systems.
+function shipToHome(items) {
+  const item = (Array.isArray(items) ? items : [items]).find(it => it && it.ship);
+  if (!item || delivery) return null;
+  delivery = { kind:'mall', item, fee:0, total:0, at:clockNow() + MALL_SHIP_MINS,
+               gone:0, rap:0, state:'coming' };
+  updateHud();
+  return delivery;
+}
 
 // What is in your hand, and where you have put it down. A delivery does not teleport into the
 // fridge when you pay for it: he hands you a 袋子, and from then on it is an object in the flat
@@ -7720,6 +9201,35 @@ const POCKET = new Set(['门禁卡']);
 const held = hz => POCKET.has(hz);
 let placed = null;                // { kind, item, spot } once you have set it down somewhere
 const bagOut = () => !!(carrying || placed);
+
+// Once the rider has been paid, the order controller is gone but the bag is still property. Keep
+// only its catalogue headword and one stable placement index; scene geometry is rebuilt on load.
+function deliveryBagToSave() {
+  const bag = carrying || placed;
+  return bag ? { kind:bag.kind, item:bag.item.hz, spot:carrying ? null : placed.spot } : null;
+}
+function deliveryBagFromSave(s) {
+  if (!s || typeof s !== 'object' || Array.isArray(s) ||
+      !['waimai', 'paotui'].includes(s.kind) || typeof s.item !== 'string') return null;
+  const item = s.kind === 'waimai' ? dishByHz(s.item) : goodsFor(s.item);
+  // The menu picker deliberately falls back to its first dish; saved property must resolve exactly.
+  if (!item || item.hz !== s.item) return null;
+  const spot = Number.isSafeInteger(s.spot) && s.spot >= 0 && s.spot < World.BAG_SPOTS.length
+    ? s.spot : null;
+  return { kind:s.kind, item, spot };
+}
+function restoreDeliveryBag(s) {
+  carrying = null;
+  placed = null;
+  World.setBag(-1);
+  const bag = deliveryBagFromSave(s);
+  if (!bag) return;
+  if (bag.spot === null) carrying = { kind:bag.kind, item:bag.item };
+  else {
+    placed = { kind:bag.kind, item:bag.item, spot:bag.spot };
+    World.setBag(bag.spot);
+  }
+}
 
 // 跑腿 is a person doing your shopping for you, so what you can ask for has to be a product with
 // a name. 货架 and 冰柜 are fixtures you take things off inside the shop, not things anybody could
@@ -7764,35 +9274,36 @@ function tickDelivery() {
   if (!delivery) return;
   if (delivery.state === 'coming') {
     if (clockNow() < delivery.at) return;
+    // The mall has already taken payment and sends bulky goods to the block's cabinet.  There is
+    // no food rider, knock, cash at the door or shopping bag in this branch: at 45 minutes it is a
+    // parcel in the same backing store the locker interaction reads.
+    if (delivery.kind === 'mall') {
+      const item = delivery.item;
+      const p = HomeLife.addParcel(item.hz, enOf(item), day, 'locker');
+      if (World.setLocker) World.setLocker(7, true);
+      say(`${item.hz}送到快递柜了，取件码${p.code}。`,
+          `Your prepaid ${enOf(item)} has reached the parcel locker — code ${p.code}.`);
+      toast(`快递到了 · <span class="dim">${item.hz} · 快递柜取件码 ${p.code}</span>`);
+      delivery = null;
+      courier.here = false;
+      updateHud();
+      return;
+    }
     delivery.state = 'knock';
     delivery.gone = clockNow() + RIDER_WAIT;
     if (place === 'home' && World.level() === 2) knock();
     return;
   }
-  // He will not stand out there all day. Nothing was paid, so nothing is lost except the food
-  // you did not get — and if you are in the room, he says so on the way out.
+  // He will not stand out there all day. These are cash-on-delivery orders: without a handoff no
+  // payment or property changes hands, so timeout cancels rather than minting an unpaid parcel.
   if (clockNow() >= delivery.gone) {
-    // Missed him — but a rider does not take your dinner home. It goes into the 快递柜 in the lobby
-    // with a 取件码, which is what happens in every block in the city and is the only thing that
-    // makes the lockers downstairs anything other than furniture. `HomeLife` owns the parcel list,
-    // so the cabinet, the corridor and the door are all reading one object.
-    const p = HomeLife.addParcel(delivery.item.hz || delivery.item, delivery.item.en || '', day, 'locker');
-    if (World.setLocker) World.setLocker(7, true);
-    // Item 257. 货到付款 meant a missed rider cost nothing at all, so there was no reason to be
-    // home — the parcel went in the locker and you collected it later, none the worse. A 外卖
-    // order is hot food, and hot food in a metal box for three hours is 超时: you still get it,
-    // it is still yours, and it is cold. That is the cost, and it is only the food's.
-    const missedDelivery = delivery.kind === 'waimai' ? '超时' : null;
-    if (missedDelivery) {
-      needs.mood = clamp(needs.mood - 6, 0, 100);
-      say('等不到人，放快递柜了，饭超时了，凉透了。',
-          `No answer. It went into the parcel locker — 超时, and it will be stone cold.`);
-      toast(`快递柜 · <span class="dim">取件码 ${p.code} — 超时, the food has gone cold</span>`);
-    } else {
-      say(`等不到人，放快递柜了，取件码${p.code}。`,
-          `No answer. It went into the parcel locker downstairs — code ${p.code}.`);
-      toast(`快递柜 · <span class="dim">取件码 ${p.code}</span>`);
-    }
+    const item = delivery.item;
+    say(`一直没交接，${item.hz}的货到付款订单取消了，没扣钱。`,
+        `The ${enOf(item)} was not handed over. The cash-on-delivery order was cancelled; nothing was charged.`);
+    toast(`订单已取消 · <span class="dim">${item.hz} · 货到付款，未扣款</span>`);
+    logDiary(`没接到${item.hz}，货到付款订单取消了。`,
+             `Missed the ${enOf(item)} delivery; the unpaid order was cancelled.`,
+             'delivery-cancelled');
     delivery = null;
     courier.here = false;
     updateHud();
@@ -7845,7 +9356,7 @@ function takeDelivery() {
 // Set it down on a surface. The bag, its pick box and its label all move together, so what you
 // come back to is the bag where you left it rather than a word hanging over an empty desk.
 function putBag(i) {
-  if (!carrying) return;
+  if (!carrying || !Number.isSafeInteger(i) || i < 0 || i >= World.BAG_SPOTS.length) return;
   placed = { ...carrying, spot: i };
   carrying = null;
   World.setBag(i);
@@ -7896,8 +9407,16 @@ function stowBag() {
 // dropping the oldest is the only rule that behaves sensibly under both.
 const DIARY_KEY = 'bjlife.diary.v1', DIARY_MAX = 160;
 let diary = [];
-try { diary = JSON.parse(localStorage.getItem(DIARY_KEY)) || []; } catch (_) { diary = []; }
-if (!Array.isArray(diary)) diary = [];
+try {
+  const savedDiary = JSON.parse(localStorage.getItem(DIARY_KEY));
+  diary = Array.isArray(savedDiary) ? savedDiary.slice(-DIARY_MAX).flatMap(row => {
+    if (!row || !Number.isSafeInteger(row.day) || row.day < 1 || !Number.isFinite(row.min) ||
+        typeof row.zh !== 'string' || typeof row.en !== 'string') return [];
+    return [{ day:row.day, min:clamp(Math.floor(row.min), 0, 1439),
+      zh:row.zh.slice(0, 320), en:row.en.slice(0, 480),
+      tag:typeof row.tag === 'string' ? row.tag.slice(0, 96) : '' }];
+  }) : [];
+} catch (_) { diary = []; }
 
 // `tag` is what the entry is about, and it is what stops the diary filling up with the same line
 // forty times: an entry with a tag replaces nothing but is refused if the same tag was already
@@ -7964,9 +9483,12 @@ function openDiary() {
 // menu board and the line map use, because it is the same interaction: a list too long to hide
 // behind one keypress. The difference is that this one is in your pocket in every room.
 function openPhone() {
+  if (doing || paused || talkOpen || bookOpen || flightExperienceOpen()) return;
   if (cardOpen) closeCard();
   const care = hospitalGuide();
   const st = !delivery ? ['没有订单', 'nothing on order — pick an app']
+    : delivery.kind === 'mall'
+      ? [`${delivery.item.hz}`, `prepaid mall delivery · ${deliveryEta()} min to the parcel locker`]
     : delivery.state === 'coming'
       ? [`${delivery.item.hz}`, `on its way · about ${deliveryEta()} min · ¥${delivery.total} at the door`]
       : [`${delivery.item.hz}`, `he is at your door · ¥${delivery.total} to pay`];
@@ -8223,7 +9745,7 @@ function syncHomeFloor(announce = false) {
 }
 
 function openLiftPanel() {
-  if (place !== 'home' || !World.liftState || cardOpen || talkOpen) return;
+  if (place !== 'home' || !World.liftState || worldInputLocked()) return;
   const st = World.liftState();
   // The panel is a travelling prop whose x/z overlaps every landing.  Requiring the body to be in
   // the level car prevents a player outside shut doors from operating it through the shaft wall.
@@ -8236,7 +9758,7 @@ function openLiftPanel() {
   // game re-teach a building the player already knows.
   if (!firstRideSeen()) {
     markFirstRide();
-    toast('你家在二楼 202 · <span class="dim">202 is yours, on 二楼. The other floors are neighbours — B opens 楼层表</span>');
+    toast('你家在二楼 202 · <span class="dim">202 is yours, on 二楼. The other floors are neighbours — Shift+B opens 楼层表</span>');
     Vocab.sentenceHTML('我家在二楼。');
   }
   Pick.show({
@@ -8311,7 +9833,8 @@ function openBuildingMap() {
   const here = World.level ? World.level() : 2;
   Pick.show({
     title: '楼层表 · 十八号楼',
-    sub: 'B — the whole building. 你家 is 202 on 二楼 · the lift is the only way up',
+    sub: 'Shift+B — the whole building. 你家 is 202 on 二楼 · the lift is the only way up',
+    readOnly: true,
     rows: HOME_FLOORS.map(f => {
       const live = !World.deckLive || World.deckLive(f.deck);
       const marks = [];
@@ -8319,7 +9842,7 @@ function openBuildingMap() {
       if (f.deck === here) marks.push('你在这儿');
       if (st && st.at === f.deck) marks.push('电梯');
       return { hz: f.hz, py: f.py, right: marks.length ? marks.join(' · ') : String(f.n),
-        en: live ? f.en : `${f.en} · 还没盖好 — nothing built up there yet`, off: !live };
+        en: live ? f.en : `${f.en} · 还没盖好 — nothing built up there yet`, read:true };
     }),
     onPick() { return false; },
   });
@@ -8333,7 +9856,7 @@ const firstRideSeen = () => { try { return !!localStorage.getItem(FIRSTRIDE_KEY)
 const markFirstRide = () => { try { localStorage.setItem(FIRSTRIDE_KEY, '1'); } catch (e) { /* storage blocked */ } };
 
 function openMallLiftPanel() {
-  if (place !== 'mall' || cardOpen || talkOpen) return;
+  if (place !== 'mall' || worldInputLocked()) return;
   const here = Mall.level();
   const floors = [
     {floor:1,hz:'一楼',py:'yī lóu',en:'services, fashion and digital'},
@@ -8353,7 +9876,7 @@ function openMallLiftPanel() {
       Mall.setFloor(r.floor);
       P.x=17.70; P.z=14.20; P.lift=Mall.deckY(r.floor); P.yaw=-Math.PI/2;
       P.vx=P.vz=0; P.speed=0; P.ground=0;
-      CAM.fx=P.x; CAM.fz=P.z; CAM.tYaw=P.yaw;
+      CAM.fx=P.x; CAM.fz=P.z; aimCameraYaw(P.yaw);
       toast(`${r.hz}到了 · <span class="dim">${r.floor}F — ${r.en}</span>`);
       Vocab.sentenceHTML(`我坐电梯去${r.hz}。`);
       saveGame();
@@ -8386,6 +9909,9 @@ const FARES = [3, 3, 4, 4, 5, 5];
 // to the till in the 花店 — but within a shop you can pick up as much as you can afford.
 let mallBasket = [];              // [{ shop, item }] — chosen, in your hands, not yet paid for
 const basketShop = () => mallBasket.length ? mallBasket[0].shop : null;
+// The delivery controller stores one parcel. Prevent a paid basket from containing more bulky
+// goods than that single slot can represent.
+const mallShipCount = () => mallBasket.reduce((n, b) => n + (b.item.ship ? 1 : 0), 0);
 // 中文书籍买二送一 — the food court is not the only place the loudspeaker makes a promise. `ad:books`
 // in js/mall.js announces this all day, so the till has to honour it or the building is lying.
 //
@@ -8421,10 +9947,33 @@ function mallBookOffer() {
 // One definition, because five callers read this — the carry line, two affordability checks, the
 // receipt and the diary — and a promotion honoured by four of them is a pricing bug.
 const mallTotal = () => mallBasket.reduce((n, b) => n + b.item.price, 0) - bookPromoOff(mallBasket);
+// Affordability has to price the basket *after* the candidate is added.  In the bookshop the
+// candidate may itself unlock 买二送一, so adding its shelf price to today's total can refuse a
+// basket that the till would actually charge less for.
+const mallTotalWith = (shop, item) => {
+  const next = mallBasket.concat({ shop, item });
+  return mallTotal() + item.price + bookPromoOff(mallBasket) - bookPromoOff(next);
+};
 let mallBought = [];              // what you own, by name, in the order you bought it
-// The campus issues one durable identity item. It is kept separately from `mallBought`, whose save
-// intentionally retains only the latest 24 purchases, then mirrored into that list because the
-// cinema's existing concession path asks whether the player is carrying 学生证 there.
+// Ownership is boolean everywhere it is consumed (`includes`), while repeated purchases belong in
+// the receipt history below. Compact exact headwords from their most recent occurrence so a 25th
+// paid item cannot evict the first one on reload. 256 distinct names is comfortably above the
+// current catalogue and still gives a corrupt hand-edited v1 array a finite boundary.
+const MALL_OWNERSHIP_MAX = 256, MALL_OWNERSHIP_NAME_MAX = 80;
+function cleanMallOwnership(values) {
+  if (!Array.isArray(values)) return [];
+  const seen = new Set(), recent = [];
+  for (let i = values.length - 1; i >= 0 && recent.length < MALL_OWNERSHIP_MAX; i--) {
+    const hz = values[i];
+    if (typeof hz !== 'string' || !hz.trim() || hz.length > MALL_OWNERSHIP_NAME_MAX || seen.has(hz))
+      continue;
+    seen.add(hz); recent.push(hz);
+  }
+  return recent.reverse();
+}
+// The campus issues one durable identity item. It is kept separately from `mallBought`, then
+// mirrored into that list because the cinema's existing concession path asks whether the player
+// is carrying 学生证 there.
 let campusLife = { studentId:false };
 function issueStudentId() {
   const fresh = !campusLife.studentId;
@@ -8435,13 +9984,16 @@ function issueStudentId() {
 }
 
 // The receipt, which is a different thing from the list of names above. `mallBought` answers "do I
-// own a coat" — which is what the wardrobe and the carry line want — and it is capped and lossy on
-// purpose. This answers "what did I buy, when, where, how many of it, and for how much", which is
-// the question a returns desk, a warranty claim and a budget challenge all have to ask, and not one
-// of them can be answered from a bare list of the last two dozen product names.
+// own a coat" — which is what the wardrobe and the carry line want — and its saved form is compact
+// rather than historical. This answers "what did I buy, when, where, how many of it, and for how
+// much", which is the question a returns desk, a warranty claim and a budget challenge all have to
+// ask, and not one of them can be answered from a bare list of product names.
 let mallReceipts = [];      // [{no, day, at, shop, items:[{hz,en,price,qty,line}], total, paid}]
 let mallReceiptNo = 0;
 const MALL_RECEIPTS_KEPT = 200;
+// Imported counters beyond this are corruption, not play. Staying far below MAX_SAFE_INTEGER
+// leaves every subsequent `++` exact while still allowing a trillion distinct purchases.
+const MALL_RECEIPT_NO_MAX = 1e12;
 // What you were holding, unpaid, when the page last went away. A basket is explicitly not a
 // purchase: no money has moved and the shop has not let go of the goods, so it does not survive a
 // reload and everything goes back on the shelf. That is the honest behaviour of the two available,
@@ -8461,6 +10013,20 @@ function applyMallSysSave() {
   if (window.CinemaSys && mallSysSave.cinemaSys) {
     try { CinemaSys.load(mallSysSave.cinemaSys); } catch (e) {}
     mallSysSave.cinemaSys = null;
+  }
+  if (window.FloristSys && Object.prototype.hasOwnProperty.call(mallSysSave, 'florist')) {
+    try {
+      if (mallSysSave.florist) FloristSys.load(mallSysSave.florist);
+      else FloristSys.reset();
+    } catch (e) {}
+    delete mallSysSave.florist;
+  }
+  if (window.RestaurantSys && Object.prototype.hasOwnProperty.call(mallSysSave, 'restaurant')) {
+    try {
+      if (mallSysSave.restaurant) RestaurantSys.load(mallSysSave.restaurant);
+      else RestaurantSys.reset();
+    } catch (e) {}
+    delete mallSysSave.restaurant;
   }
 }
 
@@ -8519,7 +10085,7 @@ function openMallPassport() {
   });
 }
 
-// ---------------------------------------------------------------- 北京银行 — account, queue and cash services
+// ---------------------------------------------------------------- 青禾银行 — account, queue and cash services
 // The branch geometry already contains the whole customer journey.  This state makes that journey
 // real without confusing the bank card with the existing subway `card`: the account is persistent,
 // while a paper queue number and the form in your hand belong only to the current visit.
@@ -8527,7 +10093,7 @@ const BANK_SERVICES = {
   personal:{hz:'个人业务',py:'gèrén yèwù',en:'account and card services',prefix:'B',counter:'开户桌'},
   cash:{hz:'现金业务',py:'xiànjīn yèwù',en:'cash deposit or withdrawal',prefix:'A',counter:'现金柜台'},
 };
-const BANK_LEDGER_KINDS = new Set(['open','deposit','withdraw','transit','rent']);
+const BANK_LEDGER_KINDS = new Set(['open','deposit','withdraw','transit','rent','purchase']);
 const freshBankAccount = () => ({
   opened:false, balance:0, hasCard:false, accountNo:null, openedDay:0, ledger:[],
 });
@@ -8539,7 +10105,13 @@ const bankStaffOpen = () => {
   const h=minutes/60;
   return h>=9&&h<17;
 };
-const bankAmount = v => Number.isFinite(Number(v)) ? Math.max(0,Math.floor(Number(v))) : 0;
+const bankAmount = v => Number.isFinite(Number(v))
+  ? Math.min(Number.MAX_SAFE_INTEGER, Math.max(0,Math.floor(Number(v)))) : 0;
+// Card splits can land on one jiao even though teller and ATM amounts are whole yuan. Preserve that
+// tenth through the existing numeric save field instead of rounding a paid share up or silently
+// dropping the remaining balance on reload.
+const bankValue = v => Number.isFinite(Number(v))
+  ? Math.min(Number.MAX_SAFE_INTEGER, Math.max(0,Math.round(Number(v)*10)/10)) : 0;
 function syncBankVisit() {
   if(bankVisit.day!==(day|0)) bankVisit=freshBankVisit();
   // A paper number expires with the staffed day. In particular, beginning a four-minute wait at
@@ -8597,14 +10169,25 @@ function bankTicketStatus() {
   return [`${t.no}号，请到${t.counter}。`,`${t.no}: please go to the ${BANK_SERVICES[t.kind].en}.`];
 }
 
-function bankRecord(kind,delta,zh,en) {
+function bankRecord(kind,delta,zh,en,save=true) {
   if(!BANK_LEDGER_KINDS.has(kind)) return;
-  const row={kind,delta:Math.trunc(delta)||0,day:day|0,at:Math.round(minutes),
-    balance:Math.floor(bankAccount.balance)};
+  const row={kind,delta:Math.round((Number(delta)||0)*10)/10,day:day|0,at:Math.round(minutes),
+    balance:bankValue(bankAccount.balance)};
   bankAccount.ledger.push(row);
   if(bankAccount.ledger.length>16) bankAccount.ledger.splice(0,bankAccount.ledger.length-16);
   if(zh&&en) logDiary(zh,en,`bank-${kind}-${row.day}-${row.at}-${bankAccount.ledger.length}`);
-  saveGame(); updateHud();
+  if(save) saveGame();
+  updateHud();
+}
+// Restaurant settlement is one synchronous transaction: debit here, then let RestaurantSys clear
+// the paid meal and call saveNow. Deferring this helper's save prevents a reload checkpoint between
+// "money left the account" and "the bill was settled" while still recording the card purchase.
+function bankCardPurchase(value) {
+  const amount=bankValue(value);
+  if(!bankAccount.opened||!bankAccount.hasCard||!amount||bankAccount.balance+1e-9<amount) return false;
+  bankAccount.balance=bankValue(bankAccount.balance-amount);
+  bankRecord('purchase',-amount,null,null,false);
+  return true;
 }
 function bankPayRent(value) {
   const amount=Math.min(bankAmount(value),bankAccount.opened?bankAccount.balance:0);
@@ -8623,8 +10206,8 @@ function bankOpenAccount() {
     accountNo:`6222 •••• •••• ${last}`,openedDay:day|0,ledger:[]};
   consumeBankTicket('personal');
   Vocab.introduce('账户'); Vocab.introduce('银行卡'); Vocab.introduce('密码');
-  bankRecord('open',0,'在北京银行开了账户，拿到了银行卡。',
-    'Opened an account at Beijing Bank and received a bank card.');
+  bankRecord('open',0,'在青禾银行开了账户，拿到了银行卡。',
+    'Opened an account at Qinghe Bank and received a bank card.');
   return true;
 }
 function bankCashReady() {
@@ -8714,7 +10297,7 @@ function openBankTicket() {
 }
 function openBankOverview() {
   const ledger=bankAccount.ledger.slice(-5).reverse();
-  const names={open:'开户',deposit:'存款',withdraw:'取款',transit:'交通卡充值',rent:'房租'};
+  const names={open:'开户',deposit:'存款',withdraw:'取款',transit:'交通卡充值',rent:'房租',purchase:'消费'};
   Pick.show({title:'银行卡 · 账户',sub:bankAccount.opened
       ? `${bankAccount.accountNo} · 余额 ¥${bankAccount.balance} · 现金 ¥${Math.floor(money)}`
       : '还没有账户 · no bank account yet',
@@ -8868,7 +10451,7 @@ function finishMallFood(vendor,item,option) {
   if (seat) {
     P.x=seat.x; P.z=seat.z; P.lift=y; P.yaw=seat.yaw;
     P.vx=P.vz=0; P.speed=0; P.ground=0;
-    CAM.fx=P.x; CAM.fz=P.z; CAM.tYaw=P.yaw;
+    CAM.fx=P.x; CAM.fz=P.z; aimCameraYaw(P.yaw);
     const pose={type:'sit',at:[P.x,P.z],yaw:P.yaw,seatY:.50};
     sitting={hz:'美食广场',at:[P.x,P.z],yaw:P.yaw,aisle:P.x,mall:true,pose};
   }
@@ -9017,10 +10600,26 @@ function openMallEvents() {
   });
 }
 // The cinema ticket in your pocket: { film, en, clock } for the screening it was sold for. The box
-// office writes it, the seat in 一号厅 reads it and tears it up. Deliberately not saved — it is a
-// ticket for the next showing, and a reload is a new afternoon.
+// office writes it, the seat in 一号厅 reads it and tears it up. It is paid property, so it survives
+// a reload on the day it was bought; the day marker prevents yesterday's ticket becoming today's.
 let cinemaTicket = null;
 const CINEMA_PRICE = 45;
+const cinemaClock = at =>
+  `${String(Math.floor(at / 60)).padStart(2, '0')}:${String(at % 60).padStart(2, '0')}`;
+// Keep the legacy one-screen route on the same timetable as CinemaSys: doors open 25 minutes
+// before lights-down, then adverts and trailers plus 20 minutes of the feature leave 29 minutes
+// after the printed time for late entry. The ticket already stores day + clock, so this needs no
+// new save field and gives the foyer door and the auditorium seat one shared decision.
+function cinemaTicketAdmission(ticket, currentDay, now) {
+  if (!ticket || ticket.day !== currentDay || typeof ticket.clock !== 'string') return 'expired';
+  const match = /^(\d{2}):(\d{2})$/.exec(ticket.clock);
+  if (!match) return 'expired';
+  const hour = Number(match[1]), minute = Number(match[2]);
+  if (hour > 23 || minute > 59) return 'expired';
+  const at = hour * 60 + minute;
+  if (now < at - 25) return 'early';
+  return now < at + 29 ? 'admit' : 'expired';
+}
 
 // The box office. A cinema that only ever sells you the next showing is a turnstile; what makes it
 // a box office is that the day's programme is in front of you and you pick one off it, which is the
@@ -9036,12 +10635,14 @@ function openCinema() {
     sub: `¥${CINEMA_PRICE} 一张 · ¥${money} 在身上 · pick a screening`,
     rows: Mall.SHOWS.map(s => {
       const gone = s.at < now - 15;
-      return { hz: `${String(Math.floor(s.at / 60)).padStart(2, '0')}:${String(s.at % 60).padStart(2, '0')} ${s.film}`,
+      return { hz: `${cinemaClock(s.at)} ${s.film}`, showAt: s.at,
                py: s.en, en: gone ? 'already started' : `${s.mins} minutes`,
                right: `¥${CINEMA_PRICE}`, off: gone || money < CINEMA_PRICE };
     }),
     onPick(r) {
-      const s = Mall.SHOWS.find(q => r.hz.endsWith(q.film) && r.py === q.en);
+      // Titles repeat later in the programme. The authored minute is the showing identity; using
+      // film + English title alone silently sold the morning ticket when an evening row was chosen.
+      const s = Mall.SHOWS.find(q => q.at === r.showAt && q.film === r.hz.slice(6) && q.en === r.py);
       if (!s) return false;
       if (s.at < now - 15) {
         toast(`那场已经开始了 · <span class="dim">that one has started — pick a later showing</span>`);
@@ -9055,11 +10656,11 @@ function openCinema() {
       // Six rows of ten. Deterministic off the showing so the same ticket is the same seat, and
       // away from the very front, which is where nobody wants to sit and every cinema knows it.
       const row = 2 + (s.at % 5), num = 1 + ((s.at * 7) % 10);
-      const clock = `${String(Math.floor(s.at / 60)).padStart(2, '0')}:${String(s.at % 60).padStart(2, '0')}`;
+      const clock = cinemaClock(s.at);
       // `student` and `glasses` ride on the ticket because CinemaSys needs them at the door and
       // they are properties of the purchase, not of the person: a concession bought today does not
       // apply to tomorrow's film, and the glasses go back when you leave.
-      cinemaTicket = { film: s.film, en: s.en, clock, mins: s.mins, seat: `${row}排${num}座`,
+      cinemaTicket = { film: s.film, en: s.en, clock, mins: s.mins, seat: `${row}排${num}座`, day:day|0,
                        student: false, glasses: false };
       toast(`${clock}《${s.film}》· <span class="dim">${cinemaTicket.seat} · `
           + `¥${money} left · screen one is through the doors</span>`);
@@ -9093,7 +10694,7 @@ function openMallShop(shop) {
       : `¥${money} 在身上 · take what you want, then pay at 收银台`,
     rows: items.map(it => ({ hz: it.hz, py: it.py, en: it.en,
                              right: `¥${it.price}`,
-                             off: money < mallTotal() + it.price })),
+                             off: money < mallTotalWith(shop, it) })),
     onPick(r) {
       const it = items.find(q => q.hz === r.hz);
       if (!it) return false;
@@ -9107,10 +10708,17 @@ function openMallShop(shop) {
         toast(`先去付钱 · <span class="dim">pay for the ${basketShop()} things first</span>`);
         return false;
       }
-      // What you can afford is what you can afford *including* what is already in your hands.
-      if (money < mallTotal() + it.price) {
-        toast(`钱不够 · <span class="dim">${it.hz} is ¥${it.price}; `
-            + `¥${money - mallTotal()} left after what you are carrying</span>`);
+      if (it.ship && mallShipCount()) {
+        const queued = mallBasket.find(b => b.item.ship).item;
+        toast(`一次只能送一件 · <span class="dim">${queued.hz} is already in this basket — `
+            + 'one bulky delivery at a time</span>');
+        return false;
+      }
+      // What you can afford includes any discount this item itself unlocks.
+      const nextTotal = mallTotalWith(shop, it);
+      if (money < nextTotal) {
+        toast(`钱不够 · <span class="dim">${it.hz} makes the basket ¥${nextTotal}; `
+            + `you have ¥${money}</span>`);
         return false;
       }
       mallBasket.push({ shop, item: it });
@@ -9132,9 +10740,14 @@ function openMallShop(shop) {
 // to and what you have left teaches the numbers, and the numbers are the hard part. It goes in the
 // diary too, so it is still there when you have forgotten what 收银台 meant.
 function mallPay(paid) {
-  if (!mallBasket.length) return;
+  if (!mallBasket.length) return false;
   const shop = basketShop();
   const items = mallBasket.map(b => b.item);
+  // `useLabel` prevents this for a player before its timed payment starts.  Keep the same guard at
+  // the mutation boundary too, so a debug/direct caller cannot charge for a parcel the one active
+  // delivery slot has nowhere to represent.
+  const shipCount = mallShipCount();
+  if (shipCount > 1 || (shipCount && delivery)) return false;
   const total = mallTotal();
   // Read before the basket is emptied below, and kept so the receipt can show the offer rather
   // than a total that silently disagrees with the prices printed above it.
@@ -9168,17 +10781,23 @@ function mallPay(paid) {
                       ...(bookOff ? { off:bookOff, offWhy:'买二送一' } : {}) });
   if (mallReceipts.length > MALL_RECEIPTS_KEPT)
     mallReceipts.splice(0, mallReceipts.length - MALL_RECEIPTS_KEPT);
+  const shipped = shipToHome(items);
   // 一共 is the word the till actually says, and it is the one worth having: every shop, every
   // market stall and every restaurant in the country ends the transaction with it.
   const line = items.map(it => `${it.hz} ¥${it.price}`).join(' · ');
   const stamp=awardMallStamp('shopping');
   toast(`一共${total}块 · <span class="dim">${line}`
     + (bookOff ? ` · 买二送一 −¥${bookOff}` : '')
+    + (shipped ? ` · ${shipped.item.hz}已付款，约${MALL_SHIP_MINS}分钟送到快递柜` : '')
     + ` · ¥${money} left${mallStampSuffix(stamp)}</span>`);
   Vocab.sentenceHTML(`一共${total}块。`);
-  logDiary(`在${shop}买了${items.map(it => it.hz).join('、')}，一共${total}块。`,
+  logDiary(`在${shop}买了${items.map(it => it.hz).join('、')}，一共${total}块。`
+             + (shipped ? `${shipped.item.hz}已付款，送到快递柜。` : ''),
            `Bought ${items.map(it => it.en).join(', ')} at the ${shop} for ¥${total}` +
-           (paid ? '' : ` — ¥${before} down to ¥${money}`) + '.', 'mallbuy');
+           (paid ? '' : ` — ¥${before} down to ¥${money}`) +
+           (shipped ? `; the prepaid ${enOf(shipped.item)} will reach the parcel locker in about ${MALL_SHIP_MINS} minutes` : '')
+           + '.', 'mallbuy');
+  return true;
 }
 
 const CARD_PRICE = 20, CARD_OFF = 1, TOPUPS = [10, 20, 50];
@@ -9192,6 +10811,17 @@ let ticket = null;                // { to, fare } — the single in your pocket,
 let card = null;                  // { bal } — the travel card, once you have bought one
 let tapIn = null;                 // the station you tapped in at, for working out the fare
 let station = '杨柳胡同';
+// A single is paid property while it is still landside. Keep its optional v1 record narrow and
+// copy it on both sides of the save boundary: an unknown station or fare is no ticket, never a
+// partly trusted object that can make a gate disagree with the ticket machine.
+function normaliseMetroTicket(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+      !Object.prototype.hasOwnProperty.call(raw, 'to') ||
+      !Object.prototype.hasOwnProperty.call(raw, 'fare') ||
+      typeof raw.to !== 'string' || !Metro.STATIONS.some(s => s.hz === raw.to) ||
+      !Number.isSafeInteger(raw.fare) || !FARES.includes(raw.fare)) return null;
+  return { to:raw.to, fare:raw.fare };
+}
 // Which side of the turnstiles you are standing on — read off where you are, not remembered.
 // The gates open and you walk through them, so a flag would go stale the moment you did.
 const pastGateNow = () => place === 'metro' && P.z > Metro.GATEZ;
@@ -9227,12 +10857,14 @@ const officeSuiteAt = at => [at[0],at[1]+OFFICE_SUITE_DZ];
 // afford and a station that has not opened both look. `onPick` gets the row back and returns true
 // to close the drawer or false to leave it up, so a refusal can stay on screen.
 const Pick = (() => {
-  let open = false, cfg = null, rows = [], idx = 0;
+  let open = false, cfg = null, rows = [], idx = 0, returnFocus = null;
   const el = () => $('#pick');
 
   function render() {
     $('#pickTitle').textContent = cfg.title;
     $('#pickSub').textContent = cfg.sub;
+    const host = $('#pickList');
+    const restoreRowFocus = host.contains(document.activeElement);
     let html = '', k = 0;
     for (const r of cfg.rows) {
       if (r.sec) { html += `<div class="sec">${r.sec}<span>${r.en || ''}</span></div>`; continue; }
@@ -9252,7 +10884,9 @@ const Pick = (() => {
       const i = k++;
       const dish = cfg.skin === 'restaurant' && r.dish;
       const icon = dish ? ({ noodle:'面', rice:'饭', soup:'汤', plate:'菜', bottle:'饮' }[dish.kind] || '味') : '';
-      html += `<div class="mrow${i === idx ? ' on' : ''}${r.off ? ' no' : ''}${dish ? ' dishrow' : ''}" data-i="${i}"${dish ? ` data-kind="${dish.kind}"` : ''}>`
+      html += `<div class="mrow${i === idx ? ' on' : ''}${r.off ? ' no' : ''}${dish ? ' dishrow' : ''}" data-i="${i}"`
+        + ` role="button" tabindex="${r.off ? -1 : 0}" aria-disabled="${!!r.off}"`
+        + ` aria-current="${i === idx}"${dish ? ` data-kind="${dish.kind}"` : ''}>`
         + (dish ? `<div class="dishicon">${icon}</div>` : '')
         + `<div class="h">${r.hz}</div>`
         + `<div class="m"><i>${r.py || ''}</i>${r.en || ''}`
@@ -9260,40 +10894,74 @@ const Pick = (() => {
         + `</div>`
         + `<div class="p">${r.right || ''}</div></div>`;
     }
-    const host = $('#pickList');
     host.innerHTML = html;
-    host.querySelectorAll('.mrow').forEach(e => {
-      e.onclick = () => { idx = +e.dataset.i; api.confirm(); };
+    host.querySelectorAll('.mrow[data-i]').forEach(e => {
+      const activate = () => {
+        const at = +e.dataset.i, row = rows[at];
+        if (!row || row.off) return;
+        idx = at; api.confirm();
+      };
+      e.onclick = activate;
+      e.onkeydown = ev => {
+        if (ev.key !== 'Enter' && ev.key !== ' ') return;
+        ev.preventDefault(); activate();
+      };
     });
     const on = host.querySelector('.mrow.on');
-    if (on) on.scrollIntoView({ block: 'nearest' });
+    if (on) {
+      on.scrollIntoView({ block: 'nearest' });
+      if (restoreRowFocus && on.getAttribute('aria-disabled') !== 'true')
+        on.focus({ preventScroll: true });
+    }
   }
 
   const api = {
     show(c) {
+      // A chooser replaces any other modal surface; two aria-modal drawers must never be live at
+      // once, even when an action completion and a UI shortcut land in the same frame.
+      if (cardOpen) closeCard();
+      if (talkOpen) closeTalk();
+      if (bookOpen) toggleBook();
+      if (flightExperienceOpen()) closeFlightExperience();
+      const wasOpen = open;
+      if (!wasOpen) returnFocus = modalReturnTarget(document.activeElement);
       cfg = c;
       rows = c.rows.filter(r => !r.sec && !r.read);
-      idx = Math.max(0, rows.findIndex(r => r.hz === c.start));
+      const requested = rows.findIndex(r => r.hz === c.start && !r.off);
+      const firstEnabled = rows.findIndex(r => !r.off);
+      idx = requested >= 0 ? requested : Math.max(0, firstEnabled);
       open = true;
       el().classList.toggle('restaurant', c.skin === 'restaurant');
+      el().querySelector('.foot').style.display = c.readOnly ? 'none' : '';
       el().classList.add('on');
       setSurfaceOpen('#pick', true);
+      syncGameplayAccessibility();
       render();
+      if (!wasOpen) {
+        const first = $('#pickList .mrow.on:not([aria-disabled="true"])');
+        (first || $('#pickClose')).focus({ preventScroll: true });
+      }
     },
     close() {
       if (!open) return;
       open = false;
       el().classList.remove('on');
       setSurfaceOpen('#pick', false);
+      syncGameplayAccessibility();
+      const back = returnFocus; returnFocus = null;
+      if (back && back.isConnected && typeof back.focus === 'function')
+        back.focus({ preventScroll: true });
     },
     move(step) {
-      if (!rows.length) return;
-      idx = (idx + step + rows.length) % rows.length;
-      render();
+      if (!rows.some(r => !r.off)) return;
+      for (let n = 0; n < rows.length; n++) {
+        idx = (idx + step + rows.length) % rows.length;
+        if (!rows[idx].off) { render(); return; }
+      }
     },
     confirm() {
       const r = rows[idx];
-      if (!r) return;
+      if (!r || r.off) return;
       if (cfg.onPick(r) !== false) api.close();
       else render();                     // the refusal may have changed what is affordable
       updateHud();
@@ -9304,6 +10972,13 @@ const Pick = (() => {
   return api;
 })();
 const menuOpen = () => Pick.isOpen;      // read by the movement and key handlers
+
+// All player/world input paths share this definition. A modal may keep the simulation alive — a
+// flight and a cooking timer should continue — but it owns movement, camera and world picking.
+function worldInputLocked() {
+  return !started || paused || cardOpen || talkOpen || bookOpen || Pick.isOpen ||
+    flightExperienceOpen();
+}
 
 // Every overlay has an explicit exit for touch, switch-control and pointer users. Keyboard
 // shortcuts remain conveniences, not the only way out of a surface.
@@ -9362,8 +11037,9 @@ const DOORS = [
   { hz: '街上', en: 'the hutong',      place: 'street', at: '杨柳胡同', mins: 2 },
   { hz: '公司', en: 'the office complex', place: 'office1', at: '商务区', mins: 3 },
   { hz: '购物中心', en: 'the shopping mall', place: 'mall', at: '商务区', mins: 4 },
-  { hz: '医院', en: 'Beijing Renhe Hospital', place: 'hospital', at: '商务区', mins: 4 },
-  { hz: '银行', en: 'Beijing Bank', place: 'bank', at: '商务区', mins: 3 },
+  { hz: '医院', en: "Beijing Cheng'an Hospital", place: 'hospital', at: '商务区', mins: 4 },
+  { hz: '消防站', en: 'Yangliu Fire and Rescue Station', place: 'firestation', at: '商务区', mins: 5 },
+  { hz: '银行', en: 'Qinghe Bank', place: 'bank', at: '商务区', mins: 3 },
   { hz: '京华大酒店', en: 'Jinghua Grand Hotel', place: 'hotel', at: '商务区', mins: 5 },
   { hz: '街上', en: 'the main road',   place: 'street', at: '商务区',   mins: 2 },
 ];
@@ -9373,7 +11049,7 @@ const RIDE_BOARD = 5, RIDE_LEG = 3;    // minutes: getting down there, then per 
 // a question about which end of it you are on.
 const DISTRICT = { officeB1:'商务区',office1:'商务区',office2:'商务区',office3:'商务区',
                    office:'商务区',office5:'商务区',office6:'商务区',office7:'商务区',officeRoof:'商务区',
-                   officeLift:'商务区', mall: '商务区', bank: '商务区',
+                   officeLift:'商务区', mall: '商务区', bank: '商务区', firestation:'商务区',
                    hospital:'商务区', hospital2:'商务区', hospital3:'商务区', hospital4:'商务区',
                    hotelB1:'商务区',hotel:'商务区',hotel2:'商务区',hotel3:'商务区',hotel4:'商务区',
                    hotel5:'商务区',hotel6:'商务区',hotel7:'商务区',hotel8:'商务区',hotel9:'商务区',
@@ -9388,18 +11064,20 @@ function hereStation() {
   if (place === 'street') return P.x > 29 ? '商务区' : '杨柳胡同';
   return '杨柳胡同';                   // the flat, the shop and the noodle place are all on it
 }
-// What the map would charge for a ride: nothing if you are holding a single made out to that
-// station, the discounted fare off the card if you have one, otherwise cash.
+// What the map would charge for a ride. A single contributes the value already paid for it, just
+// as it does at the physical exit gate; starting farther away still means 补票 for the difference.
+// Otherwise use the discounted travel card when it can cover the fare, then wallet cash.
 function mapFare(hz) {
   const legs = legsBetween(hereStation(), hz);
   if (!legs) return { legs, cost: 0, how: 'here' };
-  if (ticket && ticket.to === hz) return { legs, cost: 0, how: 'ticket' };
   const f = fareFor(legs);
+  if (ticket && ticket.to === hz)
+    return { legs, cost: Math.max(0, f - ticket.fare), how: 'ticket' };
   if (card && card.bal >= f - CARD_OFF) return { legs, cost: f - CARD_OFF, how: 'card' };
   return { legs, cost: f, how: 'cash' };
 }
 function travelBlocked() {
-  if (paused || Pick.isOpen) return true;
+  if (worldInputLocked()) return true;
   if (doing) { say('先把手里的事做完。', 'Finish what you are doing first.'); return true; }
   if (ride) { say('车还没到站呢。', 'You are on a moving train.'); return true; }
   if (place === 'hotelLift' && HotelLift.state().phase !== 'idle') {
@@ -9420,10 +11098,12 @@ function travelToStation(hz) {
   if (!s || !s.out) return;
   const f = mapFare(hz);
   if (f.how === 'here') { say('已经在这儿了。', 'You are already here.'); return; }
-  if (f.how === 'cash' && money < f.cost) {
-    say(`不够，票价${f.cost}块。`, `Not enough — the fare is ¥${f.cost}.`); return;
+  if ((f.how === 'cash' || f.how === 'ticket') && money < f.cost) {
+    say(f.how === 'ticket' ? `这张票还得补${f.cost}块。` : `不够，票价${f.cost}块。`,
+        f.how === 'ticket' ? `This single is ¥${f.cost} short for that journey.`
+                           : `Not enough — the fare is ¥${f.cost}.`); return;
   }
-  if (f.how === 'ticket') ticket = null;
+  if (f.how === 'ticket') { money -= f.cost; ticket = null; }
   else if (f.how === 'card') card.bal -= f.cost;
   else money -= f.cost;
   tapIn = null;
@@ -9435,10 +11115,11 @@ function travelToStation(hz) {
   const late = Disrupt.metroMinutes(day, minutes);
   advanceTime(RIDE_BOARD + f.legs * RIDE_LEG + late);
   goalEvent('travel', hz);
-  const paid = f.how === 'ticket' ? '用了那张单程票'
+  const paid = f.how === 'ticket' ? `用了那张单程票${f.cost ? `，补了${f.cost}块` : ''}`
     : f.how === 'card' ? `刷卡${f.cost}块` : `${f.cost}块`;
   say(`坐地铁到${hz}，${paid}。`, `Subway to ${s.en}. ${f.how === 'ticket'
-    ? 'Your single was for it.' : `¥${f.cost}${f.how === 'card' ? ' off the card' : ''}.`}`);
+    ? (f.cost ? `Your single plus a ¥${f.cost} supplement.` : 'Your single was for it.')
+    : `¥${f.cost}${f.how === 'card' ? ' off the card' : ''}.`}`);
   // Said afterwards, and only if it actually cost you something. The line map has been carrying
   // this warning since the morning; this is the moment it stops being a warning.
   if (late >= 3) {
@@ -9491,6 +11172,7 @@ function updateMap() {
   // through the morning it was not.
   const late = Disrupt.metro(day, minutes);
   const sig = [here, place, Math.floor(money), card && card.bal, ticket && ticket.to,
+               ticket && ticket.fare,
                late && late.mins,
                Math.floor(minutes / 30)].join('|');   // the half hour, for shutters
   if (sig === mapSig) return;
@@ -9499,10 +11181,10 @@ function updateMap() {
   line.innerHTML = Metro.STATIONS.map((s, i) => {
     const f = mapFare(s.hz);
     const on = s.hz === here;
-    const shut = !s.out || (f.how === 'cash' && money < f.cost);
-    const lab = on ? '这儿' : f.how === 'ticket' ? '有票' : `¥${f.cost}`;
+    const shut = !s.out || ((f.how === 'cash' || f.how === 'ticket') && money < f.cost);
+    const lab = on ? '这儿' : f.how === 'ticket' ? (f.cost ? `补¥${f.cost}` : '有票') : `¥${f.cost}`;
     return `<button class="stop${on ? ' on' : ''}${shut && !on ? ' no' : ''}`
-      + `${f.how === 'ticket' ? ' free' : ''}" data-hz="${s.hz}" `
+      + `${f.how === 'ticket' && !f.cost ? ' free' : ''}" data-hz="${s.hz}" `
       + `title="${s.hz} · ${s.en}${on ? '' : ` · ${f.legs} stop${f.legs === 1 ? '' : 's'}`}">`
       + `<span class="fx">${lab}</span><i></i>`
       + `<span class="nm">${s.hz}</span></button>`;
@@ -9511,6 +11193,11 @@ function updateMap() {
     el.onclick = () => { travelToStation(el.dataset.hz); updateMap(); };
   });
   const doors = DOORS.filter(d => d.at === here);
+  // In 商务区, put the station's entrance first in the local row directly beneath the metro
+  // teleports. It is intentionally contextual: other districts should not advertise a local
+  // doorway that is not there.
+  const fireDoorIndex = doors.findIndex(d => d.place === 'firestation');
+  if (fireDoorIndex > 0) doors.unshift(doors.splice(fireDoorIndex, 1)[0]);
   const host = $('#mapHere');
   // 回家 in one press — offered exactly where the gap is, which is any station that is not the
   // one the building is on. At 杨柳胡同 the 家 door is already in the row and a second button saying
@@ -9518,14 +11205,16 @@ function updateMap() {
   const gap = place !== 'home' && !doors.some(d => d.place === 'home');
   const fare = gap ? mapFare('杨柳胡同') : null;
   host.innerHTML = (doors.length
-    ? doors.map((d, i) => `<button class="door${sameDoorPlace(d.place,place) ? ' on' : ''}`
+    ? doors.map((d, i) => `<button class="door${d.place === 'firestation' ? ' firestation' : ''}${sameDoorPlace(d.place,place) ? ' on' : ''}`
         + `${doorShut(d) ? ' shut' : ''}" data-i="${i}" `
-        + `title="${d.hz} · ${d.en}${doorShut(d) ? ' · 关门了 shut' : ''}">${d.hz}</button>`)
+        + `title="${d.hz} · ${d.en}${doorShut(d) ? ' · 关门了 shut' : ''}">`
+        + `${d.place === 'firestation' ? '消防站 · FIRE STATION' : d.hz}</button>`)
         .join('')
     : `<span class="none">${here} · you are here</span>`)
     + (gap ? `<button class="door" data-home="1" title="回家 · straight back to your building, `
            + `${fare.legs} stop${fare.legs === 1 ? '' : 's'}`
-           + `${fare.how === 'ticket' ? ' · 有票' : fare.cost ? ` · ¥${fare.cost}` : ''}`
+           + `${fare.how === 'ticket' ? ` · 有票${fare.cost ? ` · 补¥${fare.cost}` : ''}`
+                                      : fare.cost ? ` · ¥${fare.cost}` : ''}`
            + `">回家</button>` : '');
   // Scoped to `[data-i]`: the 回家 button carries the same class and no index, and `doors[NaN]`
   // is undefined, which `travelToDoor` would read `.at` off and throw inside a click handler.
@@ -9575,9 +11264,10 @@ function fastHome() {
   if (!door) return;
   if (hereStation() !== door.at) {
     const f = mapFare(door.at);
-    if (f.how === 'cash' && money < f.cost) {
-      say(`回家的票要${f.cost}块，不够。`,
-          `The fare home is ¥${f.cost} and you do not have it. Walk, or earn some.`);
+    if ((f.how === 'cash' || f.how === 'ticket') && money < f.cost) {
+      say(f.how === 'ticket' ? `回家还得补${f.cost}块，不够。` : `回家的票要${f.cost}块，不够。`,
+          f.how === 'ticket' ? `Your single is ¥${f.cost} short of the fare home.`
+                             : `The fare home is ¥${f.cost} and you do not have it. Walk, or earn some.`);
       return;
     }
     travelToStation(door.at);
@@ -9787,6 +11477,13 @@ function openFlights() {
     })),
     onPick(r) {
       const f = r.f;
+      // There is one physical ticket in the player's pocket.  The ordinary walk-up path stops
+      // opening this picker once it exists, but a stale panel or direct caller must not turn a
+      // second click into a second debit and silently replace the first booking.
+      if (flight) {
+        say(`已经买了${flight.f.no}的票。`, `You already have ${flight.f.no} to ${flight.f.en}.`);
+        return true;
+      }
       if (f.cancelled) {
         say('这班取消了，今天不飞。', `${f.no} is cancelled today. Nothing is going to ${f.en}.`);
         return false;
@@ -10036,7 +11733,7 @@ function openDuty() {
 // every other destination now costs what its own board says instead of the same 3.5 hours.
 const GROUND_MINS = 90;
 const COACH = 90;                  // 机场大巴, the far city to its airport
-const HOTEL = 220;                 // 和平饭店, one night, tourist rate
+const HOTEL = 220;                 // 沪岚饭店, one night, tourist rate
 const CHANGE = 260;                // what they charge you for missing the flight home
 let trip = null;                   // { f, back } while you are away, in absolute clock minutes
 
@@ -10049,7 +11746,7 @@ let trip = null;                   // { f, back } while you are away, in absolut
 // all four of them read this instead of naming 外滩.
 //
 // 成都 and not 西安, which is the other city AIRPORT.md offers: the schedule in `airport.js`
-// already carries CZ3908 成都 13:05, with a board row, a gate, a baked PA announcement and an
+// already carries QL3908 成都 13:05, with a board row, a gate, a baked PA announcement and an
 // entry in `FX_CITY` for the view out of the cabin window. 西安 has none of those, and the
 // schedule belongs to another file. Making a ticket that already exists arrive somewhere is the
 // actual bug; inventing an eighth flight would have been a different one.
@@ -10095,8 +11792,15 @@ const activeClockRate = () =>
 function boardCabin() {
   if (!flight || !flight.checked) return;
   const f = flight.f;
+  // The cabin is a moving controller and is deliberately not serialised. Preserve the last stable
+  // airport checkpoint before entering it, so a reload mid-flight resumes at the gate with the
+  // paid ticket and every completed airport step rather than overwriting that state with a shell.
+  saveGame();
   cabinBoarded = true;
   Cabin.setPhase('gate');
+  // Check-in can happen before the lazy Cabin has built, when vacateSeat has no passenger roster
+  // to edit. At this point its onBuild callback has populated the seats, so enforce the assignment.
+  vacateSeat(flight.seat);
   // How long this one is, so the bulkhead display counts down this flight and not the Shanghai one,
   // and where it is going, for the moving map on the seat in front of you.
   Cabin.setBlock(f.hrs * 60);
@@ -10155,12 +11859,66 @@ const FX_CITY = {
   '东京':['富士山和东京湾','Mount Fuji and Tokyo Bay','106'],
   '曼谷':['湄南河和金色寺庙','the Chao Phraya River and golden temples','D6'],
 };
+// A bought ticket is stable property, but its live row is a mutable Airport object. Persist only
+// the plain fields used by the airport/cabin chain and validate them without touching either lazy
+// scene. Moving cabin progress is excluded; boardCabin writes a stable gate checkpoint instead.
+function flightToSave() {
+  if (!flight || cabinBoarded || place === 'cabin' || flight.startedAt !== undefined) return null;
+  const f = flight.f;
+  return {
+    f:{ no:f.no, to:f.to, en:f.en, dep:f.dep, late:f.late, price:f.price,
+        gate:f.gate, gate2:f.gate2, hrs:f.hrs,
+        cancelled:!!f.cancelled, moved:!!f.moved },
+    bookedDay:flight.bookedDay, depAt:flight.depAt,
+    checked:!!flight.checked, bag:!!flight.bag, cleared:!!flight.cleared,
+    seat:flight.seat, knewGate:flight.knewGate,
+  };
+}
+function flightFromSave(raw) {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw) ||
+      !raw.f || typeof raw.f !== 'object' || Array.isArray(raw.f)) return null;
+  const f=raw.f;
+  if (typeof f.no !== 'string' || !/^[A-Z]{2}\d{2,4}$/.test(f.no) ||
+      typeof f.to !== 'string' || !Object.prototype.hasOwnProperty.call(FX_CITY,f.to) ||
+      typeof f.en !== 'string' || !f.en.length || f.en.length > 80 ||
+      !Number.isSafeInteger(f.dep) || f.dep < 0 || f.dep >= 1440 ||
+      !Number.isSafeInteger(f.late) || f.late < 0 || f.late > 360 ||
+      !Number.isSafeInteger(f.price) || f.price < 1 || f.price > 100000 ||
+      typeof f.gate !== 'string' || !/^B\d{2}$/.test(f.gate) ||
+      typeof f.gate2 !== 'string' || !/^B\d{2}$/.test(f.gate2) ||
+      !Number.isSafeInteger(f.hrs) || f.hrs < 1 || f.hrs > 24 ||
+      !Number.isSafeInteger(raw.bookedDay) || raw.bookedDay < 1 ||
+      !Number.isSafeInteger(raw.depAt) ||
+      raw.depAt !== clockAt(raw.bookedDay,f.dep+f.late)) return null;
+  // Avoid seatRow here: it reaches into the lazy Cabin. An invalid seat downgrades the ticket to
+  // unchecked instead of restoring an impossible boarding card and poisoning the whole record.
+  const checked=raw.checked===true && typeof raw.seat==='string' && /^2[1-6][ABC]$/.test(raw.seat);
+  return {
+    f:{ no:f.no,to:f.to,en:f.en,dep:f.dep,late:f.late,price:f.price,
+        gate:f.gate,gate2:f.gate2,hrs:f.hrs,
+        cancelled:f.cancelled===true,moved:f.moved===true },
+    bookedDay:raw.bookedDay,depAt:raw.depAt,checked,
+    bag:checked&&raw.bag===true,cleared:checked&&raw.cleared===true,
+    seat:checked?raw.seat:null,
+    knewGate:checked&&(raw.knewGate===f.gate||raw.knewGate===f.gate2)?raw.knewGate:null,
+  };
+}
 const PASSPORT_KEY = 'bjlife.flightpassport.v1';
 let flightPassport = { stamps:{}, miles:0, moments:[], badges:[] };
-try { Object.assign(flightPassport, JSON.parse(localStorage.getItem(PASSPORT_KEY)) || {}); } catch (_) {}
-if (!flightPassport.stamps) flightPassport.stamps = {};
-if (!Array.isArray(flightPassport.moments)) flightPassport.moments = [];
-if (!Array.isArray(flightPassport.badges)) flightPassport.badges = [];
+try {
+  const raw = JSON.parse(localStorage.getItem(PASSPORT_KEY));
+  if (raw && typeof raw === 'object' && !Array.isArray(raw)) {
+    if (raw.stamps && typeof raw.stamps === 'object' && !Array.isArray(raw.stamps))
+      for (const [city, visits] of Object.entries(raw.stamps))
+        if (FX_CITY[city] && Number.isFinite(Number(visits)) && Number(visits) > 0)
+          flightPassport.stamps[city] = Math.min(999, Math.floor(Number(visits)));
+    if (Number.isFinite(raw.miles)) flightPassport.miles = clamp(Math.floor(raw.miles), 0, 1e9);
+    if (Array.isArray(raw.moments)) flightPassport.moments = raw.moments
+      .filter(value => typeof value === 'string').slice(-80).map(value => value.slice(0, 96));
+    if (Array.isArray(raw.badges)) flightPassport.badges = raw.badges
+      .filter(value => typeof value === 'string').slice(-24).map(value => value.slice(0, 64));
+  }
+} catch (_) {}
 function saveFlightPassport() {
   try { localStorage.setItem(PASSPORT_KEY, JSON.stringify(flightPassport)); } catch (_) {}
 }
@@ -10181,7 +11939,8 @@ function awardFlightStamp(f) {
   saveFlightPassport();
   logDiary(`飞行护照盖了${f.to}的章。`, `Stamped the flight passport in ${f.en}.`, `stamp-${f.to}`);
 }
-let fxPage = 'map';
+let fxPage = 'map', fxShowing = false, fxReturnFocus = null;
+function flightExperienceOpen() { return fxShowing; }
 function renderFlightExperience(page) {
   const root = $('#flightExperience'); if (!root || !root.classList.contains('on')) return;
   fxPage = page || fxPage;
@@ -10197,7 +11956,7 @@ function renderFlightExperience(page) {
       `<div class="fxcard"><small>高度 · ALTITUDE</small><strong>${alt.toLocaleString()} m</strong></div>`+
       `<div class="fxcard"><small>预计到达 · PROGRESS</small><strong>${pct}%</strong></div></div>`+
       `<div class="fxroute"><i style="width:${pct}%"></i><em style="left:${Math.max(3,pct)}%">✈</em></div>`+
-      `<div class="fxcaption">北京 PEK <span style="float:right">${to} · ${city[2]}号登机口 / gate ${city[2]}</span></div>`;
+      `<div class="fxcaption">京华 JHX <span style="float:right">${to} · ${city[2]}号登机口 / gate ${city[2]}</span></div>`;
   } else if (fxPage === 'outside') {
     title.textContent = '窗外摄像头 · Exterior camera';
     host.innerHTML = `<div class="fxoutside${night ? ' night' : ''}"></div><div class="fxcaption">`+
@@ -10248,13 +12007,27 @@ function renderFlightExperience(page) {
   }
 }
 function openFlightExperience(page) {
+  if (cardOpen) closeCard();
+  if (talkOpen) closeTalk();
+  if (bookOpen) toggleBook();
+  if (Pick.isOpen) Pick.close();
+  if (!fxShowing) fxReturnFocus = modalReturnTarget(document.activeElement);
+  fxShowing = true;
   fxPage = page || 'map'; $('#flightExperience').classList.add('on');
   setSurfaceOpen('#flightExperience', true);
+  syncGameplayAccessibility();
   renderFlightExperience(fxPage);
+  $('#fxClose').focus({ preventScroll: true });
 }
 function closeFlightExperience() {
+  if (!fxShowing) return;
+  fxShowing = false;
   $('#flightExperience').classList.remove('on');
   setSurfaceOpen('#flightExperience', false);
+  syncGameplayAccessibility();
+  const back = fxReturnFocus; fxReturnFocus = null;
+  if (back && back.isConnected && typeof back.focus === 'function')
+    back.focus({ preventScroll: true });
 }
 function openFlightQuiz() {
   closeFlightExperience();
@@ -10642,7 +12415,7 @@ function takeFlight() {
   say(`${f.to}回来了。`, `Back from ${f.en}.`);
   toast(`去了一趟${f.to} · <span class="dim">two days in ${f.en}` +
         (bag ? ', and the case came round in the end' : '') +
-        ` · you are back at 首都国际机场, day ${day}</span>`);
+        ` · you are back at 京华国际机场, day ${day}</span>`);
   Vocab.sentenceHTML('登机');
   refreshSigns();
   updateHud();
@@ -10662,7 +12435,7 @@ function comeHome() {
   setPlace('airport');
   say('回北京了。', 'Back in Beijing.');
   logDiary(`从${f.to}回北京了。`, `Flew home from ${f.en}.`);
-  toast(`回来了 · <span class="dim">${f.no} back from ${f.en} · 首都国际机场, ` +
+  toast(`回来了 · <span class="dim">${f.no} back from ${f.en} · 京华国际机场, ` +
         `day ${day}, ${hhmm(minutes)} · the subway is at the west end</span>`);
   refreshSigns();
   updateHud();
@@ -11254,6 +13027,25 @@ const HOSPITAL_CASES = [
 ];
 
 const hospitalCase = () => HOSPITAL_CASES.find(r => r.hz === hospitalVisit.case) || null;
+function restoreHospitalVisit(raw) {
+  const fresh = { day:0, case:null, number:null, stage:0, tested:false,
+    treated:false, dispensed:false, emergency:false };
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return fresh;
+  const record = HOSPITAL_CASES.find(row => row.hz === raw.case);
+  if (!record) return fresh;
+  const stage = Number.isSafeInteger(raw.stage) ? clamp(raw.stage, 1, 6) : 1;
+  return {
+    day:Number.isSafeInteger(raw.day) && raw.day > 0 ? raw.day : 0,
+    case:record.hz,
+    number:typeof raw.number === 'string' && /^[AE]\d{3}$/.test(raw.number)
+      ? raw.number : null,
+    stage,
+    tested:!!raw.tested && record.needsTest && stage >= 4,
+    treated:!!raw.treated && stage >= 5,
+    dispensed:!!raw.dispensed && stage >= 5,
+    emergency:!!raw.emergency,
+  };
+}
 function hospitalFresh() {
   if (hospitalVisit.day === day) return;
   // A registration slip is a visit, not a calendar-day consumable. Long observations and IVs can
@@ -11269,6 +13061,42 @@ function hospitalFresh() {
   }
   hospitalVisit = { day, case:null, number:null, stage:0, tested:false,
                     treated:false, dispensed:false, emergency:false };
+}
+
+// Triage, collecting a prescription and discharge are free actions, but each changes one exact
+// registration slip. Keep that accepted slip on the action so walking away cannot earn its meter
+// benefit without advancing the visit, and so a replaced or externally advanced visit cannot be
+// completed under an older prompt. The object reference is deliberately action-local: live actions
+// are not saved, while the visit itself remains ordinary v1 data.
+function hospitalStepSnapshot(kind) {
+  return {
+    kind, ref:hospitalVisit, day:hospitalVisit.day, case:hospitalVisit.case,
+    number:hospitalVisit.number, stage:hospitalVisit.stage, tested:hospitalVisit.tested,
+    treated:hospitalVisit.treated, dispensed:hospitalVisit.dispensed,
+    emergency:hospitalVisit.emergency,
+  };
+}
+
+function completeHospitalStep(step) {
+  if (!step || hospitalVisit !== step.ref) return null;
+  const same = ['case','number','stage','tested','treated','dispensed','emergency']
+    .every(key => hospitalVisit[key] === step[key]);
+  const record = same ? hospitalCase() : null;
+  if (!record) return null;
+  if (step.kind === 'triage' && hospitalVisit.stage === 1)
+    hospitalVisit.stage = 2;
+  else if (step.kind === 'dispense' && hospitalVisit.stage === 5 &&
+           hospitalVisit.treated && !hospitalVisit.dispensed)
+    hospitalVisit.dispensed = true;
+  else if (step.kind === 'discharge' && hospitalVisit.stage === 5 &&
+           hospitalVisit.treated && hospitalVisit.dispensed)
+    hospitalVisit.stage = 6;
+  else return null;
+  // A short accepted step may straddle midnight. It still belongs to this same unfinished visit;
+  // date it to the completion day before a completed discharge can be mistaken for yesterday's
+  // visit and cleared by the next HUD refresh.
+  hospitalVisit.day = day;
+  return { kind:step.kind, record, visit:hospitalVisit };
 }
 
 // A hospital visit crosses four lazy scenes, while the instruction after each action is spoken
@@ -11381,8 +13209,8 @@ function openHospitalRegistration(emergency=false) {
       say(`${r.say} 挂${r.dept}，${hospitalVisit.number}号。${next}`,
         `${r.en}. ${r.dept}, number ${hospitalVisit.number}. ${emergency
           ? 'Emergency triage is complete.' : `Triage first, then room ${r.room} on the second floor.`}`);
-      logDiary(`在仁和医院挂号，说了“${r.say}”，挂${r.dept}${r.room}诊室。`,
-        `Registered at Renhe Hospital for ${r.en} — ${r.dept}, room ${r.room}.`,'hospital-register');
+      logDiary(`在澄安医院挂号，说了“${r.say}”，挂${r.dept}${r.room}诊室。`,
+        `Registered at Cheng'an Hospital for ${r.en} — ${r.dept}, room ${r.room}.`,'hospital-register');
       saveGame();
       return true;
     },
@@ -11466,7 +13294,7 @@ function openRoomService(){
                             right:`¥${r.amt}`,svc:r}))),
     onPick(row){
       const r=row.svc;
-      const o=Stay.orderService(r.hz,r.en,r.amt,minutes,r.mins);
+      const o=Stay.orderService(r.hz,r.en,r.amt,clockNow(),r.mins);
       if(!o){say('现在没法点。','That cannot be ordered right now.');return false;}
       serviceGain=r.gain;
       say(`${r.hz}，大约${r.mins}分钟送到。`,`${r.en} — about ${r.mins} minutes.`);
@@ -11508,7 +13336,7 @@ function tickHotelRoom(now){
   hotelServiceAt=now;
   const b=Stay.booking(day,minutes);
   if(!b||b.floor!==place) return;
-  if(Stay.serviceDue(minutes)){
+  if(Stay.serviceDue(clockNow())){
     hotelWalkTo(null,[P.x,P.z+1.2],'tray',2.4,()=>{
       const o=Stay.serviceArrived(day);
       if(!o) return;
@@ -11703,7 +13531,7 @@ function openOfficeFloors(kind) {
         }
         const x=stairB?10.5:-10.5;
         setPlace(f.key,{x,z:2.85,yaw:stairB?Math.PI:0});
-        const storeys=Math.max(1,Math.abs(f.level-current.level));
+        const storeys=Math.max(1,Math.abs(f.order-current.order));
         advanceTime(Math.max(2,storeys*2));
         needs.rest=clamp(needs.rest-Math.max(1,storeys*1.35),0,100);
         Vocab.sentenceHTML(`走楼梯到${f.hz}。`);
@@ -11716,7 +13544,7 @@ function openOfficeFloors(kind) {
           ok==='busy'?'The passenger lift is already moving.':'Already on this floor.');
         return false;
       }
-      const storeys=Math.max(1,Math.abs(f.level-current.level));
+      const storeys=Math.max(1,Math.abs(f.order-current.order));
       advanceTime(Math.max(1,Math.ceil(storeys*.45)));
       TrainAudio.liftCue('close');
       setPlace('officeLift',{x:0,z:.48,yaw:Math.PI});
@@ -11751,13 +13579,32 @@ function openRemedy() {
         `<span class="dim">${r.back[1]}</span>`), 1400);
       logDiary(`在药店说了${r.say[0]}买了药。`,
                `Said "${r.say[1]}" at the chemist and came out with something for it.`, 'care');
+      // 吃药. The chemist shortens whatever you actually have; it does not prevent anything, and
+      // it does not care whether the packet you bought matches the illness — that is what the
+      // hospital is for.
+      const med = Survive.takeMedicine(day);
+      if (med) { setTimeout(() => toast(`${med.hz} &nbsp;${med.en}`), 2600); updateHud(); }
       saveGame();
       return true;
     },
   });
 }
 
+const CAREER_WORK_REFUSAL = {
+  hz:'你的工卡已经停了，这次不算工作，也没有工资。',
+  en:'Your work card has been cancelled. This does not count as work and there is no pay.',
+};
+const careerWorkAllowed = () => Survive.employed();
+function refuseCareerWork() {
+  say(CAREER_WORK_REFUSAL.hz, CAREER_WORK_REFUSAL.en);
+  return false;
+}
+function blockCareerWork(d) {
+  return { ...d, zh:'看看', py:'kànkan', en:'your work card has been cancelled',
+           block:CAREER_WORK_REFUSAL.hz, blockTr:CAREER_WORK_REFUSAL.en };
+}
 function openTasks() {
+  if (!careerWorkAllowed()) return refuseCareerWork();
   const h = minutes / 60;
   const wd = Career.weekday(day);
   const workday = Career.isWorkday(day);
@@ -11791,6 +13638,9 @@ function openTasks() {
     start: job && job.hz,
     rows,
     onPick(r) {
+      // The panel normally pauses the world, but this is an authority boundary rather than a UI
+      // assumption: a stale callback may not assign work, approve leave or promote after firing.
+      if (!careerWorkAllowed()) return refuseCareerWork();
       // ---- 请假. A signed-off day is not an absence, which is the entire point of the word.
       if (r.leave) {
         if (!workday) { say('周末不用请假。', 'It is the weekend. You do not need to ask.'); return false; }
@@ -11842,6 +13692,7 @@ function openTasks() {
       return true;
     },
   });
+  return true;
 }
 
 // `USE` lives in js/data.js, with the other two data tables.
@@ -11899,11 +13750,10 @@ let fixHold = null;             // dev override: pin every fixture, for screensh
 // fridge. The only thing the game remembered about you was the words — which is a strange thing for
 // a game that charges rent.
 //
-// What is deliberately *not* in here: an action half-finished, a train you are riding, an order
-// standing at a counter, a flight you have booked, the basket you are carrying round the 超市. Every
-// one of those is a live object holding references to props in a scene that has not been built yet
-// at the moment a save is read, and a half-restored one of those is worse than none. So they come
-// back reset, and what is saved is the state of your life rather than the state of your hands.
+// What is deliberately *not* in here: an action half-finished, a moving train or cabin, a menu
+// being browsed, or the basket you are carrying round the 超市. Stable paid property such as
+// tickets, deliveries and a diner meal already ordered is reduced to validated plain data; live
+// scene/controller references still come back reset, because a half-restored one is worse than none.
 const SAVEKEY = 'bjlife.save.v1';
 // Set true only by New Game, for the moment between wiping the save and the page reloading. The
 // two save-on-exit handlers (visibilitychange, beforeunload) both fire during a reload, and either
@@ -11915,18 +13765,40 @@ const SAVE_MAX = 400 * 1024;
 let saveBytes = 0;
 // A person, named the same way across two sessions. `rig` is unique where it exists; otherwise the
 // place and the pair of names is, because two 阿姨 in one room would be one person to a player too.
-const npcKey = n => n.rig || `${n.place || '-'}/${n.hz}/${n.name || ''}`;
+// A pooled anonymous figure shares one rig with the whole pool (`n.rigShared`, js/game.js:1657),
+// so a rig id only names a person when the pool did not hand it out — two 顾客 in one mall used to
+// collide on a single `met` slot. Everyone with a rig of their own keeps the key they already had,
+// so no existing save loses its history. The composite keys off `n.place`, where this person
+// belongs, and never `n.curPlace`, where they happen to be: a key that travels loses the memory
+// every time they change room.
+//
+// This reduces collisions, it does not end them: measured 162 -> 85 colliding rows, 240 rows
+// resolving to 155 unique keys against 78 before. The residue is identically-named anonymous rows
+// in the same place, which a composite of place/hz/name cannot separate. Acceptable while `met` is
+// the only per-NPC state; the day a resident carries anything richer this needs a stable per-row
+// id that survives roster reordering, or old saves stop matching. CITY-LIFE.md 3.5.
+const npcKey = n => (n.rig && !n.rigShared) ? n.rig
+                  : `${n.place || '-'}/${n.hz}/${n.name || ''}`;
 function saveGame() {
   if (!started || wiping) return;        // nothing to save from behind the title screen —
                                          // and nothing to save while a New Game is wiping it,
                                          // or the reload's own save-on-exit writes the life
                                          // straight back over the blank slate.
+  if (cabinBoarded || place === 'cabin') return; // keep boardCabin's stable airport checkpoint
   try {
     // A lift car between floors is not a stable spawn. Record the controller as an optional v1
     // extension, but write the nearest safe landing into the ordinary place/x/z fields so old
     // loaders and interrupted rides both resume on solid floor.
     const hotelSafe=place==='hotelLift'?HotelLift.safeLanding():null;
     const officeSafe=place==='officeLift'?OfficeLift.safeLanding():null;
+    // The subway carriage is the same kind of unstable place, but its live `ride` controller is
+    // deliberately not serialised. Saving its coordinates used to reload a body into a motionless
+    // car with no way to open a door. Put that body back at the last station the ride reached,
+    // landside of the gates. A ticket that has already crossed the line and its tap-in state are
+    // visit-local, so restoring either would duplicate a journey or exchange the frozen-car trap
+    // for a no-ticket gate trap. An unused landside ticket is saved separately below.
+    const transitSafe=(place==='train'||pastGateNow())
+      ? {key:'metro',at:{x:Metro.spawn.x,z:Metro.spawn.z,yaw:Metro.spawn.yaw}}:null;
     const homeState=place==='home'&&World.liftState?World.liftState():null;
     // `aboard` is intentionally checked even while the car is idle.  A reload reconstructs the
     // home lift in its default controller state, so coordinates saved inside a parked car can be
@@ -11946,12 +13818,12 @@ function saveGame() {
     // has to be that floor and not the shaft the body's x/z were in.
     const playerDeck=homeUnsafe?homeState.on:(place==='home'&&World.level?World.level():2);
     const homeFloor=place==='home'&&homeDeckLive(playerDeck)?playerDeck:2;
-    const safeLift=hotelSafe||officeSafe;
-    const savePlace=safeLift?safeLift.key:place;
-    const saveAt=safeLift?safeLift.at:homeUnsafe?homeLanding():{x:P.x,z:P.z,yaw:P.yaw};
+    const safeLanding=hotelSafe||officeSafe||transitSafe;
+    const savePlace=safeLanding?safeLanding.key:place;
+    const saveAt=safeLanding?safeLanding.at:homeUnsafe?homeLanding():{x:P.x,z:P.z,yaw:P.yaw};
     const blob = JSON.stringify({
       v: 1, at: Date.now(),
-      minutes, day, money, lightsOn: { ...lightsOn },
+      minutes, day, money, homeDayIn, lightsOn: { ...lightsOn },
       // The fridge, as lots. `stock` is still written beside it and is still a plain count of
       // meals — not for this build, which never reads it back, but so that a save written here
       // and opened by an older one lands in a flat with roughly the right amount of food in it
@@ -11964,15 +13836,16 @@ function saveGame() {
       fixt: { ...fixt },
       latched: { ...latched },
       flat: { ...flat },
-      // A collected optician frame is part of the player's look, not a half-finished shop action.
-      // Trial pairs are marked temporary by the tenant and deliberately do not survive a reload.
+      // Paid clothing and a collected optician frame are part of the player's look, not
+      // half-finished shop actions. Trial glasses are temporary and deliberately do not survive.
       playerLook: {
+        top: TOP.slice(0, 3),
         glasses: !!PLAYER.glasses && !PLAYER.glassesTemporary,
         glassesShape: Number.isSafeInteger(PLAYER.glassesShape) ? PLAYER.glassesShape : 0,
         glassesColor: Array.isArray(PLAYER.glassesColor)
           ? PLAYER.glassesColor.slice(0, 3).map(v => clamp(Number(v) || 0, 0, 1)) : null,
       },
-      job: job && job.hz, clockedDay, bought: mallBought.slice(-24),
+      job: job && job.hz, clockedDay, bought: cleanMallOwnership(mallBought),
       campusLife: { studentId:!!campusLife.studentId },
       // Scene-layout markers migrate coordinates without changing the v1 life format. A missing
       // CampusContract is possible only while loading a partial development build; JSON simply
@@ -11998,15 +13871,25 @@ function saveGame() {
         // you ever visited carries the blob the last load stashed rather than dropping it.
         arcade: window.ArcadeSys ? ArcadeSys.toSave() : (mallSysSave.arcade || null),
         cinemaSys: window.CinemaSys ? CinemaSys.toSave() : (mallSysSave.cinemaSys || null),
+        // A bouquet is paid property with a live freshness clock. The florist owns its schema;
+        // this registry only carries that record across the same reload boundary as arcade cards.
+        florist: window.FloristSys ? FloristSys.toSave() : (mallSysSave.florist || null),
+        // Takeaway and boxed leftovers are paid food. RestaurantSys owns their menu/state schema;
+        // keep the exact box until the player eats it instead of retaining only the wallet debit.
+        restaurant: window.RestaurantSys ? RestaurantSys.toSave() : (mallSysSave.restaurant || null),
       },
       // The account belongs to the life; a queue ticket belongs to one visit and is deliberately
       // absent.  Optional v1 fields keep saves made before the branch became operational readable.
       bank: {
-        opened:!!bankAccount.opened, balance:Math.max(0,Math.floor(bankAccount.balance)),
+        opened:!!bankAccount.opened, balance:bankValue(bankAccount.balance),
         hasCard:!!bankAccount.hasCard, accountNo:bankAccount.accountNo,
         openedDay:bankAccount.openedDay|0,
         ledger:bankAccount.ledger.slice(-16).map(r=>({...r})),
       },
+      // A moving train or a body behind the gates is written back outside at the last station. In
+      // that checkpoint the journey has been spent, so only a still-unused landside ticket follows
+      // the player across a reload. Missing remains the old-v1 default of no single in hand.
+      metroTicket:transitSafe ? null : normaliseMetroTicket(ticket),
       card: card && card.bal, station,
       // The day's plan, and what the review queue made of it. `errand` and `extra` are what the
       // day was staged from, and they are saved for the same reason they are rolled once: without
@@ -12019,6 +13902,13 @@ function saveGame() {
       hotelLift: HotelLift.toSave(),
       officeLift: OfficeLift.toSave(),
       career: Career.toSave(),
+      // Optional v1 integration marker. Saves written while Survive announced discipline without
+      // applying it to Career lack this and receive one bounded reconciliation on load.
+      workDiscipline: 1,
+      // Health, the illness, the arrears and whether you still have a job. An old save has no
+      // `survive` key and loads a clean, housed, employed player on purpose — somebody who has
+      // been playing a fortnight has not been dodging a landlord for a fortnight.
+      survive: Survive.toSave(),
       story: Story.toSave(),
       // The hotel stay: the room, the card in your pocket, the thing that has gone wrong in it and
       // everything already on the bill. A booking is property in exactly the way a cinema ticket is
@@ -12035,10 +13925,23 @@ function saveGame() {
       // the parcels, the cleaner and the guest. Its own validated loader, because none of it is a
       // 0..1 fraction and the block above clamps every key it owns to one.
       homeLife: HomeLife.toSave(),
-      // ---- the rider on the stairs. `delivery` was written nowhere, and the money for a 外卖 is
-      // spent the moment it is ordered — so a refresh between ordering and answering the door lost
-      // real yuan the way losing a cinema ticket does. Plain data only; the courier is re-placed by
-      // `tickDelivery` from the state, and a bag already in your hand is not restored (see above).
+      // A return ticket remains property while its owner is walking around Shanghai or Chengdu.
+      // Keep this as a small optional v1 record: old saves have no field, and rebuilding the
+      // flight row below avoids forcing the lazy airport scene to exist just to load an away room.
+      awayTrip: trip ? { no:trip.f.no, to:trip.f.to, en:trip.f.en, back:trip.back,
+                         confirmed:!!trip.confirmed, bag:!!trip.bag } : null,
+      // The paid outbound half: plain data only, including check-in/security progress. A moving
+      // cabin never reaches this writer; boardCabin saves the stable gate state first.
+      flight: flightToSave(),
+      // A restaurant meal is paid for when it is ordered. Keep the bowl while leaving the live
+      // waitress route behind; `coming` is normalised to a stable table state by the loader.
+      dinerOrder: dinerOrderToSave(),
+      // Once cash-on-delivery is settled, the live rider row is deliberately cleared. The bag he
+      // handed over remains paid property whether it is in your hand or on one of the flat's three
+      // surfaces, so it needs its own optional v1 record.
+      deliveryBag: deliveryBagToSave(),
+      // ---- the rider on the stairs. Plain data only; the courier is re-placed by `tickDelivery`
+      // from the state, and payment remains due until the player takes the bag at the door.
       // The item goes across as its headword, not as the object: what `dishByHz`/`goodsFor` hand
       // back is a row out of a menu or a goods table that a later build may have changed the price
       // of, and re-resolving the word against today's tables is the only version of this that
@@ -12062,6 +13965,25 @@ function saveGame() {
     localStorage.setItem(SAVEKEY, blob);
   } catch (_) { /* full, blocked, or a private window — a save is not worth an exception */ }
 }
+
+// A short-lived development build saved Survive's discipline history beside an unchanged Career
+// rank. Reconcile that old pair once, then `workDiscipline:1` on the next save prevents replay.
+// A dismissal is authoritative even after a rehire: the old schema cannot distinguish a promotion
+// earned after rehire from the pre-dismissal rank it wrongly retained, so intern is the only
+// deterministic reading of the rule the player was shown. Saves from before Survive are untouched.
+function migrateCareerDiscipline(saved) {
+  if (!saved || saved.workDiscipline === 1 || !saved.survive ||
+      typeof saved.survive !== 'object' || Array.isArray(saved.survive)) return 0;
+  const state = Survive.stats();
+  if (state.firedDay >= 0) {
+    Career.dismiss();
+    return 1;
+  }
+  const rank = Math.max(0, Career.RANKS.indexOf(Career.rank()));
+  const count = Math.min(rank, state.demotions);
+  for (let i = 0; i < count; i++) Career.demote();
+  return count;
+}
 function loadGame() {
   let s = null;
   try { s = JSON.parse(localStorage.getItem(SAVEKEY)); } catch (_) {}
@@ -12074,20 +13996,15 @@ function loadGame() {
       !Number.isFinite(s.stock)) return false;
   minutes = clamp(s.minutes, 0, 1439.999);
   day = s.day;
-  money = Math.max(0, s.money);
+  homeDayIn = s.homeDayIn === day ? day : -1;
+  money = Math.min(Number.MAX_SAFE_INTEGER, Math.max(0, Math.floor(s.money)));
   // A save from before the day was staged off the review queue has no `errand`/`extra`, and must
   // not be handed one retroactively — the same rule career, story and stay all follow. A malformed
   // errand is worse than none, because the plan would print a goal that names nothing, so every
   // field is checked and one bad field drops the errand back to the plain rotation.
   daily = s.daily && s.daily.day === (day | 0)
     ? { day:day | 0, done:{ ...(s.daily.done || {}) }, rewarded:!!s.daily.rewarded,
-        errand:(s.daily.errand && typeof s.daily.errand === 'object' &&
-                typeof s.daily.errand.key === 'string' &&
-                typeof s.daily.errand.hz === 'string' && typeof s.daily.errand.en === 'string')
-          ? { key:s.daily.errand.key.slice(0, 24), hz:s.daily.errand.hz.slice(0, 24),
-              en:s.daily.errand.en.slice(0, 80),
-              due:Math.max(0, Math.min(1, Number(s.daily.errand.due) || 0)) }
-          : null,
+        errand:normaliseDailyErrand(s.daily.errand),
         extra:(s.daily.extra && typeof s.daily.extra === 'object' &&
                typeof s.daily.extra.topic === 'string' &&
                (s.daily.extra.topic === 'service' ||
@@ -12139,9 +14056,17 @@ function loadGame() {
         const r = FLAT_RANGE[k] || FLAT_FRAC;
         flat[k] = clamp(s.flat[k], r[0], r[1]);
       }
-  // Optional v1 appearance extension. Old saves keep the established no-glasses default; a bad
-  // colour or silhouette drops only the accessory rather than poisoning the rest of the life.
+  // Optional v1 appearance extension. Reset the coat first so an old or malformed save loaded
+  // inside a running tester cannot inherit the outfit that happened to be worn a moment ago.
+  TOP = C('#47766f'); TOPL = tint(TOP, 1.24); TOPD = tint(TOP, 0.76);
   if (s.playerLook && typeof s.playerLook === 'object') {
+    const tc = s.playerLook.top;
+    if (Array.isArray(tc) && tc.length >= 3 && tc.slice(0, 3).every(Number.isFinite)) {
+      TOP = tc.slice(0, 3).map(v => clamp(v, 0, 1));
+      TOPL = tint(TOP, 1.24); TOPD = tint(TOP, 0.76);
+    }
+    // Old saves keep the established no-glasses default; a bad colour or silhouette drops only
+    // the accessory rather than poisoning the rest of the life.
     PLAYER.glasses = !!s.playerLook.glasses;
     PLAYER.glassesTemporary = false;
     PLAYER.glassesShape = Number.isSafeInteger(s.playerLook.glassesShape)
@@ -12155,10 +14080,9 @@ function loadGame() {
   // fractions and never was, which is exactly why it is a module with its own validated loader.
   if (s.homeLife && typeof s.homeLife === 'object') HomeLife.load(s.homeLife);
   else HomeLife.reset();
-  if (s.hospital && typeof s.hospital === 'object')
-    hospitalVisit = { ...hospitalVisit, ...s.hospital };
-  clockedDay = s.clockedDay || 0;
-  mallBought = Array.isArray(s.bought) ? s.bought : [];
+  hospitalVisit = restoreHospitalVisit(s.hospital);
+  clockedDay = Number.isSafeInteger(s.clockedDay) && s.clockedDay > 0 ? s.clockedDay : 0;
+  mallBought = cleanMallOwnership(s.bought);
   campusLife = { studentId:!!s.campusLife?.studentId };
   if (campusLife.studentId && !mallBought.includes('学生证')) mallBought.push('学生证');
   mallProgress=freshMallProgress();
@@ -12168,14 +14092,55 @@ function loadGame() {
   if (s.mall && typeof s.mall==='object') {
     // None of these exist in a v1 save. Each is restored only when it is really there and really
     // the right shape: a malformed ticket is worse than no ticket, because it looks like one.
-    if (s.mall.ticket && typeof s.mall.ticket==='object' && s.mall.ticket.film)
-      cinemaTicket={...s.mall.ticket};
-    if (Array.isArray(s.mall.receipts))
-      mallReceipts=s.mall.receipts.filter(r=>r&&Array.isArray(r.items)).map(r=>({...r}));
-    mallReceiptNo = Number.isSafeInteger(s.mall.receiptNo) ? s.mall.receiptNo
-      : mallReceipts.length ? (mallReceipts[mallReceipts.length-1].no|0) : 0;
-    if (s.mall.basketLeft && s.mall.basketLeft.n>0) mallBasketLeft={...s.mall.basketLeft};
-    mallSysSave = { arcade: s.mall.arcade || null, cinemaSys: s.mall.cinemaSys || null };
+    const savedTicket=s.mall.ticket;
+    if(savedTicket&&typeof savedTicket==='object'&&!Array.isArray(savedTicket)&&
+       (savedTicket.day===undefined||savedTicket.day===day)&&
+       typeof savedTicket.film==='string'&&typeof savedTicket.seat==='string'&&
+       /^([2-6])排(10|[1-9])座$/.test(savedTicket.seat)) {
+      const savedClock=typeof savedTicket.clock==='string'?savedTicket.clock:null;
+      const showing=Mall.SHOWS.find(show=>show.film===savedTicket.film&&show.en===savedTicket.en&&
+        (savedClock===null||savedClock===cinemaClock(show.at)));
+      if(showing) cinemaTicket={film:showing.film,en:showing.en,
+        clock:cinemaClock(showing.at),
+        mins:showing.mins,seat:savedTicket.seat,day:day|0,
+        student:!!savedTicket.student,glasses:!!savedTicket.glasses};
+    }
+    if (Array.isArray(s.mall.receipts)) mallReceipts=s.mall.receipts.slice(-40).flatMap(r=>{
+      if(!r||!Number.isSafeInteger(r.no)||r.no<1||r.no>MALL_RECEIPT_NO_MAX||
+         !Number.isSafeInteger(r.day)||r.day<1||
+         !Number.isFinite(r.at)||typeof r.shop!=='string'||!Array.isArray(r.items)) return [];
+      const items=r.items.slice(0,24).flatMap(item=>{
+        if(!item||typeof item.hz!=='string'||typeof item.en!=='string'||
+           !Number.isFinite(item.price)||!Number.isSafeInteger(item.qty)||item.qty<1) return [];
+        return [{hz:item.hz.slice(0,80),en:item.en.slice(0,160),
+          price:Math.max(0,Math.floor(item.price)),qty:Math.min(99,item.qty),
+          line:Math.max(0,Math.floor(Number(item.line)||0))}];
+      });
+      if(!items.length) return [];
+      const gross=items.reduce((sum,item)=>sum+item.price*item.qty,0);
+      const off=Number.isFinite(r.off)?clamp(Math.floor(r.off),0,gross):0;
+      return [{no:r.no,day:r.day,at:clamp(Math.round(r.at),0,1439),shop:r.shop.slice(0,80),items,
+        total:Math.max(0,Math.floor(Number(r.total)||0)),paid:!!r.paid,
+        ...(off?{off,offWhy:typeof r.offWhy==='string'?r.offWhy.slice(0,80):''}:{})}];
+    });
+    // Never let a stale/corrupt counter reuse an existing receipt number. Receipts are not
+    // guaranteed to arrive sorted in an imported save, so derive the floor from every row.
+    const lastReceiptNo = mallReceipts.reduce((highest, receipt) => Math.max(highest, receipt.no), 0);
+    const savedReceiptNo = Number.isSafeInteger(s.mall.receiptNo) && s.mall.receiptNo>=0 &&
+      s.mall.receiptNo<=MALL_RECEIPT_NO_MAX
+      ? s.mall.receiptNo : 0;
+    mallReceiptNo = Math.max(lastReceiptNo, savedReceiptNo);
+    if (s.mall.basketLeft && typeof s.mall.basketLeft==='object'&&
+        Number.isSafeInteger(s.mall.basketLeft.n)&&s.mall.basketLeft.n>0&&
+        Number.isFinite(s.mall.basketLeft.total)&&typeof s.mall.basketLeft.shop==='string')
+      mallBasketLeft={n:Math.min(99,s.mall.basketLeft.n),
+        total:Math.max(0,Math.floor(s.mall.basketLeft.total)),shop:s.mall.basketLeft.shop.slice(0,80)};
+    const savedFlorist = s.mall.florist, savedRestaurant = s.mall.restaurant;
+    mallSysSave = { arcade: s.mall.arcade || null, cinemaSys: s.mall.cinemaSys || null,
+      florist:savedFlorist && typeof savedFlorist==='object' && !Array.isArray(savedFlorist)
+        ? savedFlorist : null,
+      restaurant:savedRestaurant && typeof savedRestaurant==='object' && !Array.isArray(savedRestaurant)
+        ? savedRestaurant : null };
     applyMallSysSave();          // a no-op unless the mall has already been built this session
     if (s.mall.stamps && typeof s.mall.stamps==='object') for (const k in MALL_STAMPS) {
       const q=s.mall.stamps[k];
@@ -12197,7 +14162,7 @@ function loadGame() {
   bankAccount=freshBankAccount();
   if(s.bank&&typeof s.bank==='object') {
     bankAccount.opened=!!s.bank.opened;
-    bankAccount.balance=bankAccount.opened?bankAmount(s.bank.balance):0;
+    bankAccount.balance=bankAccount.opened?bankValue(s.bank.balance):0;
     // The first save extension briefly omitted `hasCard`; an opened account from that build still
     // issued one, so only an explicit false represents no card.
     bankAccount.hasCard=bankAccount.opened&&s.bank.hasCard!==false;
@@ -12207,10 +14172,10 @@ function loadGame() {
       ? Math.max(1,s.bank.openedDay):0;
     if(Array.isArray(s.bank.ledger)) bankAccount.ledger=s.bank.ledger.slice(-16).flatMap(r=>{
       if(!r||!BANK_LEDGER_KINDS.has(r.kind)||!Number.isFinite(Number(r.delta))) return [];
-      return [{kind:r.kind,delta:Math.trunc(Number(r.delta)),
+      return [{kind:r.kind,delta:Math.round(Number(r.delta)*10)/10,
         day:Number.isSafeInteger(r.day)&&r.day>0?r.day:day,
         at:clamp(Math.round(Number(r.at)||0),0,1439),
-        balance:bankAmount(r.balance)}];
+        balance:bankValue(r.balance)}];
     });
   }
   // Paper numbers, filled slips and an ID left on the desk do not survive a reload.
@@ -12219,6 +14184,8 @@ function loadGame() {
   // player at the bottom rather than inventing a history for them. The version number does not move
   // for this: an old save stays readable, which is the whole reason to make the field optional.
   Career.load(s.career);
+  Survive.load(s.survive);
+  migrateCareerDiscipline(s);
   Story.load(s.story);
   // The same rule as career: a save written before the hotel had a stay in it has no `stay` field
   // and must not be handed a room retroactively. `Stay.load` starts from a blank slate every time
@@ -12232,7 +14199,17 @@ function loadGame() {
   // else — and a state whose `stay` no longer matches the live booking is inert by construction,
   // which is what makes checking out clear it without a second code path.
   HotelRoom.load(s.room);
-  job = s.job ? (Office.TASKS.find(t => t.hz === s.job) || null) : null;
+  // A saved assignment is valid only while the saved employment is. Older builds retained `job`
+  // beside a dismissal; do not let loading and later rehiring resurrect that cancelled work.
+  job = Survive.employed() && s.job ? (Office.TASKS.find(t => t.hz === s.job) || null) : null;
+  // Loading is also exposed to diagnostics in the same page. Clear both visit-local values before
+  // reading the optional ticket record so an old v1 save cannot inherit a live in-memory single or
+  // tap-in from the life it is replacing. Raw train/platform saves are normalized landside below;
+  // never let an injected ticket turn that safety checkpoint into a second use of the same ride.
+  tapIn = null;
+  const savedTransitActive = s.place === 'train' ||
+    (s.place === 'metro' && Number.isFinite(s.z) && s.z > Metro.GATEZ);
+  ticket = savedTransitActive ? null : normaliseMetroTicket(s.metroTicket);
   card = Number.isFinite(s.card) ? { bal: Math.max(0, s.card) } : null;
   if (typeof s.station === 'string' && Metro.STATIONS.some(q => q.hz === s.station))
     station = s.station;
@@ -12242,11 +14219,53 @@ function loadGame() {
   // The workplace car follows the same stable-landing rule. Old saves have no officeLift field
   // and correctly initialise it in the first-floor lobby.
   OfficeLift.restore(s.officeLift);
+  // The paid return half of an away trip is runtime state, but unlike a moving cabin it is stable:
+  // without it a reload in Shanghai or Chengdu leaves the player there with no ticket home.  Only
+  // accept a ticket for the exact saved destination, and use own keys so `__proto__` cannot become
+  // a synthetic destination.  The compact row is all comeHome/reconfirmation ever reads.
+  trip = null;
+  const away = s.awayTrip;
+  const awayDest = away && typeof away === 'object' && !Array.isArray(away) &&
+    typeof away.to === 'string' && Object.prototype.hasOwnProperty.call(FLY_TO, away.to)
+    ? FLY_TO[away.to] : null;
+  if (awayDest && s.place === awayDest.place &&
+      typeof away.no === 'string' && /^[A-Z]{2}\d{2,4}$/.test(away.no) &&
+      Number.isSafeInteger(away.back) && away.back >= 0) {
+    trip = { f:{ no:away.no, to:away.to,
+                 en:typeof away.en === 'string' ? away.en.slice(0, 80) : away.to },
+             back:away.back, confirmed:!!away.confirmed, bag:!!away.bag };
+  }
+  // An outbound ticket and an away return cannot coexist in a valid life. Old saves simply have
+  // no field; corrupt state drops only this optional record. Reset the two visit-local modal flags
+  // so loading never resumes an announcement question or a moving cabin controller.
+  flight=!trip&&s.place!=='cabin'?flightFromSave(s.flight):null;
+  cabinBoarded=false;
+  gateAsk=false;
   // The place last, because it moves the body and resets the camera, and because a place that no
   // longer exists in this build must not strand the player outside the world.
-  let savedPlace = PLACES[s.place] ? s.place : 'home';
+  // Save data supplies a property name. PLACES is an ordinary object, so direct indexing accepts
+  // inherited names such as `__proto__` and `constructor`; normalize those to home before any
+  // controller or coordinate migration sees them. setPlace has the same own-key boundary, but the
+  // saved-place branch must be deterministic before reaching it.
+  let savedPlace = Object.prototype.hasOwnProperty.call(PLACES,s.place) ? s.place : 'home';
   let savedAt = Number.isFinite(s.x) && Number.isFinite(s.z) && Number.isFinite(s.yaw)
     ? { x:s.x, z:s.z, yaw:s.yaw } : undefined;
+  // Earlier v1 builds could write the moving cabin itself without its controller or ticket.
+  // Reopening that record produced a sealed, motionless aeroplane.  Current writes preserve an
+  // airport checkpoint instead; migrate the already-written cabin records to the same safe edge.
+  if(savedPlace==='cabin'){
+    savedPlace='airport';
+    savedAt={x:Airport.spawn.x,z:Airport.spawn.z,yaw:Airport.spawn.yaw};
+  }
+  // Current saves already turn a live carriage into this safe metro landing when they are written.
+  // Saves from the earlier v1 build still name `train`, so normalise them here as well. `station`
+  // above is the last platform the ride actually reached; repainting the shared metro scene before
+  // entry keeps its signs and exit route on that station instead of its build-time 杨柳胡同 default.
+  if(savedPlace==='train'||(savedPlace==='metro'&&savedAt&&savedAt.z>=Metro.GATEZ)){
+    savedPlace='metro';
+    savedAt={x:Metro.spawn.x,z:Metro.spawn.z,yaw:Metro.spawn.yaw};
+  }
+  if(savedPlace==='metro')Metro.setStation(station);
   // The expanded campus reuses the place id but not its old footprint. Any campus save without
   // the matching scene marker predates those walls and is restored at the contract's canonical
   // metro-side spawn instead of trusting coordinates that may now be inside a building.
@@ -12307,18 +14326,27 @@ function loadGame() {
       room = scene.roomAt(P.x, P.z, null) || scene.zones[0];
     }
   }
-  // ---- the rider, and who you have met. Both are plain data; neither holds a scene reference.
+  // ---- the paid diner bowl and courier bag, the rider, and who you have met. All are plain data;
+  // none holds a scene reference. Missing optional v1 fields preserve the old empty defaults.
+  order = dinerOrderFromSave(s.dinerOrder);
+  if (order) chosen = order.dish.hz;
+  restoreDeliveryBag(s.deliveryBag);
   delivery = null;
   if (s.delivery && typeof s.delivery === 'object' && typeof s.delivery.item === 'string' &&
       Number.isFinite(s.delivery.at) && ['coming', 'knock', 'door'].includes(s.delivery.state)) {
-    const kind = s.delivery.kind === 'paotui' ? 'paotui' : 'waimai';
+    const kind = s.delivery.kind === 'paotui' ? 'paotui'
+               : s.delivery.kind === 'mall' ? 'mall' : 'waimai';
     // Re-resolved against today's menu and goods tables. A word this build no longer sells is a
     // dropped delivery rather than a half-restored one holding a row that does not exist.
-    const item = kind === 'waimai' ? dishByHz(s.delivery.item) : goodsFor(s.delivery.item);
-    if (item) delivery = { kind, item, fee:Math.max(0, s.delivery.fee | 0),
-                 total:Math.max(0, s.delivery.total | 0), at:s.delivery.at,
+    const item = kind === 'waimai' ? dishByHz(s.delivery.item)
+               : kind === 'mall' ? mallGoodsFor(s.delivery.item) : goodsFor(s.delivery.item);
+    // Mall rows alone may restore a mall shipment.  It is always prepaid and always still en
+    // route: an old/tampered knock or door state must not enter the rider's COD path after load.
+    if (item && item.hz === s.delivery.item && (kind !== 'mall' || item.ship)) delivery = { kind, item,
+                 fee:kind === 'mall' ? 0 : Math.max(0, s.delivery.fee | 0),
+                 total:kind === 'mall' ? 0 : Math.max(0, s.delivery.total | 0), at:s.delivery.at,
                  gone: Number.isFinite(s.delivery.gone) ? s.delivery.gone : clockNow() + RIDER_WAIT,
-                 rap:0, state:s.delivery.state };
+                 rap:0, state:kind === 'mall' ? 'coming' : s.delivery.state };
     // He was in the doorway when the tab closed; a rebuilt scene has no rider standing in it, so
     // he goes back to knocking rather than to a door that opens onto nobody.
     if (delivery && delivery.state === 'door') delivery.state = 'knock';
@@ -12421,8 +14449,12 @@ function tickFixtures(dt, now) {
       renoHeard = !!on;
     }
     // Washing on the roof comes in when it rains. js/home-roof.js owns the rule; this is the clock.
-    if (typeof HomeRoof !== 'undefined' && HomeRoof.weatherTick && typeof Weather !== 'undefined')
+    if (typeof HomeRoof !== 'undefined' && HomeRoof.weatherTick && typeof Weather !== 'undefined') {
       HomeRoof.weatherTick(Weather.now);
+      // home-roof registers the cloth as a named mover; publishing wind without driving that
+      // mover left every sheet rigid in weather the same function had just measured.
+      if (Number.isFinite(HomeRoof.windAmt)) World.setPart('laundry', HomeRoof.windAmt);
+    }
   }
 }
 let homeSlowAt = 0, renoHeard = false;
@@ -12432,7 +14464,7 @@ let homeSlowAt = 0, renoHeard = false;
 // `at` overrides where you arrive. The apartment and the street each have one spawn, but a
 // street with four doors in it needs you to come out of the one you went in by, so a door can
 // name its own arrival point.
-let placeCutToken = 0;
+let placeCutToken = 0, placeRequestToken = 0;
 
 // ---------------------------------------------------------------- the late-asset gate's key
 //
@@ -12444,9 +14476,8 @@ let placeCutToken = 0;
 // mistake sat in `Lazy.built(name)`: `Lazy` is keyed by module name too, so that half was
 // permanently false and the "rooms already built are left alone" clause protected nothing either.
 //
-// It stayed invisible because `Assets.warm()` normally wins the race, and a room whose models turn
-// up a frame late looks exactly like a room whose models turned up on time. At home it does not
-// win: `endTitle()` builds the flat on the line after `warm()` starts.
+// It stayed invisible because the old whole-catalogue `Assets.warm()` normally won the race, and a
+// room whose models arrived a frame late looked exactly like one whose models arrived on time.
 //
 // A place with no declared models maps to itself and `roomReady` is honestly vacuous for it — that
 // is the same answer as before and it is the correct one. `.roomgate.js` asserts both halves: that
@@ -12456,16 +14487,40 @@ let placeCutToken = 0;
 // are under the older `Office` module, which is still live — `Office.TASKS` is what the whiteboard
 // reads. Mapping the place id at it is what stops `ROOMS.Office` being a declaration nothing can
 // ever reach; `.roomgate.js` fails if any `Assets.ROOMS` key is orphaned like that again.
-const ASSET_ROOM = { home:'World', street:'Street', shop:'Shop', diner:'Diner', office:'Office' };
+const ASSET_ROOM = {
+  home:'World', street:'Street', shop:'Shop', diner:'Diner', office:'Office',
+  firestation:'FireStation', market:'Market', mall:'Mall', nightmarket:'NightMarket', chengdu:'Chengdu',
+  hotel5:'Hotel5', hotel7:'Hotel7', hotel8:'Hotel8', hotel9:'Hotel9', hotel10:'Hotel10',
+  hotel11:'Hotel11', hotel12:'Hotel12',
+  hospital:'Hospital', hospital2:'Hospital2', hospital3:'Hospital3', hospital4:'Hospital4',
+  office3:'Office3', campus_b01_f1:'CampusInteriorB01F1', campus_b01_f2:'CampusInteriorB01F2',
+};
 const assetRoom = name => ASSET_ROOM[name] || name;
+function roomAssetsPending(assetKey, lazyRegistry, assetRegistry) {
+  return !!assetRegistry && !lazyRegistry.built(assetKey) && !assetRegistry.roomReady(assetKey);
+}
 
-function setPlace(name, at) {
+function setPlace(name, at, requestToken) {
+  // Refuse an unknown coordinate space before touching the current one. This is public to the
+  // diagnostics as well as internal travel code; a misspelling must not replace `scene` with
+  // undefined and strand the next animation frame in a half-transitioned world.
+  if (!Object.prototype.hasOwnProperty.call(PLACES, name)) {
+    console.warn('setPlace(' + name + '): unknown place — ignoring');
+    return false;
+  }
+  // A deferred model load can outlive the decision that requested it. Give every new destination
+  // a generation and let only the newest completion commit, or a slow first door can pull the
+  // player back out of a room they entered while that request was in flight.
+  const retryingAssets = requestToken !== undefined;
+  if (retryingAssets) {
+    if (requestToken !== placeRequestToken) return false;
+  } else requestToken = ++placeRequestToken;
   // `at` is a spawn point — `{x, z, yaw}` — and nothing below checks it. A debug caller handing
   // a room name instead (`setPlace('home', 'flat')`) set P.x/P.z/P.yaw to undefined, which the
   // camera copied on the next line as NaN. A NaN view matrix rasterises nothing, so the frame is
   // the clear colour: a black screen with a healthy GL context, props still in the draw list and
   // not one console error. Two agents have now chased that as a deck-cull fault. Refuse it here.
-  if (at && !(Number.isFinite(at.x) && Number.isFinite(at.z))) {
+  if (at && !(Number.isFinite(at.x) && Number.isFinite(at.z) && Number.isFinite(at.yaw))) {
     console.warn('setPlace(' + name + ', …): `at` must be {x, z, yaw} — ignoring', at);
     at = null;
   }
@@ -12474,23 +14529,50 @@ function setPlace(name, at) {
   // time. Built without them, the room caches without them, permanently: `Lazy` keeps what it
   // made and there is no second chance.
   //
-  // Almost always a no-op, because Assets.warm() has been pulling the whole library down behind
-  // the title screen since the game started. It fires only on a connection slow enough that
-  // somebody reached a door before 15 MB arrived, and then it costs one deferred frame rather
-  // than a room full of missing furniture. Rooms already built are left alone: assets cannot
-  // help them now, and re-entering one must never re-run this.
+  // Boot-room assets are already ready after Assets.preload(). A declared non-boot room reaches
+  // this branch on first entry and loads only its own models before construction. Rooms already
+  // built are left alone: assets cannot help them now, and re-entering one must never re-run this.
   // Not `room` — that name is already this function's later local for `scene.roomAt(...)`.
   const assetKey = assetRoom(name);
-  if (typeof Assets !== 'undefined' && !Lazy.built(assetKey) && !Assets.roomReady(assetKey)) {
-    Assets.loadRoom(assetKey).then(() => setPlace(name, at));
-    return;
+  const waitingForAssets = typeof Assets !== 'undefined' &&
+    roomAssetsPending(assetKey, Lazy, Assets);
+  if (waitingForAssets && !retryingAssets) {
+    const requestedAt = at ? { x:at.x, z:at.z, yaw:at.yaw } : null;
+    const resume = () => {
+      if (requestToken === placeRequestToken) setPlace(name, requestedAt, requestToken);
+    };
+    Assets.loadRoom(assetKey).then(resume, err => {
+      console.warn('setPlace(' + name + '): room assets failed to load — continuing', err);
+      resume();
+    });
+    return false;
   }
+  // `loadRoom` records individual model failures instead of rejecting. Retry the transition once
+  // after that settled promise, then continue without the missing model rather than scheduling an
+  // endless chain of already-resolved promises while the room remains unready.
+  if (waitingForAssets)
+    console.warn('setPlace(' + name + '): room assets remain unavailable — continuing');
   const cameFrom = place;
+  if (name !== cameFrom) {
+    // Nothing from the old coordinate space may keep owning input or the body after the cut.
+    if (doing) stopUse(false);
+    if (cardOpen) closeCard();
+    if (talkOpen) closeTalk();
+    if (bookOpen) toggleBook();
+    if (Pick.isOpen) Pick.close();
+    if (flightExperienceOpen()) closeFlightExperience();
+    for (const k in keys) keys[k] = false;
+    resetTouchMove(); cancelPress();
+  }
   // Campus schedules are static tableaux, not paths. Settle them while the old coordinate space
   // is still hidden: on departure this consumes any queued schedule edge, and on arrival it puts
   // every actor at the current authored spot before the first campus frame can expose a teleport.
   if ((cameFrom === 'campus' && name !== 'campus') ||
       (name === 'campus' && cameFrom !== 'campus')) syncCampusStaticNPCs();
+  // Residents follow the clock, not the player. Settle them onto the current hour's spot while the
+  // old coordinate space is still hidden, so somebody whose day has moved to another building is
+  // simply there when you get there rather than teleporting in front of you. CITY-LIFE.md 3.3.
+  settleResidents();
   // Queue paper and the form in your hand belong to this physical visit. Leaving through the
   // branch door gives the number back; returning or loading begins at the machine, not mid-call.
   if(cameFrom==='bank'&&name!=='bank') resetBankVisit();
@@ -12522,6 +14604,7 @@ function setPlace(name, at) {
     });
   }
   place = name; scene = PLACES[name];
+  if(typeof WebGPUPreview!=='undefined'&&WebGPUPreview.requested)WebGPUPreview.setScene(name);
   syncRigResidency(name);
   if(name!=='hotelLift'&&hotelFloorAt(name))HotelLift.syncLanding(name);
   // Coming back to your own floor is when the things that happened while you were out land:
@@ -12556,6 +14639,11 @@ function setPlace(name, at) {
   sitting = null; act = null;     // you are not still in the last room's chair
   CAM.fx = P.x; CAM.fz = P.z; CAM.lookY = 1.10; CAM.spin = 0; CAM.assist = null;
   CAM.slide = CAM.rise = 0;
+  // Room-local limits live in world coordinates. Two unrelated scenes often use the same spawn
+  // numbers, so distance alone cannot prove the body teleported; carrying `near`/`rlook` across
+  // such a change gives the new room a few frames of the old room's framing. Invalidate the whole
+  // room-follow sample explicitly and let the first destination frame seed it atomically.
+  resetRoomCameraState();
   CAM.tYaw = CAM.yaw = sp.yaw;
   // Indoors or out covers every room in the game except one. The aeroplane cabin is a tube 6.6m
   // across with luggage bins at head height down both sides, and the standard indoor camera — 4.4m
@@ -12565,7 +14653,13 @@ function setPlace(name, at) {
   CAM.tPitch = CAM.pitch = cd.pitch !== undefined ? cd.pitch : scene.indoor ? 0.34 : 0.22;
   CAM.tDist = CAM.dist = cd.dist !== undefined ? cd.dist : scene.indoor ? 4.4 : 5.2;
   if (cd.lookY !== undefined) CAM.lookY = cd.lookY;
-  room = scene.zones[0];
+  // The preference survives save/load and every lift transition. Apply the destination's own
+  // registered overview after its walking defaults have been seeded, so a persistent walls-down
+  // state cannot retain the previous floor's body-follow camera or an unsupported roof/lift view.
+  syncDollHouseCamera(name,CAM,SET.wallsOff);
+  resetStreetCameraTopology(sp.yaw, CAM.dist, CAM.pitch,
+    P.x, CAM.lookY + (P.lift || 0), P.z);
+  room = (scene.roomAt && scene.roomAt(P.x, P.z, null)) || scene.zones[0];
   // A quality level that could not be held in the hutong may be easy in a room with four hundred
   // props in it instead of three and a half thousand, so let the ladder try again from here.
   Perf.forget();
@@ -12652,7 +14746,14 @@ function setPlace(name, at) {
   // Same for the departure boards: walking into a terminal whose screens still say what they
   // said an in-game day ago is the same class of mistake.
   refreshSigns();
-  if (started) goalEvent('visit', isOfficePlace(name)?'office':name);
+  if (started) {
+    goalEvent('visit', isOfficePlace(name)?'office':name);
+    // `Story.stoodIn` recorded this arrival above. Check only after the destination body, camera,
+    // room and HUD state are committed: closing a chapter saves immediately, and doing that beside
+    // stoodIn would persist the new place with the previous place's coordinates.
+    storyBeat();
+  }
+  return true;
 }
 
 HotelLift.bind({
@@ -12794,6 +14895,7 @@ function flatLabel(d, hz) {
   // ---- 睡觉. The wake time, not a fixed block.
   if (d.sleep) {
     const p = HomeLife.sleepPlan(day, minutes);
+    const homeSleep = { day, minutes, plan:p };
     const wake = zhTime(p.wakeHour);
     // Item 263. A bad night has to be legible as a bad night, and it has to say whose fault it was
     // — otherwise the rest bar is just lower and the player learns nothing. `noise.why` is the
@@ -12801,7 +14903,7 @@ function flatLabel(d, hz) {
     const noise = p.noise || { loud:0, why:null };
     if (noise.loud >= 0.08) {
       const why = noise.why || {};
-      return { ...d, mins:p.mins, secs: 3.0 + Math.min(3.8, p.hours * 0.5),
+      return { ...d, homeSleep, mins:p.mins, secs: 3.0 + Math.min(3.8, p.hours * 0.5),
                zh: p.alarm ? '睡到闹钟响' : '睡觉',
                py: p.alarm ? 'shuì dào nàozhōng xiǎng' : 'shuìjiào',
                en: `sleep ${p.hours.toFixed(1)}h — up at ${hm(p.wakeHour)}, and it is noisy upstairs`,
@@ -12809,7 +14911,7 @@ function flatLabel(d, hz) {
                done: `${why.hz || '楼上一直有声音'}，一晚上没睡踏实。`,
                doneTr: `${why.en || 'Noise from upstairs all night.'} You slept badly.` };
     }
-    return { ...d, mins:p.mins, secs: 3.0 + Math.min(3.8, p.hours * 0.5),
+    return { ...d, homeSleep, mins:p.mins, secs: 3.0 + Math.min(3.8, p.hours * 0.5),
              zh: p.alarm ? '睡到闹钟响' : '睡觉',
              py: p.alarm ? 'shuì dào nàozhōng xiǎng' : 'shuìjiào',
              en: `sleep ${p.hours.toFixed(1)}h — up at ${hm(p.wakeHour)}` +
@@ -12893,7 +14995,7 @@ function flatLabel(d, hz) {
       return { ...d, zh:'切菜', py:'qiē cài', cookPick:true, gain:{}, secs:1.2, mins:1,
                en:`${can.length} 个菜 you could start` };
     const m = HomeLife.prepMins(picked.mins);
-    return { ...d, prepDo:picked.hz, mins:m, secs: 2.2 + m / 14,
+    return { ...d, prepDo:picked.hz, homePrep:{ recipe:picked }, mins:m, secs: 2.2 + m / 14,
              en:`chop for ${picked.en} — ${m} 分钟`,
              done:`${picked.hz}的菜切好了，下锅就行。`,
              doneTr:`Everything for ${picked.en} is chopped. It only needs the wok now.` };
@@ -12914,7 +15016,10 @@ function flatLabel(d, hz) {
     return { ...d, cookDo:picked.hz, mins:m, secs: 3.0 + m / 24,
              zh:`做${picked.hz}`, py:`zuò ${picked.py}`,
              en:`cook ${picked.en} — ${m} 分钟${ready ? ', already chopped' : ''}`,
-             gain:{ ...picked.gain, clean:-6 },
+             // Cooking makes the plate; eating it is what restores food and mood. Carry only the
+             // kitchen cost here or the same authored meal gain lands once at the wok and again
+             // when the plated dish is eaten at the table.
+             gain:{ clean:-6 },
              done:`${picked.hz}做好了，端上桌吧。`,
              doneTr:`${picked.en} is done. Take it through to the table.` };
   }
@@ -12926,6 +15031,7 @@ function flatLabel(d, hz) {
                blockTr:`Not yet — ${Math.ceil(left)} minutes to go.` };
     if (left === 0)
       return { ...d, zh:'盛饭', py:'chéng fàn', en:'serve the rice', riceTake:true,
+               homeServe:{ kind:'rice' },
                mins:4, secs:2.0, gain:{ food:30, mood:5 },
                done:'米饭焖好了，香。', doneTr:'The rice is done, and it smells like it.' };
     if (!HomeLife.stockOf('米', day))
@@ -12984,10 +15090,12 @@ function flatLabel(d, hz) {
                blockTr:`The washing is hanging on ${HomeLife.hungOn() === 12 ? 'the roof' : 'floor ' + HomeLife.hungOn()}.` };
     if (st && st.ruined)
       return { ...d, zh:'收衣服', py:'shōu yīfu', en:'the washing was rained on', bringIn:true,
+               homeLaundry:{ ref:HomeLife.hung },
                mins:8, secs:2.4, gain:{ mood:-12 },
                done:'下雨淋湿了，得重洗。', doneTr:'Rained on. It all has to go through again.' };
     if (st && st.dry >= 0.98)
       return { ...d, zh:'收衣服', py:'shōu yīfu', en:'bring the dry washing in', bringIn:true,
+               homeLaundry:{ ref:HomeLife.hung },
                mins:10, secs:2.6, gain:{ mood:10, clean:6 },
                done:'衣服干了，都收下来了。', doneTr:'Dry, and all folded away.' };
     if (st)
@@ -13021,7 +15129,7 @@ function flatLabel(d, hz) {
     const p = HomeLife.plated;
     if (p)
       return { ...d, zh:`在桌子上吃${p.hz}`, py:'zuò xiàlai chī', en:`sit down to the ${p.en}`,
-               mins:25, secs:3.2, eatPlate:true,
+               mins:25, secs:3.2, eatPlate:true, homeServe:{ kind:'plate', ref:p },
                gain:{ food:(p.gain.food || 30) + 6, mood:(p.gain.mood || 6) + 9 },
                pose:{ type:'eat', hold:'meal' },
                done:'坐下来好好吃了一顿。', doneTr:'Sat down and ate it properly.' };
@@ -13029,7 +15137,8 @@ function flatLabel(d, hz) {
       const l = HomeLife.leftovers, off = HomeLife.leftoverGone(day);
       return { ...d, zh:`吃${l.hz}`, py:'chī shèngcài', eatLeft:true,
                en: off ? `the leftover ${l.en} — it has gone off` : `last night's ${l.en}`,
-               mins:18, secs:2.8, gain:{ food: off ? 6 : 40, mood: off ? -16 : 6 },
+               mins:18, secs:2.8, homeServe:{ kind:'leftover', ref:l, off },
+               gain:{ food: off ? 6 : 40, mood: off ? -16 : 6 },
                pose:{ type:'eat', hold:'meal' },
                done: off ? '剩菜坏了，不该吃的。' : '昨天的剩菜，热一下也挺好。',
                doneTr: off ? 'The leftovers had turned. That was a mistake.'
@@ -13042,7 +15151,7 @@ function flatLabel(d, hz) {
     const g = HomeLife.guestDue(day, minutes);
     if (g)
       return { ...d, zh:'给客人倒茶', py:'gěi kèrén dào chá', en:`pour tea for ${g.en}`,
-               teaGuest:true, mins:12, secs:3.0, gain:{ mood:16, food:4 },
+               teaGuest:true, teaGuestRef:g, mins:12, secs:3.0, gain:{ mood:16, food:4 },
                done:'倒了两杯茶，坐下聊天。', doneTr:'Two cups poured, and you sit down to talk.' };
     return null;
   }
@@ -13074,42 +15183,125 @@ function flatLabel(d, hz) {
       return { ...d, zh:'看信箱', py:'kàn xìnxiāng', en:'the letterbox is empty',
                block:'信箱是空的。', blockTr:'Nothing in the box.' };
     const m = MAIL_DAY[day % MAIL_DAY.length];
-    return { ...d, mailTake:true, en:`${n} thing${n === 1 ? '' : 's'} in the letterbox`,
+    return { ...d, mailTake:true, homeMail:{ refs:HomeLife.post.slice(), day },
+             en:`${n} thing${n === 1 ? '' : 's'} in the letterbox`,
              done:m[1], doneTr:m[2] };
   }
   // ---- the porter, who knows the two things a 门卫 is for. Whichever is true right now.
   if (d.porter && Array.isArray(d.ask)) {
-    const line = HomeLife.parcelsAt('locker').length ? d.ask.find(a => a[0] === '快递') : d.ask[0];
+    // At night the person behind the glass is asleep. This has to come before the parcel branch:
+    // a collection code is not a reason to wake somebody at three in the morning, and the row's
+    // smaller mood gain is the authored cost of leaving without the useful conversation.
+    const h = ((minutes % 1440) + 1440) % 1440 / 60;
+    const night = h >= HOME_RUSH.夜深[0] && h < HOME_RUSH.夜深[1];
+    if (night && d.night) {
+      const gain = { ...(d.gain || {}) };
+      if (Number.isFinite(d.nightMood)) gain.mood = d.nightMood;
+      return { ...d, gain, done:d.night, doneTr:d.nightTr || d.doneTr };
+    }
+    // A parcel is useful information now, so it takes precedence over a general greeting.
+    const parcel = HomeLife.parcelsAt('locker').length
+      ? d.ask.find(a => a[0] === '快递') : null;
+    if (parcel) return { ...d, en:`ask him about ${parcel[0]}`, done:parcel[1], doneTr:parcel[2] };
+    // Recognition belongs to the guard who is actually on duty. Story.knows is persistent, while
+    // `npcAwake` resolves the two shifts from the same clock that placed the visible body. Pick the
+    // highest authored rung without sorting or rewriting the shared USE row.
+    let tier = null;
+    try {
+      const guard = typeof NPCS === 'undefined' ? null : NPCS.find(n => n && n.place === 'home' &&
+        n.deck === 0 && n.hz === '保安' && npcAwake(n));
+      if (guard && typeof Story !== 'undefined' && Story.knows && Array.isArray(d.know)) {
+        const known = Story.knows(guard) | 0;
+        for (const row of d.know)
+          if (row && Number.isFinite(row.at) && row.at <= known && (!tier || row.at > tier.at))
+            tier = row;
+      }
+    } catch (_) { tier = null; }
+    if (tier) {
+      const gain = { ...(d.gain || {}) };
+      if (Number.isFinite(tier.mood)) gain.mood = tier.mood;
+      return { ...d, gain, done:tier.zh, doneTr:tier.en };
+    }
+    const line = d.ask[0];
     if (line) return { ...d, en:`ask him about ${line[0]}`, done:line[1], doneTr:line[2] };
   }
   if (d.locker) {
-    const code = HomeLife.lockerCode();
+    const parcel = HomeLife.parcelsAt('locker')[0];
+    const code = parcel && parcel.code;
     if (!code)
       return { ...d, zh:'看看', py:'kànkan', en:'no parcel waiting for you',
                block:'柜子里没有我的件。', blockTr:'Nothing in there is yours.' };
-    return { ...d, parcelTake:'locker', en:`取件码 ${code}`,
+    return { ...d, parcelTake:'locker', homeParcel:{ where:'locker', ref:parcel }, en:`取件码 ${code}`,
              done:`输入${code}，柜门弹开了。`, doneTr:`You key in ${code} and the door pops open.` };
   }
   if (d.parcel) {
-    if (!HomeLife.parcelsAt('door').length)
+    const parcel = HomeLife.parcelsAt('door')[0];
+    if (!parcel)
       return { ...d, zh:'看看', py:'kànkan', en:'nothing has been left here',
                block:'门口没有我的快递。', blockTr:'There is no parcel of yours here.' };
-    return { ...d, parcelTake:'door' };
+    return { ...d, parcelTake:'door', homeParcel:{ where:'door', ref:parcel } };
   }
 
-  // ---- 缴费, and the two other things a phone is for at home.
+  // ---- 报修. The fault state has always known how to book and save a visit; these are the
+  // two places the player can actually tell somebody. The F4 desk keeps office hours, while the
+  // phone reaches the landlord from the flat at any hour. Both name the oldest unreported fault,
+  // so a second fault can be logged on the next interaction without reopening the first one.
+  if (place === 'home' && deck === 4 && hz === '办公室') {
+    const faults = Faults.list(day), fault = faults.find(f => !f.reported);
+    if (!faults.length)
+      return { ...d, zh:'看看', py:'kànkan', en:'nothing at home needs reporting',
+               block:'家里没有要报修的东西。', blockTr:'There is no fault at home to report.' };
+    if (!fault)
+      return { ...d, zh:'已经报修', py:'yǐjīng bàoxiū', en:'the fault is already logged',
+               block:`${faults.map(f => f.hz).join('、')}已经报修过了，等师傅上门。`,
+               blockTr:'It is already reported. Wait for the repair visit.' };
+    if (!Faults.officeOpen(minutes))
+      return { ...d, zh:'看看', py:'kànkan', en:'the estate office is closed',
+               block:'物业下班了，上午九点再来。',
+               blockTr:'The estate office is closed. Come back at nine.' };
+    return { ...d, zh:'给物业报修', py:'gěi wùyè bàoxiū', en:`report ${fault.en} to the estate office`,
+             reportFault:fault.key, reportBy:'物业',
+             homeReport:{ key:fault.key, since:fault.since, day, by:'物业' },
+             done:`${fault.hz}登记好了，师傅明天上门。`,
+             doneTr:`${fault.en} is logged; somebody will come tomorrow.` };
+  }
+
+  // ---- 缴费, and the other things a phone is for at home. A live fault comes first because
+  // the phone is the only after-hours reporting route; once it is logged, the usual bill, cleaner
+  // and neighbour actions become available again.
   if (d.phone) {
+    const fault = atFlat && Faults.list(day).find(f => !f.reported);
+    if (fault)
+      return { ...d, zh:'给房东报修', py:'gěi fángdōng bàoxiū', en:`report ${fault.en} to the landlord`,
+               reportFault:fault.key, reportBy:'房东', mins:6, secs:2.2, gain:{ mood:4 },
+               homeReport:{ key:fault.key, since:fault.since, day, by:'房东' },
+               done:`${fault.hz}已经告诉房东了，说明天来人。`,
+               doneTr:`The landlord has the report for ${fault.en}; somebody will come tomorrow.` };
+    // 交房租. The arrears, payable from the flat at any hour, and it comes before the utilities
+    // because it is the one debt with an eviction on the end of it. Without a way to clear what
+    // you owe there is no way back from an eviction, and a rule you cannot act on is a trap.
+    const rentOwed = Survive.owed();
+    if (rentOwed > 0)
+      return { ...d, zh:'交房租', py:'jiāo fángzū', en:`pay the landlord ¥${rentOwed} of back rent`,
+               payRentNow:true, rentQuote:rentOwed, cost:rentOwed, mins:8, secs:2.4,
+               gain:{ mood:3 } };
+    // 搬回公寓. The deposit, once nothing is owed. This is the whole way out of the cheap room.
+    if (Survive.home().key === 'cheap')
+      return { ...d, zh:'搬回公寓', py:'bān huí gōngyù', en:'pay the deposit and move back to the flat',
+               moveBackNow:true, cost:Survive.TUNING[Survive.mode].deposit, mins:20, secs:2.6,
+               gain:{ mood:8 } };
     const owed = HomeLife.billsOwed();
     if (owed > 0)
       return { ...d, zh:'手机缴费', py:'shǒujī jiāofèi', en:`pay ¥${owed} of bills on the phone`,
-               payBills:true, cost:owed, mins:10, secs:2.4, gain:{ mood:4 } };
-    if (atFlat && HomeLife.tidiness(flat) < 0.55 && !HomeLife.ayi)
+               payBills:true, billQuote:owed, cost:owed, mins:10, secs:2.4, gain:{ mood:4 } };
+    if (atFlat && HomeLife.tidiness(flat) < 0.55 && (!HomeLife.ayi || HomeLife.ayi.done))
       return { ...d, zh:'叫阿姨', py:'jiào āyí', en:`book the cleaner — ¥${HomeLife.AYI_FEE}, she comes tomorrow`,
-               bookAyi:true, cost:HomeLife.AYI_FEE, mins:8, secs:2.2, gain:{ mood:5 },
+               bookAyi:true, pay:-HomeLife.AYI_FEE, mins:8, secs:2.2, gain:{ mood:5 },
                done:'约好了，阿姨明天上午来。', doneTr:'Booked. She comes tomorrow morning.' };
-    if (atFlat && !HomeLife.guest)
+    if (atFlat && (!HomeLife.guest || HomeLife.guest.done || HomeLife.guestMissed(day)))
       return { ...d, zh:'约邻居来家里', py:'yuē línjū lái jiā lǐ', en:'invite a neighbour round tomorrow',
                inviteGuest:true, mins:12, secs:2.6, gain:{ mood:9 },
+               homeInvite:{ prior:HomeLife.guest, day:day + 1 },
                done:'说好了，明天下午来坐坐。', doneTr:'Agreed — tomorrow afternoon.' };
     return null;
   }
@@ -13118,7 +15310,7 @@ function flatLabel(d, hz) {
     if (!owed)
       return { ...d, zh:'看看', py:'kànkan', en:'nothing outstanding',
                block:'这个月的都交了。', blockTr:"This month's are all paid." };
-    return { ...d, cost:owed, en:`settle ¥${owed} at the desk` };
+    return { ...d, billQuote:owed, cost:owed, en:`settle ¥${owed} at the desk` };
   }
   if (d.billBoard) {
     const owed = HomeLife.billsOwed();
@@ -13176,6 +15368,10 @@ function useLabel(hz, th) {
   // The room gets first refusal on what a word means in it — see USE_AT.
   let d = useDefAt(hz,th);
   if (!d) return null;
+  // The whiteboard is an offer of paid Career work, not merely an office prop. Refuse before its
+  // timed wrapper starts so a dismissed player neither spends six minutes accepting a dead offer
+  // nor reaches the task/leave/promotion panel at completion.
+  if (d.board && hz === '白板' && !careerWorkAllowed()) return blockCareerWork(d);
   // The rebuilt flat no longer occupies the legacy one-room coordinates still written into the
   // oldest USE poses. Anchor furniture actions to the authored object on deck 2 (or to the seat
   // that belongs with it) so sleeping, working, showering and watching television cannot teleport
@@ -13248,7 +15444,7 @@ function useLabel(hz, th) {
                              : `Room ${b.room} was not quiet. You did not sleep well.` };
     }
   }
-  // ---- 北京银行.  The room-specific table prevents the counter from becoming a chemist; this
+  // ---- 青禾银行.  The room-specific table prevents the counter from becoming a chemist; this
   // layer makes its prompt report the actual queue/account state.  Only people-dependent work is
   // clock-gated.  The ATM branch deliberately never reads the staffed-hours flag.
   if(place==='bank') {
@@ -13332,6 +15528,7 @@ function useLabel(hz, th) {
     if (hospitalVisit.stage>=2)
       return { ...d, block:`已经分诊了，去二楼${hospitalCase()?.room||''}诊室。`,
         blockTr:`Triage is complete. Go to room ${hospitalCase()?.room||''} on the second floor.` };
+    d = { ...d, hospitalStep:hospitalStepSnapshot('triage') };
   }
   if (d.hospitalConsult) {
     hospitalFresh();
@@ -13388,6 +15585,7 @@ function useLabel(hz, th) {
         blockTr:'Complete treatment first; the dispensary has no prescription for you yet.' };
     if(hospitalVisit.dispensed)
       return { ...d, block:'药已经取过了。', blockTr:'You have already collected the medicine.' };
+    d = { ...d, hospitalStep:hospitalStepSnapshot('dispense') };
   }
   if (d.hospitalDischarge) {
     hospitalFresh();
@@ -13398,6 +15596,7 @@ function useLabel(hz, th) {
         blockTr:'Collect your medicine from the third-floor dispensary before discharge.' };
     if(hospitalVisit.stage>=6)
       return { ...d, block:'出院手续已经办好了。', blockTr:'Discharge is already complete.' };
+    d = { ...d, hospitalStep:hospitalStepSnapshot('discharge') };
   }
   // Four escalators over three levels, so the prompt has to name the floor this one actually goes
   // to rather than assuming there is only ever an upstairs and a downstairs.
@@ -13418,6 +15617,11 @@ function useLabel(hz, th) {
   // saying the doors have opened while the car is still three metres below you.
   if (place === 'home' && d.liftCall && World.liftState) {
     const st = World.liftState();
+    if (st.out) {
+      const note = st.outNote || ['电梯暂停使用，请走楼梯。', 'The lift is unavailable — use the stairs.'];
+      return { ...d, zh:'走楼梯', py:'zǒu lóutī', en:'use the stairs',
+               block:note[0], blockTr:note[1] };
+    }
     if (st.moving) {
       // 461. Which floor it is going to and how many seconds are left, because the old line said
       // only that it was busy — and a player told to wait with no idea how long presses again.
@@ -13456,6 +15660,16 @@ function useLabel(hz, th) {
       return { ...d, zh:'不是这家', py:'bú shì zhè jiā', en:`that came from the ${basketShop()}`,
                block:`这是在${basketShop()}拿的。`,
                blockTr:`You picked that up in the ${basketShop()} — pay there.` };
+    const shipCount = mallShipCount();
+    if (shipCount > 1)
+      return { ...d, zh:'分开买', py:'fēnkāi mǎi', en:'one bulky delivery at a time',
+               block:'一次只能送一件，请把这单分开。',
+               blockTr:'Only one bulky item can be delivered at a time; split this purchase.' };
+    if (shipCount && delivery)
+      return { ...d, zh:'等上一单', py:'děng shàng yì dān',
+               en:'one delivery is already on its way',
+               block:`${delivery.item.hz}还在路上，送到以后再买这件。`,
+               blockTr:`Your ${enOf(delivery.item)} is still on its way. Wait for it before shipping another item.` };
     const total = mallTotal(), n = mallBasket.length;
     if (money < total)
       return { ...d, zh:'钱不够', py:'qián bú gòu', en:`¥${total}, and you have ¥${money}`,
@@ -13480,7 +15694,7 @@ function useLabel(hz, th) {
   if (place==='mall' && th && th.arcadeLobby)
     d={...d,pay:0,gain:{},mallArcadeLobby:true,en:`choose a game · ${mallProgress.tickets} tickets`};
   if (place==='mall' && th && th.arcadeGame)
-    d={...d,pay:-ARCADE_PRICE,gain:{},secs:1.4,mins:1,
+    d={...d,pay:0,gain:{},secs:1.4,mins:1,
       pose:{type:th.arcadeGame==='dance'?'stand':'press'},mallArcadeGame:th.arcadeGame,
       en:`insert ¥${ARCADE_PRICE} and play ${ARCADE_GAMES[th.arcadeGame]?.en||'the game'}`};
   if (place==='mall' && th && th.arcadePrize)
@@ -13502,6 +15716,15 @@ function useLabel(hz, th) {
       return { ...d, zh:'还没买票', py:'hái méi mǎi piào', en:'buy a ticket in the lobby first',
                block:'我还没买票，先去售票处买一张。',
                blockTr:'I have not bought a ticket — buy one at the box office first.' };
+    const admission = cinemaTicketAdmission(cinemaTicket, day, minutes);
+    if (admission === 'early')
+      return { ...d, zh:'还没到时间', py:'hái méi dào shíjiān', en:`doors open before ${cinemaTicket.clock}`,
+               block:`还没到入场时间，电影是${cinemaTicket.clock}的。`,
+               blockTr:`It is too early to go in — my screening is at ${cinemaTicket.clock}.` };
+    if (admission === 'expired')
+      return { ...d, zh:'票过期了', py:'piào guòqī le', en:'this ticket is no longer valid',
+               block:'这张票已经过期了，得去售票处买一张新的。',
+               blockTr:'This ticket has expired — I need a new one from the box office.' };
     d = { ...d, en:`enter screen one — ${cinemaTicket.clock}, ${cinemaTicket.seat}`,
           done:`检票了，${cinemaTicket.seat}。`,
           doneTr:`Ticket checked — ${cinemaTicket.seat}.` };
@@ -13519,6 +15742,15 @@ function useLabel(hz, th) {
         return { ...d, zh:'还没买票', py:'hái méi mǎi piào', en:'buy a ticket in the lobby first',
                  block:'我还没买票，去售票处买一张。',
                  blockTr:'I have not bought a ticket — the box office is in the lobby.' };
+      const admission = cinemaTicketAdmission(cinemaTicket, day, minutes);
+      if (admission === 'early')
+        return { ...d, zh:'还没到时间', py:'hái méi dào shíjiān', en:`screening starts at ${cinemaTicket.clock}`,
+                 block:`还没到入场时间，电影是${cinemaTicket.clock}的。`,
+                 blockTr:`It is too early to sit down — my screening is at ${cinemaTicket.clock}.` };
+      if (admission === 'expired')
+        return { ...d, zh:'票过期了', py:'piào guòqī le', en:'this ticket is no longer valid',
+                 block:'这张票已经过期了，不能再看这一场。',
+                 blockTr:'This ticket has expired — I cannot use it for this screening.' };
       // Sixty seats and exactly one of them is yours, which is what makes 电影票 worth reading —
       // the same exchange the boarding card puts you through on the aeroplane.
       if (th && th.mallSeat && th.mallSeat !== cinemaTicket.seat)
@@ -13533,7 +15765,7 @@ function useLabel(hz, th) {
     else if (d.mallTicket) {
       // One at a time. Two tickets is money gone for nothing, and the refusal names the showing you
       // are already holding one for and where you are meant to be sitting.
-      if (cinemaTicket)
+      if (cinemaTicket && cinemaTicketAdmission(cinemaTicket, day, minutes) !== 'expired')
         return { ...d, zh:'票买好了', py:'piào mǎi hǎo le',
                  en:`you have one for ${cinemaTicket.clock} — ${cinemaTicket.seat}`,
                  block:`我买过票了，${cinemaTicket.clock}的，${cinemaTicket.seat}。`,
@@ -13652,13 +15884,23 @@ function useLabel(hz, th) {
   // old integer could not represent — two meals were two meals whatever they were.
   if (d.fridge) {
     const got = Pantry.next(day);
+    // 坏了, and said before the key is pressed rather than after. A spoiled lot has `left: 0`, so
+    // without this branch it took the 快坏了 path below and told the player the loaf was *about*
+    // to go off when it already had — the game calling bad food nearly-fine and then making them
+    // ill for believing it. The wording is the pantry's own `warn`, so there is one source for it.
+    if (got && got.spoiled)
+      return { ...d, zh:`吃${got.hz}`, py:`chī ${dictOf(got.hz).py}`,
+               en:`eat the ${dictOf(got.hz).en} — ${got.warn.en} Nothing else is in the fridge.`,
+               eat:true, eatHz:got.hz, gain: got.gain,
+               done:`冰箱里没别的了。${got.warn.hz}`,
+               doneTr:`${got.warn.en} There was nothing else in the fridge.` };
     if (got)
       // Named, and dated. 快坏了 is the fridge doing you the courtesy a fridge does: the thing
       // nearest going off is the thing it offers you first, and it says so.
       return { ...d, zh:`吃${got.hz}`, py:`chī ${dictOf(got.hz).py}`,
                en:`eat the ${dictOf(got.hz).en}` +
                   (got.left !== null && got.left <= 1 ? ' — it is about to go off' : ''),
-               eat:true, gain: got.gain,
+               eat:true, eatHz:got.hz, gain: got.gain,
                done: got.left !== null && got.left <= 1 ? '快坏了，赶紧吃了。' : '吃饱了。',
                doneTr: got.left !== null && got.left <= 1
                  ? 'Eaten, just in time.' : 'That hit the spot.' };
@@ -13767,6 +16009,9 @@ function useLabel(hz, th) {
   // The table. Sitting down, waiting for the food and eating it are the same verb from the
   // player's side and the same seat from the body's — you stay on the stool through all three.
   if (d.eat) {
+    // `eat` selects the restaurant-table branch, but Pantry owns that flag at completion. Strip
+    // it here so sitting or waiting cannot consume an unrelated serving from the home fridge.
+    d = { ...d, eat:false };
     const seat = { type:'sit', at: Diner.SEAT_AT, yaw: Diner.SEAT_FACE, seatY: Diner.SEAT_Y };
     if (!order)
       return { ...d, secs:2.6, mins:8, gain:{ rest:6, mood:5 }, pose: seat,
@@ -13780,7 +16025,7 @@ function useLabel(hz, th) {
                gain:{ rest:3, mood:2 }, pose: seat,
                done:'还没上呢，再等等。', doneTr:'Not out yet. A moment longer.' };
     const dish = order.dish, drink = dish.kind === 'bottle';
-    return { ...d, zh:`${drink ? '喝' : '吃'}${dish.hz}`,
+    return { ...d, eatOrder:true, zh:`${drink ? '喝' : '吃'}${dish.hz}`,
              py: (drink ? 'hē ' : 'chī ') + dish.py,
              en:`${drink ? 'drink' : 'eat'} the ${dish.en}`,
              secs: dish.secs, mins: dish.mins, gain: dish.gain,
@@ -13801,6 +16046,7 @@ function useLabel(hz, th) {
   }
   // The desk does whatever the board assigned you, and nothing at all if it assigned you nothing.
   if (d.shift) {
+    if (!careerWorkAllowed()) return blockCareerWork(d);
     const h = minutes / 60;
     if (!job)
       return { ...d, zh:'看看', py:'kànkan', en:'nothing assigned yet',
@@ -13819,6 +16065,7 @@ function useLabel(hz, th) {
              done: job.done, doneTr: job.doneTr };
   }
   if (d.meet) {
+    if (!careerWorkAllowed()) return blockCareerWork(d);
     const h = minutes / 60;
     if (h < 9 || h >= 19)
       return { ...d, block:'没人开会，都下班了。',
@@ -13830,16 +16077,36 @@ function useLabel(hz, th) {
   // the rank and on the run of mornings behind it — see Career.clockIn — so the twentieth on-time
   // morning in a row pays better than the first, which is the whole argument for setting an alarm.
   if (d.punch) {
+    // 开除. A card that has been cancelled does not clock anybody in. The way back is the whiteboard
+    // after a few days, not a plea at the door — js/survive.js decides when the door reopens.
+    if (!Survive.employed()) {
+      if (Survive.canRehire(day))
+        return { ...d, zh:'重新申请', py:'chóngxīn shēnqǐng', en:'ask for your job back — as an intern',
+                 rehireNow:true, mins:15, secs:2.4, gain:{ mood:6 } };
+      return { ...d, zh:'看看', py:'kànkan', en:'your card no longer works',
+               block:'你的卡被停了，过几天再来申请。',
+               blockTr:'Your card has been cancelled. Come back in a few days and apply again.' };
+    }
     if (clockedDay === day)
       return { ...d, zh:'看看', py:'kànkan', en:'already clocked in today',
                block:'今天打过卡了。', blockTr:"You've already clocked in today." };
-    const early = minutes / 60 < Career.ON_TIME;
+    const h = minutes / 60;
     const workday = Career.isWorkday(day);
     // The card punch on a Saturday is not attendance, it is you letting yourself in.
     if (!workday)
       return { ...d, pay: 0, en: 'clock in — the weekend',
                done: '周末打卡，没人给你算工资。',
                doneTr: 'Clocking in at the weekend. Nobody is paying you for this.' };
+    // Attendance belongs to the declared office shift. Before this guard, 04:00 counted as
+    // “on time”, paid the bonus and advanced a workday before the building had opened.
+    const [shiftStart, shiftEnd] = Career.SHIFT;
+    if (h < shiftStart || h >= shiftEnd) {
+      const before = h < shiftStart;
+      return { ...d, zh:'看看', py:'kànkan', en:'outside the office shift',
+               block:before ? '还没到上班时间。' : '今天已经下班了。',
+               blockTr:before ? 'The office shift has not started.' : 'The office shift has ended.' };
+    }
+    const early = h < Career.ON_TIME;
     return { ...d, pay: Career.punchWorth(!early),
              en: early ? 'clock in — on time' : 'clock in — late',
              done: early ? '按时打卡。' : '迟到了，没有全勤。',
@@ -13933,7 +16200,7 @@ function useLabel(hz, th) {
   // person in front of you can never disagree.
   if (d.flights) {
     if (flight)
-      return { ...d, zh:'看看机票', py:'kànkan jīpiào',
+      return { ...d, flights:false, zh:'看看机票', py:'kànkan jīpiào',
                en:`you are already holding ${flight.f.no} to ${flight.f.en}`,
                done:`我买好了，${flight.f.no}，${hhmm(depOf(flight.f))}的。`,
                doneTr:`${flight.f.no} to ${flight.f.en}, ${hhmm(depOf(flight.f))}. Bought.` };
@@ -14081,7 +16348,7 @@ function useLabel(hz, th) {
   // ---- 外滩. Three of these are the trip rather than the view: somewhere to sleep, the office
   // that confirms you are still on the flight home, and the coach that takes you to it.
   if (d.hotel) {
-    // A room is what the room costs. 和平饭店 is a tourist rate on the Bund; a 客栈 off a
+    // A room is what the room costs. 沪岚饭店 is a tourist rate on the Bund; a 客栈 off a
     // courtyard in 宽窄巷子 is not, and having the price and the room's own description live on
     // the USE row rather than here is what stops the second city being the first one relabelled.
     const price = d.price || HOTEL;
@@ -14117,11 +16384,21 @@ function useLabel(hz, th) {
                      `${hhmm(trip.back)}的，还早。`,
                blockTr:`Not yet — the flight home is at ${hhmm(trip.back)}. ` +
                        `The coach takes ninety minutes.` };
-    if (left < -180)
+    if (left < -180) {
+      // Missing the included return must not strand somebody who spent their last cash away.
+      // Keep the full rebooking penalty when it is affordable; otherwise take only the whole
+      // yuan they have so the one route back to Beijing always remains startable.
+      const fee = Math.min(CHANGE, Math.max(0, Math.floor(Number.isFinite(money) ? money : 0)));
       return { ...d, zh:'改签', py:'gǎiqiān', en:'you missed it — they put you on the next one',
-               pay:-CHANGE, home:true, gain:{ mood:-24 },
-               done:`赶不上了，改签了下一班，罚了${CHANGE}块。`,
-               doneTr:`Missed it. They rebooked you on the next one and charged ¥${CHANGE}.` };
+               pay:-fee, home:true, gain:{ mood:-24 },
+               done:fee === CHANGE ? `赶不上了，改签了下一班，罚了${CHANGE}块。`
+                 : fee ? `赶不上了，改签了下一班，身上的${fee}块都交了。`
+                       : '赶不上了，改签了下一班，没有再收费。',
+               doneTr:fee === CHANGE
+                 ? `Missed it. They rebooked you on the next one and charged ¥${CHANGE}.`
+                 : fee ? `Missed it. They took the ¥${fee} you had and rebooked you.`
+                       : 'Missed it. They rebooked you without another charge.' };
+    }
     return { ...d, home:true, en:`the coach to the airport — ${trip.f.no} at ` +
                                  `${hhmm(trip.back)}`,
              done:'上车了，一个半小时到机场。',
@@ -14153,6 +16430,18 @@ function useLabel(hz, th) {
              en: `pay ¥${delivery.total} and take the ${enOf(it)}`,
              done: `您的${it.hz}，谢谢！`, doneTr: `Your ${enOf(it)}. Thank you!` };
   }
+  // Knocking on somebody else's door is not answering our own.  These used to share the property
+  // name `answer`, so completing any upper-floor knock called `answerDoor()` and advanced a
+  // flat-202 delivery while the courier was seven floors away.  Resolve the neighbour's audible
+  // day-state here, leaving the boolean delivery flag below reserved for our own front door.
+  if (d.knock && typeof d.knockReply === 'function') {
+    const reply = d.knockReply(day);
+    if (reply) {
+      const gain = { ...(d.gain || {}) };
+      if (Number.isFinite(reply.mood)) gain.mood = (Number(gain.mood) || 0) + reply.mood;
+      d = { ...d, gain, done:reply.zh, doneTr:reply.en };
+    }
+  }
   // Somebody is knocking. Opening your own front door and going out through it are the same
   // door and two different verbs, and while a rider is on the landing it is the first one.
   if (hz === '门' && place === 'home' && World.level() === 2 &&
@@ -14176,7 +16465,7 @@ function useLabel(hz, th) {
 }
 
 function startUse(th) {
-  if (!th || cardOpen || talkOpen || Pick.isOpen) return;
+  if (!th || worldInputLocked()) return;
   if (doing && doing.preview) clearCharacterPreview();
   const def = useLabel(th.hz, th);
   if (!def) return;
@@ -14199,6 +16488,7 @@ function startUse(th) {
     return;
   }
   doing = { def, th, t: 0 };
+  coachAdvance(3);
   act = { ...def.pose, hz: th.hz, target: th.pos,
           kind: actionKind(def.pose, def, th), startedAt: performance.now() };
   // Into the seat, not beside it. A seat's `at` and `yaw` have been carried on the thing all along —
@@ -14228,7 +16518,7 @@ function startUse(th) {
     // Safe in both directions only because the orbit centre is the aisle: 1.9 m forward of a seat is
     // the row in front, but 1.9 m forward along the aisle is clear floor.
     CAM.tPitch = .30; CAM.tDist = 1.9; CAM.lookY = 1.24;
-    CAM.tYaw = seatYaw + Math.PI;
+    aimCameraYaw(seatYaw + Math.PI);
   }
   // Doing anything else gets you out of the chair, so the seated state and the pose cannot disagree:
   // `act` belongs to the new action from here on.
@@ -14247,9 +16537,355 @@ function startUse(th) {
   Vocab.sentenceHTML(def.zh);        // using a thing is exposure to its verb
 }
 
+// One completion seam for prepared food that already exists in the flat. Dynamic labels keep the
+// exact plate/legacy-leftover object they promised; the rice cooker has only one ready batch. The
+// checks and canonical owner calls are synchronous, so a successful return is both the revalidation
+// and the debit. A leftover that turns overnight is a changed serving and remains for a new,
+// truthful spoiled-food action rather than being consumed under yesterday's promise.
+function takeHomeServing(def) {
+  const serving = def && def.homeServe;
+  if (!serving) return null;
+  if (serving.kind === 'plate') {
+    if (HomeLife.plated !== serving.ref) return null;
+    const got = HomeLife.takePlate();
+    return got === serving.ref ? got : null;
+  }
+  if (serving.kind === 'leftover') {
+    if (HomeLife.leftovers !== serving.ref || HomeLife.leftoverGone(day) !== serving.off) return null;
+    const got = HomeLife.eatLeftovers(day);
+    return got && got.hz === serving.ref.hz && got.day === serving.ref.day && got.off === serving.off
+      ? got : null;
+  }
+  if (serving.kind === 'rice') {
+    if (!HomeLife.riceReady(day, minutes)) return null;
+    const got = HomeLife.riceTake(day, minutes);
+    return got && got.hz === '米饭' ? got : null;
+  }
+  return null;
+}
+
+// Bringing washing in consumes one exact load. Weather may still change that same load while the
+// action runs, and HomeLife.bringIn's result is the authority on whether it came in dry, ruined or
+// merely wet. A different load must never be consumed under the old prompt.
+function takeHomeLaundry(def) {
+  const laundry = def && def.homeLaundry;
+  if (!laundry || !laundry.ref || HomeLife.hung !== laundry.ref) return null;
+  return HomeLife.bringIn(flat);
+}
+
+// Chopping promises one exact recipe that was cookable when the player started. Ingredients can
+// go off at midnight while the action runs; only write persistent prep state if that same recipe
+// is still cookable, then accept the canonical owner result for the completion day.
+function prepareHomeDish(def) {
+  const prep = def && def.homePrep, recipe = prep && prep.recipe;
+  if (!recipe || !Pantry.cookable(day).includes(recipe)) return null;
+  const made = HomeLife.prepFor(recipe.hz, day);
+  return made && made.hz === recipe.hz && made.day === day ? made : null;
+}
+
+// A collection code promises the first exact parcel at one location. Deliveries may append behind
+// it while the action runs, which is harmless; a missing, moved or replaced head parcel is not.
+// The identity check and owner removal are synchronous, so a matching return is the transaction.
+function takeHomeParcel(def) {
+  const parcel = def && def.homeParcel;
+  if (!parcel || !parcel.ref || HomeLife.parcelsAt(parcel.where)[0] !== parcel.ref) return null;
+  const got = HomeLife.takeParcel(parcel.where);
+  return got === parcel.ref ? got : null;
+}
+
+// Opening the letterbox promises its exact current contents. A midnight delivery may append new
+// post while the action runs; consuming either the newly arrived row or only yesterday's subset
+// would make the prompt false. Revalidate the complete ordered identity list, then let the owner
+// clear it once and accept only that same list back.
+function takeHomeMail(def) {
+  const mail = def && def.homeMail, refs = mail && mail.refs;
+  if (!Array.isArray(refs) || !refs.length) return null;
+  const current = HomeLife.post;
+  if (current.length !== refs.length || refs.some((p, i) => current[i] !== p)) return null;
+  const got = HomeLife.mailbox(mail.day);
+  return got.length === refs.length && refs.every((p, i) => got[i] === p) ? got : null;
+}
+
+// 报修 promises one exact fault and a next-day visit when the player accepts the action. The
+// office may close while the six-minute conversation finishes, which does not revoke an accepted
+// report; only replacement, removal or somebody else reporting that same fault makes it stale.
+// Use the accepted day so an action crossing midnight still means the “tomorrow” it displayed.
+function reportHomeFault(def) {
+  const report = def && def.homeReport;
+  if (!report) return null;
+  const current = Faults.list(day).find(f => f.key === report.key);
+  if (!current || current.since !== report.since || current.reported) return null;
+  const got = Faults.report(report.key, report.day, report.by);
+  return got && got.key === report.key && got.since === report.since &&
+    got.reported === report.day && got.by === report.by ? got : null;
+}
+
+// The phone invitation reserves one exact visit slot for tomorrow at the moment the player accepts
+// it. A previous completed or missed visit may be replaced, but a new/current visit that appears
+// while the call runs must not be overwritten. The exact prior singleton and its eligibility are
+// rechecked; tidiness, phone priority and other prompt conditions are deliberately not.
+function inviteHomeGuest(def) {
+  const invite = def && def.homeInvite;
+  if (!invite || HomeLife.guest !== invite.prior) return null;
+  const prior = invite.prior;
+  if (prior && !prior.done && !HomeLife.guestMissed(day)) return null;
+  const n = NPCS.find(q => q.hz === '邻居') || { hz:'邻居', py:'línjū', en:'the neighbour' };
+  const got = HomeLife.invite(n.hz, n.py || 'línjū', n.en || 'the neighbour', invite.day, 15);
+  return got && HomeLife.guest === got && got.hz === n.hz &&
+    got.day === invite.day && got.hour === 15 ? got : null;
+}
+
 function stopUse(finished) {
   if (!doing) return;
   const { def, th } = doing;
+  // Work authority is revalidated at completion, not only when the label was built. Overtime can
+  // cross the midnight that fires the player; its elapsed time and progressive fatigue remain,
+  // but the stale action must not reach generic pay, Career.finishJob or the completion goal.
+  const careerWorkUnavailable = finished && (def.shift || def.meet) && !careerWorkAllowed();
+  if (careerWorkUnavailable) finished = false;
+  // Paid timed actions are one transaction at completion. Time can cross a rent/bill boundary
+  // after startUse's affordability check, so check again before committing any finished pose,
+  // world effect or gain. A failed completion follows the ordinary interrupted cleanup path.
+  const completionCharge = finished && def.pay < 0 ? -def.pay : 0;
+  const paymentFailed = completionCharge > money;
+  if (paymentFailed) finished = false;
+  // These three free hospital steps are state transitions, not progressive leisure actions. The
+  // quoted visit, transition and authored gain commit together once; cancellation keeps elapsed
+  // time only, and a stale slip reaches neither state, gain, goal nor save.
+  const hospitalStepKind = def.hospitalTriage ? 'triage'
+    : def.hospitalDispense ? 'dispense' : def.hospitalDischarge ? 'discharge' : null;
+  let hospitalStepResult = null, hospitalStepUnavailable = false;
+  if (finished && hospitalStepKind) {
+    hospitalStepResult = completeHospitalStep(def.hospitalStep);
+    if (!hospitalStepResult || hospitalStepResult.kind !== hospitalStepKind) {
+      hospitalStepResult = null;
+      hospitalStepUnavailable = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  // Sleep is not a resource that disappears on interruption: the elapsed hours really happened.
+  // Commit those hours once when the action stops and take their canonical meter outcome from the
+  // owner. A full action uses the exact start-time plan the label promised; an interrupted one is
+  // repriced for its shorter duration and deliberately does not claim that the alarm woke it.
+  let sleepResult = null;
+  if (def.sleep && def.homeSleep) {
+    const s = def.homeSleep;
+    const actualElapsed = Math.max(0, s.plan.mins * clamp(doing.t, 0, 1));
+    // tickUse deliberately completes at .999 so a missed animation frame cannot strand an action.
+    // That threshold is a completed action, not an interrupted 99.9% night: consume its tiny clock
+    // remainder and commit the exact quote so the world clock and canonical wake time still agree.
+    if (finished && actualElapsed < s.plan.mins) advanceTime(s.plan.mins - actualElapsed);
+    const elapsed = finished ? s.plan.mins : actualElapsed;
+    if (elapsed > 0) {
+      sleepResult = HomeLife.sleep(s.day, s.minutes, elapsed, s.plan);
+      if (sleepResult) {
+        needs.rest = clamp(needs.rest + sleepResult.rest, 0, 100);
+        needs.mood = clamp(needs.mood + sleepResult.mood, 0, 100);
+      } else if (finished) finished = false;
+    }
+  }
+  // A fridge serving is the other completion-bound transaction. Its benefit must not stream
+  // while the item is still in the pantry, or cancelling at 99% is an unlimited free meal. The
+  // promised headword also matters across midnight: if that lot went off, do not silently eat the
+  // next (different) thing in the fridge. Pantry.next/eat are synchronous, so the matching recheck
+  // makes the read and debit one indivisible completion here.
+  let eatUnavailable = false;
+  if (finished && def.eat) {
+    const next = Pantry.next(day);
+    const eaten = next && next.hz === def.eatHz ? Pantry.eat(day) : null;
+    if (!eaten || eaten.hz !== def.eatHz) {
+      eatUnavailable = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+      // 吃坏东西. The one illness source that is not a daily roll — you feel that one tonight.
+      // `ateSpoiled` returns null when the roll comes up clean or you are already ill, so it is
+      // safe to call on every spoiled serving.
+      if (eaten.spoiled) surviveEvent(Survive.ateSpoiled(day));
+    }
+  }
+  // Brushing is limited by HomeLife to twice per day, so its gain and the counter have to commit
+  // together. Otherwise cancelling at 99% keeps almost all of the cleanliness without using either
+  // daily brush. Calling the owner here also makes a stale third action fail before any generic
+  // completion effect lands; `brushResult` is reused below for the second-brush feedback.
+  let brushResult = null, brushRefused = false;
+  if (finished && def.teeth) {
+    brushResult = HomeLife.brush(day);
+    if (!brushResult || !brushResult.ok) {
+      brushRefused = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  // Instant noodles are also a completion-bound Pantry transaction. Keep the packet and its
+  // authored benefit together: an interrupted pour costs time only, while a stale action whose
+  // packet has disappeared cannot grant a meal. The no-stock hot-water label clears `noodles`, so
+  // that ordinary free action still uses progressive gain.
+  let noodleUnavailable = false;
+  if (finished && def.noodles) {
+    const made = HomeLife.noodle(day);
+    if (!made) {
+      noodleUnavailable = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  // A plated dish, legacy leftover and ready rice are the same kind of transaction: the benefit
+  // belongs to one existing serving and lands only if that exact serving can be taken now.
+  let homeServeUnavailable = false;
+  if (finished && def.homeServe) {
+    const served = takeHomeServing(def);
+    if (!served) {
+      homeServeUnavailable = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  // A utility payment is bounded by the amount the prompt quoted. Midnight can issue a new set of
+  // bills (and take rent) during these ten minutes; the new debt must not be swept into an older
+  // authorization just because payBills can see the whole wallet. Partial payment remains valid.
+  // 房租 and 押金, the two ways money answers the landlord. js/survive.js decides what is owed and
+  // what a move costs; the wallet is game.js's, always, so both of these deduct here.
+  let rentResult = null, rentPaymentFailed = false, moveResult = null, rehireResult = null;
+  if (finished && def.rehireNow) {
+    rehireResult = Survive.rehire(day);
+    if (!rehireResult.ok) finished = false;
+  }
+  if (finished && def.payRentNow) {
+    const quote = Number.isFinite(def.rentQuote) ? Math.max(0, def.rentQuote) : 0;
+    rentResult = Survive.payRent(Math.min(money, quote));
+    if (!rentResult || !(rentResult.paid > 0)) {
+      rentResult = null;
+      rentPaymentFailed = true;
+      finished = false;
+    } else {
+      money = Math.max(0, money - rentResult.paid);
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  if (finished && def.moveBackNow) {
+    moveResult = Survive.moveBack(money);
+    if (moveResult.ok) money = Math.max(0, money - moveResult.charge);
+    else finished = false;
+  }
+  let billResult = null, billPaymentFailed = false;
+  if (finished && def.payBills) {
+    const quote = Number.isFinite(def.billQuote) ? Math.max(0, def.billQuote) : 0;
+    billResult = HomeLife.payBills(Math.min(money, quote));
+    if (!billResult || !(billResult.spent > 0)) {
+      billResult = null;
+      billPaymentFailed = true;
+      finished = false;
+    } else {
+      money = Math.max(0, money - billResult.spent);
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  // Guest tea promises one particular scheduled visit. Once accepted inside the visit window, its
+  // own twelve minutes may run past that window; only replacement or an already-finished promise
+  // makes it stale. The returned payload is kept for its canonical mood, dialogue and diary entry;
+  // the authored tea benefit and visit state therefore commit together exactly once.
+  let guestResult = null, guestUnavailable = false;
+  if (finished && def.teaGuest) {
+    const promisedGuest = def.teaGuestRef;
+    if (!promisedGuest || HomeLife.guest !== promisedGuest || promisedGuest.done) {
+      guestUnavailable = true;
+      finished = false;
+    } else {
+      guestResult = HomeLife.hostGuest(flat, day);
+      if (!guestResult) {
+        guestUnavailable = true;
+        finished = false;
+      } else {
+        for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+      }
+    }
+  }
+  // The meter outcome follows the canonical load result, not the label from ten minutes ago. In
+  // particular, rain that begins during a dry-load action turns the promised reward into the full
+  // ruined-load consequence; a merely wet load is a completed handoff but has no meter reward.
+  let laundryResult = null, laundryUnavailable = false;
+  if (finished && def.homeLaundry) {
+    laundryResult = takeHomeLaundry(def);
+    if (!laundryResult) {
+      laundryUnavailable = true;
+      finished = false;
+    } else {
+      const gain = laundryResult.ok ? { mood:10, clean:6 }
+        : laundryResult.ruined ? { mood:-12 } : null;
+      if (gain) for (const k in gain) needs[k] = clamp(needs[k] + gain[k], 0, 100);
+    }
+  }
+  // Prepared state and its authored benefit commit together. A cancelled action retains the dish
+  // selection so it can be retried; a finished action whose ingredient disappeared clears that
+  // stale selection and refuses before any prep, gain or goal is written.
+  let prepResult = null, prepUnavailable = false;
+  if (finished && def.homePrep) {
+    prepResult = prepareHomeDish(def);
+    cooking = null;
+    if (!prepResult) {
+      prepUnavailable = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  // Parcel mood belongs to one prepaid item and lands only when that exact location/head item is
+  // removed. Keep the canonical object for the later fridge/toast/locker-light handoff.
+  let parcelResult = null, parcelUnavailable = false;
+  if (finished && def.homeParcel) {
+    parcelResult = takeHomeParcel(def);
+    if (!parcelResult) {
+      parcelUnavailable = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  // Mail mood belongs to the exact persisted rows named when the player started opening the box.
+  // Cancellation costs time only; replacement, removal, reorder or a new midnight arrival leaves
+  // every current row untouched and refuses before gain or goal.
+  let mailResult = null, mailUnavailable = false;
+  if (finished && def.mailTake) {
+    mailResult = takeHomeMail(def);
+    if (!mailResult) {
+      mailUnavailable = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  // Reporting and its mood benefit commit together. The exact fault may be auto-reported at a
+  // midnight rollover while this action runs; in that case do not celebrate, save or award a goal
+  // for a report this action did not file. `reportResult` is reused for all later side effects.
+  let reportResult = null, reportUnavailable = false;
+  if (finished && def.reportFault) {
+    reportResult = reportHomeFault(def);
+    if (!reportResult) {
+      reportUnavailable = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
+  // Inviting creates the durable visit and Story plan. Keep those and the authored mood together:
+  // cancellation costs time only, while a replacement/current guest makes the accepted call stale
+  // without overwriting that newer plan. The accepted target day survives a midnight crossing.
+  let inviteResult = null, inviteUnavailable = false;
+  if (finished && def.inviteGuest) {
+    inviteResult = inviteHomeGuest(def);
+    if (!inviteResult) {
+      inviteUnavailable = true;
+      finished = false;
+    } else {
+      for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+    }
+  }
   const endedKind = act ? (act.kind || actionKind(act, def, th)) : null;
   // Mall chairs carry their authored sitting point on the action pose. Keep only the geometry of
   // that pose once the timed action has finished: the tray has been eaten and the film action is
@@ -14261,9 +16897,11 @@ function stopUse(finished) {
     ? { at:[act.at[0], act.at[1]], yaw:act.yaw,
         seatY:act.seatY === undefined ? .50 : act.seatY }
     : null;
-  const localSeat=finished&&(place==='zoo'||place==='zoo_tropical')&&th.seat&&act&&act.at&&
+  const localSeat=finished&&((place==='zoo'||place==='zoo_tropical')||
+    (place==='train'&&th.hz==='座位'))&&th.seat&&act&&act.at&&
     act.type==='sit'?{at:[act.at[0],act.at[1]],yaw:act.yaw,
       seatY:act.seatY===undefined?.48:act.seatY,stand:(th.stand||th.focus).slice()}:null;
+  const trainStand=place==='train'&&th.seat&&Array.isArray(th.stand)?th.stand.slice():null;
   const fix = FIXTURE[th.hz];
   let spoke = null;             // [zh, tr] if a person answered you, which replaces the message
   if (def.mallRide) {
@@ -14273,6 +16911,10 @@ function stopUse(finished) {
     CAM.fx=P.x; CAM.fz=P.z;
   }
   doing = null; act = null;
+  if (completionCharge && !paymentFailed) {
+    money -= completionCharge;
+    for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k], 0, 100);
+  }
   if (mallSeat) {
     P.x = mallSeat.at[0]; P.z = mallSeat.at[1];
     P.vx = P.vz = 0; P.speed = 0; P.ground = 0;
@@ -14287,6 +16929,13 @@ function stopUse(finished) {
     const pose={type:'sit',at:[P.x,P.z],yaw:P.yaw,seatY:localSeat.seatY};
     sitting={hz:th.hz,at:[P.x,P.z],yaw:P.yaw,aisle:P.x,local:true,
       stand:localSeat.stand,pose};
+  }
+  // Ordinary train seats persist like the local zoo benches above. An interrupted sit, and the
+  // priority seat whose own completion line says to leave it free, instead returns to the safe
+  // aisle point immediately. Otherwise the cleared action leaves an idle body inside the cushion
+  // until collision recovery ejects it on the first movement frame.
+  if(trainStand&&(!finished||th.hz==='爱心专座')){
+    P.x=trainStand[0];P.z=trainStand[1];P.vx=P.vz=0;P.speed=0;P.ground=0;
   }
   if (finished && endedKind === 'sleep') wakeMotionAt = performance.now();
   // Interrupted halfway into the chair — you never sat down, so you are not sitting.
@@ -14324,7 +16973,7 @@ function stopUse(finished) {
       Mall.setFloor(3);
       P.x=-17.10; P.z=7.80; P.lift=Mall.deckY(3); P.yaw=0;
       P.vx=P.vz=0; P.speed=0; P.ground=0;
-      CAM.fx=P.x; CAM.fz=P.z; CAM.tYaw=P.yaw;
+      CAM.fx=P.x; CAM.fz=P.z; aimCameraYaw(P.yaw);
     }
     // Chores actually change the flat, and the flat is what makes them worth doing.
     // The sink and the smell come off `def.cookDo` further down, which is what actually made a
@@ -14347,16 +16996,11 @@ function stopUse(finished) {
     if (def.alarmTo !== undefined) HomeLife.setAlarm(def.alarmTo === 'off' ? null : def.alarmTo);
     if (def.heaterTo !== undefined) HomeLife.toggleHeater();
     if (def.fanTo !== undefined) HomeLife.toggleFan();
-    if (def.teeth) {
-      const b = HomeLife.brush(day);
-      if (b.ok && !b.left) toast('刷完了 · <span class="dim">that is twice today</span>');
-    }
+    if (def.teeth && brushResult && !brushResult.left)
+      toast('刷完了 · <span class="dim">that is twice today</span>');
     // Rice goes on and you go and do something else, which is the only thing in the kitchen that
     // is not a forty-minute block of standing still.
     if (def.riceOn && HomeLife.drawOne('米', day)) HomeLife.riceOn(day, minutes);
-    if (def.riceTake) HomeLife.riceTake(day, minutes);
-    if (def.prepDo) { HomeLife.prepFor(def.prepDo, day); cooking = null; }
-    if (def.noodles) HomeLife.noodle(day);
     // A dish that leaves with you. `stow` on a headword the shop does not sell returns having
     // added nothing, so an unknown product would be a silent no-op — 剩菜 is still lane 3's
     // `PRODUCTS` row (item 216). Until it lands, the portion is a HomeLife leftover, which is dated
@@ -14369,52 +17013,72 @@ function stopUse(finished) {
     // The wash, the rack, and the mop.
     if (def.washOn) HomeLife.washOn(day, minutes, flat);
     if (def.hangOut) HomeLife.hangOut(day, minutes, def.hangDeck, flat);
-    if (def.bringIn) HomeLife.bringIn(flat);
+    if (def.homeLaundry && laundryResult)
+      spoke = laundryResult.ok
+        ? ['衣服干了，都收下来了。', 'Dry, and all folded away.']
+        : laundryResult.ruined
+          ? ['下雨淋湿了，得重洗。', 'Rained on. It all has to go through again.']
+          : ['衣服还是湿的，收下来得重洗。', 'It was still wet and has gone back into the wash pile.'];
     if (def.sweepDo) HomeLife.sweep(flat);
-    // What was carried through to the table, and what was left in the fridge from last night.
-    if (def.eatPlate) HomeLife.takePlate();
-    if (def.eatLeft) HomeLife.eatLeftovers(day);
     // Somebody in the flat, and how the visit went — which is the state of the flat, and the whole
     // reason the mess is worth modelling.
-    if (def.teaGuest) {
-      const v = HomeLife.hostGuest(flat, day);
-      if (v) {
-        needs.mood = clamp(needs.mood + v.mood, 0, 100);
-        spoke = [v.say, v.tr];
-        logDiary(`${v.hz}来家里坐了坐。`, `${v.en} came round.`, 'talk');
-      }
+    if (def.teaGuest && guestResult) {
+      const v = guestResult;
+      needs.mood = clamp(needs.mood + v.mood, 0, 100);
+      spoke = [v.say, v.tr];
+      logDiary(`${v.hz}来家里坐了坐。`, `${v.en} came round.`, 'talk');
     }
     // The post, the locker and the parcel by the door, all off one list.
-    if (def.mailTake) {
-      const got = HomeLife.mailbox(day);
-      if (got.length)
-        spoke = [got.map(p => p.hz).join('、') + '。', got.map(p => p.en).join(', ') + '.'];
-    }
-    if (def.parcelTake) {
-      const p = HomeLife.takeParcel(def.parcelTake);
-      if (p) {
-        stow(p.hz);
-        toast(`收到快递 · <span class="dim">${p.en}, into the fridge</span>`);
-      }
+    if (def.mailTake && mailResult)
+      spoke = [mailResult.map(p => p.hz).join('、') + '。',
+               mailResult.map(p => p.en).join(', ') + '.'];
+    if (def.homeParcel && parcelResult) {
+      const p = parcelResult, where = def.homeParcel.where;
+      const put = Pantry.isFood && Pantry.isFood(p.hz) ? stow(p.hz) : null;
+      const away = put ? ', into the fridge'
+        : where === 'locker' ? ', collected from the locker'
+        : ', collected and put away';
+      toast(`收到快递 · <span class="dim">${p.en}${away}</span>`);
+      if (where === 'locker' && !HomeLife.parcelsAt('locker').length && World.setLocker)
+        World.setLocker(7, false);
     }
     // Money out. `def.pay` is for a price known when the table was written; a bill is not one.
-    if (def.payBills) {
-      const r = HomeLife.payBills(money);
-      money = Math.max(0, money - r.spent);
+    if (def.payBills && billResult) {
+      const r = billResult;
       if (r.spent) logDiary(`交了${r.spent}块的水电费。`, `Paid ${r.spent} kuai of utility bills.`, 'rent');
       spoke = r.owed ? [`交了${r.spent}块，还欠${r.owed}块。`, `Paid ${r.spent}. ${r.owed} still owing.`]
                      : [`一共${r.spent}块，交清了。`, `${r.spent} kuai. All settled.`];
     }
-    if (def.bookAyi && money >= HomeLife.AYI_FEE) {
-      money -= HomeLife.AYI_FEE;
-      HomeLife.bookAyi(day);
+    if (def.rehireNow && rehireResult && rehireResult.ok) {
+      logDiary(rehireResult.hz, rehireResult.en, 'work');
+      spoke = [rehireResult.hz, rehireResult.en];
     }
-    if (def.inviteGuest) {
-      const n = NPCS.find(q => q.hz === '邻居') || { hz:'邻居', py:'línjū', name:'邻居' };
-      HomeLife.invite(n.hz, n.py || 'línjū', n.en || 'the neighbour', day + 1, 15);
+    if (def.payRentNow && rentResult) {
+      const r = rentResult;
+      logDiary(`交了${r.paid}块房租。`, `Paid ¥${r.paid} of rent.`, 'rent');
+      spoke = r.done ? [`房租交清了，${r.paid}块。`, `Rent cleared — ¥${r.paid}.`]
+                     : Survive.home().key === 'cheap'
+                       ? [`交了${r.paid}块，还欠${r.owed}块房租；我已经被赶到小屋了。`,
+                          `Paid ¥${r.paid}; ¥${r.owed} of rent still owed. You have already been evicted to the cheap room.`]
+                       : [`交了${r.paid}块，还欠${r.owed}块房租。`,
+                          `Paid ¥${r.paid}; ¥${r.owed} of rent still owed.`];
     }
+    if (def.moveBackNow && moveResult && moveResult.ok) {
+      logDiary(moveResult.hz, moveResult.en, 'rent');
+      spoke = [moveResult.hz, moveResult.en];
+    }
+    if (def.reportFault && reportResult) {
+      const f = reportResult, who = f.by === '物业' ? '物业' : '房东';
+      logDiary(`给${who}报修了${f.hz}，说明天来人。`,
+               `Reported ${f.en} to ${f.by === '物业' ? 'the estate office' : 'the landlord'}; somebody comes tomorrow.`,
+               `fault-${f.key}`);
+      spoke = [`${f.hz}报修登记好了，明天来人。`,
+               `${f.en} is reported. Somebody will come tomorrow.`];
+      saveGame();
+    }
+    if (def.bookAyi) HomeLife.bookAyi(day);
     // The desk opens the real review queue rather than paying you mood for pretending to.
-    if (def.studyDo) setTimeout(() => { if (!paused && !cardOpen && !talkOpen) review(); }, 60);
+    if (def.studyDo) setTimeout(() => { if (!worldInputLocked()) review(); }, 60);
     // A conversation: they say the next thing they have to say to you, and remember that
     // you came back. Their line becomes the sentence attached to their word.
     //
@@ -14448,25 +17112,73 @@ function stopUse(finished) {
   }
   // Half a bowl is still your bowl. Clearing the order whether or not you finished stops you
   // eating the same ¥18 of noodles four times by walking away at 90% and sitting back down.
-  if (def.eat) {
+  if (def.eatOrder) {
     if (order) logDiary(`在餐馆吃了${order.dish.hz}。`, `Ate ${order.dish.en} at the noodle shop.`, 'eatout');
     order = null;
   }
   $('#doing').classList.remove('on');
-  if (!finished) { toast('停下了 · <span class="dim">stopped</span>'); return; }
-
-  // Out of the fridge. `Pantry.next` picked which lot this was when the prompt was written and
-  // `Pantry.eat` picks the same one now, so what the prompt named is what actually leaves.
-  if (def.eat) Pantry.eat(day);
+  if (!finished) {
+    if (paymentFailed)
+      say('钱不够。', `Not enough money — this costs ¥${completionCharge}.`);
+    else if (eatUnavailable)
+      say('刚才那份已经没有了，什么也没吃。',
+          'That serving is no longer available. You did not eat anything.');
+    else if (brushRefused)
+      say('今天已经刷过两次了。', 'You have already brushed twice today. Nothing else happened.');
+    else if (noodleUnavailable)
+      say('刚才那桶方便面已经没有了，什么也没吃。',
+          'That packet of instant noodles is gone. You did not eat anything.');
+    else if (homeServeUnavailable)
+      say('刚才那份饭已经变了或者没有了，什么也没吃。',
+          'That prepared serving changed or is gone. You did not eat anything.');
+    else if (hospitalStepUnavailable)
+      say('刚才那张就诊单已经变了，这一步没有办理。',
+          'That hospital visit changed. This step was not completed.');
+    else if (rentPaymentFailed)
+      say('这次房租没有交成，钱没有扣。',
+          'The rent payment did not go through. No money was taken.');
+    else if (careerWorkUnavailable)
+      refuseCareerWork();
+    else if (billPaymentFailed)
+      say('这次没有交成，钱没有扣。',
+          'The bill payment did not go through. No money was taken.');
+    else if (moveResult && !moveResult.ok)
+      say(moveResult.why === 'owed' ? `得先把${moveResult.owed}块房租交清。` : '押金不够，钱没有扣。',
+          moveResult.why === 'owed'
+            ? `Clear the ¥${moveResult.owed} of back rent first.`
+            : `The deposit is ¥${moveResult.need} and you do not have it. Nothing was taken.`);
+    else if (guestUnavailable)
+      say('刚才那位客人已经不在了，茶没有倒。',
+          'That guest is no longer here. You did not host the visit.');
+    else if (laundryUnavailable)
+      say('刚才那一晾衣服已经变了或者不在了，什么也没收。',
+          'That load changed or is no longer there. You did not bring anything in.');
+    else if (prepUnavailable)
+      say('刚才要用的食材已经没有了，菜没有切成。',
+          'An ingredient for that dish is gone. Nothing was prepared.');
+    else if (parcelUnavailable)
+      say('刚才那件快递已经变了或者不在了，什么也没取。',
+          'That parcel changed or is no longer there. You did not collect anything.');
+    else if (mailUnavailable)
+      say('刚才信箱里的东西已经变了或者没有了，什么也没取。',
+          'The letterbox contents changed or are gone. You did not take anything.');
+    else if (reportUnavailable)
+      say('刚才那项报修已经变了或者登记过了，没有重复报修。',
+          'That fault changed or was already reported. Nothing was filed again.');
+    else if (inviteUnavailable)
+      say('刚才的来访安排已经变了，没有重新约人。',
+          'The visit plan changed. No new invitation was made.');
+    else toast('停下了 · <span class="dim">stopped</span>');
+    return;
+  }
   // The ingredients come out at the end, not the beginning: stop halfway through 饺子 and you have
   // not used the mince. `stopUse(false)` returns above this line, so an abandoned dish costs you
   // the minutes you stood there and nothing else, which is what abandoning a dish costs.
   //
   // One seam, stated rather than hidden: an hour at the stove can cross midnight, and something
-  // the dish needed can go off in that moment — in which case you have eaten (the gain is applied
-  // per frame by tickUse) and the fridge kept the cabbage. It is a free meal roughly never, and
-  // the alternative — taking the ingredients up front — charges you for every dish you change
-  // your mind about, which happens far more often than midnight does.
+  // the dish needed can go off in that moment. Pantry.cook then refuses the dish and creates no
+  // plate; the wok carries only its clean-up cost, so that failure grants no meal benefit and does
+  // not debit any of the ingredients that survived the rollover.
   if (def.cookDo) {
     const made = Pantry.cook(def.cookDo, day);
     cooking = null;
@@ -14474,10 +17186,9 @@ function stopUse(finished) {
     if (made) {
       logDiary(`在家做了${made.hz}。`, `Cooked ${made.en} at home.`, 'eatout');
       // Onto a plate rather than into your face: the dish can now be carried through to the 餐厅,
-      // which is worth more than eating it at the hob. And what it made too much of keeps until
-      // tomorrow, dated, so tonight's 饺子 is tomorrow's lunch and can also go off.
+      // where eating it grants the meal benefit. Pantry.cook already owns the authored surplus and
+      // stamps it as 剩菜, so tonight's extra 饺子 is tomorrow's lunch without a second leftover.
       HomeLife.plate(made.hz, made.en, day, made.gain || {});
-      HomeLife.keepLeftovers(made.hz, made.en, day, def.mins);
       // The smell, and a sink that scales with what you actually cooked.
       HomeLife.cooked(flat, def.mins);
     }
@@ -14485,7 +17196,7 @@ function stopUse(finished) {
   // A stall that sells you something rather than feeding you on the spot — the 夜市 fruit lady,
   // who weighs out 一斤 and hands it over for you to carry home.
   if (def.buy) stow(def.buyHz || '水果', def.buy);
-  if (def.pay) money = Math.max(0, money + def.pay);
+  if (def.pay > 0) money = Math.max(0, money + def.pay);
   // 403. The switch belongs to the room the body is standing in, not to the building.
   if (def.light) { lightsOn[lightKey(place, room)] = !roomLit(place, room); }
   if (def.accessibleRoute && scene.expansion && scene.expansion.toggleAccessibleRoute)
@@ -14542,7 +17253,7 @@ function stopUse(finished) {
   // that is too long to hide behind one keypress.
   if (def.shelfPick) openShelf(def.shelfPick);
   if (def.cookPick) openKitchen(th);
-  // ---- 北京银行.  Timed fixture use gets the player to the machine, chair or desk; the picker
+  // ---- 青禾银行.  Timed fixture use gets the player to the machine, chair or desk; the picker
   // owns every decision that can move money.  That separation makes Escape a clean cancellation
   // and prevents the generic wallet `pay` branch above from charging a bank transfer twice.
   if(def.bankForms) openBankForms();
@@ -14568,13 +17279,13 @@ function stopUse(finished) {
   // the label has already moved the money by the time this runs, so mallPay must not move it again.
   if (def.mallBrowse && th && th.mallShop) openMallShop(th.mallShop);
   if (def.mallPay) mallPay(true);
-  // The food counter, arcade and passport all end their short physical action in a chooser. The
-  // chooser owns the decision; the machine action has already taken its coin, while food waits for
-  // a definite dish and modifier before charging anything.
+  // The food counter, arcade and passport all end their short physical action in a chooser. Each
+  // destination owns payment: the arcade must check today's broken-machine state before taking a
+  // coin, while food waits for a definite dish and modifier before charging anything.
   if (def.mallFoodHall) openMallFood('all');
   if (def.mallFood) openMallFood(def.foodVendor||(th&&th.foodVendor));
   if (def.mallArcadeLobby) openArcadeLobby();
-  if (def.mallArcadeGame) openArcadeGame(def.mallArcadeGame,true);
+  if (def.mallArcadeGame) openArcadeGame(def.mallArcadeGame,false);
   if (def.mallPrize) openArcadePrizes();
   if (def.mallPassport) openMallPassport();
   if (def.mallEventSchedule) openMallEvents();
@@ -14669,9 +17380,8 @@ function stopUse(finished) {
     spoke=[stairs?'安全楼梯一次只通相邻开放层。':'公司客梯门开着，请选择楼层。',
       stairs?'The fire stair reaches one adjacent workplace floor.':'The passenger car is open; choose a floor.'];
   }
-  if (def.hospitalTriage) {
-    const r=hospitalCase();
-    hospitalVisit.stage=Math.max(hospitalVisit.stage,2);
+  if (def.hospitalTriage && hospitalStepResult?.kind === 'triage') {
+    const r=hospitalStepResult.record;
     spoke=[`分诊好了，${hospitalVisit.number}号，去二楼${r.room}诊室。`,
       `Triage complete. Number ${hospitalVisit.number}; room ${r.room} on the second floor.`];
     logDiary(`在医院分诊，护士让我去${r.dept}${r.room}诊室。`,
@@ -14700,25 +17410,26 @@ function stopUse(finished) {
     hospitalVisit.treated=true;
     hospitalVisit.stage=Math.max(hospitalVisit.stage,5);
     spoke=['治疗完成了，舒服多了。去药房取药。','Treatment complete. You feel much better; collect the medicine.'];
-    logDiary(`在仁和医院完成了${r.hz}的治疗。`,
+    logDiary(`在澄安医院完成了${r.hz}的治疗。`,
       `Completed hospital treatment for ${r.en}.`,'hospital-care');
+    // 看病. A hospital ends an illness outright — that is what a hospital is for, and it is the
+    // difference between the care flow being a scene and being a way out of something.
+    const cured = Survive.treated(day);
+    if (cured) { setTimeout(() => toast(`${cured.hz} &nbsp;${cured.en}`), 2200); updateHud(); }
     saveGame();
   }
-  if (def.hospitalDispense) {
-    hospitalVisit.dispensed=true;
-    needs.mood=clamp(needs.mood+8,0,100);
+  if (def.hospitalDispense && hospitalStepResult?.kind === 'dispense') {
     spoke=['药师核对了名字和药方，把药交给我。','The pharmacist checks the name and prescription, then hands over the medicine.'];
     Vocab.introduce('处方');
     saveGame();
   }
-  if (def.hospitalDischarge) {
-    hospitalVisit.stage=6;
+  if (def.hospitalDischarge && hospitalStepResult?.kind === 'discharge') {
     spoke=['出院手续办好了，按医嘱好好休息。','Discharge complete. Rest and follow the doctor’s instructions.'];
-    logDiary('在仁和医院办了出院手续。','Completed discharge at Renhe Hospital.','hospital-discharge');
+    logDiary('在澄安医院办了出院手续。',"Completed discharge at Cheng'an Hospital.",'hospital-discharge');
     saveGame();
   }
   // ---- the office, and the subway
-  if (def.board) openTasks();
+  if (def.board && th.hz === '白板' && !openTasks()) { updateHud(); return; }
   if (def.ride) openTravel(true);
   if (def.lineMap) openTravel(false);
   if (def.punch) {
@@ -14769,8 +17480,13 @@ function stopUse(finished) {
     updateHud();
   }
   if (def.checkin && flight && !flight.checked) {
-    if (def.kiosk) gotBoardingCard(flight.f, seatRow(flight.f) + 'B');
-    else openCheckin();
+    if (def.kiosk) {
+      // The kiosk itself takes six game minutes. Recheck at completion so starting on the last
+      // eligible minute cannot print a boarding card after the real check-in cutoff has passed.
+      const f=flight.f;
+      if (Airport.checkinOpen(f,minutes)) gotBoardingCard(f,seatRow(f)+'B');
+      else spoke=['值机已经截止了。','Check-in has closed for this flight.'];
+    } else openCheckin();
   }
   if (def.bagdrop && flight && flight.checked && !flight.bag) {
     flight.bag = true;
@@ -14813,7 +17529,7 @@ function stopUse(finished) {
     act = { ...sitting.pose, kind:'sit', startedAt:performance.now(),
             hz:sitting.hz, target:th.pos };
   }
-  if((place==='zoo'||place==='zoo_tropical')&&sitting&&sitting.local){
+  if((place==='zoo'||place==='zoo_tropical'||place==='train')&&sitting&&sitting.local){
     act={...sitting.pose,kind:'sit',startedAt:performance.now(),hz:sitting.hz,target:th.pos};
   }
   // The call button. Somebody comes, which is the whole of what a call button is.
@@ -14876,7 +17592,14 @@ function tickUse(dt) {
     CAM.tYaw=angleLerp(CAM.tYaw,q.yaw,1-Math.pow(.12,dt));
   }
   advanceTime(def.mins * step);                      // costs time, and time costs needs
-  for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k] * step, 0, 100);
+  // Purchases, one-shot food, daily-limited brushing, utility payments and scheduled visits grant
+  // their whole benefit only after stopUse has committed the matching owner state. Other free
+  // actions (and paid work) remain progressive, so cancelling those still keeps work already done.
+  if (!(def.pay < 0) && !def.sleep && !def.eat && !def.teeth && !def.noodles && !def.homeServe && !def.payBills &&
+      !def.teaGuest && !def.homeLaundry && !def.homePrep && !def.homeParcel && !def.reportFault &&
+      !def.inviteGuest && !def.mailTake && !def.payRentNow &&
+      !def.hospitalTriage && !def.hospitalDispense && !def.hospitalDischarge)
+    for (const k in def.gain) needs[k] = clamp(needs[k] + def.gain[k] * step, 0, 100);
   $('#doing .tk i').style.width = (doing.t * 100).toFixed(1) + '%';
   if (doing.t >= 0.999) stopUse(true);
 }
@@ -14885,23 +17608,56 @@ function tickUse(dt) {
 function frame(now) {
   // Acceptance harnesses can freeze rendering after a room has been built, then step its real
   // controllers directly. Keep the rAF chain alive so releasing the hold resumes normally.
-  if (frameHold) { t0 = now; requestAnimationFrame(frame); return; }
+  if (frameHold) {
+    if (Number.isFinite(now) && now >= 0 && now <= MAX_FRAME_TIMESTAMP && now >= t0 &&
+        now - t0 <= MAX_FRAME_FORWARD_GAP) {
+      const heldMs = now - t0;
+      t0 = now;
+      frameNow = Number.isFinite(frameNow) ? frameNow + heldMs : now;
+      frameTimeReady = true;
+    } else {
+      if (Number.isFinite(now) && now >= 0 && now <= MAX_FRAME_TIMESTAMP) t0 = now;
+      frameTimeReady = false;
+    }
+    requestAnimationFrame(frame); return;
+  }
   rigFrame++;
-  const rawMs = now - t0;
-  const dt = Math.min(0.05, rawMs / 1000); t0 = now;
-  Perf.tick(now, rawMs);
+  // rAF supplies a finite monotonic timestamp, but diagnostics and acceptance drivers call this
+  // public loop directly. Do not let one NaN/Infinity or backwards sample poison movement,
+  // camera easing and animation state. A non-finite sample and the first finite sample after it
+  // are zero-delta rebases; a backwards sample also quarantines its next frame. Ordinary
+  // monotonic timestamps retain the exact subtraction and clamp they had before this guard.
+  const finiteNow = Number.isFinite(now) && now >= 0 && now <= MAX_FRAME_TIMESTAMP;
+  const forwardTime = finiteNow && frameTimeReady && now >= t0 && now - t0 <= MAX_FRAME_FORWARD_GAP;
+  const rawMs = forwardTime ? now - t0 : 0;
+  const dt = Math.min(0.05, rawMs / 1000);
+  if (forwardTime) frameNow = Number.isFinite(frameNow) ? frameNow + rawMs : now;
+  if (finiteNow) {
+    t0 = now;
+    frameTimeReady = forwardTime || !frameTimeReady;
+  } else frameTimeReady = false;
+  Perf.tick(frameNow, rawMs);
   updatePerfChip();
+
+  // A modal can open from a second touch while the first still owns the stick or camera. Clear
+  // those continuous gestures on the lock edge, so closing the surface cannot resume movement or
+  // a drag the player is no longer making. Ordinary keyboard state remains physical-key driven.
+  if (worldInputLocked()) {
+    if (touchPointer !== null) resetTouchMove();
+    if (down) cancelPress();
+  }
 
   // ---- movement
   let ix = 0, iz = 0;
   const moveYawWas = P.yaw;
   // W and S drive the highlight in the order panel, so they must not also walk you out of the
   // restaurant while you are reading it.
-  if (!cardOpen && !talkOpen && !Pick.isOpen && !paused) {
-    if (keys.w || touchKeys.w) iz += 1;
-    if (keys.s || touchKeys.s) iz -= 1;
-    if (keys.a || touchKeys.a) ix -= 1;
-    if (keys.d || touchKeys.d) ix += 1;
+  if (!worldInputLocked()) {
+    if (keys.w) iz += 1;
+    if (keys.s) iz -= 1;
+    if (keys.a) ix -= 1;
+    if (keys.d) ix += 1;
+    ix += touchAxes.x; iz += touchAxes.z;
   }
   // Walking away is how you stop doing something, exactly as you would expect.
   if (doing && (ix || iz)) stopUse(false);
@@ -14913,20 +17669,28 @@ function frame(now) {
       CAM.tPitch = sitting.was.pitch; CAM.tDist = sitting.was.dist; CAM.lookY = sitting.was.lookY;
       // Behind you again, facing the way you are about to walk, rather than swinging round from the
       // front while you are already moving.
-      CAM.tYaw = P.yaw;
+      aimCameraYaw(P.yaw);
     }
     if(sitting.stand){P.x=sitting.stand[0];P.z=sitting.stand[1];P.vx=P.vz=0;P.speed=0;P.ground=0;}
     sitting = null; act = null;
   }
   // Empty and exhausted both slow you down; it is the one hard consequence of neglect.
   const drag = (needs.rest < 15 ? 0.68 : 1) * (needs.food < 15 ? 0.82 : 1);
-  const run = (keys.shift || touchKeys.shift ? 1.85 : 1) * drag;
   const len = Math.hypot(ix, iz);
+  if (len > 0) coachAdvance(1);
+  const inputStrength = Math.min(1, len);
+  // A physical Shift remains an exact run command. A thumb reaches the same top speed only at
+  // the rim, with no speed cliff where walking becomes running in a cramped room.
+  const run = (keys.shift ? 1.85 : 1 + 0.85 * touchAxes.run) * drag;
   let tx = 0, tz = 0;
   let moveAlignment = 0;
   if (len > 0) {
     ix /= len; iz /= len;
-    const cy = CAM.yaw;
+    // A deep exterior shell may hold the visible camera at a clear shoulder angle while the
+    // requested orbit continues toward the wall. Steering follows that resolved sightline, not
+    // the hidden request, so W always means forward on screen. The value is one rendered frame
+    // old, which is the same frame the player is responding to.
+    const cy = Number.isFinite(CAM.viewYaw) ? CAM.viewYaw : CAM.yaw;
     // camera-relative: forward is the direction the camera looks, flattened
     tx = (Math.sin(cy) * iz + Math.cos(cy) * ix);
     tz = (Math.cos(cy) * iz - Math.sin(cy) * ix);
@@ -14939,7 +17703,7 @@ function frame(now) {
     P.yaw += yawStep;
     moveAlignment = Math.max(0, Math.cos(angleDelta(wantedYaw, P.yaw)));
   }
-  const target = 1.55 * run * (len > 0 ? 1 : 0);
+  const target = 1.55 * run * inputStrength;
   // Quick to start, quicker to stop: no drifting after the key is released.
   P.speed = lerp(P.speed, target, 1 - Math.pow(len > 0 ? 0.0007 : 0.00003, dt));
   const wasX = P.x, wasZ = P.z;
@@ -14990,7 +17754,7 @@ function frame(now) {
     tickRide(dt);               // and the train, going round the ring a stop at a time
     tickStation(dt);            // and the queue at the ticket machines, before anybody is moved
   }
-  updateNPCs(paused ? 0 : dt, now);   // the neighbours get on with their day either way
+  updateNPCs(paused ? 0 : dt, frameNow);   // the neighbours get on with their day either way
   // The carts go where the crew went, so this has to be after they have moved and before anything
   // draws. Costs nothing in the other twelve rooms: there is no crew in them to be pushing one.
   if (place === 'cabin') updateTrolleys();
@@ -14998,7 +17762,7 @@ function frame(now) {
   // the same reason: the errand is handed to somebody who is already walking. `hotelFloorAt` is a
   // thirteen-entry lookup and `tickHotelRoom` rate-limits itself to once a second, so an empty
   // hotel — and every one of the other rooms in the game — costs a failed find and nothing else.
-  if (hotelFloorAt(place)) tickHotelRoom(now);
+  if (hotelFloorAt(place)) tickHotelRoom(frameNow);
 
   // ---- physical interaction: steer the body to the object it is using
   // Include the camera-relative steering turn above as well as the final interaction-facing turn
@@ -15021,31 +17785,31 @@ function frame(now) {
   P.turn = lerp(P.turn, angleDelta(P.yaw, yawWas) / Math.max(dt, 1e-3),
     1 - Math.pow(0.0025, dt));
 
-  // ---- camera: keyboard orbit, flick glide, then one damped settle per frame
-  if (!cardOpen && !talkOpen) {
+  // ---- camera: keyboard orbit, then one damped settle per frame
+  if (!worldInputLocked()) {
     let kx = 0, ky = 0;
     if (keys.arrowleft) kx -= 1;
     if (keys.arrowright) kx += 1;
     if (keys.arrowup) ky -= 1;
     if (keys.arrowdown) ky += 1;
     if (kx || ky) {
-      // Orbiting from the keyboard leaves the mouse free while you walk.
-      const rate = (keys.shift ? 2.8 : 1.6) * dt;
+      // Orbiting from the keyboard leaves the mouse free while you walk. The same sensitivity
+      // setting governs every manual look path; it must not become a mouse-only preference.
+      const rate = (keys.shift ? 2.8 : 1.6) * SET.sens * dt;
       CAM.tYaw += kx * rate;
       const dhk = dollHouse();
       CAM.tPitch = clamp(CAM.tPitch + ky * rate * 0.52, 0.05, dhk ? dhk.pitch : 1.05);   // 512, same clamp as the mouse
+      // A held arrow is already a frame-rate-bounded stream. Keep it under the key exactly like a
+      // drag under the pointer, with no target remainder left to rotate after key-up.
+      CAM.yaw = CAM.tYaw; CAM.pitch = CAM.tPitch;
       CAM.spin = 0;
     }
   }
-  if (!down && Math.abs(CAM.spin) > 0.001) {
-    CAM.tYaw += CAM.spin * dt;
-    CAM.spin *= Math.pow(0.0016, dt);      // glide settles in about a third of a second
-  }
-
-  // Hospital clinical rooms announce a useful point to face at their doorway.  Apply that angle
-  // once when the body crosses the threshold, then stop helping: mouse/keyboard orbit remains
-  // fully manual inside the room.  Returning to the corridor makes cameraAssistAt return null,
-  // which re-arms the same room for the next visit without ever imposing a corridor direction.
+  // Hospital clinical rooms announce a useful point to face at their doorway. Nudge toward it
+  // once, but never take a full turn away from the player: the old unbounded correction could
+  // produce a 180-degree automatic whip. Manual look held at the threshold always wins outright.
+  // Returning to the corridor re-arms the same room for the next visit.
+  const CAMERA_ASSIST_MAX = 0.40;
   if (scene.cameraAssistAt) {
     const previous=CAM.assist&&CAM.assist.place===place?CAM.assist.id:null;
     const q=scene.cameraAssistAt(P.x,P.z,previous);
@@ -15053,17 +17817,19 @@ function frame(now) {
     const old=CAM.assist?`${CAM.assist.place}:${CAM.assist.id}`:null;
     if(key!==old) {
       CAM.assist=q?{place,id:q.id}:null;
-      if(q) {
+      const manualLook = down || keys.arrowleft || keys.arrowright || keys.arrowup || keys.arrowdown;
+      if(q && !manualLook) {
         const want=Math.atan2(q.focus[0]-P.x,q.focus[1]-P.z);
-        CAM.tYaw+=angleDelta(want,CAM.tYaw);
+        CAM.tYaw+=clamp(angleDelta(want,CAM.tYaw),-CAMERA_ASSIST_MAX,CAMERA_ASSIST_MAX);
         CAM.spin=0;
       }
     }
   } else CAM.assist=null;
   const look = 1 - Math.pow(0.0000001, dt);
-  CAM.yaw = lerp(CAM.yaw, CAM.tYaw, look);
-  CAM.pitch = lerp(CAM.pitch, CAM.tPitch, look);
-  CAM.dist = lerp(CAM.dist, CAM.tDist, 1 - Math.pow(0.00001, dt));
+  CAM.yaw = settleCameraAxis(CAM.yaw, CAM.tYaw, look, CAMERA_YAW_RATE, dt);
+  CAM.pitch = settleCameraAxis(CAM.pitch, CAM.tPitch, look, CAMERA_PITCH_RATE, dt);
+  CAM.dist = settleCameraAxis(CAM.dist, CAM.tDist,
+    1 - Math.pow(0.00001, dt), CAMERA_DOLLY_RATE, dt);
   // Interiors benefit from a slightly tighter, calmer lens; outside, the extra width preserves
   // peripheral awareness at crossings and in the hutong. A scene can author its own value beside
   // distance and pitch. Conversation framing closes in further, then eases back rather than
@@ -15085,14 +17851,39 @@ function frame(now) {
   // from one to the other, they find the point between them: written as a second lerp toward the
   // aisle this settled at x -1.91, halfway from the seat at -2.52 to the aisle at -1.48, which is
   // inside the armrest.
-  const talkFrame = talkOpen && talkAt && talkAt.frame;
-  const focusFollow = talkFrame ? 1 - Math.pow(0.000002, dt) : follow;
-  CAM.fx = lerp(CAM.fx, talkFrame ? talkFrame.focus[0] : sitting ? sitting.aisle : P.x,
+  let talkFrame = talkOpen && talkAt && talkAt.frame;
+  if (talkFrame && place === 'street') {
+    const margin = conversationMargin();
+    if (stepStreetDialogueResizeState(talkAt,margin,frameNow)) {
+      // Crossing the wide/compact composition threshold changes which side of the dialogue card
+      // is genuinely visible. Re-prove the modal shot once at that threshold; do not keep easing
+      // toward a widescreen focus after a square/portrait resize. A transient layout sample gets
+      // two bounded retries; an impossible authored shot then remains an explicit safe hold.
+      const reframed = conversationFrame(talkAt.n);
+      if (cutStreetTalkCamera(talkAt.n, reframed)) {
+        stepStreetDialogueResizeState(talkAt,margin,frameNow,true);
+        talkAt.frame = talkFrame = reframed;
+        transitionStreetDialogueCamera(CAM,'resize-success',null,reframed);
+      } else {
+        stepStreetDialogueResizeState(talkAt,margin,frameNow,false);
+        transitionStreetDialogueCamera(CAM,'resize-failed',null,reframed);
+      }
+    }
+  }
+  // HOME is the densest continuous navigation space in the game. A trailing target moved another
+  // ~30 cm after a run stopped, which felt like camera drift in its short rooms and corridors.
+  // Follow the body exactly there; authored talk framing still gets its own photographic ease.
+  const dollFocus = !talkFrame && !sitting && CAM.dollhouseFocus;
+  const focusFollow = dollFocus ? 1
+    : talkFrame ? 1 - Math.pow(0.000002, dt)
+    : place === 'home' ? 1 : follow;
+  CAM.fx = lerp(CAM.fx, dollFocus ? dollFocus[0] : talkFrame ? talkFrame.focus[0] : sitting ? sitting.aisle : P.x,
     focusFollow);
-  CAM.fz = lerp(CAM.fz, talkFrame ? talkFrame.focus[1] : P.z, focusFollow);
+  CAM.fz = lerp(CAM.fz, dollFocus ? dollFocus[1] : talkFrame ? talkFrame.focus[1] : P.z,
+    focusFollow);
   // Over the title the camera belongs to the title, not to the player. After the follow lerp,
   // so it overwrites it rather than fighting it.
-  if (!started) titleCamera(now);
+  if (!started) titleCamera(frameNow);
 
   // The room you are in decides the cutaway bounds and which lamp is overhead. Outside, that
   // lamp is the nearest street light, and it only comes on when the daylight goes.
@@ -15105,11 +17896,15 @@ function frame(now) {
   // dimming the bulb was the trap the note beside that curve warns about — a fitting that flickers
   // over a room whose brightness never moves looks more broken than the bug.
   const bulbK = (roomLit(place, room) && powered()) ? (room.bulb === undefined ? 1 : room.bulb) : 0;
-  const flick = place === 'home' && World.lampFlicker ? World.lampFlicker(now / 1000) : 1;
+  const flick = place === 'home' && World.lampFlicker ? World.lampFlicker(frameNow / 1000) : 1;
+  // One clear-sky evaluation per frame. It allocates the nine interpolated colour/direction
+  // vectors, so calling it again for outdoor bulbs, local lights and weather grading multiplied
+  // avoidable frame churn in every place.
+  const rawDaylight = daylight(minutes);
   if (place === 'home' && World.setLamp) World.setLamp(bulbK * flick);
   R.setBulb(room.light[0], room.light[1], room.light[2],
     scene.indoor ? bulbK * flick
-      : 1 - daylight(minutes).day);
+      : 1 - rawDaylight.day);
   // 399. The curtains close the daylight shaft. `R.setWinShade` (js/gl.js) was built for this and
   // had no caller in the repo, so drawing them across left the sun patch lying on the floor.
   // `fixt.curtainL/R` are the eased positions, 1 fully drawn, so the shaft fades with the fabric
@@ -15121,16 +17916,30 @@ function frame(now) {
   R.setWinShade(place === 'home' && scene.level && scene.level() === 2
     ? 1 - (fixt.curtainL + fixt.curtainR) / 2 : 1);
 
-  // The room's own lamps, on top of the single overhead bulb above. Only eight reach the shader
-  // and a room may declare more than that. Ordinary rooms retain their established per-frame
-  // distance ranking; the much larger mall uses the transition-only cache above so nearly tied
-  // shop lamps do not trade shader slots while the camera eases along the concourse.
+  // The room's own lamps, on top of the single overhead bulb above. The office tower has already
+  // reduced every authored fixture field to one fixed eight-light delivery plan at build time.
+  // Send that exact array straight through: no per-frame filter/sort/slice/map, no camera-distance
+  // tie and therefore no shader-slot pop. Its outdoor roof stays on the same eight identities while
+  // their colour fades through dusk; zero gain is preferable to changing membership at twilight.
+  // Other rooms retain their established per-frame ranking and the larger mall uses its
+  // transition-only cache below.
   //
   // Indoors they follow the light switch; outdoors they are street lighting and follow the sun.
-  if (scene.lights && scene.lights.length) {
-    const lit = scene.indoor ? (roomLit(place, room) && powered()) : daylight(minutes).day < 0.5;
+  const fixedOfficeLighting=scene.officeLighting&&
+    scene.officeLighting.version==='office-fixed-eight-v1'&&
+    scene.officeLighting.submitted===scene.lights&&scene.lights.length===8;
+  if(fixedOfficeLighting){
+    const gain=scene.indoor
+      ?((roomLit(place,room)&&powered())?1:0)
+      :1-smoothstep(.35,.65,rawDaylight.day);
+    R.setLights(scene.lights,gain);
+    selectedLightDebug=OFFICE_NO_LIGHT_DEBUG;
+    selectedLightDebugScene=scene;
+    resetMallLightSelection(mallLightSelectionState,'fixed-office');
+  } else if (scene.lights && scene.lights.length) {
+    const lit = scene.indoor ? (roomLit(place, room) && powered()) : rawDaylight.day < 0.5;
     if (!lit) {
-      R.setLights(null); selectedLightDebug=[];
+      R.setLights(null); selectedLightDebug=[]; selectedLightDebugScene=scene;
       if(place==='mall')resetMallLightSelection(mallLightSelectionState,'unlit');
     }
     else {
@@ -15158,25 +17967,104 @@ function frame(now) {
         ?selectMallLights(mallLightSelectionState,on,eye,scene,localLightDeck,score)
         :on.slice(0,8);
       if(place!=='mall')resetMallLightSelection(mallLightSelectionState,'left-mall');
-      selectedLightDebug=chosen.map((l,i)=>({
-        rank:i+1,id:l.mallShop?`${l.mallShop}@${l.x.toFixed(2)},${l.y.toFixed(2)},${l.z.toFixed(2)}`
-          :`${l.mallPublic||'public'}@${l.x.toFixed(2)},${l.y.toFixed(2)},${l.z.toFixed(2)}`,
-        owner:l.mallShop||l.mallPublic||'public',phase:l.mallPhase||'',score:+score(l).toFixed(3),
-        power:+l.power.toFixed(3),radius:+l.radius.toFixed(2),x:+l.x.toFixed(2),
-        y:+l.y.toFixed(2),z:+l.z.toFixed(2)}));
+      // Diagnostic strings and rounded records are useful to harnesses, not to the renderer.
+      // Refresh them twice a second (and immediately on a room change) instead of allocating an
+      // object and several strings for every selected light on every frame.
+      if(selectedLightDebugScene!==scene||frameNow>=selectedLightDebugAt){
+        selectedLightDebugScene=scene;selectedLightDebugAt=frameNow+500;
+        selectedLightDebug=chosen.map((l,i)=>({
+          rank:i+1,id:l.mallShop?`${l.mallShop}@${l.x.toFixed(2)},${l.y.toFixed(2)},${l.z.toFixed(2)}`
+            :`${l.mallPublic||'public'}@${l.x.toFixed(2)},${l.y.toFixed(2)},${l.z.toFixed(2)}`,
+          owner:l.mallShop||l.mallPublic||'public',phase:l.mallPhase||'',score:+score(l).toFixed(3),
+          power:+l.power.toFixed(3),radius:+l.radius.toFixed(2),x:+l.x.toFixed(2),
+          y:+l.y.toFixed(2),z:+l.z.toFixed(2)}));
+      }
       R.setLights(chosen);
     }
   } else {
-    R.setLights(null); selectedLightDebug=[];
+    R.setLights(null); selectedLightDebug=[]; selectedLightDebugScene=scene;
     resetMallLightSelection(mallLightSelectionState,'no-lights');
   }
 
-  const tgt = [CAM.fx, (Math.abs(CAM.lookY - 1.10) < 1e-6 && CAM.rlook !== undefined
+  let tgt = [CAM.fx, (Math.abs(CAM.lookY - 1.10) < 1e-6 && CAM.rlook !== undefined
                         ? CAM.rlook : CAM.lookY) + (P.lift || 0), CAM.fz];   // 513
+  if(place==='street')snapshotStreetCameraCandidate(CAM,streetOrbitPrior);
+  // Street keeps a rendered focus separate from the requested follow target. A moving body or
+  // dialogue offset may erase the current visibility lobe even when both endpoints have some
+  // other tangent. Advance only while the current full-radius camera remains valid; otherwise pin
+  // the last safe composition. Place/title cuts seed this state in resetStreetCameraTopology.
+  if (place === 'street') {
+    if (!CAM.wallFocusReady) {
+      CAM.wallFocusX = tgt[0]; CAM.wallFocusY = tgt[1]; CAM.wallFocusZ = tgt[2];
+      CAM.wallFocusReady = true;
+    } else {
+      const focusDx = tgt[0] - CAM.wallFocusX, focusDy = tgt[1] - CAM.wallFocusY;
+      const focusDz = tgt[2] - CAM.wallFocusZ;
+      const focusLength = Math.hypot(focusDx, focusDy, focusDz);
+      if (focusLength > 1e-7 && CAM.wallReady) {
+        const focusStep = Math.min(focusLength, 4 * dt);
+        const q = focusStep / focusLength;
+        const nx = CAM.wallFocusX + focusDx * q, ny = CAM.wallFocusY + focusDy * q;
+        const nz = CAM.wallFocusZ + focusDz * q;
+        const radius = Math.max(1.70, Number.isFinite(CAM.wallDist) ? CAM.wallDist : CAM.dist);
+        const pitch = Number.isFinite(CAM.wallPitch) ? CAM.wallPitch : CAM.pitch;
+        const yaw = Number.isFinite(CAM.wallYaw) ? CAM.wallYaw : CAM.yaw;
+        const c = Math.cos(pitch), s = Math.sin(pitch);
+        streetOrbitDir[0]=-Math.sin(yaw)*c;streetOrbitDir[1]=s;
+        streetOrbitDir[2]=-Math.cos(yaw)*c;
+        streetOrbitTarget[0]=nx;streetOrbitTarget[1]=ny;streetOrbitTarget[2]=nz;
+        const clear = !cameraOrbitEndpointBlocker(streetOrbitTarget,streetOrbitDir,radius,
+          scene.blockers) && cameraBlockLimit(streetOrbitTarget,streetOrbitDir,radius,
+          scene.blockers) >= radius - .005;
+        const ex = nx + streetOrbitDir[0] * radius, ey = ny + streetOrbitDir[1] * radius;
+        const ez = nz + streetOrbitDir[2] * radius;
+        const eyeStep = CAM.wallEyeReady
+          ? Math.hypot(ex-CAM.wallEyeX,ey-CAM.wallEyeY,ez-CAM.wallEyeZ) : 0;
+        streetOrbitEyeA[0]=CAM.wallEyeX;streetOrbitEyeA[1]=CAM.wallEyeY;
+        streetOrbitEyeA[2]=CAM.wallEyeZ;streetOrbitEyeB[0]=ex;streetOrbitEyeB[1]=ey;
+        streetOrbitEyeB[2]=ez;
+        const chordClear=!CAM.wallEyeReady||
+          cameraEyeChordClear(streetOrbitEyeA,streetOrbitEyeB,scene.blockers);
+        if (clear && chordClear && eyeStep <= 25.2 * dt + 1e-6) {
+          CAM.wallFocusX=nx; CAM.wallFocusY=ny; CAM.wallFocusZ=nz;
+          CAM.wallMode = 'focus-track';
+        } else CAM.wallMode = 'focus-pin';
+      }
+    }
+    streetOrbitTarget[0]=CAM.wallFocusX;streetOrbitTarget[1]=CAM.wallFocusY;
+    streetOrbitTarget[2]=CAM.wallFocusZ;tgt=streetOrbitTarget;
+  }
   // `let`, not `const`: the lift writes its own framing below and `cam.up` further down reads
   // these back, so all three have to be recomputed together or the horizon tilts.
-  let cp = Math.cos(CAM.pitch), sp = Math.sin(CAM.pitch);
-  const dir = [-Math.sin(CAM.yaw) * cp, sp, -Math.cos(CAM.yaw) * cp];
+  // Pitch uses the same fail-closed contract on Street: only a collision-free rendered pitch may
+  // advance. An unsafe overview request remains explicit lag rather than moving the tangent by a
+  // hidden cut. Other scenes retain the shared damped pitch exactly.
+  if (place === 'street') {
+    if (!CAM.wallReady) CAM.wallPitch = CAM.pitch;
+    else {
+      const nextPitch = CAM.wallPitch + clamp(CAM.pitch - CAM.wallPitch,-1.2*dt,1.2*dt);
+      const c=Math.cos(nextPitch),s=Math.sin(nextPitch);
+      const yaw=Number.isFinite(CAM.wallYaw)?CAM.wallYaw:CAM.yaw;
+      streetOrbitDir[0]=-Math.sin(yaw)*c;streetOrbitDir[1]=s;
+      streetOrbitDir[2]=-Math.cos(yaw)*c;
+      const radius=Math.max(1.70,Number.isFinite(CAM.wallDist)?CAM.wallDist:CAM.dist);
+      const ex=tgt[0]+streetOrbitDir[0]*radius,ey=tgt[1]+streetOrbitDir[1]*radius;
+      const ez=tgt[2]+streetOrbitDir[2]*radius;
+      streetOrbitEyeA[0]=CAM.wallEyeX;streetOrbitEyeA[1]=CAM.wallEyeY;
+      streetOrbitEyeA[2]=CAM.wallEyeZ;streetOrbitEyeB[0]=ex;streetOrbitEyeB[1]=ey;
+      streetOrbitEyeB[2]=ez;
+      const sweptClear=!CAM.wallEyeReady||
+        (Math.hypot(ex-CAM.wallEyeX,ey-CAM.wallEyeY,ez-CAM.wallEyeZ)<=25.2*dt+1e-6&&
+          cameraEyeChordClear(streetOrbitEyeA,streetOrbitEyeB,scene.blockers));
+      if(sweptClear&&!cameraOrbitEndpointBlocker(tgt,streetOrbitDir,radius,scene.blockers)&&
+          cameraBlockLimit(tgt,streetOrbitDir,radius,scene.blockers)>=radius-.005){
+        CAM.wallPitch=nextPitch;CAM.wallPitchPinned=false;
+      } else CAM.wallPitchPinned=true;
+    }
+  }
+  const renderedPitch=place==='street'?CAM.wallPitch:CAM.pitch;
+  let cp = Math.cos(renderedPitch), sp = Math.sin(renderedPitch);
+  let dir = [-Math.sin(CAM.yaw) * cp, sp, -Math.cos(CAM.yaw) * cp];
   // Every surface is single-sided, so the camera may simply back out through a
   // wall or the ceiling: whatever stands between you and the room disappears.
   // The band just inside each wall is the exception — parking there buries the eye
@@ -15188,7 +18076,32 @@ function frame(now) {
   // the unlit backs of its walls; with them gone it is the one thing between the player and the
   // view the setting exists to give. `cameraBlockLimit` already reads `blockers || []`.
   const doll = dollHouse();
-  const blockers = doll ? null : scene.blockers;
+  // New scenes declare camera ownership semantically; the id fallback preserves the established
+  // apartment car until that older scene is migrated. OfficeLift's ids intentionally describe
+  // its place/landing and therefore never matched the former literal `room.id === 'lift'` test.
+  const inLift = room.cameraMode === 'lift' || room.id === 'lift';
+  // Office interiors already own a directional cutaway: once the eye leaves the active room,
+  // camera-side partitions and fixtures are removed together. Their slim `{pad:.08}` blockers
+  // therefore fight the visible contract, collapsing an otherwise valid orbit at every doorway.
+  // The vertical envelope follows the same per-prop cutaway contract; the continuous ceiling is
+  // governed separately below. Radial office blockers therefore all yield here, including the
+  // passenger bank. Visible local depth writers join the shared hysteretic cut instead of
+  // changing requested yaw or producing a close-up wall cage.
+  // The roof is open rather than directionally cut, but its parapets and furniture obey the same
+  // exact-yaw local-occluder policy. The passenger car opts in semantically; its landing does not.
+  const officeCameraManaged = !!scene.officeFloor || room.cameraMode === 'lift';
+  // The car and landing share one scene cache. Once the body crosses onto the landing, stop the
+  // car's short cut hold immediately; otherwise its clock no longer advances and a door/panel
+  // hidden in the car can remain absent indefinitely.
+  if (!officeCameraManaged) OfficeCamera.reset(scene);
+  // The upper HOME decks already use the scene's authored cutaway: inactive decks, the ceiling
+  // backface and the wall between the eye and the active room are removed as one contract. A ray
+  // blocker across that same shell reintroduced a discontinuity at every opening — at the flat's
+  // front door, adjacent half-degree pan samples changed the resolved radius by 1.72 m. Let the
+  // proved cutaway own those walls continuously. The lobby and lift retain the shell because they
+  // have real occupied slabs above them and are not part of that proof.
+  const homeUpperCutaway = homeCutawayCamera(place, scene, room);
+  const blockers = doll || homeUpperCutaway || officeCameraManaged ? null : scene.blockers;
   // A room may declare that the space behind you is tighter than its own orbit distance — walking
   // into a 4.8 m shop off a 46 m hall is the case this exists for.
   //
@@ -15203,18 +18116,6 @@ function frame(now) {
   // rather than Infinity so the ease out of a shop takes a sensible time instead of most of a
   // second travelling through distances no camera will ever use.
   const NOLIMIT = 12;
-  // How far back the eye sits when you are in a lift car, and it is a measured number rather than
-  // a chosen one — swept in 0.45 m steps with a render at each:
-  //
-  //   0.98   pinned to the car's own front corner. A shoulder, filling the frame.
-  //   1.75   inside the thickness of the car's rear wall and the shaft wall behind it. A flat
-  //          grey field with four floating labels on it and no body at all.
-  //   2.20   clear of both. The whole figure, the car's side wall and the 广告 frame beside it.
-  //
-  // 2.30 is 2.20 with a little margin, because the distance to a wall changes with the yaw the
-  // player is orbiting at and the dead band above is 45 cm wide. Overridable from the console as
-  // `__liftCam` for the next time this needs sweeping.
-  const LIFT_CAM = (window.__liftCam || 2.30);
   const wantNear = room.near || NOLIMIT;
   // 0.08 and not the 0.004 this used to be. The rate only ever showed on a room BOUNDARY, where
   // the target changes in one step rather than sliding: 客厅 2.97 to 书房 1.90 is 1.07 m of dolly,
@@ -15235,8 +18136,8 @@ function frame(now) {
   // asked for and that no player action produced. Measured on the twelve-storey acceptance sweep:
   // `.audit.js` parks a shot and waits 900 ms, and at this rate deck 4's 6.0 m room was still
   // 0.58 m short of its own limit when the shutter fired — a shared camera quietly reframed by a
-  // number that has nothing to do with it. `CAM.near` is never reset by `setPlace`, so it arrives
-  // carrying the last room's limit.
+  // number that has nothing to do with it. Place changes clear the room-camera state and rebase
+  // immediately; the walk predicate distinguishes same-scene doorway/lift seams from a harness.
   //
   // Magnitude alone cannot tell the two apart: walking through a shopfront legitimately moves the
   // limit from NOLIMIT to 3.8 m in one step (js/mall.js:4440), which is larger than any teleport
@@ -15245,8 +18146,7 @@ function frame(now) {
   const walked = CAM.px !== undefined && Math.hypot(P.x - CAM.px, P.z - CAM.pz) < 0.5
                  && (P.lift || 0) === CAM.plift;
   CAM.px = P.x; CAM.pz = P.z; CAM.plift = P.lift || 0;
-  CAM.near = (CAM.near === undefined || !walked) ? wantNear
-                                    : lerp(CAM.near, wantNear, 1 - Math.pow(0.08, dt));
+  CAM.near = OfficeCamera.stepNear(CAM.near, wantNear, walked, dt);
   // 513. A room may also say what height to aim at. 1.10 is chest height and it is right under
   // 3 m of ceiling; under 2.60 m an eye 2.2-2.9 m back aimed at 1.10 gives a third of the frame
   // to the slab overhead. Eased on the same curve and gated the same way as CAM.near, and only
@@ -15256,6 +18156,10 @@ function frame(now) {
   CAM.rlook = (CAM.rlook === undefined || !walked) ? wantLook
                                     : lerp(CAM.rlook, wantLook, 1 - Math.pow(0.08, dt));
   if (!doll) dist = Math.min(dist, CAM.near);
+  // `clearWall` below is a local room-band composition aid, not a change to the orbit the player
+  // chose. An authored outdoor shell tangent must preserve this pre-band radius; otherwise its
+  // radius changes with the *requested* ray even while the resolved wall angle is stationary.
+  let chosenWallDist = dist;
   const clearWall = (i, lo, hi) => {
     if (Math.abs(dir[i]) < 1e-4) return;
     const s = dir[i] > 0 ? 1 : -1;
@@ -15313,45 +18217,121 @@ function frame(now) {
   //
   // Deliberately keyed on the room's own `near` and not on its box. A room states its limit; the
   // box is the cutaway's, and in the shopping centre it is the whole floor plate. A room that
-  // declares no limit at all reads as NOLIMIT here and keeps the old behaviour exactly, which is
-  // every room in every scene that has never set `near` — the change reaches only the rooms that
-  // had already said they were tight.
+  // declares no limit at all reads as NOLIMIT here and keeps the old behaviour outside the proved
+  // HOME upper-deck cutaway below.
   const WALL_MIN = 3.00;
-  const inLift = room.id === 'lift';
-  if (inLift) dist = Math.min(dist, LIFT_CAM);
-  else if (!doll && (room.near || NOLIMIT) >= WALL_MIN) {
+  // The same geometry proof that releases these ceilings also lets the eye pass continuously
+  // through their walls. Keeping `clearWall` here would expose its deliberate outer band edge at
+  // the restored overview radius — a pan would alternate between the full orbit and a close-up.
+  // Flat 202 is unchanged in practice: all of its rooms already opt out with authored near < 3 m.
+  if (!inLift && !doll && !homeUpperCutaway && !officeCameraManaged &&
+           (room.near || NOLIMIT) >= WALL_MIN) {
     clearWall(0, room.x0, room.x1);
     clearWall(2, room.z0, room.z1);
   }
   // And the ceiling, for the rooms that have a real one.
   //
-  // Everywhere else this is deliberately not done: surfaces are single-sided, so an eye that rises
-  // through a ceiling deletes it and looks down into the room, which is the behaviour a low
-  // interior wants and gets for nothing. It only fails where the thing overhead is solid and
-  // occupied — a deck slab with a gallery on top of it and a lit trough slung underneath. There
-  // the eye does not escape into open air, it ends up inside the floor above.
+  // HOME's upper cutaway decks are the proved exception. Every prop made by one of their floor
+  // modules carries that deck's stamp, so `hiddenProp` removes every other storey; `ceiling()` also
+  // makes a downward, single-sided quad, so the active ceiling disappears from its back once the
+  // eye rises through it. There is therefore no occupied slab above for the camera to enter, and
+  // keeping this stop only collapses a requested overview into a close-up.
+  //
+  // The lobby is deliberately excluded: its shell has no deck stamp and remains opaque from above.
+  // The lift is excluded too because it travels through real slabs. Requiring the scene's cutaway
+  // contract keeps every other stacked building on the conservative path even if it later grows a
+  // `level()` method. Do not key this on `drawDeck`; that draw-only cache is assigned later below.
   //
   // A plain Math.min rather than clearWall's in-band test: this limit has to be continuous. The
   // wall version snaps the eye inward only while it sits in the band just inside a wall, which is
   // right for a doorway you might reverse out of and wrong for a ceiling you are sliding along.
-  // The floor on it is not decoration. `tgt[1]` is CAM.lookY plus P.lift, so on an upper deck it
-  // is already several metres up; if a room ever reports a ceiling at or below the player's chest
-  // — a bad deck number, a floor change landing a frame early — the division goes negative and the
-  // camera swings round in front of the player's face. Clamped, the worst case is a close shot.
-  if (!doll && room.ceil !== undefined && dir[1] > 1e-4)
-    dist = Math.min(dist, Math.max((room.ceil - tgt[1]) / dir[1], 0.85));
+  // On the paths that retain this limit, the floor on it is not decoration. `tgt[1]` is CAM.lookY
+  // plus P.lift, so on an upper deck it is already several metres up; if a room ever reports a
+  // ceiling at or below the player's chest — a bad deck number, a floor change landing a frame
+  // early — the division goes negative and the camera swings round in front of the player's face.
+  // Clamped, the worst case is a close shot.
+  if (!doll && !homeUpperCutaway && room.ceil !== undefined && dir[1] > 1e-4) {
+    const ceilingDist = Math.max((room.ceil - tgt[1]) / dir[1], 0.85);
+    dist = Math.min(dist, ceilingDist);
+    chosenWallDist = Math.min(chosenWallDist, ceilingDist);
+  }
+  // An opaque exterior mass cannot be made comfortable by shortening a third-person orbit: at
+  // HOME the straight ray is only 1.15 m and the avatar fills the view. Street therefore authors
+  // every architectural blocker as `orbit`; other outdoor scenes retain their ordinary recovery.
+  // Walk the eye around the last clear side without changing requested yaw. Activation/release are
+  // rate-bounded below because zooming past a sharp AABB corner can otherwise change a ray limit by
+  // metres in one frame even though both the wheel and requested yaw were already smooth.
+  let resolvedYaw = CAM.yaw;
+  // Preserve the whole radius the player actually chose, including deliberate close zoom. A hard
+  // distance gate would make one wheel notch collapse a clear tangent orbit back into the shell.
+  const streetOrbit = place === 'street' && !officeCameraManaged && !scene.indoor && !doll &&
+    blockers && blockers.length;
+  const requestHit = streetOrbit ? cameraHit : null;
+  const WALL_CLEAR_EPS = 0.005;
+  // Classify the requested ray at the chosen orbit, before any outdoor zone-band shortening. The
+  // ordinary solver still uses the band-limited `dist`; only an orbit-authored owner restores the
+  // chosen radius.
+  const requestLimit = cameraBlockLimit(tgt, dir,
+    streetOrbit ? chosenWallDist : dist, blockers, undefined, requestHit);
+  const requestEndpointOrbit = streetOrbit
+    ? cameraOrbitEndpointBlocker(tgt, dir, chosenWallDist, blockers) : null;
+  let direct = (!streetOrbit || chosenWallDist === dist) ? requestLimit
+                 : cameraBlockLimit(tgt, dir, dist, blockers);
+  const requestClear = !requestEndpointOrbit &&
+                       requestLimit >= chosenWallDist - WALL_CLEAR_EPS;
+  const requestOrbitOwner = streetOrbit ? requestEndpointOrbit ||
+    (!requestClear && requestHit.blocker && requestHit.blocker.orbit === true
+      ? requestHit.blocker : null) : null;
+  const requestHitsOrbit = streetOrbit && !!requestOrbitOwner;
+  // Once a deep-shell lobe is active, endpoint ownership cannot switch it off: an unwrapped drag
+  // may point at a compact gate on the far side while every continuous full-radius path still
+  // crosses the apartment. Only the collision-tested path below may release the lobe.
+  if (streetOrbit) {
+    streetOrbitStepInput.requestedYaw=CAM.yaw;
+    streetOrbitStepInput.requestedRadius=chosenWallDist;
+    streetOrbitStepInput.dt=dt;streetOrbitStepInput.requestHitsOrbit=requestHitsOrbit;
+    streetOrbitStepInput.target=tgt;streetOrbitStepInput.blockers=blockers;
+    streetOrbitStepInput.cp=cp;streetOrbitStepInput.sp=sp;streetOrbitStepInput.pitch=CAM.wallPitch;
+    const solved=stepStreetCameraOrbit(CAM,streetOrbitStepInput,streetOrbitStepHooks,
+      streetOrbitStepOutput);
+    if(solved.focusPinned)tgt=[CAM.wallFocusX,CAM.wallFocusY,CAM.wallFocusZ];
+    if(!proveStreetCameraCandidate(CAM,streetOrbitPrior,tgt,blockers,dt)){
+      tgt=[streetOrbitPrior.focusX,streetOrbitPrior.focusY,streetOrbitPrior.focusZ];
+      cp=Math.cos(CAM.wallPitch);sp=Math.sin(CAM.wallPitch);
+      resolvedYaw=CAM.wallYaw;dir=[-Math.sin(resolvedYaw)*cp,sp,-Math.cos(resolvedYaw)*cp];
+      dist=CAM.wallDist;direct=cameraBlockLimit(tgt,dir,dist,blockers);
+    }else{dist=solved.radius;resolvedYaw=solved.resolvedYaw;}
+  } else {
+    // Non-orbit scenes retain the ordinary recovery below. Street's local builder marks every
+    // opaque architectural blocker, so a new district cannot silently regress to a close-up.
+    CAM.wallActive = CAM.wallTransition = false;
+    CAM.wallYaw = CAM.wallGoal = CAM.yaw;
+  }
+  if (resolvedYaw !== CAM.yaw) {
+    dir = [-Math.sin(resolvedYaw) * cp, sp, -Math.cos(resolvedYaw) * cp];
+    direct = cameraBlockLimit(tgt, dir, dist, blockers);
+    // The authored tangent is already a complete full-radius solution. Mixing in the tail of a
+    // previous compact-blocker slide would shorten that clear orbit again and add a second camera
+    // motion after the hand stopped.
+    CAM.slide = CAM.rise = 0;
+  }
+
   // Outdoors there is nothing to back out through: buildings are solid masses, and sliding the
   // eye inside one would show its far faces from behind. A straight ray used to solve that only
   // by snapping the camera toward the player's shoulders. At a corner there is usually a better
   // answer: move sideways along the obstruction, or rise over a low roof, and keep the chosen
   // orbit distance. Candidate directions are tested against the same blocker list; if none clears
   // it, shortening remains the safe fallback.
-  const direct = cameraBlockLimit(tgt, dir, dist, blockers);
   let wantSlide = 0, wantRise = 0, bestClear = direct;
-  if (direct < dist - 0.08 && blockers && blockers.length) {
+  // In HOME, shell avoidance used to keep translating sideways or upward after a pan ended.
+  // That recovery is useful around outdoor building corners, but disorienting in a small room
+  // where it looks like a second, uncommanded camera gesture. Let the direct distance shorten in
+  // this building instead; it changes on the same frame as the player's pan and then stops.
+  const steadyHomeCamera = place === 'home';
+  if (!steadyHomeCamera && direct < dist - 0.08 && blockers && blockers.length) {
     const severity = clamp((dist - direct) / 1.8, 0, 1);
     const side = 0.42 + severity * 0.46, rise = 0.42 + severity * 0.62;
-    const right = [-Math.cos(CAM.yaw), 0, Math.sin(CAM.yaw)];
+    const right = [-Math.cos(resolvedYaw), 0, Math.sin(resolvedYaw)];
     // Try the side already in use first. On an exact corner both sides can be equally clear; this
     // stable ordering prevents the camera swapping shoulders from one frame to the next.
     const first = CAM.slide < -0.04 ? -1 : 1;
@@ -15372,21 +18352,55 @@ function frame(now) {
       if (score > bestClear + 0.10) { bestClear = score; wantSlide = slide; wantRise = up; }
     }
   }
-  const recover = wantSlide || wantRise;
-  const recoverEase = 1 - Math.pow(recover ? 0.0015 : 0.018, dt);
-  CAM.slide = lerp(CAM.slide, wantSlide, recoverEase);
-  CAM.rise = lerp(CAM.rise, wantRise, recoverEase);
-  const baseRight = [-Math.cos(CAM.yaw), 0, Math.sin(CAM.yaw)];
+  if (steadyHomeCamera || officeCameraManaged) {
+    CAM.slide = 0; CAM.rise = 0;
+  } else {
+    const recover = wantSlide || wantRise;
+    const recoverEase = 1 - Math.pow(recover ? 0.0015 : 0.018, dt);
+    CAM.slide = lerp(CAM.slide, wantSlide, recoverEase);
+    CAM.rise = lerp(CAM.rise, wantRise, recoverEase);
+  }
+  const baseRight = [-Math.cos(resolvedYaw), 0, Math.sin(resolvedYaw)];
   let vx = dir[0] * dist + baseRight[0] * CAM.slide;
   let vy = dir[1] * dist + CAM.rise;
   let vz = dir[2] * dist + baseRight[2] * CAM.slide;
   const vl = Math.hypot(vx, vy, vz) || 1;
   // Preserve orbit distance: slide and rise change where the eye is, not how far away it feels.
   const viewDir = [vx / vl, vy / vl, vz / vl];
-  dist = cameraBlockLimit(tgt, viewDir, dist, blockers);
+  // Recovery rise changes the final direction *after* the first ceiling limit was measured on
+  // `dir`. Reapply that same authored eye plane to the direction we will actually use, or a
+  // blocker below a low office ceiling can lift the endpoint back into the opaque slab.
+  if (!doll && !homeUpperCutaway && room.ceil !== undefined && viewDir[1] > 1e-4)
+    dist = Math.min(dist, Math.max((room.ceil - tgt[1]) / viewDir[1], 0.85));
+  if (officeCameraManaged) {
+    // One shared implementation owns both runtime and adversarial checks. It never changes yaw or
+    // the requested/room/ceiling radius: its only response is a bounded local visibility cut.
+    officeCameraBody[0] = P.x; officeCameraBody[1] = P.z;
+    officeCameraOptions.dt = dt; officeCameraOptions.floorY = P.lift || 0;
+    officeCameraOptions.wallsOff = SET.wallsOff;
+    const q = OfficeCamera.resolve(scene, room, officeCameraBody, tgt, resolvedYaw, CAM.pitch, dist,
+      officeCameraOptions, officeCameraView);
+    dist = q.distance; viewDir[0] = q.dir[0]; viewDir[1] = q.dir[1]; viewDir[2] = q.dir[2];
+    CAM.collisionReady = CAM.wallRadiusActive = false;
+  } else {
+    const rawCollisionDist = cameraBlockLimit(tgt, viewDir, dist, blockers);
+    if (streetOrbit) {
+      // Ray/AABB distance is continuous along a face but not when a finite segment first clears a
+      // sharp corner: its answer can jump from the corner to the full orbit. The wheel has already
+      // passed through a 2.8 m/s limiter; bound this independent, safe outward release to 4 m/s.
+      // Never ease inward past `rawCollisionDist`, which would put the eye inside opaque fabric.
+      dist=resolveStreetCollisionDistance(CAM,true,walked,rawCollisionDist,dt,WALL_CLEAR_EPS);
+    } else {
+      dist=resolveStreetCollisionDistance(CAM,false,walked,rawCollisionDist,dt,WALL_CLEAR_EPS);
+    }
+  }
   eye[0] = tgt[0] + viewDir[0] * dist;
   eye[1] = tgt[1] + viewDir[1] * dist;
   eye[2] = tgt[2] + viewDir[2] * dist;
+  const horizontalView = Math.hypot(viewDir[0], viewDir[2]);
+  if (horizontalView > 1e-4)
+    CAM.viewYaw = Math.atan2(-viewDir[0], -viewDir[2]);
+  commitStreetCameraEye(CAM,streetOrbit,eye[0],eye[1],eye[2]);
 
   cam.aspect = R.resize(cv);
   // Basis from the resolved eye rather than from the requested orbit. A sideways obstruction
@@ -15428,7 +18442,7 @@ function frame(now) {
   // The one place the weather does not reach. An aeroplane at cruise is above the deck — that is
   // most of the point of the window seat — so the cabin keeps the clean daylight curve, and the
   // cloud it does fly through is Cabin's own and is drawn on the window rather than in the light.
-  const dl = place === 'cabin' ? daylight(minutes) : Weather.grade(daylight(minutes));
+  const dl = place === 'cabin' ? rawDaylight : Weather.grade(rawDaylight);
   const night = 1 - dl.day;
   // Wet ground, lying snow and the wind in the trees, for every surface in the world. Indoors it
   // is all switched off: a shop floor does not get wet because it is raining outside, and the one
@@ -15441,13 +18455,15 @@ function frame(now) {
   // The moon has been drawn in the sky with a phase and a glow for a long time and lit nothing:
   // a clear night shaded exactly as dark as the inside of a cupboard. Handed to the renderer as
   // an ambient term now, so a night street has a sky over it.
-  R.setDaylight(dl.dir, dl.col, dl.amt, dl.sky, dl.gnd, night);
+  R.setDaylight(dl.dir, dl.col, dl.amt, dl.sky, dl.gnd, night, dl.skyA, dl.skyB);
   if (place === 'home') {
     for (const g of World.skyGlass) g.color = dl.glass;
     // The haze the painted skyline is in. The front layer of towers is the same haze knocked
     // back, so the view out of the window keeps its two-layer depth.
-    World.setCity(dl.city, dl.city.map(v => v * 0.70), 0.05 + 0.30 * night);
+    for (let i = 0; i < 3; i++) homeNearCity[i] = dl.city[i] * 0.70;
+    World.setCity(dl.city, homeNearCity, 0.05 + 0.30 * night);
     World.setClockHands(minutes);
+    if (World.setLiftOut) World.setLiftOut(day, minutes);
   } else if (place === 'street') {
     Street.setNight(night, dl.glass);
     // 406. Your own window in 十八号楼, seen from the pavement. `powered()` cannot be used here —
@@ -15511,7 +18527,7 @@ function frame(now) {
     // The engine bed follows the aeroplane's own idea of how hard it is working, every frame, so
     // the noise and the climb cannot get out of step.
     if (place === 'cabin') TrainAudio.cabinLevel(Cabin.speed());
-    const evs = scene.tick(now / 1000, P, minutes);
+    const evs = scene.tick(frameNow / 1000, P, minutes);
     // A room can hand back one name or a list of them: a train berthing at a platform makes a
     // chime, a station name and a pair of doors all on the same frame. The single-string form is
     // kept because every other scene still uses it.
@@ -15535,7 +18551,7 @@ function frame(now) {
       else if (ev.startsWith('say:')) TrainAudio.notice(Metro.NOTICES[ev.slice(4)]);
       // And the terminal's, calling flights. Same shape, different building: its own announcer,
       // its own tone and its own room, so the two are never confused for each other. The key is
-      // everything after `air:` — `board:CA1502`, `hall:2` — and it is looked up in the scene
+      // everything after `air:` — `board:YH1502`, `hall:2` — and it is looked up in the scene
       // that composed it, exactly as the platform's is.
       // `hall:` is the filler — luggage reminders and the like — and is lower priority than any
       // flight call, so it is marked 'lo' and the terminal drops or defers it rather than talking
@@ -15628,7 +18644,11 @@ function frame(now) {
   // first frame on which the HUD, visit goal and autosave can learn that the doors opened on a new
   // storey. An empty car arriving to a call does not change World.level() and therefore stays quiet.
   if (place === 'home') syncHomeFloor(true);
-  R.setTime(now);
+  // The shader's indoor contact and height-dependent material response are deck-relative. P.lift
+  // is authoritative after World.tick: it follows the moving car between floors as well as the
+  // landed storey. Reset elsewhere so an upper-flat height cannot leak into the next interior.
+  R.setDeck(place === 'home' && Number.isFinite(P.lift) ? P.lift : 0);
+  R.setTime(frameNow);
   // Dawn and dusk are the hard cases outdoors: the sky is still bright while nothing on the
   // ground is lit yet, so the street silhouettes into a black trench. One stop back at the
   // twilight ends of the curve, and none at noon or in the middle of the night.
@@ -15660,7 +18680,7 @@ function frame(now) {
   // would. It is millimetres at cruise and a couple of centimetres in a bump, and it is the single
   // thing that stops the cabin reading as a still room with sound playing over it.
   if (place === 'cabin' && scene.shakeAt) {
-    const k = scene.shakeAt(now / 1000);
+    const k = scene.shakeAt(frameNow / 1000);
     if (k) for (let i = 0; i < 3; i++) { eye[i] += k[i]; tgt[i] += k[i] * .8; }
   }
   const view = M.lookAt(eye, tgt);
@@ -15674,6 +18694,10 @@ function frame(now) {
   // other scene leaves this at -1 and is unaffected.
   drawDeck = (place === 'home' && scene.level) ? scene.level() : -1;
   if (drawDeck >= 0) syncMovingCulls(scene);
+  // Home's hinges, slides and fabric movers update their matrices and cull centres here. Do this
+  // before packed dynamic culls and cursor picking consume those centres; the old call immediately
+  // before drawing left both systems one frame behind the visible fixture.
+  tickFixtures(dt, frameNow);
   // Build packs batch cull centres once for the overwhelmingly static world. Props explicitly
   // marked dynamic are the exception: traffic and similar movers rewrite `p.cx/cy/cz` with their
   // matrices, so refresh only their recorded slots before the shadow and colour visibility tests.
@@ -15691,12 +18715,10 @@ function frame(now) {
   //
   // Cheap because it only re-asks when the box is provably wrong, so every scene whose `roomAt`
   // has no hysteresis (all of them except this one) is bit-identical.
-  cutRoom = room.cut || room;
-  if (P.x < cutRoom.x0 || P.x > cutRoom.x1 || P.z < cutRoom.z0 || P.z > cutRoom.z1) {
-    const ex = scene.roomAt && scene.roomAt(P.x, P.z, null, true);
-    const eb = ex && (ex.cut || ex);
-    if (eb && P.x >= eb.x0 && P.x <= eb.x1 && P.z >= eb.z0 && P.z <= eb.z1) cutRoom = eb;
-  }
+  officeCameraBody[0] = P.x; officeCameraBody[1] = P.z;
+  const renderCutOwner = OfficeCamera.effectiveRoom(scene, room, officeCameraBody);
+  cutOwnerRoom = renderCutOwner || room;
+  cutRoom = (renderCutOwner && (renderCutOwner.cut || renderCutOwner)) || room.cut || room;
   // Walls down switches the cutaway off outright, and that is the trap this feature had to avoid
   // rather than survive. From above the flat the eye is outside every room's box on both axes, so
   // `hiddenAt` would be asking of every prop in the building whether it lies past a 0.42 m band —
@@ -15767,7 +18789,7 @@ function frame(now) {
   paintTouchReady();
   cv.style.cursor = hoverThing ? 'pointer' : 'default';
   const best = activeThing;
-  const pulse = 0.20 + Math.sin(now / 260) * 0.08;
+  const pulse = 0.20 + Math.sin(frameNow / 260) * 0.08;
 
   // ---- world
   // Outside there are well over a thousand props and most of them are behind you or off the
@@ -15775,11 +18797,11 @@ function frame(now) {
   // that cannot possibly be on screen is dropped before it gets there. The margin is the
   // prop's own radius converted to clip space, which is why a whole tower block does not
   // pop out at the edge of the view.
-  tickFixtures(dt, now);      // doors, screens and steam, before anything is drawn
   // The sun and colour passes share one instant. Computing the player's eased action pose twice
   // advanced its state twice per frame and did the same allocation/math twice; only the shadow's
   // mesh density needs to differ.
-  const playerFramePose = showBody ? computePose(now, dt) : null;
+  const bodyVisible = showBody;
+  const playerFramePose = bodyVisible ? computePose(frameNow, dt) : null;
   const fy = 1 / Math.tan(CAM.fov / 2), fx = fy / cam.aspect;
   drawnProps = 0;
   // Everything solid, painted once for the shadow map and once for the screen. The two passes
@@ -15813,7 +18835,8 @@ function frame(now) {
   // share one footprint and eleven of them must not draw. Outdoors neither is true, and asking
   // the question thirty thousand times to be told no thirty thousand times was most of a
   // millisecond a frame. `drawDeck` and `hideX/hideZ` are both set once a frame, above.
-  const anyHidden = drawDeck >= 0 || hideX !== 0 || hideZ !== 0 ||
+  const anyHidden = SET.wallsOff || drawDeck >= 0 || hideX !== 0 || hideZ !== 0 ||
+    OfficeCamera.hasHidden(scene) ||
     !!(scene.expansion && scene.expansion.renderChunks);
   // ---- the depth pass, batched.
   //
@@ -16119,7 +19142,9 @@ function frame(now) {
   // A figure is 50–113 draws depending on how close it is, so a busy carriage or terminal was
   // spending more of the frame on people than on the building they are standing in.
   R.beginCollect();
-  if (showBody) drawCharacter(playerFramePose, now, forShadow ? 2 : 0);
+  // The player is a normal opaque third-person figure in both passes, or absent from both only
+  // when the screenshot harness explicitly disables it. Camera collision never changes opacity.
+  if (bodyVisible) drawCharacter(playerFramePose, frameNow, forShadow ? 2 : 0);
   drawNPCs(eye, forShadow);
   R.endCollect();
   if (!forShadow && skinnedNPCs.length && typeof Rig !== 'undefined') {
@@ -16187,12 +19212,13 @@ function frame(now) {
       width=(indoorContact ? .48 : 1.05+lean*.55)*k,
       depth=(indoorContact ? .34 : 1.05+lean*.75)*k;
     R.draw('quad', M.trs(bx-dl.dir[0]*cast*.55,floorY+.024,bz-dl.dir[2]*cast*.55,
-      0,width,1,depth),BLACK,{mode:2,alpha:indoorContact ? .16 : .30+.16*dl.day});
+      0,width,1,depth),BLACK,
+      {mode:2,alpha:indoorContact ? .16 : .30+.16*dl.day});
   };
   if (fakeShadows) {
     // Only if there is a body to cast it. With the figure hidden for a screenshot its shadow
     // stayed behind as a dark smudge in the middle of an empty floor.
-    if (showBody) bodyShadow(P.x, P.z, 1, P.lift || 0);
+    if (bodyVisible) bodyShadow(P.x, P.z, 1, P.lift || 0);
     // An animal's shadow is its footprint, not its height: a giraffe is five metres tall and
     // stands on about two, and scaling the disc off `tall` the way a person's is puts a pool of
     // shade across half the paddock.
@@ -16227,10 +19253,12 @@ function frame(now) {
   // the lights bleed into the air around them and the corners of the picture get darkened. With
   // the chain off this does nothing, and the scene went straight at the screen to begin with.
   R.present();
+  if (typeof WebGPUPreview !== 'undefined') WebGPUPreview.present(cv.width,cv.height);
 
   // ---- label projection: nearby discovery, active-object detail, and simple
   // screen-space collision avoidance. The room should read before the UI does.
   const vp = R.vp, W = R.cssW, Hh = R.cssH;
+  const worldUiHidden = worldInputLocked();
   const labelCandidates = [];
   for (const th of scene.things) {
     const el = th.el, on = th === best;
@@ -16248,7 +19276,7 @@ function frame(now) {
     // Reject definite non-candidates before dictionary lookup and matrix projection. The mall has
     // 244 authored interactions, but only the few around the player can produce labels; projecting
     // the other two hundred every frame was pure main-thread work.
-    if (cardOpen || talkOpen || th.reach < 0 || hiddenAt(th.pos[0], th.pos[2]) ||
+    if (worldUiHidden || th.reach < 0 || hiddenAt(th.pos[0], th.pos[2]) ||
         (!on && !discoverable && playerD >= 5.2)) {
       labelHide(th); continue;
     }
@@ -16283,13 +19311,20 @@ function frame(now) {
     if (ed > 0.45) {
       const ldir = [ex / ed, ey / ed, ez / ed], slack = ed - 0.35;
       const fw = drawDeck === 2 ? flatLabelBlockers() : null;
-      if (cameraBlockLimit(eye, ldir, ed, scene.blockers, 0.02) < slack ||
+      // The upper HOME cutaway has deliberately released its outer camera shell above. Treating
+      // that released wall as a label occluder would make every prompt disappear precisely when
+      // the eye used the continuous outside-the-shell angle. Interior flat partitions (`fw`) keep
+      // their separate clutter/through-wall test.
+      if (cameraBlockLimit(eye, ldir, ed, homeUpperCutaway ? null : scene.blockers, 0.02) < slack ||
           (fw && cameraBlockLimit(eye, ldir, ed, fw, 0.02) < slack)) {
         labelHide(th); continue;
       }
     }
     labelCandidates.push({ th, el, sx, sy, playerD, on, due });
   }
+  // Whatever is still fading out, including the labels of the room you just left — `labelHide`
+  // writes the `display:none` itself once the 200 ms is up, and drops them from the set.
+  if (labelFading.size) for (const th of [...labelFading]) labelHide(th);
   labelCandidates.sort((a, b) => (b.on - a.on) || (b.due - a.due) || (a.playerD - b.playerD));
   const placedLabels = [];
   const placedGroups = new Set();
@@ -16320,9 +19355,9 @@ function frame(now) {
   }
 
   // ---- prompt: the word on the left, what the object actually does on the right
-  const pr = $('#prompt');
-  if (best && !cardOpen && !talkOpen && !doing) {
-    pr.style.opacity = 1;
+  const pr = promptEl;
+  if (best && !worldUiHidden && !doing) {
+    if (!promptVisible) { pr.style.opacity = 1; promptVisible = true; }
     const st = Vocab.stage(best.hz), e = Vocab.get(best.hz);
     // `e` can be missing, and it must not be fatal. A scene declares a thing; the dictionary row
     // for it is a separate edit in a separate file, and when the two got out of step this line
@@ -16335,9 +19370,10 @@ function frame(now) {
       : st === 2 || !e
         ? `看看 <b>${best.hz}</b>`
         : `看看 <b>${best.hz}</b> <span class="dim">· ${promptGloss(e.en)}</span>`;
-    $('#promptText').innerHTML = what;
+    if (what !== promptWordHTML) { promptTextEl.innerHTML = what; promptWordHTML = what; }
     const use = useThing && useLabel(useThing.hz, useThing);
-    $('#promptUse').classList.toggle('off', !use);
+    const useOff = !use;
+    if (useOff !== promptUseOff) { promptUseEl.classList.toggle('off', useOff); promptUseOff = useOff; }
     if (use) {
       // What it will cost you, before you commit to it: money out of the wallet, money into the
       // basket, meals left in the fridge, or the reason somebody is going to stop you.
@@ -16360,10 +19396,10 @@ function frame(now) {
         : '';
       // Name the object when Q would act on something other than the word on the left.
       const on = useThing === best ? '' : ` <span class="dim">(${useThing.hz})</span>`;
-      $('#promptUseText').innerHTML =
-        `<b>${use.zh}</b>${on} <span class="dim">· ${use.en}</span>${extra}`;
+      const useHTML = `<b>${use.zh}</b>${on} <span class="dim">· ${use.en}</span>${extra}`;
+      if (useHTML !== promptUseHTML) { promptUseTextEl.innerHTML = useHTML; promptUseHTML = useHTML; }
     }
-  } else pr.style.opacity = 0;
+  } else if (promptVisible) { pr.style.opacity = 0; promptVisible = false; }
 
   // ---- clock, needs, and whatever the player is in the middle of doing
   if (started && !paused) {
@@ -16379,9 +19415,9 @@ function frame(now) {
     }
   }
 
-  if (now >= rigTrimAt && typeof Assets !== 'undefined' &&
+  if (frameNow >= rigTrimAt && typeof Assets !== 'undefined' &&
       typeof Assets.trimRigs === 'function') {
-    rigTrimAt = now + 2000;
+    rigTrimAt = frameNow + 2000;
     refreshRigPins(place);                 // includes cast added by a lazily built destination
     Assets.trimRigs();
   }
@@ -16559,9 +19595,12 @@ function updateHud() {
   } else if (delivery) {
     // Something is crossing the city with your name on it, which is the most interesting thing
     // your hands are doing no matter which room you are standing in.
-    const atDoor = delivery.state !== 'coming';
-    carryK.textContent = atDoor ? '外卖 · at your door' : '外卖 · on its way';
-    carryB.textContent = atDoor ? `${delivery.item.hz} · ¥${delivery.total}`
+    const mallShip = delivery.kind === 'mall';
+    const atDoor = !mallShip && delivery.state !== 'coming';
+    carryK.textContent = mallShip ? '快递 · prepaid to locker'
+                       : atDoor ? '外卖 · at your door' : '外卖 · on its way';
+    carryB.textContent = mallShip ? `${delivery.item.hz} · ${deliveryEta()} 分`
+                       : atDoor ? `${delivery.item.hz} · ¥${delivery.total}`
                                 : `${delivery.item.hz} · ${deliveryEta()} 分`;
   } else {
     // Two numbers, because they stopped being the same number. 份 is everything in there; the
@@ -16635,6 +19674,16 @@ window.__game = {
   // and there is no pressing the space bar over a debugging connection. It refuses in exactly the
   // conditions the key path refuses in, so calling it directly is a fair test of the real thing.
   P, CAM, keys, eye, Vocab, openWord, needs, NEEDS, USE, startUse, stopUse, jump, pose, light,
+  // 生存. Health, the illness, the rent and the job — the module is reachable by name for the same
+  // reason Vocab is: a harness has to be able to ask what the rules did, not infer it from a bar.
+  Survive, answerTyped,
+  // What the word card is doing, for the same reason: a harness that types an answer has to be
+  // able to see whether the reveal ran or was suppressed.
+  cardState: () => ({ open: cardOpen, word: cardWord, asking: !!quiz, tok: revealTok }),
+  // The walk-up prompt itself. A harness has to be able to read what the player is told *before*
+  // they press the key — which is the whole of the spoiled-food contract, and unreadable from
+  // outside without this.
+  useLabel,
   auditRetainedInstances,
   // The conversations, for .talkcheck.js. There is no clicking a reply over a debugging
   // connection, so the three things the panel does are reachable by name.
@@ -16653,7 +19702,7 @@ window.__game = {
   setDay(d) { day = d; updateHud(); },
   // Time, moved the way the game moves it — rent, needs, the flat drying out and all. `setClock`
   // only slides the hands; this is what sleeping through a night actually does.
-  advanceTime,
+  advanceTime, clockNow,
   // The diary, for the harnesses and for reading it without the phone in the way.
   diary: () => diary.slice(),
   logDiary, openDiary,
@@ -16689,7 +19738,7 @@ window.__game = {
   openBankTicket, openBankForms, openBankAccountPanel, openBankCardService, openBankATM, openBankOverview,
   openBankCounter, openBankTeller, openBankWealth, openBankSafe, openBankVip,
   issueBankTicket, callBankTicket, bankShowId, bankOpenAccount,
-  bankDeposit, bankWithdraw, bankTopUpTransit, resetBankForTest,
+  bankDeposit, bankWithdraw, bankTopUpTransit, bankCardPurchase, resetBankForTest,
   bank:()=>({...bankAccount,ledger:bankAccount.ledger.map(r=>({...r}))}),
   bankVisit:()=>({ ...syncBankVisit(), ticket:bankVisit.ticket&&{...bankVisit.ticket} }),
   // The cabin service, for the harness: kicking a round off and stepping the carts by hand.
@@ -16702,7 +19751,11 @@ window.__game = {
   state: () => ({ minutes, day, money, lightsOn: { ...lightsOn }, place,
                   // Harnesses ask for `stock` and should keep getting a meal count; `pantry` is
                   // the whole fridge, for anything that wants to assert on what is actually in it.
+                  // `spoiled` is the same row shape as `pantry` and is deliberately not in the
+                  // meal count: a fridge with one bad loaf in it reports zero meals and still has
+                  // to draw the loaf, or the panel says empty while the door offers you something.
                   stock: stockOf(), ready: Pantry.ready(day), pantry: Pantry.list(day),
+                  spoiled: Pantry.spoiled(day),
                   metroLate: Disrupt.metroMinutes(day, minutes),
                   // `mallHold` stays in the shape the mall harness reads: truthy while
                   // something is unpaid for. `mallBasket` is the whole of it.
@@ -16758,7 +19811,7 @@ window.__game = {
   landFlight,
   useLabel, tickUse, tickService, placeOrder, openTravel, openTasks, openTicket,
   // The phone, the rider on the stairs, and the settings behind Escape.
-  openPhone, phoneList, orderIn, tickDelivery, answerDoor, courier,
+  openPhone, phoneList, orderIn, shipToHome, tickDelivery, answerDoor, courier,
   // The ride: its state, and the tick that moves it, so a test can sit out a journey in a
   // handful of calls instead of two real minutes.
   board, alight, tickRide,
@@ -16799,6 +19852,10 @@ window.__game = {
   // freezes the quality level so a run of shots is comparable with the last one.
   perf: () => ({ fps: Perf.fps, ms: Perf.frameMs, level: Perf.level,
                  auto: Perf.auto, stalls: Perf.stalls, q: Perf.q }),
+  // The production renderer remains WebGL2 during the staged port. This reports whether the
+  // opt-in WebGPU comparison device is pending, active, unsupported, or safely fallen back.
+  renderer: () => typeof WebGPUPreview === 'undefined'
+    ? { requested:false, backend:'webgl2', state:'not-loaded' } : WebGPUPreview.status(),
   selectedLights: () => selectedLightDebug.map(l => ({...l})),
   mallLightSelection: () => mallLightSelectionDebug(mallLightSelectionState),
   mallPortalCull: () => Lazy.built('Mall')&&Mall.portalCull?Mall.portalCull.report():null,

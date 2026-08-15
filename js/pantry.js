@@ -130,6 +130,24 @@ const Pantry = (() => {
   };
   const gone = (lot, day) => day >= spoilsOn(lot);
 
+  // ---- 坏了但还在冰箱里. A lot that has gone off does not evaporate: it sits there for one more
+  // day, out of `list`/`ready`/`meals`/`cookable` because it is not food any more, but still
+  // physically in the fridge and still eatable by somebody who has nothing else. That day is the
+  // whole of the illness rule. With `spoil` binning on the same rollover that `gone` turns true,
+  // no public call could ever hand the player a bad lot and js/survive.js:387 `ateSpoiled` was
+  // unreachable code — the flat silently protected you, which is the opposite of what the stamp
+  // is for.
+  //
+  // One day, not two. Longer and a fridge accumulates a shelf of poison; shorter is what it was.
+  const GRACE = 1;
+  const binned = (lot, day) => day >= spoilsOn(lot) + GRACE;
+
+  // What eating a bad serving is worth. It still has calories in it and it is still a bad idea:
+  // less food than the good version, and a mood hit you feel before survive.js decides whether
+  // you are also ill. Illness is not decided here — this file never touches `needs` and does not
+  // know what a fever is.
+  const badGain = g => ({ food: Math.round((g.food || 0) * 0.55), mood: -9 });
+
   // How many days of life a lot has left, for a panel that wants to warn you before it is too
   // late rather than after. null for dry goods, which have no answer.
   const life = (lot, day) => {
@@ -144,10 +162,13 @@ const Pantry = (() => {
   // Take `n` servings of a product, oldest good lot first — which is both how a person uses a
   // fridge and the only order that stops the oldest thing in it from living forever. Assumes the
   // caller has already checked there is enough; `cook` and `eat` both do.
-  function draw(hz, n, day) {
+  // `bad` widens it to lots that have gone off but are not yet binned, which is the only way a
+  // spoiled serving ever leaves the fridge. Oldest-first still holds, so the bad lot goes before
+  // any good one of the same product — the same order a person empties a fridge in.
+  function draw(hz, n, day, bad) {
     for (const l of LOTS) {
       if (n <= 0) break;
-      if (l.hz !== hz || gone(l, day)) continue;
+      if (l.hz !== hz || (bad ? binned(l, day) : gone(l, day))) continue;
       const take = Math.min(l.n, n);
       l.n -= take; n -= take;
     }
@@ -282,6 +303,12 @@ const Pantry = (() => {
     // `next` is the same choice without making it, because the walk-up prompt has to be able to
     // say 吃面包 before you press the key. A prompt that says "eat something" and then hands you
     // yoghurt is the fridge keeping a secret it has no reason to keep.
+    // When there is nothing good left, `next` offers the least-bad thing that is still in there
+    // rather than saying the fridge is empty. It is flagged `spoiled` and it carries its own
+    // warning line, so the walk-up prompt can say so *before* the key is pressed: eating something
+    // a day past its date because there is nothing else is a decision a person makes, and it is
+    // only a decision if they could see it. Nothing here is hidden and nothing is a trap — the
+    // panel still reports zero meals, `spoiled()` lists what is bad, and this says which one.
     next(day) {
       let best = null;
       for (const l of LOTS) {
@@ -289,14 +316,45 @@ const Pantry = (() => {
         if (!p || !p.raw || gone(l, day)) continue;
         if (!best || spoilsOn(l) < spoilsOn(best)) best = l;
       }
-      if (!best) return null;
-      const p = product(best.hz);
-      return { hz: best.hz, unit: p.unit, left: life(best, day), gain: { ...p.gain } };
+      if (best) {
+        const p = product(best.hz);
+        return { hz: best.hz, unit: p.unit, left: life(best, day),
+                 spoiled: false, gain: { ...p.gain } };
+      }
+      // Newest of the bad ones — the thing that went off most recently is the one a person would
+      // risk, and offering the oldest instead would be the fridge choosing the worse mistake.
+      let bad = null;
+      for (const l of LOTS) {
+        const p = product(l.hz);
+        if (!p || !p.raw || !gone(l, day) || binned(l, day)) continue;
+        if (!bad || spoilsOn(l) > spoilsOn(bad)) bad = l;
+      }
+      if (!bad) return null;
+      const p = product(bad.hz);
+      return { hz: bad.hz, unit: p.unit, left: 0, spoiled: true, gain: badGain(p.gain),
+               warn: { hz: '已经坏了，真的要吃吗？',
+                       en: 'This has gone off. Eating it may well make you ill.' } };
     },
     eat(day) {
       const got = this.next(day);
-      if (got) draw(got.hz, 1, day);
+      if (got) draw(got.hz, 1, day, got.spoiled);
       return got;
+    },
+
+    // ---- what is in there and is not food any more. Same row shape as `list`, so the fridge
+    // panel can draw both and a fridge holding one bad loaf stops reporting itself as empty.
+    // These rows are gone from `list`, `ready`, `meals` and `cookable` by design: a bad lot is
+    // never counted as a meal, it is only ever offered by name.
+    spoiled(day) {
+      const out = [];
+      for (const l of LOTS) {
+        if (!gone(l, day) || binned(l, day)) continue;
+        const p = product(l.hz);
+        const row = out.find(r => r.hz === l.hz);
+        if (row) row.n += l.n;
+        else out.push({ hz: l.hz, n: l.n, unit: p.unit, raw: !!p.raw, left: 0 });
+      }
+      return out;
     },
 
     // ---- cooking. `cookable` is the honest list — every dish you have all the ingredients for
@@ -334,10 +392,14 @@ const Pantry = (() => {
     // ---- 坏了. Run at the day rollover. Returns what was lost so the morning can mention it —
     // a fridge that silently deletes the fish you paid twenty kuai for is a bug as far as the
     // player is concerned, however correct the simulation is.
+    //
+    // It bins on `binned`, not `gone`: the morning a thing goes off it stays in the fridge, out of
+    // every meal count but visible in `spoiled()` and offerable by `next()`. It is reported lost
+    // the morning after, which is also when a person actually throws it out.
     spoil(day) {
       const lost = [];
       LOTS = LOTS.filter(l => {
-        if (!gone(l, day)) return true;
+        if (!binned(l, day)) return true;
         const row = lost.find(x => x.hz === l.hz);
         if (row) row.n += l.n; else lost.push({ hz: l.hz, n: l.n, unit: PRODUCTS[l.hz].unit });
         return false;

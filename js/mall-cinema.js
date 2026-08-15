@@ -94,13 +94,23 @@ window.MotionSafety = window.MotionSafety || (function () {
   const CAP = 2.4;                       // flashes per second, hard ceiling
   let cacheAt = -1e9, cached = false;
 
-  const truthy = v => v === true || v === 'reduced' || v === 'reduce' || v === 'on';
+  // `null` means "follow the operating system". In particular, `auto` is not the same thing as
+  // `full`: the old truthiness test returned false for both and silently ignored an OS reduced-
+  // motion preference whenever game.js had published its default setting.
+  const choice = v => v === true || v === 'reduced' || v === 'reduce' || v === 'on' ? true
+    : v === false || v === 'full' || v === 'off' ? false : null;
   function read() {
     const g = window.__game;
-    if (g && g.SET && g.SET.motion !== undefined) return truthy(g.SET.motion);
+    if (g && g.SET && g.SET.motion !== undefined) {
+      const selected = choice(g.SET.motion);
+      return selected === null ? !!(mq && mq.matches) : selected;
+    }
     try {
       const s = JSON.parse(localStorage.getItem(KEY)) || {};
-      if (s.motion !== undefined) return truthy(s.motion);
+      if (s.motion !== undefined) {
+        const selected = choice(s.motion);
+        return selected === null ? !!(mq && mq.matches) : selected;
+      }
     } catch (e) { /* storage blocked; the media query still answers */ }
     return !!(mq && mq.matches);
   }
@@ -112,9 +122,11 @@ window.MotionSafety = window.MotionSafety || (function () {
     if (now - cacheAt > 400) { cached = read(); cacheAt = now; }
     return cached;
   }
+  function invalidate() { cacheAt = -1e9; }
+  if (mq && typeof mq.addEventListener === 'function') mq.addEventListener('change', invalidate);
   const rate = h => reduced() ? 0 : Math.min(Math.abs(h) || 0, CAP);
   return {
-    reduced, cap: CAP, rate,
+    reduced, invalidate, cap: CAP, rate,
     // A value that oscillates only when it is allowed to. Returns `lo` flat under reduced motion,
     // which is why every caller passes the *resting* value as `lo` rather than the average.
     pulse(t, hz, lo, hi) {

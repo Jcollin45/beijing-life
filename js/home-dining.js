@@ -8,7 +8,7 @@
 // by three, which is a Beijing dining area exactly: the 客厅 is through the opening at x 3.4, the
 // 厨房 is through the wall at z -1.6, and the 玄关 is over the line at z 1.6. So this is a
 // crossroads with a table in it, not a room with four walls, and the layout is arranged around
-// that: everything is pushed to the east half and the strip from x 3.4 to about x 4.10 is left
+// that: everything is pushed to the east half and the strip from x 3.4 to about x 4.30 is left
 // open the whole depth of the room, because that is the walk from the kitchen to the sofa.
 //
 // The one big decision here is that the table is *round* and its middle is kept empty. A Chinese
@@ -133,9 +133,11 @@ FlatFit['dining'] = A => {
   chair(TX, TZ + .58, Math.PI, false);         // north
   chair(TX, TZ - .58, 0, false);               // south, the seat nearest the kitchen door
 
-  // Table and chairs are one obstacle, not five. The rectangle stops at x 4.10, which leaves the
-  // 3.40 .. 4.10 strip clear from the kitchen wall to the entry — the room's through-route.
-  stop(4.10, 5.66, -.73, .83);
+  // The stable table core is the obstacle; dining chairs are light, movable brush-past furniture.
+  // Treating all four as one fixed 1.56 x 1.56 m block left only 0.75 m of legal body-centre run
+  // beside the partition even though the round top itself begins at x 4.33. The core below covers
+  // the full top and legs, while restoring 0.90 m to the kitchen-to-living through-route.
+  stop(TX - .58, TX + .58, TZ - .56, TZ + .56);
 
   // ================================================================ what is on the table
   //

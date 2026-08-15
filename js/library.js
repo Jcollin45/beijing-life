@@ -199,7 +199,7 @@ const Library = Lazy('Library', () => {
       [0, H / 2, RZ, RX * 2, H, Math.PI], [-RX, H / 2, 0, RZ * 2, H, Math.PI / 2],
       [RX, H / 2, 0, RZ * 2, H, -Math.PI / 2], [0, H / 2, -RZ, RX * 2, H, 0],
     ]) wall(x, y, z, w, h, yaw, col.wall,
-      { mode: 4, mat: 'plaster', matScale: 2.4, matAmt: .28, nrmAmt: .25 });
+      { mode: 4, mat: 'plaster', matScale: .62, matAmt: .12, nrmAmt: .25 });
     for (const [x, z, sx, sz] of [[0, RZ - .04, RX * 2, .08],
       [-RX + .04, 0, .08, RZ * 2], [RX - .04, 0, .08, RZ * 2],
       [0, -RZ + .04, RX * 2, .08]])
@@ -209,11 +209,11 @@ const Library = Lazy('Library', () => {
     // ================================================================ window wall (+z)
     // A tall ribbon of windows looking out onto the campus, with a sill and a clerestory.
     box(0, .60, RZ - .10, RX * 2, 1.20, .20, col.wall,
-      { hard: true, gloss: G.paint, mat: 'plaster', matScale: 2.4, matAmt: .28, nrmAmt: .25 });
+      { hard: true, gloss: G.paint, mat: 'plaster', matScale: .62, matAmt: .12, nrmAmt: .25 });
     box(0, 1.22, RZ - .16, RX * 2, .06, .30, col.white,
       { hard: true, gloss: .28, mat: 'concrete', matScale: 1.20, matAmt: .30 });
     box(0, H - .20, RZ - .10, RX * 2, .40, .20, col.wall,
-      { hard: true, gloss: G.paint, mat: 'plaster', matScale: 2.4, matAmt: .28, nrmAmt: .25 });
+      { hard: true, gloss: G.paint, mat: 'plaster', matScale: .62, matAmt: .12, nrmAmt: .25 });
     // glazing panels across the full width
     for (let i = 0; i < 6; i++) {
       const gx = -RX + 1.20 + i * 2.00;
@@ -320,6 +320,13 @@ const Library = Lazy('Library', () => {
     const bayZ=[-3.82,-.98,1.86];
     for(const sx of [-1,1]) for(let i=0;i<bayZ.length;i++)
       shelfBay(sx,bayZ[i],(sx<0?westLabels:eastLabels)[i],i+(sx>0?7:1));
+    // Six detailed bays were scenery only. One shared target makes the collection readable with
+    // the existing 看书 action; its focus sits in the clear aisle in front of the west middle bay.
+    thing('书架', -5.37, 1.30, -.98,
+      '这里有文学、历史、艺术和语言类的书。',
+      'The shelves hold literature, history, art and language books.',
+      '书架 bookshelf. Choose a book and read for a while.',
+      { focus: [-4.72, -.98], reach: 1.25 });
     // blocker so the camera doesn't slip inside the shelves
     blocker(-RX, -RX + .30, -RZ, RZ, H + 1);
     blocker(RX - .30, RX, -RZ, RZ, H + 1);

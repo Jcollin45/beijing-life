@@ -325,24 +325,27 @@ const Hotel7Fit = Object.freeze({ floor:'hotel7', api:1 });
   }
 
   function chair(A,c,x,z,yaw=0,accent=c.celadon,tag='椅子'){
-    const {box,capsule,ball,shade}=A;
-    const at=(u,v)=>[x+Math.cos(yaw)*u+Math.sin(yaw)*v,z-Math.sin(yaw)*u+Math.cos(yaw)*v];
-    box(x,.42,z,.64,.14,.64,c.walnutD,{...MAT.timber,ry:yaw,mode:7,gloss:.29,tag});
-    box(x,.52,z,.71,.18,.72,accent,{...MAT.cloth,ry:yaw,mode:7,gloss:.03,tag});
-    const bp=at(0,-.31);
-    box(bp[0],.91,bp[1],.74,.80,.14,c.walnutD,{...MAT.timber,ry:yaw,mode:7,gloss:.30,tag});
-    const bi=at(0,-.30);
-    box(bi[0],.91,bi[1],.58,.63,.075,c.silkL,{...MAT.cloth,ry:yaw,mode:7,gloss:.025,tag});
-    for(const sx of [-1,1])for(const sz of [-1,1]){
-      const p=at(sx*.25,sz*.22);capsule(p[0],.22,p[1],.035,.44,.035,c.bronzeD,{tag});
-    }
-    for(const s of [-1,1]){
-      const a=at(s*.34,.02);capsule(a[0],.70,a[1],.040,.46,.040,c.walnutL,{tag});
-      ball(a[0],.84,a[1],.09,.08,.22,accent,{...MAT.cloth,ry:yaw,mode:7,gloss:.025,tag});
-    }
-    const crest=at(0,-.39);
-    capsule(crest[0],1.31,crest[1],.028,.65,.028,c.bronzeL,
-      {rz:Math.PI/2,ry:yaw,gloss:.70,tag});
+    const {shade}=A,{modelOr}=A.B;
+    modelOr('chinese_armchair',x,0,z,.83,{ry:yaw,tag,gloss:.24},()=>{
+      const {box,capsule,ball}=A;
+      const at=(u,v)=>[x+Math.cos(yaw)*u+Math.sin(yaw)*v,z-Math.sin(yaw)*u+Math.cos(yaw)*v];
+      box(x,.42,z,.64,.14,.64,c.walnutD,{...MAT.timber,ry:yaw,mode:7,gloss:.29,tag});
+      box(x,.52,z,.71,.18,.72,accent,{...MAT.cloth,ry:yaw,mode:7,gloss:.03,tag});
+      const bp=at(0,-.31);
+      box(bp[0],.91,bp[1],.74,.80,.14,c.walnutD,{...MAT.timber,ry:yaw,mode:7,gloss:.30,tag});
+      const bi=at(0,-.30);
+      box(bi[0],.91,bi[1],.58,.63,.075,c.silkL,{...MAT.cloth,ry:yaw,mode:7,gloss:.025,tag});
+      for(const sx of [-1,1])for(const sz of [-1,1]){
+        const p=at(sx*.25,sz*.22);capsule(p[0],.22,p[1],.035,.44,.035,c.bronzeD,{tag});
+      }
+      for(const s of [-1,1]){
+        const a=at(s*.34,.02);capsule(a[0],.70,a[1],.040,.46,.040,c.walnutL,{tag});
+        ball(a[0],.84,a[1],.09,.08,.22,accent,{...MAT.cloth,ry:yaw,mode:7,gloss:.025,tag});
+      }
+      const crest=at(0,-.39);
+      capsule(crest[0],1.31,crest[1],.028,.65,.028,c.bronzeL,
+        {rz:Math.PI/2,ry:yaw,gloss:.70,tag});
+    });
     shade(x,z,.84,.84,.18);
   }
 
@@ -651,7 +654,7 @@ const Hotel7Fit = Object.freeze({ floor:'hotel7', api:1 });
     const {box,cyl,ball,capsule}=A;
     box(x,.055,z,1.32,.11,1.06,c.walnutD,{...MAT.timber,mode:7,gloss:.27,tag:label});
     box(x,.89,z,1.40,1.66,1.14,c.white,{...MAT.stone,mode:7,gloss:.26,tag:label});
-    box(x,1.47,z-.585,1.20,.31,.030,c.steel,{hard:true,mode:7,gloss:.44,tag:label});
+    box(x,1.47,z-.585,1.20,.31,.030,c.steel,{hard:true,gloss:.44,tag:label});
     cyl(x,.77,z-.595,.44,.08,c.bronzeD,{rx:Math.PI/2,gloss:.62,tag:label});
     cyl(x,.77,z-.640,.35,.025,c.glassD,
       {rx:Math.PI/2,mode:1,alpha:.68,gloss:.84,tag:label});
@@ -688,7 +691,7 @@ const Hotel7Fit = Object.freeze({ floor:'hotel7', api:1 });
       capsule(x+s*w*.46,1.05,z+t*.26,.032,2.10,.032,c.steel,{ry:yaw,gloss:.44,tag});
     for(let i=0;i<5;i++){
       const y=.28+i*.44;
-      box(x,y,z,w,.045,.58,c.steel,{ry:yaw,mode:7,gloss:.40,tag});
+      box(x,y,z,w,.045,.58,c.steel,{ry:yaw,gloss:.40,tag});
       for(let j=0;j<3;j++){
         const px=x-w*.32+j*w*.32,n=2+((i*3+j)%3);
         for(let k=0;k<n;k++)box(px,y+.075+k*.085,z,w*.26,.08,.50,
@@ -696,14 +699,14 @@ const Hotel7Fit = Object.freeze({ floor:'hotel7', api:1 });
           {...MAT.cloth,ry:yaw,mode:7,gloss:.02,tag:'备用床品'});
       }
     }
-    box(x,2.28,z,w+.08,.10,.62,c.steel,{ry:yaw,mode:7,gloss:.42,tag});
+    box(x,2.28,z,w+.08,.10,.62,c.steel,{ry:yaw,gloss:.42,tag});
   }
 
   // Housekeeping trolley: bagged linen, stacked towels and amenity trays on a pushed frame.
   function linenCart(A,c,x,z,yaw=0,tag='客房服务'){
     const {box,cyl,capsule,ball}=A;
     const at=(u,v)=>[x+Math.cos(yaw)*u+Math.sin(yaw)*v,z-Math.sin(yaw)*u+Math.cos(yaw)*v];
-    box(x,.52,z,1.24,.62,.66,c.steel,{ry:yaw,mode:7,gloss:.40,tag});
+    box(x,.52,z,1.24,.62,.66,c.steel,{ry:yaw,gloss:.40,tag});
     box(x,.86,z,1.30,.06,.72,c.walnutL,{...MAT.timber,ry:yaw,mode:7,gloss:.30,tag});
     for(const sx of [-1,1])for(const sz of [-1,1]){
       const p=at(sx*.50,sz*.26);
@@ -993,15 +996,19 @@ const Hotel7Fit = Object.freeze({ floor:'hotel7', api:1 });
     flat(6.45,.027,-8.18,4.35,3.55,c.carpet,{...MAT.cloth,mode:7,gloss:.035,tag:'七零三起居室'});
     for(const z of [-9.92,-6.44])flat(6.45,.031,z,4.18,.035,c.bronzeD,
       {gloss:.58,tag:'七零三起居室'});
-    sofa(A,c,6.55,-7.48,2.75,0,c.celadon,'七零三起居室');
-    solid(5.06,8.04,-8.18,-6.78);
+    // Pull the sofa slightly east and use a 2.40 m apartment sofa. Together with the kitchenette,
+    // the former 2.75 m footprint left only 0.66 m of physical gap (0.06 m after the player's
+    // radius), turning the furniture into a wall that sealed the bedroom and bathroom. The new
+    // 1.25 m circulation bay keeps the living composition intact and gives the turn room to breathe.
+    sofa(A,c,6.75,-7.48,2.40,0,c.celadon,'七零三起居室');
+    solid(5.45,8.05,-8.18,-6.78);
     roundTable(A,c,9.35,-7.15,.70,'七零三餐桌');
     for(let i=0;i<3;i++){
       const a=i/3*TAU;chair(A,c,9.35+Math.sin(a)*1.25,-7.15+Math.cos(a)*1.25,
         a+Math.PI,i%2?c.celadonL:c.silkL,'七零三餐椅');
     }
     solid(8.58,10.12,-7.92,-6.38);
-    kitchenette(A,c,3.20,-6.10,2.25,0,'七零三厨房');solid(2.00,4.40,-6.52,-5.66);
+    kitchenette(A,c,3.00,-6.10,2.25,0,'七零三厨房');solid(1.80,4.20,-6.52,-5.66);
     // Rounded twin coffee tables and a supported reading lamp complete the living vignette.
     roundTable(A,c,6.10,-8.72,.48,'七零三茶几');teaSet(A,c,6.10,-8.72,.86,'七零三茶几');
     // The reading light occupies the bedroom-side corner. Keeping it out of the room centre gives
@@ -1013,13 +1020,13 @@ const Hotel7Fit = Object.freeze({ floor:'hotel7', api:1 });
     thing(A,'七零三主卧',4.05,-11.15,[4.05,-9.85],
       '较大的公寓有独立睡眠区。','The larger residence has a distinct sleeping area.',
       '主卧 is the principal bedroom.',2.1);
-    thing(A,'七零三起居室',6.55,-7.48,[6.55,-8.75],
+    thing(A,'七零三起居室',6.75,-7.48,[6.75,-8.75],
       '起居室适合会客或放松。','The living room is arranged for conversation and relaxation.',
       '起居室 is a living room.',1.75);
     thing(A,'七零三餐桌',9.35,-7.15,[9.35,-5.72],
       '三人餐桌让长住客人像在家一样用餐。','The three-seat table makes long stays feel residential.',
       '餐桌 is a dining table.',1.75);
-    thing(A,'七零三厨房',3.20,-6.10,[4.52,-6.58],
+    thing(A,'七零三厨房',3.00,-6.10,[4.45,-6.60],
       '公寓厨房配有水槽、电磁炉和储物柜。','The residence kitchen has a sink, induction hob and storage.',
       '厨房 is a kitchen.',1.65);
     thing(A,'七零三浴室',9.10,-11.55,[7.86,-11.30],
@@ -1200,7 +1207,9 @@ const Hotel7Fit = Object.freeze({ floor:'hotel7', api:1 });
     thing(A,'布草间',-15.85,-13.30,[-15.85,-12.55],
       '布草间存放干净的床品和毛巾。','The linen room holds clean bed linen and towels.',
       '布草间 is a linen room.',1.80);
-    thing(A,'客房服务',-16.90,-11.62,[-15.90,-12.60],
+    // Approach from the open north side of the parked trolley pair. Their 0.92 m centre gap is
+    // storage clearance, not a comfortable place to ask the player to stand.
+    thing(A,'客房服务',-16.90,-11.62,[-15.90,-10.65],
       '客房服务车每天上楼补充布草。','The housekeeping trolley is restocked on the floor each day.',
       '客房服务 is housekeeping.',1.55);
 
@@ -1239,25 +1248,25 @@ const Hotel7Fit = Object.freeze({ floor:'hotel7', api:1 });
   Object.assign(HotelUse.hotel7,{
     '七零一睡眠区':{zh:'在七零一休息',py:'zài qī líng yī xiūxi',en:'rest in residence 701',secs:4.1,mins:90,gain:{rest:34,mood:6},pose:{type:'lie',seatY:.59}},
     '七零一书桌':{zh:'处理长期工作',py:'chǔlǐ chángqī gōngzuò',en:'work on a long-term project',secs:4.0,mins:50,gain:{rest:-9,mood:2},pose:{type:'type',seatY:.50}},
-    '七零一厨房':{zh:'在小厨房做饭',py:'zài xiǎo chúfáng zuòfàn',en:'cook in the kitchenette',secs:4.0,mins:35,gain:{hunger:28,rest:-4},pose:{type:'work'}},
+    '七零一厨房':{zh:'在小厨房做饭',py:'zài xiǎo chúfáng zuòfàn',en:'cook in the kitchenette',secs:4.0,mins:35,gain:{food:28,rest:-4},pose:{type:'work'}},
     '欢迎茶':{zh:'喝欢迎茶',py:'hē huānyíng chá',en:'drink the welcome tea',secs:3.0,mins:15,gain:{rest:7,mood:6},pose:{type:'drink',seatY:.50}},
     '七零二睡眠区':{zh:'在七零二休息',py:'zài qī líng èr xiūxi',en:'rest in residence 702',secs:4.1,mins:90,gain:{rest:34,mood:6},pose:{type:'lie',seatY:.59}},
     '七零二书桌':{zh:'在七零二工作',py:'zài qī líng èr gōngzuò',en:'work at the 702 desk',secs:4.0,mins:45,gain:{rest:-8,mood:2},pose:{type:'type',seatY:.50}},
-    '七零二厨房':{zh:'准备简单的一餐',py:'zhǔnbèi jiǎndān de yì cān',en:'prepare a simple meal',secs:3.8,mins:30,gain:{hunger:25},pose:{type:'work'}},
+    '七零二厨房':{zh:'准备简单的一餐',py:'zhǔnbèi jiǎndān de yì cān',en:'prepare a simple meal',secs:3.8,mins:30,gain:{food:25},pose:{type:'work'}},
     '窗边榻':{zh:'坐在窗边',py:'zuò zài chuāngbiān',en:'sit by the window',secs:3.4,mins:25,gain:{rest:11,mood:8},pose:{type:'sit',seatY:.50}},
     '七零三主卧':{zh:'在七零三休息',py:'zài qī líng sān xiūxi',en:'rest in residence 703',secs:4.2,mins:105,gain:{rest:39,mood:7},pose:{type:'lie',seatY:.59}},
     '七零三起居室':{zh:'在起居室放松',py:'zài qǐjūshì fàngsōng',en:'relax in the living room',secs:3.4,mins:30,gain:{rest:14,mood:8},pose:{type:'sit',seatY:.50}},
-    '七零三餐桌':{zh:'在公寓里用餐',py:'zài gōngyù lǐ yòngcān',en:'dine in the residence',secs:4.0,mins:40,gain:{hunger:33,mood:6},pose:{type:'eat',seatY:.50}},
-    '七零三厨房':{zh:'在公寓厨房做饭',py:'zài gōngyù chúfáng zuòfàn',en:'cook in the residence kitchen',secs:4.0,mins:40,gain:{hunger:31,rest:-4},pose:{type:'work'}},
+    '七零三餐桌':{zh:'在公寓里用餐',py:'zài gōngyù lǐ yòngcān',en:'dine in the residence',secs:4.0,mins:40,gain:{food:33,mood:6},pose:{type:'eat',seatY:.50}},
+    '七零三厨房':{zh:'在公寓厨房做饭',py:'zài gōngyù chúfáng zuòfàn',en:'cook in the residence kitchen',secs:4.0,mins:40,gain:{food:31,rest:-4},pose:{type:'work'}},
     '七零三浴室':{zh:'泡澡',py:'pào zǎo',en:'take a bath',secs:3.8,mins:35,gain:{clean:35,rest:12},pose:{type:'scrub'}},
     '共享办公桌':{zh:'在联合办公区工作',py:'zài liánhé bàngōng qū gōngzuò',en:'work in the cowork lounge',secs:4.0,mins:55,gain:{rest:-10,mood:3},pose:{type:'type',seatY:.50}},
     '电话间':{zh:'进行线上会议',py:'jìnxíng xiànshàng huìyì',en:'join an online meeting',secs:3.8,mins:45,gain:{rest:-7},pose:{type:'phone',seatY:.50}},
     '打印台':{zh:'打印文件',py:'dǎyìn wénjiàn',en:'print documents',secs:2.3,mins:5,gain:{},pose:{type:'work'}},
     '瑜伽垫':{zh:'做瑜伽',py:'zuò yújiā',en:'practise yoga',secs:4.0,mins:35,gain:{rest:12,mood:10,clean:-2},pose:{type:'stretch'}},
     '阅读角':{zh:'安静地阅读',py:'ānjìng de yuèdú',en:'read quietly',secs:3.6,mins:30,gain:{rest:9,mood:8},pose:{type:'read',seatY:.50}},
-    '早餐吧台':{zh:'吃住客早餐',py:'chī zhùkè zǎocān',en:'eat the resident breakfast',secs:4.0,mins:35,gain:{hunger:36,mood:7},pose:{type:'eat',seatY:.50}},
+    '早餐吧台':{zh:'吃住客早餐',py:'chī zhùkè zǎocān',en:'eat the resident breakfast',secs:4.0,mins:35,gain:{food:36,mood:7},pose:{type:'eat',seatY:.50}},
     '咖啡机':{zh:'做一杯咖啡',py:'zuò yì bēi kāfēi',en:'make a coffee',secs:2.8,mins:8,gain:{rest:8,mood:4},pose:{type:'drink'}},
-    '共享厨房':{zh:'使用共享厨房',py:'shǐyòng gòngxiǎng chúfáng',en:'use the shared kitchen',secs:4.0,mins:40,gain:{hunger:32},pose:{type:'work'}},
+    '共享厨房':{zh:'使用共享厨房',py:'shǐyòng gòngxiǎng chúfáng',en:'use the shared kitchen',secs:4.0,mins:40,gain:{food:32},pose:{type:'work'}},
     '洗衣机':{zh:'洗衣服',py:'xǐ yīfu',en:'do the laundry',secs:3.4,mins:45,gain:{clean:7,rest:-3},pose:{type:'work'}},
     '叠衣台':{zh:'叠好衣服',py:'dié hǎo yīfu',en:'fold the laundry',secs:3.0,mins:12,gain:{clean:4,rest:-2},pose:{type:'work'}},
     '布草间':{zh:'取干净的床品',py:'qǔ gānjìng de chuángpǐn',en:'take clean bed linen',secs:2.6,mins:8,gain:{clean:5},pose:{type:'work'}},

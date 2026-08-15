@@ -23,11 +23,11 @@ BankFit['atms'] = A => {
   for(let i=0;i<NUM;i++) {
     const z = z0 + i*2.0;
     box(AX,1.39,z,.78,2.30,1.55,col.black,
-      {round:.045,hard:true,mode:6,gloss:.23,tag:'取款机'});
+      {round:.045,hard:true,gloss:.34,tag:'取款机'});
     box(AX-.41,1.40,z,.08,2.12,1.40,col.steelD,
-      {hard:true,mode:6,gloss:.28,tag:'取款机'});
+      {hard:true,gloss:.34,tag:'取款机'});
     box(AX-.47,1.39,z,.035,1.98,1.27,col.navy,
-      {hard:true,mode:6,gloss:.20,tag:'取款机'});
+      {hard:true,gloss:.34,tag:'取款机'});
     A.screen(AX-.50,1.63,z,-Math.PI/2,.58,.42,'密码','取款机');
     box(AX-.53,1.23,z-.37,.035,.055,.27,col.black,{hard:true,tag:'取款机'});
     box(AX-.53,1.04,z+.24,.035,.065,.38,col.black,{hard:true,tag:'取款机'});

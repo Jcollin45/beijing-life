@@ -64,7 +64,7 @@ const Market = Lazy('Market', () => {
   // The walls are above the fittings and mostly seen at a distance, so the relief that matters
   // is the normal map rather than the colour map — PaintedPlaster017 is nearly uniform in
   // albedo and all of its surface is in the bump.
-  const PLASTER = { mat: 'plaster', matScale: 2.4, matAmt: .28 };
+  const PLASTER = { mat: 'plaster', matScale: .62, matAmt: .28 };
   // The sheet metal every fitting in here is pressed out of: gondola backs and decks, the
   // chiller cases, the freezer skins, the produce bases, the sides of the checkout lanes. The
   // map is luminance-neutral, so at this strength it adds surface without moving how bright any
@@ -87,8 +87,14 @@ const Market = Lazy('Market', () => {
   const L_FRONT = [0.90, 0.95, 1.00];   // the checkouts and the door end
 
   const B = Build.scene({ fabricGloss: G.fabric });
-  const { box, cyl, ball, capsule, taper, flat, wall, glyphs,
-          solid, blocker, shade, glow, thing } = B;
+  const { box, cyl, ball, capsule, taper, flat, wall, glyphs, modelOr,
+          solid: boundsSolid, blocker, shade, glow, thing } = B;
+  // The market generators all speak in fixture centres and physical widths/depths. Build.solid
+  // speaks in min/max bounds. Treating those two APIs as interchangeable left most gondolas,
+  // counters, chillers and checkout lanes with reversed or metre-shifted collision rectangles.
+  // Convert at this single seam so every visible footprint and every collider share one plan.
+  const solid = (cx, cz, w, d) =>
+    boundsSolid(cx - w / 2, cx + w / 2, cz - d / 2, cz + d / 2);
 
   // 26 by 19 metres and 5.2 high — the size of a real neighbourhood hypermarket, and by a wide
   // margin the largest single room in this game.
@@ -325,15 +331,21 @@ const Market = Lazy('Market', () => {
   // 购物车 a trolley, in the bay by the door and scattered about the shop.
   function trolley(cx, cz, ry) {
     const T = { ry, tag: '购物车' };
-    // the basket, as a tapered cage
-    taper(cx, .62, cz, .56, .44, .92, col.steel, { ...T, hard: true, gloss: G.metal });
-    box(cx, .86, cz, .60, .04, .96, col.steel, { ...T, hard: true, gloss: G.metal });
-    // the handle and the legs
-    capsule(cx, .96, cz + .46, .020, .54, .020, col.red, { ...T, rz: Math.PI / 2, gloss: .30 });
-    for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
-      capsule(cx + sx * .24, .20, cz + sz * .38, .016, .40, .016, col.steelD, { ...T, gloss: G.metal });
-      cyl(cx + sx * .24, .05, cz + sz * .38, .05, .04, col.charcoal, { ...T, rx: Math.PI / 2, gloss: .28 });
-    }
+    // TRELLIS.2 may replace only the trolley's visual shell. Keeping this authored cage as the
+    // fallback means a missing or rejected asset leaves the bay exactly as usable as before.
+    modelOr('supermarket_shopping_trolley', cx, 0, cz, 1, { ...T, gloss: .34 }, () => {
+      // the basket, as a tapered cage
+      taper(cx, .62, cz, .56, .44, .92, col.steel, { ...T, hard: true, gloss: G.metal });
+      box(cx, .86, cz, .60, .04, .96, col.steel, { ...T, hard: true, gloss: G.metal });
+      // the handle and the legs
+      capsule(cx, .96, cz + .46, .020, .54, .020, col.red, { ...T, rz: Math.PI / 2, gloss: .30 });
+      for (const sx of [-1, 1]) for (const sz of [-1, 1]) {
+        capsule(cx + sx * .24, .20, cz + sz * .38, .016, .40, .016, col.steelD,
+          { ...T, gloss: G.metal });
+        cyl(cx + sx * .24, .05, cz + sz * .38, .05, .04, col.charcoal,
+          { ...T, rx: Math.PI / 2, gloss: .28 });
+      }
+    });
   }
 
   // ---------------------------------------------------------------- the stock lists
@@ -404,7 +416,7 @@ const Market = Lazy('Market', () => {
     Glyphs.need('生鲜冷冻日用品米面粮油零食酒水肉海鲜熟食大超市出口收银台购物车蔬菜水果乳制品123456');
 
     // ================================================================ shell
-    flat(0, 0, 0, RX * 2, RZ * 2, col.floor, { mode: 9, gloss: .16, ...FLOOR });
+    flat(0, 0, 0, RX * 2, RZ * 2, col.floor, { mode: 0, gloss: .16, ...FLOOR });
     B.props.push({ mesh: 'quad', color: col.ceil, mode: 1, alpha: 1,
       m: M.mul(M.trans(0, H, 0), M.mul(M.rotZ(Math.PI), M.scale(RX * 2, 1, RZ * 2))) });
     for (const [x, y, z, w, h, yaw] of [

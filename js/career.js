@@ -78,8 +78,8 @@ const Career = (() => {
     streak: 0,      // consecutive workdays on time
     best: 0,
     jobs: 0,        // whiteboard jobs finished
-    done: {},       // and which, by word
-    leave: {},      // day -> true, days the manager signed off
+    done: Object.create(null),  // and which, by word; saved keys never inherit object members
+    leave: Object.create(null), // day -> true, days the manager signed off
     warned: 0,      // the last day the manager mentioned the absences
   });
 
@@ -114,7 +114,7 @@ const Career = (() => {
     // else, and the B1 staff doors open for somebody who has carried linen up them (H108). Turning
     // up once is the whole of the test, deliberately — this is the seam the work chapter attaches
     // to, not the chapter.
-    hotelShifts: () => (S.done[HOTEL_SHIFT.hz] | 0),
+    hotelShifts: () => S.done[HOTEL_SHIFT.hz] || 0,
     hotelStaff() { return this.hotelShifts() > 0; },
 
     // ---- the calendar
@@ -150,6 +150,32 @@ const Career = (() => {
       const t = this.toNext();
       if (!t || !t.ready) return null;
       S.rank++;
+      return rank();
+    },
+
+    // The other direction, which the job needed the moment absences started to cost something.
+    // `js/survive.js` decides *when* — it holds the absence rule — and this only carries it out, so
+    // that a rank still moves in exactly one place.
+    //
+    // `days` and `jobs` are deliberately left alone. They are a record of what you actually did and
+    // rewriting them would be a lie; the rank is what you are trusted with, and that is what a
+    // stretch of not turning up takes away. The streak goes because it is a run of mornings and the
+    // run is what was broken. Returns null at the bottom rung, so the caller can tell the difference
+    // between "you have been dropped a rank" and "there was nowhere left to drop you" — which is
+    // what dismissal is, and it is `Survive`'s to announce, not this file's.
+    demote() {
+      if (S.rank <= 0) return null;
+      S.rank--;
+      S.streak = 0;
+      return rank();
+    },
+
+    // A dismissal starts the next spell of employment at the bottom, but it does not erase the
+    // days worked or jobs actually finished. Survive owns the dismissal rule and game.js calls
+    // this once when that rule fires; rehire must not reset the same career a second time.
+    dismiss() {
+      S.rank = 0;
+      S.streak = 0;
       return rank();
     },
 
@@ -225,13 +251,29 @@ const Career = (() => {
     toSave: () => ({ ...S }),
     load(o) {
       S = fresh();
-      if (!o || typeof o !== 'object') return;
-      for (const k of ['rank', 'days', 'onTime', 'late', 'missed', 'streak', 'best', 'jobs',
-                       'warned', 'lastDay'])
-        if (typeof o[k] === 'number') S[k] = o[k];
-      if (o.done && typeof o.done === 'object') S.done = { ...o.done };
-      if (o.leave && typeof o.leave === 'object') S.leave = { ...o.leave };
-      S.rank = Math.max(0, Math.min(RANKS.length - 1, S.rank | 0));
+      if (!o || typeof o !== 'object' || Array.isArray(o)) return;
+      // These are counters and day markers, not arbitrary numbers. JSON.parse accepts an exponent
+      // such as `1e309` as Infinity, and an imported/half-written save can also contain negatives
+      // or fractions. Letting any of those through made promotion requirements, attendance and the
+      // hotel-shift count impossible. One bad field now falls back to zero without discarding the
+      // rest of the career, while every legitimate non-negative safe integer survives unchanged.
+      const count = value => Number.isSafeInteger(value) && value >= 0 ? value : 0;
+      S.rank = Math.min(RANKS.length - 1, count(o.rank));
+      for (const k of ['days', 'onTime', 'late', 'missed', 'streak', 'best', 'jobs',
+                       'warned', 'lastDay', 'lateDay'])
+        S[k] = count(o[k]);
+      // Both maps are written by this module with narrow value domains. Rebuild them entry by
+      // entry instead of copying attacker-controlled object structure or inherited property names.
+      if (o.done && typeof o.done === 'object' && !Array.isArray(o.done))
+        for (const [hz, n] of Object.entries(o.done))
+          if (typeof hz === 'string' && hz && Number.isSafeInteger(n) && n >= 0)
+            S.done[hz] = n;
+      if (o.leave && typeof o.leave === 'object' && !Array.isArray(o.leave))
+        for (const [savedDay, approved] of Object.entries(o.leave)) {
+          const leaveDay = Number(savedDay);
+          if (approved === true && Number.isSafeInteger(leaveDay) && leaveDay > 0)
+            S.leave[leaveDay] = true;
+        }
     },
     reset() { S = fresh(); },
   };

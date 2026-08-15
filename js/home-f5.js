@@ -8,12 +8,10 @@
 // ---------------------------------------------------------------- what this file has to build
 //
 // More than js/home-corridor.js does, and the reason is worth stating rather than discovering.
-// `buildShell` in js/world.js pours a slab, a ceiling, four walls and two lift shafts for
-// `for (const f of [0, 2])` — decks 0 and 2 and nothing else. On deck 5 there is no floor, no
-// ceiling, no wall and no shaft: a zone registered up here without them is a body standing on
-// nothing, looking out of the back of the building. So this file is a SHELL AND a fit-out, and
-// the shell half of it is written to disappear the day the Surgeon generalises `buildShafts` —
-// see `shellLanding` in section 4, which detects that and stands down on its own.
+// `buildShell` pours slabs, ceilings and perimeter walls only for decks 0 and 2, so this file owns
+// those surfaces on deck 5 as well as the fit-out. The lift core is no longer its job:
+// `buildShafts` now covers every `SHAFT_DECKS` entry, including dynamic door collision and the
+// live call control, so this module deliberately contributes no shaft fallback.
 //
 // ---------------------------------------------------------------- the plan
 //
@@ -80,7 +78,8 @@ FlatFit['f5'] = A => {
   const TRIM = .130;
   // 504's opening in the party wall — the same width and head the shell cuts on deck 2, so the
   // door reads as the same door type in the same building.
-  const FX = 3.90, FW = 1.00, FTOP = 2.10;
+  // A 1.20 m opening preserves a 0.48 m comfort lane after the movement envelope is applied.
+  const FX = 3.90, FW = 1.20, FTOP = 2.10;
 
   // ------------------------------------------------------------------ palette
   //
@@ -122,24 +121,6 @@ FlatFit['f5'] = A => {
   // reads "too far" from every angle in the room.
   const TH = (hz, x, y, z, zh, en, note, fx, fz, reach = 1.7, tag) =>
     thing(hz, x, y, z, zh, en, note, { focus: [fx, fz], reach, tag: tag || hz });
-
-  // =================================================================== 0 · has the shell caught up?
-  //
-  // js/world.js builds its shafts and landings for decks 0 and 2 only. Until that loop runs over
-  // every deck there is no lift core up here and the eye looks straight out of the back of the
-  // building. So this file builds one — and tests first, so that the day the Surgeon generalises
-  // `buildShafts` the geometry AND the colliders below stand down together, rather than sitting
-  // 20 mm in front of a working lift with their doors welded shut.
-  //
-  // The test is unambiguous: is there anything, from any earlier builder, inside the working
-  // shaft's footprint at this deck's height? Only a deck-5 landing can be. The car is built on
-  // DECK[0] and rides by transform, so it never answers yes here.
-  const shellLanding = !!(A.props || []).some(p => {
-    const m = p && p.m;
-    return m && m[13] > Y + .10 && m[13] < Y + H - .05
-        && m[12] > LF.x0 - .60 && m[12] < LF.x1 + .60
-        && m[14] > LF.z0 - .30 && m[14] < LF.z1 + .10;
-  });
 
   // =================================================================== 1 · slab, lid and envelope
   flat(0, Y + .004, (FT.z0 + FT.z1) / 2, X1 - X0, FT.z1 - FT.z0, K.lam,
@@ -255,8 +236,10 @@ FlatFit['f5'] = A => {
   // takes whichever candidate zone is nearest the target, so the plate underneath them is what
   // lets you walk from one room to the next. The partitions are colliders, not zone edges — a
   // zone-edged flat cannot be walked through a doorway at all.
+  const camNear = (w, d) => Math.max(1.9, Math.min(3.4, .42 * Math.min(w, d) + 1.35));
   const zn = (id, x0, x1, z0, z1, lx, lz) =>
-    A.zone({ id, x0, x1, z0, z1, light: [lx, Y + 2.28, lz] });
+    A.zone({ id, x0, x1, z0, z1, light: [lx, Y + 2.28, lz],
+             near: camNear(x1 - x0, z1 - z0) });
   zn('f5-kid', X0, KIDX, KIDZ, ZM, -4.05, 1.80);
   zn('f5-bed', X0, KIDX, ZS, KIDZ, -4.20, -2.40);
   zn('f5-bath', KIDX, BATHX, ZS, WETZ, -0.95, -3.30);
@@ -264,64 +247,15 @@ FlatFit['f5'] = A => {
   zn('f5-kit', BALCX, X1, ZS, WETZ, 4.05, -3.20);
   zn('f5-living', KIDX, X1, WETZ, ZM, 2.20, 1.20);
   zn('f5-corr', X0, X1, ZM, ZN, 0.00, 4.05);
-  zn('f5-gap', FX - FW / 2 - .10, FX + FW / 2 + .10, ZM - .70, ZM + .70, FX, ZM);
+  zn('f5-gap', FX - FW / 2 - .10, FX + FW / 2 + .10, ZM - .85, ZM + .85, FX, ZM);
   zn('f5-flat', X0, X1, ZS, ZM, 2.20, 1.20);
   // The box R.setRoom measures ambient and ceiling occlusion against. Without this every deck
   // above the second is told its ceiling is at 5.70 — two metres below this floor's slab.
   if (A.deckH) A.deckH(Y + H);
 
   // =================================================================== 4 · the lift core
-  //
-  // Skipped entirely the day js/world.js builds a landing up here — see `shellLanding` above.
-  const CFZ = LF.z0;
-  if (!shellLanding) {
-    const doors = [[(LB.x0 + LB.x1) / 2, .92, false], [(LF.x0 + LF.x1) / 2, .80, true]];
-    // one continuous plaster face across both shafts with the two openings cut out of it
-    const cuts = doors.map(([cx, w]) => [cx - w / 2, cx + w / 2]).sort((p, q) => p[0] - q[0]);
-    let c = LB.x0; const runs = [];
-    for (const [g0, g1] of cuts) { if (g0 > c) runs.push([c, g0]); c = g1; }
-    if (c < LF.x1) runs.push([c, LF.x1]);
-    for (const [a, b] of runs) wall((a + b) / 2, Y + H / 2, CFZ, b - a, H, PI, K.wall, MP);
-    for (const [cx, w] of doors) wall(cx, Y + (2.10 + H) / 2, CFZ, w, H - 2.10, PI, K.wall, MP);
-    // the flanks, so from either end of the landing the core reads as a block standing in the
-    // room rather than as a wall with two holes in it
-    wall(LB.x0, Y + H / 2, (CFZ + ZN) / 2, ZN - CFZ, H, -PI / 2, C('#c8c0ae'), MP);
-    wall(LF.x1, Y + H / 2, (CFZ + ZN) / 2, ZN - CFZ, H, PI / 2, C('#c8c0ae'), MP);
-    skirt('x', CFZ, LB.x0, LF.x1, -1, C('#8b8272'));
-    for (const [cx, w, working] of doors) {
-      const hw = w / 2;
-      for (const s of [-1, 1])
-        box(cx + s * (hw + .07), Y + 1.10, CFZ - .012, .14, 2.20, .05, K.steel,
-            { hard: true, gloss: .58, ...MM });
-      box(cx, Y + 2.175, CFZ - .012, w + .42, .14, .05, K.steel, { hard: true, gloss: .58, ...MM });
-      // Gloss .34, not .58, on the leaves: a lift leaf is nearly a square metre of flat steel
-      // facing straight at you, and at a high gloss both blow out to white paper.
-      for (const s of [-1, 1]) {
-        box(cx + s * w / 4, Y + 1.05, CFZ + .055, w / 2, 2.10, .045, C('#7e868c'),
-            { hard: true, gloss: .34, ...MM });
-        box(cx + s * w / 4, Y + 1.05, CFZ + .030, w / 2 - .05, 2.00, .012, C('#8d959b'),
-            { hard: true, gloss: .34 });
-      }
-      box(cx, Y + 2.44, CFZ - .018, .52, .30, .06, C('#3d4348'), { hard: true, gloss: .34 });
-      G(cx, Y + 2.44, CFZ - .052, PI, '五', { size: .17, color: C('#ff9a4d'), mode: 1, glow: .16 });
-      if (!working) {
-        box(cx, Y + 1.62, CFZ - .050, .46, .32, .020, K.paper, { hard: true, gloss: .05, ry: .03 });
-        G(cx, Y + 1.71, CFZ - .062, PI, '此梯检修', { size: .052, gap: .010, color: K.redD });
-        G(cx, Y + 1.61, CFZ - .062, PI, '请乘另一部', { size: .042, gap: .008, color: K.ink });
-        G(cx, Y + 1.52, CFZ - .062, PI, '物业管理处', { size: .034, gap: .007, color: K.grey });
-      }
-    }
-    // The call panel between the two sets of doors. Geometry only: the 电梯 word on a landing is
-    // the shell's, and two of them 20 cm apart is one word with two answers.
-    const px = (LB.x1 + LF.x0) / 2, pz = CFZ - .02;
-    box(px, Y + 1.12, pz, .13, .22, .04, C('#d9d4c8'), { hard: true, gloss: .34 });
-    for (const [dy, ch] of [[.045, '▲'], [-.045, '▼']]) {
-      box(px, Y + 1.12 + dy, pz - .022, .055, .055, .012, C('#ffbe6a'),
-          { hard: true, mode: 1, glow: .16 });
-      G(px, Y + 1.12 + dy, pz - .036, PI, ch, { size: .038, color: C('#4a3316') });
-    }
-    stop(LB.x0 - .10, LF.x1 + .10, CFZ, ZN + .05);
-  }
+  // Shaft faces, moving leaves, controls and dynamic collision are shell-owned on every served
+  // deck. A floor-owned stand-in here can only duplicate the shell or weld its working door shut.
 
   // =================================================================== 5 · the landing, painted
   //
@@ -346,15 +280,6 @@ FlatFit['f5'] = A => {
   const WZ = 4.60, WW = 1.40, WSILL = .95, WTOP = 2.15;   // and the window, east end
   dado('x', ZM, 1, [[X0, FX - FW / 2], [FX + FW / 2, X1]]);
   dado('x', ZN, -1, [[X0, LB.x0], [LF.x1, X1]]);
-  if (!shellLanding) {
-    dado('x', CFZ, -1, [[LB.x0, LF.x1]]);
-    // and the core's two flanks. Walking the landing from either end you look straight at one of
-    // them for four metres, and undadoed they are the one blank grey monolith on the floor.
-    dado('z', LB.x0, -1, [[CFZ, ZN]]);
-    dado('z', LF.x1, 1, [[CFZ, ZN]]);
-    skirt('z', LB.x0, CFZ, ZN, -1, C('#8b8272'));
-    skirt('z', LF.x1, CFZ, ZN, 1, C('#8b8272'));
-  }
   dado('z', X0, 1, [[ZM, SZ - SW / 2], [SZ + SW / 2, ZN]]);
   dado('z', X1, -1, [[ZM, WZ - WW / 2], [WZ + WW / 2, ZN]]);
 
@@ -376,8 +301,7 @@ FlatFit['f5'] = A => {
     box(lx, CY - .095, lz, .40, .05, .12, alive ? K.warm : K.dead,
         { hard: true, mode: alive ? 1 : 0, glow: alive ? .12 : 0, gloss: .10 });
   }
-  // One real light for the landing, not four. Only eight lights in the whole game reach the
-  // shader at once and twelve decks are bidding for them — see the ticket at the foot of the file.
+  // One broad light for the landing; the fixture geometry still shows the full service rhythm.
   light(-1.80, CY - .22, 4.30, C('#dfe9ef'), .50, 6.00);
 
   // --- 安全出口. Flat on the wall, never slung across the corridor: a sign hung in a walkway is
@@ -543,9 +467,8 @@ FlatFit['f5'] = A => {
       put(.52 + ox, -.066, oy + w2 / 2 + .022, .038, .038, .006, c2, { gloss: .04 });
     }
     // The leaf stands in the 玄关, so it needs a collider — but it must stay clear of the walkable
-    // slot through the doorway, which after the body radius is only x 3.70 .. 4.10. At 98° the
-    // leaf is a thin sliver from (3.43, 3.17) to (3.30, 2.24); a collider drawn generously round
-    // it inflates to x 3.92 and seals the front door, so it is drawn to the sliver and no wider.
+    // lane through the doorway. At 98° the leaf is a thin sliver beside the west jamb; a collider
+    // drawn generously around it would erase the extra clearance, so it traces the sliver only.
     stop(FX - .66, FX - .42, ZM - 1.00, ZM - .04);
   })();
 
@@ -1426,7 +1349,9 @@ FlatFit['f5'] = A => {
     shade(tx, tz, 1.10, .82, .32, FL + .010);
     stop(2.40, 3.40, -3.56, -2.84);
     // the high chair: tall legs, a tray, a footrest and a strap, set out of the doorway's run
-    const hx4 = 4.90, hz4 = -2.30;
+    // Park it against the east wall. The old 0.84 m gap behind it was too narrow to enter but wide
+    // enough to become a tiny standable island, while the chair itself consumed the kitchen aisle.
+    const hx4 = 5.45, hz4 = -2.30;
     for (const [ox, oz] of [[-.17, -.15], [.17, -.15], [-.15, .17], [.15, .17]])
       cyl(hx4 + ox, FL + .27, hz4 + oz, .020, .54, C('#e0dbcf'),
           { rz: ox * .5, rx: oz * -.5, gloss: .30 });
@@ -1440,7 +1365,7 @@ FlatFit['f5'] = A => {
           { hard: true, gloss: .2, mode: 7 });
     cyl(hx4 - .20, FL + .705, hz4 + .10, .034, .05, K.toyT, { gloss: .3 });
     shade(hx4, hz4, .48, .48, .28, FL + .010);
-    stop(4.64, 5.16, -2.56, -2.04);
+    stop(hx4 - .26, hx4 + .26, -2.56, -2.04);
 
     light(3.95, CY - .30, -2.90, C('#fff0d4'), .42, 4.20);
     cyl(3.95, CY - .10, -2.90, .16, .09, C('#f4efe2'), { gloss: .12 });
@@ -1608,11 +1533,8 @@ FlatFit['f5'] = A => {
 
   // =================================================================== 16 · the words
   //
-  // Every headword below is already in js/vocab.js. `Vocab.get` has no fallback, so a thing whose
-  // word is not in the dictionary is not a missing gloss — it is an uncaught TypeError the first
-  // frame the player stands near it, which drops the whole game to the "did not load" overlay
-  // (.thingcheck.js exists because of exactly that). The words this floor WANTS and does not have
-  // are in the report as a ticket; until they land, nothing here may use them.
+  // Every headword below is present in js/vocab.js. The browser-free dictionary gate enforces that
+  // contract because `Vocab.get` has no useful fallback for an authored interaction.
   //
   // Every focus is a spot the body can genuinely stand on, checked against the colliders above.
   TH('走廊', -2.90, Y + 1.60, ZM + .30, '五楼的走廊比二楼干净。',
@@ -1701,46 +1623,3 @@ FlatFit['f5'] = A => {
   HomeF5.built = true;
   return HomeF5;
 };
-
-// ---------------------------------------------------------------------------------------------
-// FOUR THINGS FOR WHOEVER OWNS js/world.js AND js/game.js, kept here rather than in a report that
-// will be lost. None of them is fixable from this file, and three of them are tower-wide.
-//
-// 1. `buildShell` AND `buildShafts` STILL ONLY RUN FOR DECKS 0 AND 2 (world.js `buildShell`, and
-//    the two `for (const f of [0, 2])` loops in `buildShafts`). Every deck above the second
-//    therefore has no slab, no ceiling, no perimeter wall and no lift landing until its own
-//    builder pours one — which is what sections 1 and 4 of this file do, and what nine floor
-//    files are now each doing a slightly different way. Section 4 detects a shell landing and
-//    stands down; the shell should take the landing, and ideally the slab, ceiling and perimeter
-//    walls too, for `for (let f = 2; f <= FLOORS; f++)`.
-//
-// 2. `goFloor(n)` is still `const to = n === 0 ? 0 : 2`, and `rideFloor` is likewise two-stop, so
-//    the lift cannot be sent to deck 5 at all. This floor is reachable only through
-//    `World.setFloor(5)` from the console. That is Wave 3's job, but until it lands no player can
-//    see any of this.
-//
-// 3. THINGS AND LIGHTS ARE NOT PER-DECK, AND A TWELVE-STOREY BUILDING IN ONE FOOTPRINT MAKES THAT
-//    A BUG RATHER THAN AN INEFFICIENCY. Measured on deck 5, standing at (1.2, 4.1): the things
-//    within reach include 电梯 at world y 1.52, 按钮 at 1.21, 扶手 at 0.92, 镜子 at 1.49 and
-//    走廊 at 4.70 — the lift car's fit-out and the deck-2 corridor, nine to twelve metres below.
-//    - game.js picks the nearest thing by `Math.hypot(th.focus[0] - P.x, th.focus[1] - P.z)` over
-//      `scene.things`, which is World's single global list. It wants a y test —
-//      `Math.abs(th.pos[1] - (P.lift || 0)) < 1.6` — or a per-deck things list, the way
-//      ZONE/SOL/SHA/GLO already are.
-//    - game.js ranks `scene.lights` by (x, z) distance only and takes the nearest eight. y is
-//      ignored, so a lamp three metres above your head outranks one across the room, and with
-//      ten floors bidding this cannot resolve correctly for anybody. This file declares only four
-//      lights so as not to make it worse. Same fix.
-//
-// 4. THE CUTAWAY REVEALS THE FLOOR ABOVE. When the camera backs out through a wall, `hiddenProp`
-//    fades the props between the eye and the room — correct on a two-deck building, and on a
-//    twelve-deck one it opens a hole into deck 6, whose furniture is then drawn washed-out across
-//    the top half of the frame. It is in every shot of this floor and will be in every shot of
-//    every floor. The fix is the same as (3): props not on the current deck should never be
-//    submitted.
-//
-// VOCAB. Every headword this floor labels is already in js/vocab.js — checked against RAW,
-// because `Vocab.get` has no fallback and a missing row is not a missing gloss but an uncaught
-// TypeError that drops the game to the "did not load" overlay (see .thingcheck.js). The words
-// this floor wants and does not have are listed in the build report as a ticket for the Hub;
-// until they land, nothing here may use them.

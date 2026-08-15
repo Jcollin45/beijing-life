@@ -220,31 +220,33 @@ const HotelGuestFit = Object.freeze({ floors:['hotel5','hotel8','hotel10','hotel
   }
 
   function chair(A,c,x,z,yaw=0,tag='椅子',upholstery=c.silk) {
-    const {box,ball,capsule,shade}=A;
-    const at=(u,v)=>[x+Math.cos(yaw)*u+Math.sin(yaw)*v,z-Math.sin(yaw)*u+Math.cos(yaw)*v];
-    // Framed club chair: upholstered pad over a visible under-seat rail, inset back and arms.
-    box(x,.39,z,.66,.11,.66,c.walnutD,{ry:yaw,gloss:.28,tag});
-    box(x,.49,z,.74,.18,.74,upholstery,{ry:yaw,mode:7,gloss:.035,tag});
-    const bp=at(0,-.31);
-    box(bp[0],.88,bp[1],.78,.82,.14,c.walnutD,{ry:yaw,gloss:.30,tag});
-    const bi=at(0,-.285);
-    box(bi[0],.88,bi[1],.62,.66,.08,upholstery,{ry:yaw,mode:7,gloss:.035,tag});
-    for(const sx of [-1,1])for(const sz of [-1,1])
-      {const p=at(sx*.27,sz*.24);capsule(p[0],.22,p[1],.038,.44,.038,c.walnut,{tag});}
-    for(const s of [-1,1]){
-      const ap=at(s*.36,.02),arm=at(s*.36,.01);
-      capsule(ap[0],.67,ap[1],.035,.48,.035,c.walnut,{tag});
-      box(arm[0],.78,arm[1],.11,.10,.60,c.walnutL,{ry:yaw,mode:7,gloss:.30,tag});
-    }
-    // A rounded crest rail, inset button and piping break up the rectangular back silhouette.
-    const crest=at(0,-.39),button=at(.07,-.374);
-    capsule(crest[0],1.27,crest[1],.030,.66,.030,c.bronzeL,
-      {rz:Math.PI/2,ry:yaw,gloss:.70,tag});
-    ball(button[0],.93,button[1],.045,.045,.024,c.bronzeL,
-      {ry:yaw,gloss:.68,tag});
-    const welt=at(0,.35);
-    capsule(welt[0],.55,welt[1],.022,.60,.022,c.silkL,
-      {rz:Math.PI/2,ry:yaw,gloss:.025,tag});
+    const {box,ball,capsule,shade}=A,{modelOr}=A.B;
+    modelOr('chinese_armchair',x,0,z,.83,{ry:yaw,tag,gloss:.24},()=>{
+      const at=(u,v)=>[x+Math.cos(yaw)*u+Math.sin(yaw)*v,z-Math.sin(yaw)*u+Math.cos(yaw)*v];
+      // Framed club chair: upholstered pad over a visible under-seat rail, inset back and arms.
+      box(x,.39,z,.66,.11,.66,c.walnutD,{ry:yaw,gloss:.28,tag});
+      box(x,.49,z,.74,.18,.74,upholstery,{ry:yaw,mode:7,gloss:.035,tag});
+      const bp=at(0,-.31);
+      box(bp[0],.88,bp[1],.78,.82,.14,c.walnutD,{ry:yaw,gloss:.30,tag});
+      const bi=at(0,-.285);
+      box(bi[0],.88,bi[1],.62,.66,.08,upholstery,{ry:yaw,mode:7,gloss:.035,tag});
+      for(const sx of [-1,1])for(const sz of [-1,1])
+        {const p=at(sx*.27,sz*.24);capsule(p[0],.22,p[1],.038,.44,.038,c.walnut,{tag});}
+      for(const s of [-1,1]){
+        const ap=at(s*.36,.02),arm=at(s*.36,.01);
+        capsule(ap[0],.67,ap[1],.035,.48,.035,c.walnut,{tag});
+        box(arm[0],.78,arm[1],.11,.10,.60,c.walnutL,{ry:yaw,mode:7,gloss:.30,tag});
+      }
+      // A rounded crest rail, inset button and piping break up the rectangular back silhouette.
+      const crest=at(0,-.39),button=at(.07,-.374);
+      capsule(crest[0],1.27,crest[1],.030,.66,.030,c.bronzeL,
+        {rz:Math.PI/2,ry:yaw,gloss:.70,tag});
+      ball(button[0],.93,button[1],.045,.045,.024,c.bronzeL,
+        {ry:yaw,gloss:.68,tag});
+      const welt=at(0,.35);
+      capsule(welt[0],.55,welt[1],.022,.60,.022,c.silkL,
+        {rz:Math.PI/2,ry:yaw,gloss:.025,tag});
+    });
     shade(x,z,.82,.82,.19);
     return {x,z,yaw};
   }
@@ -279,13 +281,15 @@ const HotelGuestFit = Object.freeze({ floors:['hotel5','hotel8','hotel10','hotel
   }
 
   function lamp(A,c,x,z,tag='床头灯') {
-    const {box,capsule,taper,ball,cyl,luminous,onTick}=A;
+    const {box,capsule,taper,ball,cyl,luminous,onTick}=A,{modelOr}=A.B;
     // Proper bedside casegood with toe-kick, framed drawer, pull and a weighted lamp base.
-    box(x,.055,z,.58,.11,.50,c.walnutD,{gloss:.26,tag:'床头柜'});
-    box(x,.32,z,.66,.48,.56,c.walnut,{mode:7,gloss:.31,tag:'床头柜'});
-    box(x,.34,z-.294,.52,.24,.025,c.walnutL,{hard:true,gloss:.30,tag:'床头柜'});
-    capsule(x,.34,z-.318,.025,.22,.025,c.bronzeL,{rz:Math.PI/2,gloss:.72,tag:'床头柜'});
-    box(x,.59,z,.72,.08,.62,c.limestone,{mode:7,gloss:.20,tag:'床头柜'});
+    modelOr('classic_nightstand_01',x,0,z,.90,{ry:Math.PI,tag:'床头柜',gloss:.24},()=>{
+      box(x,.055,z,.58,.11,.50,c.walnutD,{gloss:.26,tag:'床头柜'});
+      box(x,.32,z,.66,.48,.56,c.walnut,{mode:7,gloss:.31,tag:'床头柜'});
+      box(x,.34,z-.294,.52,.24,.025,c.walnutL,{hard:true,gloss:.30,tag:'床头柜'});
+      capsule(x,.34,z-.318,.025,.22,.025,c.bronzeL,{rz:Math.PI/2,gloss:.72,tag:'床头柜'});
+      box(x,.59,z,.72,.08,.62,c.limestone,{mode:7,gloss:.20,tag:'床头柜'});
+    });
     cyl(x,.66,z,.18,.08,c.bronzeD,{gloss:.62,tag});
     capsule(x,.89,z,.035,.46,.035,c.bronze,{gloss:.66,tag});
     taper(x,1.23,z,.44,.42,.44,c.silkL,{gloss:.04,tag});
@@ -1739,7 +1743,10 @@ const HotelGuestFit = Object.freeze({ floors:['hotel5','hotel8','hotel10','hotel
     flat(-8.6,.023,8.7,11.2,12.0,c.carpet,{mode:7,gloss:.03,tag:'主卧'});
     skyline(A,c,-8.4,14.72,10.6,2.52,'主卧景观',true,Math.PI);curtains(A,c,-8.4,14.62,9.8,'窗帘');
     bed(A,c,-8.5,9.60,3.15,'主卧大床',c.silk);lamp(A,c,-10.80,9.32);lamp(A,c,-6.18,9.32);
-    box(-12.4,.47,12.75,3.20,.54,1.22,c.celadon,{mode:7,gloss:.03,tag:'窗边榻'});
+    // Preserve the original 20–74 cm daybed silhouette while exposing its real thin top cushion
+    // to the seat resolver; one 54 cm-deep primitive was indistinguishable from a cabinet carcass.
+    box(-12.4,.37,12.75,3.20,.34,1.22,c.celadon,{mode:7,gloss:.03,tag:'窗边榻'});
+    box(-12.4,.64,12.75,3.20,.20,1.22,c.celadon,{mode:7,gloss:.03,tag:'窗边榻'});
     lowPlinth(A,c,-12.4,12.75,2.80,.92,'窗边榻');
     desk(A,c,-4.4,12.1,2.0,0,'梳妆台');chair(A,c,-4.4,11.35,0,'椅子',c.silkL);
     sleepingFigure(A,c,-8.5,9.60,'睡眠');
@@ -1940,7 +1947,7 @@ const HotelGuestFit = Object.freeze({ floors:['hotel5','hotel8','hotel10','hotel
   });
   Object.assign(HotelUse.hotel10,{
     '行政酒廊':{zh:'在酒廊休息',py:'zài jiǔláng xiūxi',en:'relax in the executive lounge',secs:3.2,mins:25,gain:{rest:12,mood:7},pose:{type:'sit',seatY:.48}},
-    '早餐':{zh:'吃行政早餐',py:'chī xíngzhèng zǎocān',en:'eat executive breakfast',secs:4.0,mins:35,gain:{hunger:35,mood:7},pose:{type:'eat',seatY:.49}},
+    '早餐':{zh:'吃行政早餐',py:'chī xíngzhèng zǎocān',en:'eat executive breakfast',secs:4.0,mins:35,gain:{food:35,mood:7},pose:{type:'eat',seatY:.49}},
     '图书室':{zh:'看书',py:'kàn shū',en:'read in the library',secs:3.6,mins:30,gain:{mood:8,rest:5},pose:{type:'stand'}},
     '商务桌':{zh:'处理工作',py:'chǔlǐ gōngzuò',en:'work at a business table',secs:4.0,mins:45,gain:{rest:-9,mood:2},pose:{type:'type',seatY:.48}},
     '茶台':{zh:'喝茶',py:'hē chá',en:'drink tea',secs:3.0,mins:20,gain:{rest:10,mood:6},pose:{type:'drink',seatY:.48}},
@@ -1949,11 +1956,11 @@ const HotelGuestFit = Object.freeze({ floors:['hotel5','hotel8','hotel10','hotel
     '起居室':{zh:'在套房休息',py:'zài tàofáng xiūxi',en:'relax in the suite living room',secs:3.5,mins:30,gain:{rest:16,mood:9},pose:{type:'sit',seatY:.48}},
     '主卧':{zh:'在主卧休息',py:'zài zhǔwò xiūxi',en:'rest in the principal bedroom',secs:4.2,mins:120,gain:{rest:42,mood:8},pose:{type:'lie',seatY:.60}},
     '石材浴室':{zh:'泡浴',py:'pàoyù',en:'take a stone bath',secs:4.0,mins:40,gain:{clean:38,rest:14},pose:{type:'scrub'}},
-    '套房餐桌':{zh:'用套房餐',py:'yòng tàofáng cān',en:'eat in the suite',secs:4.0,mins:45,gain:{hunger:35,mood:9},pose:{type:'eat',seatY:.49}},
+    '套房餐桌':{zh:'用套房餐',py:'yòng tàofáng cān',en:'eat in the suite',secs:4.0,mins:45,gain:{food:35,mood:9},pose:{type:'eat',seatY:.49}},
     '客房服务':{zh:'叫套房送餐',py:'jiào tàofáng sòngcān',en:'order in-suite dining',secs:2.4,mins:5,gain:{},pose:{type:'phone'},stayService:true},
   });
   Object.assign(HotelUse.hotel12,{
-    '云端中餐厅':{zh:'吃中餐',py:'chī zhōngcān',en:'dine at Yunduan',secs:4.2,mins:50,gain:{hunger:38,mood:10},pose:{type:'eat',seatY:.49}},
+    '云端中餐厅':{zh:'吃中餐',py:'chī zhōngcān',en:'dine at Yunduan',secs:4.2,mins:50,gain:{food:38,mood:10},pose:{type:'eat',seatY:.49}},
     '观景露台':{zh:'看京城夜景',py:'kàn Jīngchéng yèjǐng',en:'view the Beijing skyline',secs:3.0,mins:15,gain:{mood:12,rest:4},pose:{type:'stand'}},
     '天际酒廊':{zh:'在天际酒廊喝茶',py:'zài tiānjì jiǔláng hē chá',en:'take tea in the sky lounge',secs:3.4,mins:25,gain:{rest:10,mood:10},pose:{type:'drink',seatY:.48}},
   });

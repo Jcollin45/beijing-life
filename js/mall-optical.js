@@ -171,11 +171,54 @@ const MallOptical = (() => {
   });
   let S = blank(), day = 0, mins = 12 * 60;
 
+  const savedCount = (value, max = 1e6) => Number.isSafeInteger(value) && value >= 0
+    ? Math.min(max, value) : 0;
+  const isSavedIndex = (value, length) => Number.isSafeInteger(value) && value >= 0 && value < length;
+  const savedIndex = (value, length) => Number.isSafeInteger(value) && value >= 0 && value < length
+    ? value : 0;
+  const savedNumber = (value, lo, hi) => Number.isFinite(value)
+    ? Math.max(lo, Math.min(hi, value)) : null;
+  function cleanRx(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    const r = savedNumber(raw.r, -20, 20), l = savedNumber(raw.l, -20, 20);
+    const cyl = savedNumber(raw.cyl, -10, 10), va = savedNumber(raw.va, 0, 10);
+    if (r === null || l === null || cyl === null || va === null) return null;
+    return { r, l, cyl, va, hits:savedCount(raw.hits, ROUNDS),
+      day:savedCount(raw.day, 1e7) };
+  }
+  function cleanGlasses(raw, slip) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return null;
+    if (!isSavedIndex(raw.frame, FRAMES.length) || !isSavedIndex(raw.lens, LENSES.length) ||
+        !isSavedIndex(raw.tint, TINTS.length) || !isSavedIndex(raw.coat, COATS.length)) return null;
+    const frame = raw.frame, lens = raw.lens, tint = raw.tint, coat = raw.coat;
+    const base = { frame, lens, tint, coat,
+      total:FRAMES[frame].price + LENSES[lens].price + TINTS[tint].price + COATS[coat].price };
+    if (!slip) return base;
+    if (typeof raw.no !== 'string' || !/^P\d{4}$/.test(raw.no) ||
+        !Number.isSafeInteger(raw.day) || raw.day < 0 || !Number.isFinite(raw.at)) return null;
+    return { no:raw.no, ...base, day:Math.min(1e7, raw.day),
+      at:Math.max(0, Math.min(1439, Math.floor(raw.at))) };
+  }
+  function cleanState(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return blank();
+    const rx = cleanRx(raw.rx);
+    const testRaw = raw.test && typeof raw.test === 'object' && !Array.isArray(raw.test)
+      ? raw.test : {};
+    let round = savedCount(testRaw.round, ROUNDS);
+    if (rx) round = Math.max(round, ROUNDS);
+    const hits = rx ? rx.hits : Math.min(round, savedCount(testRaw.hits, ROUNDS));
+    return {
+      day:savedCount(raw.day, 1e7), frame:savedIndex(raw.frame, FRAMES.length),
+      lens:savedIndex(raw.lens, LENSES.length), tint:savedIndex(raw.tint, TINTS.length),
+      coat:savedIndex(raw.coat, COATS.length), test:{ round, hits, done:round >= ROUNDS }, rx,
+      order:rx ? cleanGlasses(raw.order, true) : null, owned:cleanGlasses(raw.owned, false),
+      adjusts:savedCount(raw.adjusts), repairs:savedCount(raw.repairs), orders:savedCount(raw.orders),
+    };
+  }
   function restore() {
     try {
       const raw = JSON.parse(localStorage.getItem(KEY));
-      if (raw && typeof raw === 'object')
-        S = { ...blank(), ...raw, test: { ...blank().test, ...(raw.test || {}) } };
+      S = cleanState(raw);
     } catch (_) { /* private window, or half-written JSON. Start clean. */ }
   }
   function persist() {

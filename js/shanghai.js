@@ -8,7 +8,7 @@
 //
 // It is a holiday, and it is also two days you have to live through: 吃饭, 睡觉, 干净 and 厕所
 // go on draining while you are away, so the promenade has to feed you, wash you and put you to
-// bed. It does: a 小吃摊 for 小笼包, a 公共厕所, benches, and 和平饭店 at the top of the steps.
+// bed. It does: a 小吃摊 for 小笼包, a 公共厕所, benches, and 沪岚饭店 at the top of the steps.
 //
 // Getting home is the 机场大巴 at the far end. The ticket you bought in Beijing is a 往返 —
 // a return — so the way back is already paid for; what you have to do is turn up for it.
@@ -97,8 +97,8 @@ const Shanghai = Lazy('Shanghai', () => {
   // 元 was missing from here for as long as the photographer's board has existed, so his price
   // has been drawing as a hole in the sign. The atlas is shared and `need` skips what it already
   // has, so registering it here costs nothing even if another room asks for it too.
-  Glyphs.need('外滩上海黄浦江浦东东方明珠金茂大厦和平饭店海关钟楼民航售票处' +
-               '机场大巴轮渡公共厕所小笼包生煎照相观光中山东一路南京路回程确认元' +
+  Glyphs.need('外滩上海黄浦江浦东东方明珠金茂大厦沪岚饭店海关钟楼民航售票处' +
+               '机场大巴西区航站东区航站轮渡公共厕所小笼包生煎照相观光中山东一路南京路回程确认元' +
               '0123456789:—·');
 
   let clockH = null, clockM = null;       // the customs house clock, which keeps game time
@@ -198,7 +198,7 @@ const Shanghai = Lazy('Shanghai', () => {
       ball(cx, h + 6.40, d - 3.0, .34, .40, .34, col.goldL, { mode: 1, glow: .12 });
     }
     if (top === 'pyramid') {
-      // 和平饭店. The green copper pyramid is the whole point of the building.
+      // 沪岚饭店. The green copper pyramid is the whole point of the building.
       box(cx, h + .90, d - 2.6, w * .46, 1.20, 7.0, col.graniteL,
         { ...MAT.trim, hard: true, gloss: .22 });
       taper(cx, h + 4.60, d - 2.6, w * .40, 6.20, 6.20, col.copper, { ...MAT.copper, gloss: .28 });
@@ -588,7 +588,7 @@ const Shanghai = Lazy('Shanghai', () => {
 
     // ================================================================ 万国建筑 the banks
     // The row behind you. Five blocks, and the three with crowns on them are the three anybody
-    // can name: the customs house with its clock, the old bank with its dome, and 和平饭店.
+    // can name: the customs house with its clock, the old bank with its dome, and 沪岚饭店.
     block(-24.0, 14.0, 4, 'dome', col.granite);
     block(-8.0, 16.0, 5, 'tower', col.stoneL);
     block(6.0, 12.0, 4, null, col.stone);
@@ -630,36 +630,36 @@ const Shanghai = Lazy('Shanghai', () => {
     for (const g of glyphs(16.0, 2.80, KERB + .20, Math.PI, '南京路',
       { size: .24, gap: .08, color: col.white, mode: 1, tag: '南京路' })) litten(g, .9);
 
-    // ---- 和平饭店 the hotel, in the block with the pyramid on it. 饭店 is a hotel as often as
+    // ---- 沪岚饭店 the hotel, in the block with the pyramid on it. 饭店 is a hotel as often as
     // it is a restaurant, which is a thing worth learning the hard way at ten at night.
     const HX = 18.0;
     box(HX, 2.20, FRONT - .30, 5.20, 4.40, .70, col.graniteD,
-      { ...MAT.granite, tag: '和平饭店', hard: true, gloss: .24 });
+      { ...MAT.granite, tag: '沪岚饭店', hard: true, gloss: .24 });
     box(HX, 1.35, FRONT - .70, 3.40, 2.70, .30, col.charcoal,
-      { tag: '和平饭店', hard: true, gloss: .30 });
+      { tag: '沪岚饭店', hard: true, gloss: .30 });
     for (const s of [-1, 1])
       box(HX + s * .85, 1.35, FRONT - .78, 1.50, 2.60, .06, col.glassD,
-        { tag: '和平饭店', hard: true, mode: 1, alpha: .5, glow: .06 });
+        { tag: '沪岚饭店', hard: true, mode: 1, alpha: .5, glow: .06 });
     for (const s of [-1, 1])
       cyl(HX + s * 2.10, 1.60, FRONT - 1.90, .13, 3.20, col.chrome,
-        { tag: '和平饭店', gloss: G.metal });
+        { tag: '沪岚饭店', gloss: G.metal });
     box(HX, 3.28, FRONT - 1.90, 5.00, .18, 2.40, col.copper,
-      { ...MAT.copper, tag: '和平饭店', hard: true, gloss: .28 });
+      { ...MAT.copper, tag: '沪岚饭店', hard: true, gloss: .28 });
     box(HX, 4.70, FRONT - .34, 5.60, .90, .16, col.charcoal,
-      { tag: '和平饭店', hard: true, gloss: .26 });
-    for (const g of glyphs(HX, 4.70, FRONT - .43, Math.PI, '和平饭店',
-      { size: .34, gap: .12, color: col.goldL, mode: 1, tag: '和平饭店' })) litten(g, .95);
+      { tag: '沪岚饭店', hard: true, gloss: .26 });
+    for (const g of glyphs(HX, 4.70, FRONT - .43, Math.PI, '沪岚饭店',
+      { size: .34, gap: .12, color: col.goldL, mode: 1, tag: '沪岚饭店' })) litten(g, .95);
     litten(box(HX, 3.16, FRONT - 1.98, 4.20, .06, .10, C('#f2e0b0'),
-      { tag: '和平饭店', hard: true, mode: 1, glow: .24 }), 1.2);
+      { tag: '沪岚饭店', hard: true, mode: 1, glow: .24 }), 1.2);
     // The strip above the canopy has always glowed; now it lands on the carpet and the doorman.
     B.light(HX, 3.00, FRONT - 2.10, [1.00, 0.90, 0.70], .85, 4.20);
     // the doorman's red carpet down the steps
     flat(HX, .012, FRONT - 2.90, 3.20, 2.60, col.redD,
       { ...MAT.canvas, mode: 7, gloss: G.fabric });
     solid(HX - 2.7, HX + 2.7, FRONT - 1.05, FRONT);
-    thing('和平饭店', HX, 2.40, FRONT - 2.20, '和平饭店，一晚上多少钱？',
-      'The Peace Hotel. How much for a night?',
-      '和平 peace + 饭店 hotel — 饭店 is a hotel as often as a restaurant. 住 is to stay, ' +
+    thing('沪岚饭店', HX, 2.40, FRONT - 2.20, '沪岚饭店，一晚上多少钱？',
+      'The Hulan Hotel. How much for a night?',
+      '沪 Shanghai + 岚 mountain mist + 饭店 hotel — 饭店 is a hotel as often as a restaurant. 住 is to stay, ' +
       '一晚上 one night.',
       { focus: [HX, 10.90], reach: 2.8 });
 
@@ -692,7 +692,7 @@ const Shanghai = Lazy('Shanghai', () => {
     box(BX, 2.90, BZ, 2.40, 1.10, .12, col.blueSign, { tag: '机场大巴', hard: true, gloss: .26 });
     for (const g of glyphs(BX, 3.10, BZ - .08, Math.PI, '机场大巴',
       { size: .21, gap: .06, color: col.white, mode: 1, tag: '机场大巴' })) litten(g, .9);
-    for (const g of glyphs(BX, 2.72, BZ - .08, Math.PI, '虹桥 浦东',
+    for (const g of glyphs(BX, 2.72, BZ - .08, Math.PI, '西区航站 东区航站',
       { size: .14, gap: .04, color: C('#a8c4e0'), mode: 1, tag: '机场大巴' })) litten(g, .6);
     box(BX + 2.60, .45, BZ + .10, 2.60, .10, .48, col.wood,
       { tag: '机场大巴', mode: 6, gloss: G.wood });

@@ -111,7 +111,7 @@
     const EZ = S.NB.z1;              // -2.95  the block's shopfront plane
     const PLINTH = EZ + .21;         // -2.74  face of its brick plinth, y 0 .. 1.40
     const SHOP = S.SHOPX;            //  7.60  幸福超市
-    const RSTE = -4.12;              //        the drinks cabinet, east of 老李面馆's door
+    const RSTE = -7.15;              //        the drinks cabinet, behind 老李面馆's east window
     const HWG = -2.855;              //        五金电器's shopfront glass, front face
     const HWW = -3.05;               //        and the corner block's wall above it
     const MK = 4.60, MZ = 3.95;      //        the 夜市 gateway, in the courtyard wall line
@@ -216,7 +216,7 @@
       // shutter is a sheet of steel hung in front of a window with daylight down both edges.
       box(x, yTop + .12, face - .055, w + .18, .19, .23, col.steelD, { hard: true, gloss: .36 });
       for (const s of [-1, 1])
-        box(x + s * (w / 2 + .04), cy, face - .05, .07, h + .16, .13, col.steelD,
+        box(x + s * (w / 2 + .034), cy, face - .05, .07, h + .16, .13, col.steelD,
           { hard: true, gloss: .34 });
     }
 
@@ -225,11 +225,11 @@
     // strips: these are almost the only see-through quads the district adds, and see-through is
     // what costs on a fill-rate-bound street.
     function stripCurtain(x, y, z, w, h, n = 9) {
-      const step = w / n;
+      const step = w / n, alphaGroup = 'strip-curtain|' + x + '|' + z;
       for (let i = 0; i < n; i++) {
         const k = jit(x + i, z * 3.1);
         box(x - w / 2 + (i + .5) * step, y, z, step * 1.16, h, .015, col.frame,
-          { hard: true, mode: 1, alpha: .30, gloss: .5, ry: (k - .5) * .09 });
+          { hard: true, mode: 1, alpha: .30, gloss: .5, ry: (k - .5) * .09, alphaGroup });
       }
     }
 
@@ -267,7 +267,7 @@
       cap(x + .42, y - .34 - drop / 2, z + .11, .024, drop, .024, col.white, { gloss: .2, ...T });
       // The wash down the render under the drip. One quad, mode 1 with no glow — which in this
       // renderer is simply an unlit painted patch, so it is a stain and not a light.
-      box(x + .46, y - .34 - drop / 2, z + .012, .17, drop, .006, C('#6f6a5f'),
+      box(x + .46, y - .34 - drop / 2, z + .004, .17, drop, .006, C('#6f6a5f'),
         { hard: true, mode: 1, alpha: .55, gloss: .04 });
     }
 
@@ -431,13 +431,11 @@
     // =========================================================================================
     // 幸福超市 — x 4.50 .. 10.70, the corner shop in the ground floor of your own block
     // =========================================================================================
-    // Already here and not touched: the fascia, three display windows with stock in them, the
-    // red-and-white awning, the double glass door with its bulb and its mat, three crates of
-    // vegetables, the tray of bottled water, and the blue service door to the flat above. What
-    // that frontage had none of is anything readable from up the alley, anything that moves, and
-    // any sign that the stock arrives here rather than materialising on the shelves.
+    // The shell supplies a green recessed shopfront, three stocked display windows, a compact
+    // glass entrance hood, double doors, and the blue service door to the flat above. This layer
+    // adds the long-view blade, moving offer and a delivery load without spending sidewalk width.
 
-    // The box sign, on the pier west of the awning where it can be read the length of the hutong.
+    // The box sign, on the pier west of the entrance where it can be read the length of the hutong.
     // Clear of the flat 幸福超市 board, which starts at x 5.10: a projecting sign belongs on the
     // end of a frontage, not in the middle of one. The scholar tree outside this pier fills
     // y 2.6 .. 5.0 across x 3.4 .. 5.8 and one of the block's cast downpipes comes down at x 4.00,
@@ -449,104 +447,50 @@
     // 面馆 and 五金 so all three box signs on the alley hang on one line. The numbers this file
     // used to measure against were taken when the block's storey height was 2.86 and were 24 cm
     // stale in every one of them: the string course is at 2.89 .. 3.11, not 2.65 .. 2.87.
-    blade('z', 3.05, BLADE, EZ + .02, 1.18, BLADEH, RED, GOLD, '超市', 'shop');
+    blade('z', 3.05, BLADE, EZ + .02, 1.18, BLADEH, GREEN, CREAM, '超市', 'shop');
 
-    // 走字屏 — the LED ribbon along the front edge of the awning valance, running an offer. This
+    // 走字屏 — the LED ribbon tucked under the fascia, running an offer. This
     // is the one piece of *moving text* on the street, which is most of what a Chinese shopping
     // street does after dark, and the district had none. Six characters, six quads, and the whole
     // animation is six numbers written into the translation column of six matrices.
     {
-      const LZ = EZ + 1.34 + .085;                   // 25 mm proud of the valance's front face
-      lit.push({ p: box(SHOP, 2.60, LZ, 5.00, .13, .03, C('#3a0f0c'),
+      // The shell no longer has a full-width awning, so the ribbon sits flush under the fascia
+      // instead of floating 1.4 m out over the pedestrian view.
+      const LZ = EZ + .34;
+      lit.push({ p: box(SHOP - .15, 2.96, LZ, 4.70, .13, .03, C('#17372b'),
         { hard: true, mode: 1, gloss: .18 }), g: .30, key: 'shop' });
-      led.step = .62; led.from = SHOP - 2.50; led.span = 5.00;
-      led.props = glyphs(SHOP, 2.60, LZ + .022, 0, '今日特价鸡蛋',
-        { size: .115, gap: led.step - .115, color: C('#ff5a3c'), mode: 1, lift: .004 });
+      led.step = .58; led.from = SHOP - 2.50; led.span = 4.70;
+      led.props = glyphs(SHOP - .15, 2.96, LZ + .022, 0, '今日特价鸡蛋',
+        { size: .110, gap: led.step - .110, color: C('#e8e2bc'), mode: 1, lift: .004 });
+      // tick() rewrites both the matrix and cull centre. Keep these six glyphs out of the packed
+      // static batch or its retained centres stay at their build positions while live letters
+      // slide/wrap to different x values (and hidden letters continue to be submitted at -9999).
+      for (const p of led.props) p.dynamic = true;
     }
 
-    // 三轮车 — a flatbed trike parked across the pavement outside the shop, half unloaded. This
-    // is the district's main deliberate obstacle: you cannot walk through it and have to go round
-    // on the alley side. Measured, not judged — 3.35 m of clear run left at this x against
-    // 4.35 m with nothing there.
-    //
-    // Not another courier's trike: street.js parks one of those at (9.6, 2.65) on the courtyard
-    // side, and two identical white boxes four metres apart read as a bug rather than as a
-    // street. This is the open-bed kind that brings the fruit, crates stacked on it and the
-    // tarpaulin folded back off them.
+    // 水果 — the delivery is on a narrow shop trolley, parked tight to the glazing. The former
+    // flatbed trike and its collider pinched this point to 1.21 m and dominated every close view;
+    // this load stays entirely inside the frontage's already-unreachable strip.
     {
-      // Where it stands was found rather than chosen. Another district parks a row of bicycles
-      // along z -1.58 from x 5.4 to 7.6, so the pavement was swept at quarter-metre steps for a
-      // 1.85 x 1.32 rectangle with nothing already standing in it, and this is the first clear one
-      // east of the shop's own crates: the nearest wheel reaches z -1.245 and the trike's bed
-      // starts at -1.18, which is 6 cm and measured rather than hoped for.
-      const TX = 7.75, TZ = -0.55, RY = .21;
-      const sn = Math.sin(RY), cs = Math.cos(RY);
-      // Local frame: `fw` runs along the trike, `sd` across it. Every primitive keeps its own
-      // signature — `cyl` takes a radius and a height where the others take three extents, and
-      // routing all four through one variadic helper is how a wheel becomes a colour.
-      const wx = (fw, sd) => TX + sn * fw + cs * sd;
-      const wz = (fw, sd) => TZ + cs * fw - sn * sd;
+      const TX = 7.45, TZ = -2.48;
       const T = { tag: '水果' };
-      box(wx(-.10, 0), .44, wz(-.10, 0), 1.62, .10, .94, col.steelD,
-        { hard: true, ry: RY, gloss: .34, ...T });
-      box(wx(-.10, 0), .52, wz(-.10, 0), 1.58, .06, .90, CARD,
-        { hard: true, ry: RY, gloss: .16, ...T });
-      for (const sd of [-.47, .47])
-        box(wx(-.10, sd), .63, wz(-.10, sd), 1.58, .28, .05, TARP,
-          { hard: true, ry: RY, gloss: .26, ...T });
-      box(wx(-.90, 0), .63, wz(-.90, 0), .05, .28, .92, TARP,
-        { hard: true, ry: RY, gloss: .26, ...T });
-      for (const [fw, sd] of [[.86, 0], [-.62, -.42], [-.62, .42]]) {
-        cyl(wx(fw, sd), .27, wz(fw, sd), .27, .09, col.black,
-          { rx: Math.PI / 2, ry: RY, gloss: .24 });
-        cyl(wx(fw, sd), .27, wz(fw, sd), .13, .11, GALV,
-          { rx: Math.PI / 2, ry: RY, gloss: G.metal });
-      }
-      cap(wx(.40, 0), .58, wz(.40, 0), .030, 1.10, .030, RED,
-        { rz: Math.PI / 2 - .34, ry: RY, gloss: .34 });
-      cap(wx(.84, 0), .74, wz(.84, 0), .028, .96, .028, RED, { rz: .22, ry: RY, gloss: .34 });
-      box(wx(.28, 0), .86, wz(.28, 0), .28, .09, .20, col.black, { ry: RY, gloss: .26 });
-      cap(wx(.90, 0), 1.14, wz(.90, 0), .022, .54, .022, col.charcoal,
-        { rz: Math.PI / 2, ry: RY, gloss: .34 });
-      cap(wx(.90, 0), 1.02, wz(.90, 0), .019, .30, .019, col.steelD, { ry: RY, gloss: G.metal });
-      // the load, and the tarpaulin folded back off the end of it
-      crateStack(wx(-.30, -.22), .55, wz(-.30, -.22), 3, SKYB, ORANGE, '水果');
-      crateStack(wx(-.30, .24), .55, wz(-.30, .24), 2, GREEN, C('#c8ce62'), '水果');
-      box(wx(-.78, 0), .78, wz(-.78, 0), .34, .22, .78, TARP,
-        { hard: true, ry: RY + .1, gloss: .24 });
-      crateStack(TX + 1.04, .00, TZ + .32, 1, SKYB, ORANGE, '水果');
-      shade(TX, TZ, 2.6, 1.5, .30);
-      // Nothing can be trapped behind it: the shop's own collider reaches z -1.60 along this whole
-      // stretch, so the body's northern limit there is -1.30 and its southern limit for anything
-      // behind the trike is -1.54. There is no gap at all, which is the point — a 24 cm slot you
-      // can see into and cannot enter is a street; a 70 cm one you can walk into and not out of is
-      // the bug this project keeps finding with a flood fill.
-      //
-      // 1.21 m is the narrowest run this district leaves anywhere, and it is narrow because of
-      // what a neighbour has put on the courtyard side rather than because of the trike: the walk
-      // already stopped at z 1.65 here before this was placed. Twice what `clampMove` needs, and
-      // it is the one point on the parade where you have to look where you are going.
-      solid(TX - 1.05, TX + 1.15, -1.24, 0.14);   // 1.21 m of clear run south of it
-      thing('水果', TX, 1.35, TZ, '三轮车上装的是水果，刚送到。',
-        'The trike is loaded with fruit — it has just been delivered.',
+      box(TX, .38, TZ, 1.62, .08, .42, GALV, { hard: true, gloss: G.metal, ...T });
+      for (const x of [TX - .67, TX + .67]) for (const z of [TZ - .15, TZ + .15])
+        cyl(x, .18, z, .09, .05, col.black, { rx: Math.PI / 2, gloss: .24, ...T });
+      for (const x of [TX - .72, TX + .72])
+        cap(x, .78, TZ - .16, .022, .82, .022, GALV, { gloss: G.metal, ...T });
+      cap(TX, 1.17, TZ - .16, .022, 1.48, .022, GALV,
+        { rz: Math.PI / 2, gloss: G.metal, ...T });
+      crateStack(TX - .48, .42, TZ, 2, SKYB, ORANGE, '水果');
+      crateStack(TX + .12, .42, TZ, 2, GREEN, C('#c8ce62'), '水果');
+      crateStack(TX + .62, .42, TZ, 1, SKYB, ORANGE, '水果');
+      box(TX - .48, .92, TZ - .02, .62, .10, .34, TARP,
+        { hard: true, ry: -.08, gloss: .24, ...T });
+      shade(TX, TZ, 2.0, .8, .26);
+      thing('水果', TX, 1.35, TZ, '推车上是刚送到的水果。',
+        'The trolley holds fruit that has just been delivered.',
         '水 water + 果 fruit. A case of it is 一箱水果; 箱 is the measure word for a box.',
-        { focus: [TX, 0.62], reach: 2.4 });
-    }
-
-    // 废品 — flattened cardboard tied with string and a nylon sack of bottles, stood against the
-    // pier at the west end of the shop for the 收废品 man. At z -2.47 this is inside the strip
-    // the body can never reach, so it costs nothing in walkable width.
-    {
-      const WX = 4.40, WZ = -2.47;
-      for (let i = 0; i < 6; i++)
-        box(WX, .27 + i * .045, WZ + (jit(i, WX) - .5) * .05, .70, .045, .46, CARD,
-          { hard: true, gloss: .12, rz: .13, ry: .06 + i * .04 });
-      cap(WX + .02, .40, WZ, .010, .58, .010, C('#c9c2ae'), { rz: 1.44, gloss: .10 });
-      ball(WX + .54, .30, WZ + .06, .23, .30, .21, C('#cfd4d0'), { gloss: .22 });
-      ball(WX + .54, .56, WZ + .06, .15, .12, .14, C('#cfd4d0'), { gloss: .22 });
-      for (const [ox, oz] of [[-.06, .04], [.05, -.03], [.01, .08]])
-        cyl(WX + .54 + ox, .64, WZ + .06 + oz, .028, .10, BOTTLE, { gloss: .5 });
-      shade(WX + .25, WZ, 1.4, .8, .26);
+        { focus: [TX, -1.55], reach: 2.1 });
     }
 
     // 小广告 — the illegal small ads pasted on the plinth between the stairwell and the shop, half
@@ -586,10 +530,9 @@
     // =========================================================================================
     // 老李面馆 — x -9.50 .. -4.50
     // =========================================================================================
-    // Already here and not touched: the render front, the tiled stallriser, two windows with
-    // 牛肉面 painted on the glass, the strip curtain in the doorway with a leaf folded back, the
-    // red lantern, the menu case, two stools and a folding table on the paving, and the extract
-    // vent that is what you smell from the far end of the alley.
+    // The shell supplies the tiled sill, timber bays, warm counter, open glazed leaf, shallow
+    // canvas shade, lantern, menu case, wall bench and compact extraction. This layer adds the
+    // long-view blade and keeps cold drinks visible behind the east window.
 
     // The blade sign, on the east pier past the menu case. Vertical 面馆 in gold on red: a noodle
     // shop's sign is red, and after 超市 it is the second most common thing written on this street.
@@ -597,62 +540,47 @@
     //
     // The height does not. This sat at 3.22 — ABOVE the string course, while 超市's sat below it
     // forty metres of sightline away, which is most of why the row read as scattered. It is on the
-    // shared BLADE line now. street.js's extract vent, which is what forced it up here, has been
-    // dropped to 1.90 for the same reason.
+    // shared BLADE line now; street.js's compact extract stays on the adjacent pier below it.
     blade('z', -3.95, BLADE, EZ + .02, 1.02, BLADEH, RED, GOLD, '面馆', 'noodle');
 
-    // 饮料 — the glass-door drinks cabinet stood outside the door with the door propped open,
-    // which is what every one of these is like from May onwards. Its own carcass, a cool-lit
-    // interior, three shelves of bottles, and the door standing twenty degrees open onto the
-    // pavement. The door is why this one needs a collider: the cabinet alone would sit inside the
-    // unreachable strip, the leaf does not.
+    // 饮料 — a closed glass-door chiller behind the east dining window. It keeps the familiar
+    // cool light and readable bottle rows without standing as a separate kiosk on the pavement.
     {
-      // Out on the paving rather than against the glass, and that is measured, not stylistic:
-      // between the noodle shop's menu case (which finishes at z -2.71) and the parcels another
-      // district stacks against this plinth (z -2.63 .. -2.23) there is no metre of wall left to
-      // stand a cabinet in. So it stands where the shopkeeper would actually wheel it in summer —
-      // half a metre off the front, with its own collider, leaving 3.98 m of clear run.
-      const FZ = -1.85;
-      // 66 cm wide and at -4.12, which is the widest cabinet that fits: the noodle shop's own
-      // door leaf stands folded back onto the paving as far as x -4.55, and its render fascia ends
-      // at -4.50. Anything wider or further west stood inside one of them.
-      box(RSTE, .92, FZ, .66, 1.84, .70, C('#2c3136'), { hard: true, gloss: .34, tag: '饮料' });
-      box(RSTE, 1.86, FZ, .70, .16, .74, RED, { hard: true, gloss: .30, tag: '饮料' });
-      glyphs(RSTE, 1.86, FZ - .38, 0, '冷饮',
+      const FZ = EZ - .08;
+      box(RSTE, 1.18, FZ, .70, 2.18, .44, C('#252a2d'),
+        { hard: true, gloss: .34, tag: '饮料' });
+      box(RSTE, 2.20, FZ, .72, .18, .46, RED, { hard: true, gloss: .30, tag: '饮料' });
+      glyphs(RSTE, 2.20, FZ + .235, 0, '冷饮',
         { size: .115, gap: .03, color: CREAM, mode: 1, lift: .006, tag: '饮料' });
       // Cool, not warm: this is a fluorescent tube in a cabinet, and the noodle shop's own
       // doorway two metres away is the warm one. The contrast between them is the whole point.
-      lit.push({ p: box(RSTE, .96, FZ + .05, .56, 1.52, .04, COOL,
+      lit.push({ p: box(RSTE, 1.18, FZ - .18, .56, 1.78, .025, COOL,
         { hard: true, mode: 1, gloss: .22, tag: '饮料' }), g: .16, key: 'noodle' });
-      for (let s = 0; s < 3; s++) {
-        const sy = .38 + s * .46;
-        box(RSTE, sy, FZ - .06, .54, .022, .46, GALV, { hard: true, gloss: .40, tag: '饮料' });
+      for (let s = 0; s < 4; s++) {
+        const sy = .48 + s * .43;
+        box(RSTE, sy, FZ, .54, .022, .34, GALV, { hard: true, gloss: .40, tag: '饮料' });
         for (let i = 0; i < 5; i++) {
           const c2 = [RED, SKYB, GREEN, ORANGE, C('#8a5a9c')][(s * 2 + i) % 5];
-          cyl(RSTE - .21 + i * .105, sy + .13, FZ - .13, .040, .24, c2,
+          cyl(RSTE - .21 + i * .105, sy + .12, FZ + .08, .040, .22, c2,
             { gloss: .52, tag: '饮料' });
-          cyl(RSTE - .21 + i * .105, sy + .27, FZ - .13, .022, .04, CREAM,
+          cyl(RSTE - .21 + i * .105, sy + .25, FZ + .08, .022, .04, CREAM,
             { gloss: .40, tag: '饮料' });
         }
       }
-      // The leaf, hinged on the west edge of the front face and swung twenty degrees out. Any
-      // wider and it is across the pavement; drawn shut it is a dark rectangle and reads as a
-      // cupboard. `ry` is 70° because the box is built long in z and has to end up lying along
-      // the door's own direction, which is 20° off the wall.
-      // Hinged on the west edge of the front face and swung twenty degrees out on it, which puts
-      // the leaf's own centre almost exactly over the cabinet's centre line. `ry` is 70° and not
-      // 20° because the box is built long in z and has to finish lying along the door.
-      box(RSTE, .96, FZ + .470, .04, 1.62, .70, col.steelD,
-        { hard: true, ry: 1.222, gloss: .38, tag: '饮料' });
-      box(RSTE, .96, FZ + .482, .03, 1.44, .58, C('#9fb6c4'),
-        { hard: true, mode: 18, alpha: .34, gloss: .82, ry: 1.222, tag: '饮料' });
-      cap(RSTE + .253, .96, FZ + .562, .019, .48, .019, GALV, { gloss: G.metal });
-      shade(RSTE, FZ + .10, 1.4, 1.2, .30);
-      solid(RSTE - .36, RSTE + .36, -2.26, -1.23);
-      thing('饮料', RSTE, 1.55, FZ, '冰箱里的饮料一瓶三块。',
+      // Closed front leaf: a narrow frame, transparent pane and full-height pull.
+      box(RSTE, 1.18, FZ + .247, .52, 1.76, .018, C('#9fb6c4'),
+        { hard: true, mode: 18, alpha: .24, gloss: .82, tag: '饮料' });
+      for (const x of [RSTE - .29, RSTE + .29])
+        box(x, 1.18, FZ + .255, .05, 1.92, .035, col.steelD,
+          { hard: true, gloss: .38, tag: '饮料' });
+      for (const y of [.24, 2.12])
+        box(RSTE, y, FZ + .255, .62, .06, .035, col.steelD,
+          { hard: true, gloss: .38, tag: '饮料' });
+      cap(RSTE + .24, 1.18, FZ + .275, .018, .52, .018, GALV, { gloss: G.metal });
+      thing('饮料', RSTE, 1.55, FZ + .25, '冰箱里的饮料一瓶三块。',
         'The drinks in the fridge are three kuai a bottle.',
         '饮 to drink + 料 stuff. Anything cold and bottled: 汽水, 可乐, 冰红茶.',
-        { focus: [RSTE, -0.80], reach: 2.2 });
+        { focus: [RSTE, -1.60], reach: 2.1 });
     }
 
     // No gas bottles outside the noodle shop, and this is worth writing down because it is the
@@ -764,44 +692,55 @@
           { hard: true, gloss: .16 });
       }
 
-      // 拖把 — the one cluster that genuinely spills onto the walk: a galvanised bin of mops and
-      // brooms standing head-up, four buckets nested beside it. Measured: 4.55 m of clear run
-      // left at this x. The collider's north edge is at -2.36, which is 1 cm *inside* the
-      // building's own reach, so no body can end up in the slot between the two.
-      const MX = 17.65, MZ2 = -2.06;
-      cyl(MX, .30, MZ2, .225, .60, GALV, { gloss: .38, tag: '拖把' });
-      cyl(MX, .61, MZ2, .235, .04, col.steelD, { gloss: .40, tag: '拖把' });
-      for (let i = 0; i < 7; i++) {
-        const a = i * .897, k = jit(MX + i, MZ2);
-        cap(MX + Math.sin(a) * .11, 1.16, MZ2 + Math.cos(a) * .11, .020, 1.44, .020,
-          i % 2 ? col.trunkL : C('#b5a07a'),
-          { rz: (k - .5) * .17, ry: a, gloss: G.wood, tag: '拖把' });
-        if (i % 2)
-          cap(MX + Math.sin(a) * .13, 1.80, MZ2 + Math.cos(a) * .13, .052, .30, .052,
-            C('#b9bcb4'), { rz: (k - .5) * .17, gloss: .10, tag: '拖把' });
-        else
-          for (let j = 0; j < 3; j++)
-            cap(MX + Math.sin(a) * .13 + (j - 1) * .035, 1.82, MZ2 + Math.cos(a) * .13,
-              .026, .34, .026, j % 2 ? C('#c2ad72') : C('#ab9660'),
-              { rz: (k - .5) * .17 + (j - 1) * .12, gloss: .14, tag: '拖把' });
+      // 拖把 — a restrained wall display, heads down. Seven head-up tools filled half of either
+      // WILLOW_OUT oblique and required a pavement collider. Three distinct tools now hang from a
+      // supported rail wholly behind the legal body edge, with two nested buckets at one end.
+      const MX = 17.65, MZ2 = -2.66;
+      box(MX, 1.38, MZ2 - .10, 1.02, .055, .055, GALV,
+        { hard:true, gloss:.40, tag:'拖把' });
+      for (const ox of [-.46, .46]) {
+        cap(MX + ox, 1.28, MZ2 - .13, .018, .34, .018, GALV,
+          { rz:ox * .30, gloss:G.metal, tag:'拖把' });
+        box(MX + ox, 1.09, MZ2 - .13, .10, .08, .08, GALV,
+          { hard:true, gloss:.38, tag:'拖把' });
       }
-      for (let i = 0; i < 4; i++)
-        taper(MX + .48, .13 + i * .055, MZ2 - .04, .30, .28, .30, C('#c4452f'),
-          { rx: Math.PI, gloss: .30, tag: '拖把' });
-      cap(MX + .48, .34, MZ2 - .04, .012, .30, .012, GALV, { rz: Math.PI / 2, gloss: G.metal });
-      shade(MX + .2, MZ2, 1.6, .9, .28);
-      solid(MX - .35, MX + .70, -2.36, -1.80);
-      thing('拖把', MX, 1.30, MZ2, '五金店门口摆着拖把和水桶。',
+      for (let i = 0; i < 3; i++) {
+        const hx = MX - .30 + i * .30, lean = (i - 1) * .055;
+        cap(hx, 1.03, MZ2, .018, 1.40, .018,
+          i === 1 ? col.trunkL : C('#b5a07a'),
+          { rz:lean, gloss:G.wood, tag:'拖把' });
+        if (i === 1) {
+          for (let j = -2; j <= 2; j++)
+            cap(hx + j * .032, .30 + Math.abs(j) * .018, MZ2 + .015,
+              .022, .31 - Math.abs(j) * .025, .018,
+              j % 2 ? C('#c2ad72') : C('#ab9660'),
+              { rz:j * .12, gloss:.14, tag:'拖把' });
+        } else {
+          for (let j = -2; j <= 2; j++)
+            cap(hx + j * .035, .28 + Math.abs(j) * .012, MZ2 + .015,
+              .020, .27 - Math.abs(j) * .020, .017, C('#b9bcb4'),
+              { rz:j * .09, gloss:.10, tag:'拖把' });
+        }
+        box(hx, 1.33, MZ2 - .03, .075, .060, .070, C('#c4452f'),
+          { hard:true, gloss:.32, tag:'拖把' });
+      }
+      for (let i = 0; i < 2; i++)
+        taper(MX + .48, .12 + i * .045, MZ2 + .01, .27 - i * .035, .24,
+          .27 - i * .035, C('#c4452f'), { rx:Math.PI, gloss:.30, tag:'拖把' });
+      cap(MX + .48, .27, MZ2 + .01, .010, .26, .010, GALV,
+        { rz:Math.PI / 2, gloss:G.metal, tag:'拖把' });
+      shade(MX, MZ2, 1.25, .35, .20);
+      thing('拖把', MX, 1.20, MZ2, '五金店门口摆着拖把和水桶。',
         'There are mops and buckets out in front of the hardware shop.',
         '拖 to drag + 把 handle. The bucket beside it is 水桶, and 桶 on its own is the ' +
         'measure word for a bucketful.',
-        { focus: [MX, -1.28], reach: 2.2 });
+        { focus: [MX, -1.52], reach: 2.2 });
     }
 
     // ---- unit C, x 19.80 .. 21.36. Closing up: the shutter half down over a window still lit.
     {
       const CX = 20.58, CW = 1.56;
-      lit.push({ p: box(CX, 1.24, HWG + .045, CW - .16, 1.70, .03, COOL,
+      lit.push({ p: box(CX, 1.24, HWG + .051, CW - .16, 1.70, .03, COOL,
         { hard: true, mode: 1, gloss: .20 }), g: .22, key: 'hardw' });
       // Rice cookers and fans on a shelf — silhouettes, because that is all that survives being
       // seen through a pane at a grazing angle with a shutter half over it.
@@ -812,11 +751,10 @@
         cyl(CX - .40 + i * .40, 1.235, HWG + .02, .085, .03, col.charcoal, { gloss: .30 });
       }
       shutter(CX, CW, HWG + .075, 1.52, 2.80);
-      // No projecting sign on this unit, and that is a measurement rather than an omission. The
-      // newsstand street.js parks at x 19.6 .. 22.0 has a tiled roof at y 2.22 .. 2.55 standing
-      // 1.3 m out from this frontage, so a box sign here either runs through that roof or gets
-      // pushed up into the 五金电器 board above it. Two on the alley and four across the road are
-      // enough to read the row by; a third one buried in a kiosk is not worth the draw calls.
+      // No projecting sign on this unit, and that is a camera-clearance decision rather than an
+      // omission. The wall-integrated news rack now occupies the lower bay, while WILLOW_OUT's
+      // normal third-person orbit passes this corner in both directions. A blade here would put
+      // another hard edge into that clear cone; the shared 五金电器 band already identifies it.
 
       // The shopkeeper's stool outside it, with his tea glass and his phone left on the crate. He
       // is a roster entry rather than a prop — see the ticket in the report — but the furniture is
@@ -867,113 +805,76 @@
     // =========================================================================================
     // 夜市 — the night-market gateway at x 4.60 in the courtyard wall
     // =========================================================================================
-    // Already here and not touched: the two brick piers, the lintel and its board, the 夜市 tube
-    // sign, the green strips, the dim brick wall behind the gap so it is not a hole through to
-    // the sky, and the two pools of warm light that come up at dusk. What it never had is
-    // anything that says what is *in* there.
+    // street.js supplies the open steel portal, sign cages, receding returns and warm spill. This
+    // file adds the temporary print a trader actually ties to that frame, without filling its
+    // newly clear sightline with another rectangular sheet.
 
-    // 横幅 — a banner slung between the piers under the lintel, which is how a market announces
-    // its hours. Facing the alley, which is -z from here.
+    // 横幅 — six separate cloth drops on one wire. They still read 每晚七点开市 in a line, but
+    // air and the market lane show through the 8 cm gaps; the former 2.34 × .42 m red quad read as
+    // a closed barrier at player height.
     {
-      box(MK, 2.86, MZ + .10, 2.34, .42, .014, RED, { hard: true, mode: 7, gloss: G.fabric });
-      glyphs(MK, 2.86, MZ + .092, Math.PI, '每晚七点开市',
-        { size: .225, gap: .045, color: GOLD, mode: 1, lift: .006, tag: '夜市' });
-      for (const s of [-1, 1])
-        cap(MK + s * 1.20, 2.99, MZ + .10, .008, .30, .008, col.charcoal, { gloss: .3 });
+      const HOURS_BANNER = [...'每晚七点开市'];
+      cap(MK, 3.16, MZ - .02, .008, 2.28, .008, col.charcoal,
+        { rz: Math.PI / 2, gloss: .3, tag: '夜市' });
+      HOURS_BANNER.forEach((ch, i) => {
+        // Camera-facing screen x runs opposite world x on this south elevation.
+        const px = MK - (i - 2.5) * .34, py = 2.98 - (i % 2) * .018;
+        cap(px, 3.08, MZ - .02, .006, .16, .006, col.charcoal,
+          { gloss: .3, tag: '夜市' });
+        box(px, py, MZ - .035, .26, .28, .012, i % 2 ? REDD : RED,
+          { hard: true, mode: 7, gloss: G.fabric, rz: (i - 2.5) * .012, tag: '夜市' });
+        glyphs(px, py, MZ - .044, Math.PI, ch,
+          { size: .145, gap: .025, color: GOLD, mode: 1, lift: .006, tag: '夜市' });
+      });
     }
 
-    // 小吃 — the price board propped against the east pier. What is down there and what it costs,
+    // 小吃 — the price board propped against the east return. What is down there and what it costs,
     // which is the most useful piece of reading on this street: the names of the food, the
     // numbers and the measure of them, all in one place a learner will actually stop at.
     {
-      const BX = 6.55, BZ = MZ - .49;
-      box(BX, .78, BZ, .70, 1.44, .05, C('#2b2f33'), { hard: true, gloss: .22, tag: '小吃' });
-      box(BX, .78, BZ - .032, .62, 1.34, .02, C('#20242a'),
-        { hard: true, mode: 1, gloss: .18, tag: '小吃' });
-      glyphs(BX, 1.34, BZ - .046, Math.PI, '小吃',
-        { size: .155, gap: .035, color: GOLD, mode: 1, lift: .005, tag: '小吃' });
+      const BX = 6.48, BZ = MZ - .31;
+      // A folding steel A-frame with three removable menu slats. Seen from the side it now has
+      // two feet, rear legs and depth braces; seen head-on, the gaps stop it becoming a black slab.
+      for (const s of [-1, 1]) {
+        cap(BX + s * .27, .69, BZ - .08, .014, 1.34, .014, col.steelD,
+          { rz: -s * .055, rx: -.08, gloss: G.metal, tag: '小吃' });
+        cap(BX + s * .27, .63, BZ + .18, .014, 1.18, .014, col.steelD,
+          { rz: -s * .055, rx: .18, gloss: G.metal, tag: '小吃' });
+        box(BX + s * .27, .075, BZ + .04, .055, .05, .48, col.steelD,
+          { hard: true, gloss: G.metal, tag: '小吃' });
+        cap(BX + s * .27, .48, BZ + .04, .010, .34, .010, col.steel,
+          { rx: Math.PI / 2, gloss: G.metal, tag: '小吃' });
+      }
+      for (const y of [.31, 1.49])
+        box(BX, y, BZ - .08, .60, .045, .035, col.steelD,
+          { hard: true, gloss: G.metal, tag: '小吃' });
+      // The heading is two enamel tiles rather than a fourth, oversized menu panel.
+      for (const [i, ch] of [...'小吃'].entries()) {
+        const px = BX - (i - .5) * .23;
+        box(px, 1.34, BZ - .088, .20, .21, .018, REDD,
+          { hard: true, mode: 1, gloss: .22, tag: '小吃' });
+        glyphs(px, 1.34, BZ - .101, Math.PI, ch,
+          { size: .120, gap: .025, color: GOLD, mode: 1, lift: .005, tag: '小吃' });
+      }
       const MENU = [['羊肉串', '五块'], ['煎饼', '八块'], ['炒面', '十五']];
       MENU.forEach((row, i) => {
-        const y = 1.03 - i * .25;
-        glyphs(BX + .13, y, BZ - .046, Math.PI, row[0],
-          { size: .092, gap: .014, color: CREAM, mode: 1, lift: .005, tag: '小吃' });
-        glyphs(BX - .19, y, BZ - .046, Math.PI, row[1],
-          { size: .092, gap: .014, color: C('#ffcf6a'), mode: 1, lift: .005, tag: '小吃' });
+        const y = 1.06 - i * .255;
+        box(BX, y, BZ - .086, .56, .18, .018, i % 2 ? C('#252a2f') : C('#20242a'),
+          { hard: true, mode: 1, gloss: .18, tag: '小吃' });
+        glyphs(BX + .11, y, BZ - .101, Math.PI, row[0],
+          { size: .069, gap: .010, color: CREAM, mode: 1, lift: .005, tag: '小吃' });
+        glyphs(BX - .17, y, BZ - .101, Math.PI, row[1],
+          { size: .069, gap: .010, color: C('#ffcf6a'), mode: 1, lift: .005, tag: '小吃' });
       });
-      for (const s of [-1, 1])
-        cap(BX + s * .28, .28, BZ + .16, .014, .58, .014, col.trunkL, { rx: -.30, gloss: G.wood });
-      box(BX, .05, BZ + .22, .24, .10, .12, col.brickD, { hard: true, mode: 11, gloss: G.matte });
       thing('小吃', BX, 1.20, BZ, '夜市里的小吃又便宜又好吃。',
         'The street food in the night market is cheap and good.',
         '小 small + 吃 to eat. Not a meal — a skewer, a pancake, a bowl of something, eaten ' +
         'standing up.',
         { focus: [BX, 2.20], reach: 2.6 });
     }
-
-    // =========================================================================================
-    // 北京新天地 — the mall entrance across the road at z -9.20
-    // =========================================================================================
-    // Already here and not touched: the recessed automatic doors, the warm lobby behind the
-    // glass, the gold mullions, the fascia with the name on it, the vertical blade sign, the two
-    // planters and the shade under them. What a Chinese mall entrance also always has is a
-    // promotion running, and the only way to know that from the pavement is that it is written on
-    // the front of the building in letters two metres high.
-
-    // 条幅 — the sale banner down the face of the surround, on the south side of the entrance in
-    // the 74 cm of stone between the edge of the glazing and the edge of the block, where it
-    // covers nothing.
-    {
-      const BZ = MLZ - 3.20;
-      box(FX - 1.20, 3.55, BZ, .03, 2.45, .50, RED, { hard: true, mode: 7, gloss: G.fabric });
-      glyphs(FX - 1.22, 3.55, BZ, -Math.PI / 2, '全场五折',
-        { size: .38, gap: .09, vertical: true, color: GOLD, mode: 1, lift: .008 });
-      for (const s of [-1, 1])
-        cap(FX - 1.19, 4.82, BZ + s * .20, .010, .28, .010, col.steelD, { gloss: G.metal });
-    }
-
-    // The LED ribbon under the fascia. Static — one scrolling strip in a scene is a detail and
-    // two is a fairground — but lit, and on the mall's hours rather than on the sun's.
-    {
-      lit.push({ p: box(FX - 1.44, 4.66, MLZ, .10, .19, 5.40, C('#3a0f0c'),
-        { hard: true, mode: 1, gloss: .18 }), g: .28, key: 'mall' });
-      glyphs(FX - 1.50, 4.66, MLZ, -Math.PI / 2, '欢迎光临',
-        { size: .155, gap: .30, color: C('#ff6a44'), mode: 1, lift: .005 });
-    }
-
-    // 打折 — a 立牌, the standing poster board every mall entrance in China has out on its
-    // forecourt, and the one piece of mall signage the player can walk right up to.
-    //
-    // Everything about where and what it is came out of the tape rather than out of taste. At the
-    // mall's own doors the far pavement is now 6 cm wide, because something else on this frontage
-    // runs a collider from z -13.95 to -9.25 across the whole of it — not this district's, and it
-    // has taken the mall's own 购物中心 label out of reach with it (see the report). The nearest
-    // point a body can still stand is around z -7.4, and the 40 cm of that stretch which is clear
-    // of the mall's door planter (to -6.90), of another district's post at (40.15, -6.95) and of a
-    // third collider at -8.44 .. -7.56 is z -7.20 .. -7.56. A two-leaf A-board is 94 cm deep and
-    // does not fit in it. One panel is 30 cm and does, and one face is all that is wanted: a body
-    // on this pavement can only ever come at it from -x.
-    //
-    // `pick` takes the tag of the nearest prop the ray hits, so the line from the standing spot to
-    // the board has to be clear of everything untagged as well — which at this z it is.
-    {
-      // Tall and narrow rather than wide: 34 cm is what fits the gap, so the writing runs down it
-      // instead of across, which is the commoner of the two shapes anyway.
-      const AX = 40.20, AZ = -7.40;
-      box(AX + .03, .82, AZ, .04, 1.56, .40, REDD, { hard: true, gloss: .22, tag: '打折' });
-      box(AX, .82, AZ, .05, 1.46, .34, CREAM, { hard: true, gloss: .16, tag: '打折' });
-      glyphs(AX - .045, 1.24, AZ, -Math.PI / 2, '打折',
-        { size: .25, gap: .06, vertical: true, color: REDD, gloss: .10, lift: .006, tag: '打折' });
-      glyphs(AX - .045, .62, AZ, -Math.PI / 2, '全场五折',
-        { size: .115, gap: .022, vertical: true, color: INK, gloss: .10, lift: .006, tag: '打折' });
-      cyl(AX + .04, .05, AZ, .155, .10, col.steelD, { gloss: G.metal });
-      shade(AX, AZ, .4, .5, .26);
-      thing('打折', AX, 1.20, AZ, '这家商场全场打五折。',
-        'Everything in this mall is half price.',
-        '打 to strike + 折 a fold. 打五折 is fifty per cent OFF — the number is what you pay, ' +
-        'not what you save, which catches every learner exactly once.',
-        { focus: [38.60, AZ], reach: 2.6 });
-    }
-
+    // 北京新天地 and its promotion furniture moved into the pedestrian lane. Keeping the old
+    // banner, LED ribbon and A-board here left them floating in the gateway release pocket and
+    // recreated the pinch the lane was built to solve; the lane author now owns the whole address.
     // =========================================================================================
     // the far parade — the small units either side of the named ones
     // =========================================================================================
@@ -987,7 +888,7 @@
     // mall at -12.8 .. -5.6, the subway mouth at -6.1 .. -3.9, the office lobby at 0.4 .. 4.0 and
     // the hypermarket at 1.7 .. 11.3 — so nothing here lands on top of anything.
     for (const [sz, name, base] of [[-15.80, '烟酒', REDD], [-1.55, '理发', C('#1f4f8f')],
-                                    [12.35, '干洗', C('#2f6a5c')], [16.90, '家电', REDD]])
+                                    [12.35, '干洗', C('#2f6a5c')]])
       blade('x', 41.32, 3.72, sz, 1.16, .58, base, CREAM, name, 'parade');
 
     // The stock. All of it between x 39.9 and 40.78: the road zone stops the body at 39.5 so
@@ -995,14 +896,47 @@
     // parade's own door planters begin — their z positions come out of a seeded shuffle this file
     // cannot see, so the only safe rule is to stay west of them.
     {
-      // 便利店 — crates of fruit and a stack of cartons out on the flags.
-      crateStack(40.18, .00, -2.72, 3, SKYB, ORANGE);
-      crateStack(40.18, .00, -2.24, 2, GREEN, C('#c8ce62'));
-      crateStack(40.45, .00, -1.72, 2, C('#8a4a3c'), C('#c4452f'));
+      // 便利店 — one low, open service rack. The former three crate towers and four cartons were
+      // superposed with the civic sweeper at (40.05,-2.70); this wall-side envelope is x
+      // 40.40..40.78, z -2.04..-.86 and leaves 66 cm of visible separation in z before body radius.
+      const RX = 40.59, RZ = -1.45, RL = 1.16, RD = .34;
+      for (const ox of [-.15, .15]) for (const oz of [-.55, .55]) {
+        cap(RX + ox, .46, RZ + oz, .018, .90, .018, GALV, { gloss:G.metal });
+        box(RX + ox, .025, RZ + oz, .10, .035, .12, GALV,
+          { hard:true, gloss:G.metal });
+      }
+      // Three slatted shelves, end rails and an X brace; there is no hidden shelf slab.
+      for (const sy of [.16, .46, .76]) {
+        for (const ox of [-.12, -.04, .04, .12])
+          box(RX + ox, sy, RZ, .045, .030, RL, GALV,
+            { hard:true, gloss:.30 });
+        for (const oz of [-.55, .55])
+          box(RX, sy + .018, RZ + oz, RD, .035, .045, GALV,
+            { hard:true, gloss:G.metal });
+      }
+      for (const s of [-1, 1])
+        cap(RX - .17, .47, RZ + s * .27, .010, .72, .010, GALV,
+          { rx:s * .66, gloss:G.metal });
+      // Soft nets of fruit on the middle/top shelves and tied flattened cartons below. The stock
+      // keeps varied colour and content without rebuilding another stack of opaque containers.
+      for (let i = 0; i < 10; i++) {
+        const a = i * 2.399, tier = i < 6 ? 0 : 1;
+        ball(RX - .02 + Math.cos(a) * (.08 + tier * .035), .53 + tier * .035,
+          RZ - .24 + Math.sin(a) * (.15 - tier * .035), .050, .043, .050,
+          i % 2 ? ORANGE : C('#c8ce62'), { gloss:.24 });
+        ball(RX + .02 + Math.cos(a) * (.08 + tier * .035), .83 + tier * .035,
+          RZ + .26 + Math.sin(a) * (.15 - tier * .035), .050, .043, .050,
+          i % 3 ? C('#c4452f') : C('#8fb05a'), { gloss:.24 });
+      }
       for (let i = 0; i < 4; i++)
-        box(40.50, .16 + i * .30, -3.16, .52, .30, .44, i % 2 ? CARD : C('#b89b72'),
-          { hard: true, gloss: .14, ry: .09 + i * .06 });
-      shade(40.34, -2.40, 1.5, 1.9, .26);
+        box(RX, .20 + i * .014, RZ + .22 + i * .018, .25, .015, .34,
+          i % 2 ? CARD : C('#b89b72'), { hard:true, gloss:.12, ry:.03 + i * .025 });
+      cap(RX, .26, RZ + .25, .007, .30, .007, C('#d5cbb2'),
+        { rx:Math.PI / 2, gloss:.12 });
+      for (const oz of [-.18, .03])
+        ball(RX, .21, RZ + oz, .12, .065, .15, oz < 0 ? SKYB : GREEN,
+          { mode:7, gloss:.24 });
+      shade(RX, RZ, .52, 1.30, .24);
 
       // 干洗 — a rail of dry-cleaning in polythene, wheeled out under the canopy.
       for (const s of [-1, 1])
@@ -1033,14 +967,17 @@
     // carry it. The near side of the alley is a net of cable from end to end and the far side had
     // a clean parapet and nothing between the two — the one detail that reads at fifty metres and
     // says a building is occupied.
-    for (let seg = 0; seg < 5; seg++) {
-      const z0 = -24 + seg * 10;
+    // Stop before the hotel's reserved parcel at z=14.55. The old final two runs and 家电 blade
+    // continued through its transparent lobby even after the procedural parade itself was cut.
+    for (const [z0, z1] of [[-24, -14], [-14, -4], [-4, 6], [6, 14.20]]) {
+      const len = z1 - z0;
       for (let i = 0; i < 3; i++)
-        cap(41.10 + i * .04, 5.55 - i * .17 - (seg % 2) * .06, z0 + 5, .014, 10.2, .014,
+        cap(41.10 + i * .04, 5.55 - i * .17 - (z0 === -14 || z0 === 6 ? 1 : 0) * .06,
+          (z0 + z1) / 2, .014, len + .20, .014,
           col.black, { rx: Math.PI / 2, gloss: .2 });
       cap(41.30, 5.20, z0, .030, .90, .030, col.steelD, { gloss: .34 });
     }
-    for (const [dz, dy] of [[-16.60, 6.55], [14.20, 7.15]]) {
+    for (const [dz, dy] of [[-16.60, 6.55], [13.20, 7.15]]) {
       cap(41.26, dy, dz, .020, .52, .020, col.steelD, { rz: Math.PI / 2, gloss: .34 });
       taper(41.00, dy, dz, .74, .28, .74, col.white, { rx: -.30, ry: -1.5, gloss: .26 });
       cap(41.13, dy + .14, dz, .014, .32, .014, col.steelD, { rz: 1.2, gloss: .34 });
@@ -1062,13 +999,13 @@
                                        // jambs' own: at .66 the east strip ran into the hours
                                        // plate in the 22 cm slot beyond it.
 
-    // ---- A2. 门帘 on 超市. 面馆 has had one from the shell and 五金 unit B got one from this
-    // file (see above), so this is the third and last doorway on the alley without one. Hung
-    // 24 cm proud of the door glass at z -2.35 — the same `stripCurtain` as the other two, so
-    // the same nine strips at the same alpha .30, and the same absence of a collider: at -2.35
-    // it is 30 cm north of where the body can stand and the shop's own collider stops the walk
-    // at -1.30 in front of it anyway.
-    stripCurtain(SHOPDOOR, 1.25, EZ + .60, 1.16, 2.10);
+    // ---- A2. 风幕 on 超市. A compact commercial air curtain replaces the PVC strips and
+    // sits between the double-door head and its shallow glass hood.
+    box(SHOPDOOR, 2.63, EZ + .54, 1.12, .13, .14, C('#d6d9d4'),
+      { hard: true, gloss: .30, tag: '超市' });
+    for (let i = -4; i <= 4; i++)
+      box(SHOPDOOR + i * .105, 2.585, EZ + .62, .055, .025, .025, col.steelD,
+        { hard: true, gloss: .34, tag: '超市' });
 
     // ---- A3. 营业时间. y 1.80 and not 1.60 on the two block frontages: at 1.60 the alley's own
     // eye-height cable run crossed the plate between its header and its opening time, which a
@@ -1095,9 +1032,8 @@
     //   超市: the third display window's cavity, above the top shelf's stock (which tops out at
     //         y 2.19) and below the white head box (y 2.56). 17 cm of clear glass, and this is
     //         all of it.
-    //   面馆: its windows have no backing at all, so the 3.5 cm between the render face at -2.76
-    //         and the back of the pane at -2.725 is empty and the pair goes straight in it.
-    certPair(SHOP + .65, 2.38, EZ + .09);
+    //   面馆: the pair hangs just behind the pane and ahead of the warm interior backing.
+    certPair(SHOP + .25, 2.38, EZ + .09);
     certPair(RST - 1.55, 1.95, EZ + .205);
 
     // ---- A6. 立牌. Three, and three is the number: the header of this file records that the
@@ -1113,11 +1049,11 @@
     // three were INVISIBLE, which a live render caught and no amount of arithmetic would have:
     // street.js:1716 puts the blue service door to the flat above at x 10.04 .. 11.06, standing
     // 34 cm proud of the wall, and it covered the lot. The board is west of the door now, in the
-    // 25 cm between the shop's third crate (which ends at 7.80) and the glass door's reveal (which
-    // starts at 8.42); the two plates are on the 40 cm of white pier west of window 1.
+    // narrow bay immediately west of the glass door's reveal; the two plates are on the end pier
+    // west of window 1.
     //
-    // No `solid`, no `blocker`, and the narrowest run in the district is still the 1.21 m beside
-    // the fruit trike, untouched by any of the three.
+    // No `solid`, no `blocker`; all three stand inside existing frontage strips and the former
+    // 1.21 m fruit-trike pinch point is now open.
     aBoard(8.05, -2.55, '今日特价', ['鸡蛋 四块五', '青菜 两块'], REDD);
     aBoard(-8.35, -2.44, '本店招牌', ['牛肉面 十八', '加面 免费'], C('#8a2f2f'));
     aBoard(12.55, -2.46, '五金电器', ['水暖 电料', '开锁 换锁'], C('#1f4f8f'));
@@ -1136,8 +1072,8 @@
     hangBanner(16.20, -2.15, HWG, C('#1f4f8f'), '水电维修');
 
     // ---- D5. The bilingual under-plate, on the three names off this alley a learner most needs.
-    // Under the box sign rather than under the fascia board: the fascia is the shell's and the
-    // 超市's own awning at 3.16 would have swallowed a strip hung below it.
+    // Under the box sign rather than under the fascia board, where it stays readable from the
+    // oblique alley approach.
     subPlate(3.05, 2.09, EZ + .022, 'chāoshì', 'supermarket');
     subPlate(-3.40, 2.09, EZ + .022, 'miànguǎn', 'noodle shop');
     subPlate(17.00, 2.09, HWG + .03, 'wǔjīn diànqì', 'hardware');

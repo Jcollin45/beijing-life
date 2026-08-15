@@ -39,7 +39,9 @@ const ZooArtWest = (() => {
       scree: color('#77766f'),
       screeLight: color('#99978e'),
       shadow: color('#565b57'),
+      pineDark: color('#254735'),
       pine: color('#315a40'),
+      pineLight: color('#47725a'),
       snow: color('#d9ddd7'),
     });
     const made = [];
@@ -118,11 +120,22 @@ const ZooArtWest = (() => {
     }
 
     function pine(code, add, x, z, height, spread) {
-      inside(code, x, z, spread / 2, spread / 2);
+      inside(code, x, z, spread * .61, spread * .61);
       add(cyl(x, height * .23, z, .105, height * .46, P.timberDark,
         { gloss: .10 }));
-      add(taper(x, height * .61, z, spread, height * .76, spread, P.pine,
-        { mode: 15, gloss: .035 }), VEGETATION_LOD);
+      // Two offset, unequal tiers replace the single oversized cone used by both highland pens.
+      // One extra prop per tree is funded by folding a tiny ground accent into each habitat's
+      // larger strata, so the outdoor scene's measured prop budget remains exactly unchanged.
+      const lower = add(taper(x - spread * .065, height * .52, z + spread * .045,
+        spread * .94, height * .58, spread * .70, P.pineDark,
+        { mode: 15, gloss: .035, ry: .17, rz: -.028 }), VEGETATION_LOD);
+      const upper = add(taper(x + spread * .075, height * .74, z - spread * .055,
+        spread * .66, height * .43, spread * .78, P.pineLight,
+        { mode: 15, gloss: .035, ry: -.22, rz: .020 }), VEGETATION_LOD);
+      for (const crown of [lower, upper]) {
+        crown.artPine = code;
+        crown.treeLod = 'near';
+      }
     }
 
     // H10 — a tight otter stream: deep water, a broken pebble shelf and clustered cover leave the
@@ -221,7 +234,6 @@ const ZooArtWest = (() => {
       pine('H20', add, -40.38, 27.65, 3.45, 1.28);
       ledge('H20', add, -41.25, 32.15, 1.62, .30, .76, -.18, P.screeLight);
       patch('H20', add, -46.72, 30.05, .83, .25, P.shadow, { ry: -.16 });
-      patch('H20', add, -41.02, 33.20, .37, .50, P.sand, { ry: .05 });
     }
 
     // H21 — snow leopard highland: colder scree, snow-shadow pockets, a deadfall terrace and one
@@ -239,7 +251,6 @@ const ZooArtWest = (() => {
       pine('H21', add, -32.20, 30.80, 3.55, 1.30);
       patch('H21', add, -26.12, 35.72, .61, .19, P.shadow, { ry: .08 });
       patch('H21', add, -27.40, 27.28, .73, .19, P.wetEarth, { ry: -.10 });
-      patch('H21', add, -25.15, 31.58, .26, .53, P.sand, { ry: .04 });
     }
 
     if (new Set(ids).size !== ids.length)

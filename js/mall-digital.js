@@ -199,10 +199,40 @@ const MallDigital = (() => {
   const photos = [];      // { url, w, h, when } — memory only
   let day = 0, mins = 12 * 60;
 
+  const savedCount = (value, max = 1e6) => Number.isSafeInteger(value) && value >= 0
+    ? Math.min(max, value) : 0;
+  const savedIndex = (value, length) => Number.isSafeInteger(value) && value >= 0 && value < length
+    ? value : 0;
+  const savedExpiry = value => value && typeof value === 'object' && !Array.isArray(value) &&
+    Number.isSafeInteger(value.until) && value.until >= 0
+    ? { until:Math.min(1e7, value.until) } : null;
+  function cleanState(raw) {
+    if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return blank();
+    const demoRaw = raw.demo && typeof raw.demo === 'object' && !Array.isArray(raw.demo)
+      ? raw.demo : {};
+    const round = savedCount(demoRaw.round, ROUNDS);
+    const repairRaw = raw.repair;
+    const repair = repairRaw && typeof repairRaw === 'object' && !Array.isArray(repairRaw) &&
+      typeof repairRaw.no === 'string' && /^W-\d{4}$/.test(repairRaw.no) &&
+      Number.isSafeInteger(repairRaw.day) && repairRaw.day >= 0 &&
+      Number.isFinite(repairRaw.at)
+      ? { no:repairRaw.no, what:repairRaw.what === '换屏幕' ? repairRaw.what : '换屏幕',
+          day:Math.min(1e7, repairRaw.day), at:Math.max(0, Math.min(1439, Math.floor(repairRaw.at))) }
+      : null;
+    return {
+      day:savedCount(raw.day, 1e7), cmp:savedIndex(raw.cmp, SPECS.length),
+      sample:savedIndex(raw.sample, SAMPLES.length), plays:savedCount(raw.plays),
+      shots:savedCount(raw.shots), transfers:savedCount(raw.transfers),
+      collected:savedCount(raw.collected),
+      demo:{ round, hits:Math.min(round, savedCount(demoRaw.hits, ROUNDS)),
+        best:Number.isSafeInteger(demoRaw.best) ? Math.max(-1, Math.min(ROUNDS, demoRaw.best)) : -1 },
+      warranty:savedExpiry(raw.warranty), plan:savedExpiry(raw.plan), repair,
+    };
+  }
   function restore() {
     try {
       const raw = JSON.parse(localStorage.getItem(KEY));
-      if (raw && typeof raw === 'object') S = { ...blank(), ...raw, demo: { ...blank().demo, ...(raw.demo || {}) } };
+      S = cleanState(raw);
     } catch (_) { /* private window, or somebody's half-written JSON. Start clean. */ }
   }
   function persist() {
@@ -1547,7 +1577,15 @@ MallFit['电子产品'] = (A) => {
       else card('拍不了。', 'The camera could not read the frame.');
       return;
     }
-    if (key === 'warranty') { MD.registerWarranty(); card('保修一年。', 'Twelve months of cover, from today.'); return; }
+    if (key === 'warranty') {
+      if (!MD.boughtHere()) {
+        card('买了以后保修一年。', 'The one-year warranty starts when you buy something here.');
+        return;
+      }
+      MD.registerWarranty();
+      card('保修一年。', 'Twelve months of cover, from today.');
+      return;
+    }
     if (key === 'plan') {
       MD.buyPlan();
       card('延保两年。', `Extended plan — two years. ¥${MD.PLAN_PRICE}.`);

@@ -299,10 +299,18 @@ const Weather = (() => {
   // ambient rises, because the whole sky is now a lamp; and everything desaturates toward the grey
   // the cloud deck is. A correctly graded overcast noon is very nearly as bright as a clear one
   // and has no shadows in it at all, which is exactly what it looks like out of a window.
+  const CLOUD_SUN = [0.86, 0.88, 0.93];
+  const deckHi = [0, 0, 0], deckLo = [0, 0, 0];
+  const FLASH_COL = [0.72, 0.82, 1.00];
+  const FLASH_SKY = [0.18, 0.23, 0.34], FLASH_GND = [0.055, 0.070, 0.11];
+  const FLASH_SKY_A = [0.20, 0.25, 0.38], FLASH_SKY_B = [0.12, 0.16, 0.28];
+  const FLASH_BG = [0.035, 0.045, 0.075], FLASH_GLASS = [0.12, 0.17, 0.29];
+  const mixTo = (arr, to, k) => {
+    for (let i = 0; i < 3; i++) arr[i] += (to[i] - arr[i]) * k;
+  };
   function grade(light) {
     const c = cur.cloud, s = cur.season;
     if (c < 0.002 && s.hazeAmt < 0.002 && cur.hazeAmt < 0.002) return light;
-    const mixTo = (arr, to, k) => { for (let i = 0; i < 3; i++) arr[i] += (to[i] - arr[i]) * k; };
     // The season's own cast over the sky, before any weather. This is what makes a clear February
     // afternoon read as February.
     if (s.hazeAmt > 0.002) {
@@ -318,7 +326,7 @@ const Weather = (() => {
       // flattens faces into cutouts.
       light.amt *= 1 - 0.66 * c;
       // and what is left of it loses its colour, because it is no longer coming from a disc.
-      mixTo(light.col, [0.86, 0.88, 0.93], c * 0.75);
+      mixTo(light.col, CLOUD_SUN, c * 0.75);
       // The sky as a lamp, which goes the other way: the ambient rises under cloud.
       const lift = 1 + 0.55 * c;
       for (let i = 0; i < 3; i++) { light.sky[i] *= lift; light.gnd[i] *= 1 + 0.30 * c; }
@@ -326,15 +334,19 @@ const Weather = (() => {
       // cloudy city night is not black — it is the streetlights on the underside of the cloud, and
       // it is brighter than a clear one.
       const day = Math.max(0, Math.min(1, (light.amt - 0.10) / 1.2));
-      const deckHi = [0.62 * day + 0.10, 0.63 * day + 0.10, 0.66 * day + 0.12];
-      const deckLo = [0.55 * day + 0.13, 0.54 * day + 0.11, 0.56 * day + 0.11];
+      deckHi[0] = 0.62 * day + 0.10; deckHi[1] = 0.63 * day + 0.10;
+      deckHi[2] = 0.66 * day + 0.12;
+      deckLo[0] = 0.55 * day + 0.13; deckLo[1] = 0.54 * day + 0.11;
+      deckLo[2] = 0.56 * day + 0.11;
       mixTo(light.skyA, deckHi, c * 0.80);
       mixTo(light.skyB, deckLo, c * 0.78);
       // Interiors get the same treatment through their own background colour, or a rainy afternoon
       // in the flat is as bright as a clear one and the window is the only thing that knows.
-      for (let i = 0; i < 3; i++) light.bg[i] *= 1 - 0.22 * c;
-      light.glass = light.glass.map((v, i) => v + (deckLo[i] * 0.8 - v) * c * 0.6);
-      light.city = light.city.map(v => v * (1 - 0.30 * c));
+      for (let i = 0; i < 3; i++) {
+        light.bg[i] *= 1 - 0.22 * c;
+        light.glass[i] += (deckLo[i] * 0.8 - light.glass[i]) * c * 0.6;
+        light.city[i] *= 1 - 0.30 * c;
+      }
     }
     // The kind's own cast, and it goes *after* the cloud grading rather than with the season's,
     // which is the whole reason 沙尘暴 works. The cloud block mixes the dome toward a flat grey by
@@ -351,24 +363,24 @@ const Weather = (() => {
         // lit face into the same orange.
         light.col[i] *= 1 + (h[i] - 1) * k * 0.65;
         light.sky[i] *= m;
+        light.glass[i] *= m;
+        light.city[i] *= 1 - 0.34 * k;   // the far city is the first thing it takes
       }
-      light.glass = light.glass.map((v, i) => v * (1 + (h[i] - 1) * k));
-      light.city = light.city.map(v => v * (1 - 0.34 * k));   // the far city is the first thing it takes
     }
     // 雷电 lightning is a cool, nearly shadowless flash. It lifts the dome and ambient more than
     // the sun term, which keeps it from looking like somebody briefly turned noon back on.
     if (cur.flash > 0.001) {
       const f = cur.flash;
-      mixTo(light.col, [0.72, 0.82, 1.00], f * 0.78);
+      mixTo(light.col, FLASH_COL, f * 0.78);
       light.amt += f * 0.72;
       for (let i = 0; i < 3; i++) {
-        light.sky[i] += [0.18, 0.23, 0.34][i] * f;
-        light.gnd[i] += [0.055, 0.070, 0.11][i] * f;
-        light.skyA[i] += [0.20, 0.25, 0.38][i] * f;
-        light.skyB[i] += [0.12, 0.16, 0.28][i] * f;
-        light.bg[i] += [0.035, 0.045, 0.075][i] * f;
+        light.sky[i] += FLASH_SKY[i] * f;
+        light.gnd[i] += FLASH_GND[i] * f;
+        light.skyA[i] += FLASH_SKY_A[i] * f;
+        light.skyB[i] += FLASH_SKY_B[i] * f;
+        light.bg[i] += FLASH_BG[i] * f;
+        light.glass[i] += FLASH_GLASS[i] * f;
       }
-      light.glass = light.glass.map((v, i) => v + [0.12, 0.17, 0.29][i] * f);
     }
     // Recomputed, because half the game asks `day` how bright it is and the amount has changed
     // under it. Same expression as game.js's own.
@@ -426,7 +438,24 @@ const Weather = (() => {
   const RAIN_N = 220, SNOW_N = 190, DUST_N = 72, LEAF_N = 56;
   const BOX = 15, BOX_Y = 11;
   const rain = [], snow = [], splash = [], dust = [], leaves = [];
-  let pooled = false;
+  // Persistent draw state. During active weather this path submits hundreds of particles per
+  // frame; allocating a typed matrix and an options literal for each one turns a steady shower
+  // into periodic garbage-collector hitches. Particle records already own their matrices, and the
+  // renderer consumes options synchronously, so these buffers/records are safe to refill in place.
+  const RAIN_COL = [0.72, 0.78, 0.86], SNOW_COL = [0.94, 0.96, 1.00];
+  const DUST_COL = [0.62, 0.50, 0.34];
+  const LEAF_COLS = [[0.54,0.22,0.07], [0.72,0.38,0.08],
+                     [0.86,0.57,0.12], [0.42,0.30,0.08]];
+  const rainOpt = { mode:1, alpha:0, gloss:0 };
+  const splashOpt = { mode:1, alpha:0, gloss:0 };
+  const snowOpt = { mode:1, alpha:0, gloss:0 };
+  const dustOpt = { mode:1, alpha:0, glow:0, gloss:0 };
+  const leafOpt = { mode:15, alpha:0, gloss:.05, round:.006 };
+  const rainYaw = new Float32Array(16), rainTilt = new Float32Array(16);
+  const rainBasis = new Float32Array(16);
+  const splashFlat = new Float32Array(16), splashScale = new Float32Array(16);
+  const splashLocal = new Float32Array(16), splashTrans = new Float32Array(16);
+  let pooled = false, splashFlatReady = false;
   function pool() {
     if (pooled) return;
     pooled = true;
@@ -460,6 +489,19 @@ const Weather = (() => {
   // Advance the particles. Kept apart from the drawing so a frame that decides not to draw them —
   // indoors, or on a machine that cannot afford them — does not leave a wall of stationary rain
   // hanging in the air for the moment you step back outside.
+  function fallParticle(p, fall, step, wx, wz, eye) {
+    p.y -= fall * step;
+    p.x += wx * step; p.z += wz * step;
+    // Wrapped against the camera rather than against the world, so the box follows you and a
+    // drop never has to be told where the ground is.
+    if (p.y < eye[1] - 3.2) {
+      p.y += BOX_Y;
+      p.x = eye[0] + (Math.random() - 0.5) * BOX * 2;
+      p.z = eye[2] + (Math.random() - 0.5) * BOX * 2;
+    }
+    if (p.x - eye[0] > BOX) p.x -= BOX * 2; else if (p.x - eye[0] < -BOX) p.x += BOX * 2;
+    if (p.z - eye[2] > BOX) p.z -= BOX * 2; else if (p.z - eye[2] < -BOX) p.z += BOX * 2;
+  }
   function move(dt, eye) {
     pool();
     const rainOn = cur.wet > 0.001 && (KINDS[cur.kind].wet || 0) > 0 && cur.amt > 0.02;
@@ -469,18 +511,8 @@ const Weather = (() => {
     if (!rainOn && !snowOn && !dustOn && !leafOn) return;
     const wx = Math.sin(cur.dir) * cur.wind * 9, wz = Math.cos(cur.dir) * cur.wind * 9;
     const step = Math.min(dt, 0.1);          // a tab returning from the background must not teleport
-    const wrap = (p, fall) => {
-      p.y -= fall * step;
-      p.x += wx * step; p.z += wz * step;
-      // Wrapped against the camera rather than against the world, so the box follows you and a
-      // drop never has to be told where the ground is.
-      if (p.y < eye[1] - 3.2) { p.y += BOX_Y; p.x = eye[0] + (Math.random() - 0.5) * BOX * 2;
-                                p.z = eye[2] + (Math.random() - 0.5) * BOX * 2; }
-      if (p.x - eye[0] > BOX) p.x -= BOX * 2; else if (p.x - eye[0] < -BOX) p.x += BOX * 2;
-      if (p.z - eye[2] > BOX) p.z -= BOX * 2; else if (p.z - eye[2] < -BOX) p.z += BOX * 2;
-    };
-    if (rainOn) for (const p of rain) wrap(p, 15 * p.k);
-    if (snowOn) for (const p of snow) wrap(p, 0.85 * p.k);
+    if (rainOn) for (const p of rain) fallParticle(p, 15 * p.k, step, wx, wz, eye);
+    if (snowOn) for (const p of snow) fallParticle(p, 0.85 * p.k, step, wx, wz, eye);
     if (dustOn) for (const p of dust) {
       p.x += wx * step * (0.38 + p.k * 0.34);
       p.z += wz * step * (0.38 + p.k * 0.34);
@@ -527,16 +559,19 @@ const Weather = (() => {
     const leafAmt = cur.season.key === 'autumn' ? Math.min(1, cur.wind * 1.7) : 0;
     if (wet < 0.02 && lay < 0.02 && dustAmt < 0.03 && leafAmt < 0.03) return;
     const quality = typeof Perf !== 'undefined' && Perf.q && Perf.q.rain !== undefined ? Perf.q.rain : 1;
-    if (wet >= 0.02) {
+    const collect = typeof R.beginCollect === 'function' && typeof R.endCollect === 'function';
+    if (collect) R.beginCollect();
+    try {
+      if (wet >= 0.02) {
       // One orientation for the whole shower, built once and stamped into every drop: the streak
       // lies along the drop's own velocity, so as the wind gets up the rain leans with it.
       const yaw = Math.atan2(Math.sin(cur.dir), Math.cos(cur.dir));
       const tilt = Math.atan2(cur.wind * 9, 15);
-      const basis = M.mul(M.rotY(yaw), M.rotX(-tilt));
+      M.rotY(yaw, rainYaw); M.rotX(-tilt, rainTilt);
+      M.mul(rainYaw, rainTilt, rainBasis);
       // Rain is not white and it is not blue. It is a lens: what you see is the sky, smeared. So it
       // takes the horizon colour, which makes it orange at sunset and nearly invisible at noon
       // against a bright sky, both of which are correct.
-      const col = [0.72, 0.78, 0.86];
       const n = Math.round(RAIN_N * quality);
       for (let i = 0; i < n; i++) {
         const p = rain[i], m = p.m;
@@ -547,61 +582,73 @@ const Weather = (() => {
         // hundred and twenty invisible objects a frame.
         const len = 0.70 + 0.95 * p.k, w = 0.020 + 0.016 * p.k;
         for (let c = 0; c < 3; c++) {
-          m[c * 4]     = basis[c * 4]     * (c === 1 ? len : w);
-          m[c * 4 + 1] = basis[c * 4 + 1] * (c === 1 ? len : w);
-          m[c * 4 + 2] = basis[c * 4 + 2] * (c === 1 ? len : w);
+          m[c * 4]     = rainBasis[c * 4]     * (c === 1 ? len : w);
+          m[c * 4 + 1] = rainBasis[c * 4 + 1] * (c === 1 ? len : w);
+          m[c * 4 + 2] = rainBasis[c * 4 + 2] * (c === 1 ? len : w);
           m[c * 4 + 3] = 0;
         }
         m[12] = p.x; m[13] = p.y; m[14] = p.z; m[15] = 1;
-        R.draw('box', m, col, { mode:1, alpha: 0.44 * wet * p.k, gloss:0 });
+        rainOpt.alpha = 0.44 * wet * p.k;
+        R.draw('box', m, RAIN_COL, rainOpt);
       }
       // and where they land. The ring mesh stands up in the XY plane, so it is laid flat before it
       // is sized — a splash is a circle on the ground, not a hoop standing in the road.
-      const flat = M.rotX(Math.PI / 2);
+      if (!splashFlatReady) {
+        M.rotX(Math.PI / 2, splashFlat);
+        splashFlatReady = true;
+      }
       for (const s of splash) {
         const d = 0.10 + s.t * 0.40;
-        s.m.set(M.mul(M.trans(s.x, ground + 0.014, s.z), M.mul(flat, M.scale(d, d, d * 0.5))));
-        R.draw('ring', s.m, col, { mode:1, alpha: 0.26 * wet * (1 - s.t) * (1 - s.t), gloss:0 });
+        M.scale(d, d, d * 0.5, splashScale);
+        M.mul(splashFlat, splashScale, splashLocal);
+        M.trans(s.x, ground + 0.014, s.z, splashTrans);
+        M.mul(splashTrans, splashLocal, s.m);
+        splashOpt.alpha = 0.26 * wet * (1 - s.t) * (1 - s.t);
+        R.draw('ring', s.m, RAIN_COL, splashOpt);
       }
-    }
-    if (lay >= 0.02) {
+      }
+      if (lay >= 0.02) {
       // Snow is the opposite problem to rain: it is legible, it is slow, and there is no streak to
       // it. What sells it is that no two flakes are on the same path — hence the per-flake phase on
       // a wide, slow drift, which is a flake turning over as it comes down.
-      const col = [0.94, 0.96, 1.00];
       const t = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
       const n = Math.round(SNOW_N * quality);
+      snowOpt.alpha = 0.86 * lay;
       for (let i = 0; i < n; i++) {
         const p = snow[i];
         const s = 0.020 + 0.026 * p.k;
-        p.m.set(M.trs(p.x + Math.sin(t * 0.8 + p.ph) * 0.45,
-                      p.y,
-                      p.z + Math.cos(t * 0.65 + p.ph * 1.3) * 0.45,
-                      t * 0.9 + p.ph, s, s, s));
-        R.draw('box', p.m, col, { mode:1, alpha: 0.86 * lay, gloss:0 });
+        M.trs(p.x + Math.sin(t * 0.8 + p.ph) * 0.45,
+              p.y,
+              p.z + Math.cos(t * 0.65 + p.ph * 1.3) * 0.45,
+              t * 0.9 + p.ph, s, s, s, p.m);
+        R.draw('box', p.m, SNOW_COL, snowOpt);
       }
-    }
-    if (dustAmt >= 0.03) {
+      }
+      if (dustAmt >= 0.03) {
       const t = (typeof performance !== 'undefined' ? performance.now() : Date.now()) / 1000;
       const yaw = cur.dir + Math.PI / 2;
       const n = Math.round(DUST_N * quality);
       for (let i = 0; i < n; i++) {
         const p = dust[i], len = 0.055 + p.k * 0.10;
-        p.m.set(M.trs(p.x, p.y + Math.sin(t * 1.3 + p.ph) * .05, p.z,
-                      yaw, len, .006 + p.k * .004, .012));
-        R.draw('box', p.m, [0.62, 0.50, 0.34],
-          { mode:1, alpha:(0.07 + p.k * 0.045) * dustAmt, glow:0, gloss:0 });
+        M.trs(p.x, p.y + Math.sin(t * 1.3 + p.ph) * .05, p.z,
+              yaw, len, .006 + p.k * .004, .012, p.m);
+        dustOpt.alpha = (0.07 + p.k * 0.045) * dustAmt;
+        R.draw('box', p.m, DUST_COL, dustOpt);
       }
-    }
-    if (leafAmt >= 0.03) {
+      }
+      if (leafAmt >= 0.03) {
       const n = Math.round(LEAF_N * quality);
-      const cols = [[0.54,0.22,0.07],[0.72,0.38,0.08],[0.86,0.57,0.12],[0.42,0.30,0.08]];
+      leafOpt.alpha = 0.72 * leafAmt;
       for (let i = 0; i < n; i++) {
         const p = leaves[i], s = 0.035 + p.k * 0.020;
-        p.m.set(M.trs(p.x, p.y, p.z, p.ph, s * 1.8, s * 0.12, s));
-        R.draw('softBox', p.m, cols[Math.min(cols.length - 1, Math.floor(p.tone * cols.length))],
-          { mode:15, alpha:0.72 * leafAmt, gloss:.05, round:.006 });
+        M.trs(p.x, p.y, p.z, p.ph, s * 1.8, s * 0.12, s, p.m);
+        R.draw('softBox', p.m,
+          LEAF_COLS[Math.min(LEAF_COLS.length - 1, Math.floor(p.tone * LEAF_COLS.length))],
+          leafOpt);
       }
+      }
+    } finally {
+      if (collect) R.endCollect();
     }
   }
 

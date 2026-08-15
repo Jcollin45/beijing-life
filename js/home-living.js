@@ -205,7 +205,7 @@ FlatFit['living'] = A => {
   // rug under it and the ceiling disc above it. Everything that belongs to that arrangement is
   // written off X, so the group moves as one thing.
   //
-  // 0.95 -> 0.70 on 2026-08-08, and this is a MEASURED move rather than a nudge. .flatcheck.js
+  // 0.95 -> 0.70 -> 0.50, and these are MEASURED moves rather than nudges. .flatcheck.js
   // reported 餐厅 and 厨房 as "0 cells at 0.2 m clearance" and the 客厅|餐厅 doorway was blamed
   // twice and widened twice, 0.80 to 0.90 to 1.00, without moving the number by a single cell.
   // The doorway was never the fault. Walking the lattice cell by cell across it showed the opening
@@ -219,13 +219,13 @@ FlatFit['living'] = A => {
   // 0.09 m of legal centre. A body cannot walk down the side of the sofa to the dining room, and
   // everything past the dining room is the kitchen.
   //
-  // Moving the whole group 0.25 west puts the sofa's inflated edge at 2.06 against the wall's 2.40
-  // — 0.34 m of legal centre, over the 0.30 the 0.10 lattice needs to resolve at any phase. The
-  // group is what moves, not the sofa: shifting the sofa alone would leave it off the television's
-  // axis, which is the one alignment a living room has. Checked west as well — the tea table lands
-  // at 0.02..1.38 and the console at -0.28..1.68, both well clear of the 走道 opening at
-  // x -1.85 .. -0.85 and of the 主卧 wall inflated to -2.30.
-  const X  =  0.70;
+  // The first move proved connectivity but left only 0.34 m of legal body-centre run beside the
+  // sofa. Moving the whole group another 0.20 m west puts the sofa's inflated east edge at 1.86
+  // against the partition's legal edge at 2.40: 0.54 m, so this reads and moves like a route rather
+  // than a slot. The group moves together so sofa, tea table and television keep their one useful
+  // alignment. West remains clear: the console's inflated edge stops at -0.78, 0.17 m east of the
+  // hall opening's legal end at -0.95.
+  const X  =  0.50;
   const NW = -1.60;     // the window wall
   const SW =  1.60;     // the television wall, backing onto the 走道
   const WW = -1.40;     // the west wall
@@ -777,7 +777,9 @@ FlatFit['living'] = A => {
   //
   // Facing the television, with the city behind it. Their old sofa, moved up fourteen floors —
   // the same jade it always was, because this is the same flat given a building around it.
-  const SX = X, SZ = -.58;
+  // A balanced 32 cm visual gap to the tea table. At -.58 the sofa front and table edge were only
+  // 18 cm apart, which looked packed even though players correctly walk round rather than between.
+  const SX = X, SZ = -.68;
   for (const s of [-1, 1]) for (const z of [SZ - .32, SZ + .34])
     taper(SX + s * .84, .10, z, .09, .20, .09, col.woodD, { mode: 6, ...MAT_TRIM });
   box(SX, .18, SZ - .04, 2.00, .30, .94, col.jade, { tag: '沙发', mode: 7, ...MAT_FABRIC });
@@ -831,7 +833,9 @@ FlatFit['living'] = A => {
   // says so: 茶盘 tray, 紫砂壶 pot, four small cups and a 公道杯 to pour them level, a caddy of
   // leaves, a cloth to wipe the tray, a dish of 瓜子 to be pressed on whoever sits down. Nobody
   // sets this out for themselves. It is set out because somebody might come.
-  const TX = X, TTZ = .42, TOP = .4275;
+  // Twenty-eight centimetres from the table's north edge to the console: the two gaps now read as
+  // one deliberate seating group rather than three objects pushed together.
+  const TX = X, TTZ = .46, TOP = .4275;
   box(TX, TOP - .0375, TTZ, 1.30, .075, .68, col.woodL, { tag: '茶几', mode: 6, ...MAT_WOOD });
   box(TX, .175, TTZ, 1.08, .045, .50, col.woodM, { tag: '茶几', mode: 6, ...MAT_WOOD });
   for (const [ox, oz] of [[-.55, -.26], [.55, -.26], [-.55, .26], [.55, .26]])

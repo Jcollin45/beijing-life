@@ -1230,13 +1230,17 @@ MallFit['服装店'] = A => {
   // A getter is called every frame the walk-up prompt is drawn. Each of these depends on one
   // integer — which slot of the clock we are in — so the object literal is built when that integer
   // changes and handed back unchanged the rest of the time. Twelve fields and four template
-  // strings per frame per label is not a stall, but it is also not necessary, and the memo is four
-  // lines. Nothing downstream mutates a def, so returning the same object twice is safe.
-  const memo = (per, build) => {
-    let at = -1, def = null;
+  // strings per frame per label is not a stall, but it is also not necessary. Nothing downstream
+  // mutates a def, so returning the same object twice is safe; a variant can invalidate it when
+  // something other than the clock changes the offer.
+  const memo = (per, build, variant) => {
+    let at = -1, variantAt, def = null;
     return () => {
       const i = Math.floor(clock.mins / per);
-      if (i !== at) { at = i; def = build(i); }
+      const nextVariant = variant ? variant() : 0;
+      if (i !== at || nextVariant !== variantAt) {
+        at = i; variantAt = nextVariant; def = build(i, nextVariant);
+      }
       return def;
     };
   };
@@ -1269,6 +1273,25 @@ MallFit['服装店'] = A => {
     { hz: '冬装', py: 'dōngzhuāng', en: 'the winter range', of: '大衣', ofEn: 'coats' },
   ];
   const ALTER_PRICE = 20, TRY_MINS = 14;
+  // `__game.state()` deliberately returns copies of several large collections, so polling it from
+  // a walk-up getter every frame would turn one price check into needless allocation. Ownership can
+  // only change after an action advances the clock; refresh once per game minute, which still makes
+  // the included alteration appear immediately after the five-minute till action completes.
+  let ownedAt = -1, owned = [];
+  const ownsMallItem = hz => {
+    const at = Math.floor(clock.mins);
+    if (at !== ownedAt) {
+      ownedAt = at; owned = [];
+      const g = window.__game;
+      if (g && typeof g.state === 'function') {
+        try {
+          const bought = g.state().bought;
+          if (Array.isArray(bought)) owned = bought;
+        } catch (_) {}
+      }
+    }
+    return owned.includes(hz);
+  };
 
   // Trying something on. This is the one verb in the building that changes what the player looks
   // like, and it does it with `wear`, which js/game.js:11837 already implements as
@@ -1318,7 +1341,7 @@ MallFit['服装店'] = A => {
       done: `清仓${off}折，${last.of}都在这一排。`,
       doneTr: `Clearance at ${off} tenths — ${(10 - off) * 10} percent off. The ${last.ofEn} are all on this run.` };
   }));
-  verb('换', memo(23, i => {
+  verb('换', memo(23, (i, trousersIncluded) => {
     // Three things happen at this rail and they are genuinely different transactions: giving it
     // back for money, swapping it for another size, and having a hem taken up. Which one is on
     // offer rotates, because it is one counter and one member of staff.
@@ -1335,12 +1358,17 @@ MallFit['服装店'] = A => {
         en: 'return it for a refund — seven days, unworn, tag on',
         done: '七天之内可以退，钱原路退回。',
         doneTr: 'Seven days to return it; the money goes back the way it came. 退 is to return, 换 to exchange.' };
-    return { zh: '改裤长', py: 'gǎi kùcháng', secs: 3.0, mins: 10, pay: -ALTER_PRICE, gain: { mood: 7 },
+    return { zh: '改裤长', py: 'gǎi kùcháng', secs: 3.0, mins: 10,
+      ...(trousersIncluded ? {} : { pay: -ALTER_PRICE }), gain: { mood: 7 },
       pose: { type: 'reach' },
-      en: `have the hem taken up — ¥${ALTER_PRICE}, two days, or free with the trousers`,
-      done: `裤长给您改一下，二十块，后天来取。`,
-      doneTr: `The hem taken up — twenty kuai, ready the day after tomorrow.` };
-  }));
+      en: trousersIncluded
+        ? 'have your trousers hemmed — included with the purchase, ready in two days'
+        : `have the hem taken up — ¥${ALTER_PRICE}, ready in two days`,
+      done: trousersIncluded ? '这条裤子免费改，后天来取。' : '裤长给您改一下，二十块，后天来取。',
+      doneTr: trousersIncluded
+        ? 'The alteration is included with your trousers — ready the day after tomorrow.'
+        : 'The hem taken up — twenty kuai, ready the day after tomorrow.' };
+  }, () => ownsMallItem('裤子')));
 };
 
 // The shell builds the window before it invokes the fit above, so the two figures use the shared

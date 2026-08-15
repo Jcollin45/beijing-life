@@ -1,4 +1,4 @@
-// 北京银行 — a municipal bank branch.
+// 青禾银行 — a fictional municipal bank branch.
 //
 // A single-floor street-level banking hall. Chinese city-centre branches are wide, low, and busy:
 // a door off the street, a queue-ticket machine, a row of counters behind glass, a lobby of ATMs,
@@ -19,15 +19,11 @@
 const BankFit = {};
 const BankCast = [];
 
-// Street-side return point. The bank frontage sits on the east-side civic block and faces west
-// onto the main road. street-bank.js builds the other half of this threshold.
-// The branch occupies the narrow free bay between the mall and office entrances on the far
-// business-district pavement.  This is the clear standing point in front of its street doors.
-// Moved with the branch. The frontage is on the corner block's east elevation now (x 23.42,
-// facing +x onto the west footway), not on the far parade at 40.55 facing -x, so the point you
-// step back out onto is 1.20 m east of the door and faces east — away from the shop, the way you
-// leave a building. See js/street-bank.js.
-const BANK_OUT = { x: 24.62, z: -9.25, yaw: Math.PI / 2 };
+// Street-side return point. It sits in the open turning pocket just north of the branch, beyond
+// the bus shelter's z=-8.20 end and still 2.73 m inside the west kerb. Facing west keeps the
+// outdoor camera east of the player, looking back at the complete address instead of forcing the
+// eye into the corner block's camera blocker. street-bank.js owns the matching threshold.
+const BANK_OUT = { x: 24.77, z: -7.45, yaw: -Math.PI / 2 };
 
 const BankCore = (() => {
   // The public hall needs enough volume for a real ceiling datum, integrated wayfinding and a
@@ -84,7 +80,7 @@ const BankCore = (() => {
         let at=x0;
         for(const [a,b] of cuts) {
           if(a>at+.02) {
-            box((at+a)/2,H/2,z,a-at,H,.18,color,{hard:true,mat:'plaster',matScale:2.4,matAmt:.12,...tagOpt(tag)});
+            box((at+a)/2,H/2,z,a-at,H,.18,color,{hard:true,mat:'plaster',matScale:.62,matAmt:.12,...tagOpt(tag)});
             solid(at,a,z-.09,z+.09);
           }
           // lintel over the opening, so the ceiling is not slit open along every door
@@ -92,7 +88,7 @@ const BankCore = (() => {
           at=Math.max(at,b);
         }
         if(at<x1-.02) {
-          box((at+x1)/2,H/2,z,x1-at,H,.18,color,{hard:true,mat:'plaster',matScale:2.4,matAmt:.12,...tagOpt(tag)});
+          box((at+x1)/2,H/2,z,x1-at,H,.18,color,{hard:true,mat:'plaster',matScale:.62,matAmt:.12,...tagOpt(tag)});
           solid(at,x1,z-.09,z+.09);
         }
       }
@@ -103,14 +99,14 @@ const BankCore = (() => {
         let at=z0;
         for(const [a,b] of cuts) {
           if(a>at+.02) {
-            box(x,H/2,(at+a)/2,.18,H,a-at,color,{hard:true,mat:'plaster',matScale:2.4,matAmt:.12,...tagOpt(tag)});
+            box(x,H/2,(at+a)/2,.18,H,a-at,color,{hard:true,mat:'plaster',matScale:.62,matAmt:.12,...tagOpt(tag)});
             solid(x-.09,x+.09,at,a);
           }
           box(x,2.40,(a+b)/2,.18,H-2.40,b-a,color,{hard:true,...tagOpt(tag)});
           at=Math.max(at,b);
         }
         if(at<z1-.02) {
-          box(x,H/2,(at+z1)/2,.18,H,z1-at,color,{hard:true,mat:'plaster',matScale:2.4,matAmt:.12,...tagOpt(tag)});
+          box(x,H/2,(at+z1)/2,.18,H,z1-at,color,{hard:true,mat:'plaster',matScale:.62,matAmt:.12,...tagOpt(tag)});
           solid(x-.09,x+.09,at,z1);
         }
       }
@@ -320,7 +316,7 @@ const BankCore = (() => {
       // Honed stone, a charcoal arrival runner and bronze hairlines establish one uninterrupted
       // route from the street to the teller wall.  These large planes replace the former sea of
       // equally pale tile with a clear foreground, middle ground and destination.
-      flat(0,.002,0,RX*2,RZ*2,col.floor,{mat:'tile',matScale:.86,matAmt:.20,gloss:.10});
+      flat(0,.002,0,RX*2,RZ*2,col.floor,{mat:'concrete',matScale:1.60,matAmt:.20,gloss:.10});
       flat(0,.009,-4.15,3.90,12.70,col.navyD,{mode:7,gloss:.045,tag:'营业厅'});
       for(const s of [-1,1]) flat(s*1.98,.013,-4.15,.055,12.58,col.brass,
         {gloss:.62,tag:'营业厅'});
@@ -328,7 +324,7 @@ const BankCore = (() => {
       for(const [px,pz,pw,pd] of [
         [0,RZ-.38,RX*2,.52],[0,-RZ+.38,RX*2,.52],
         [-RX+.38,0,.52,RZ*2],[RX-.38,0,.52,RZ*2],
-      ]) flat(px,.007,pz,pw,pd,col.floorD,{mat:'tile',matScale:.86,matAmt:.18,gloss:.09});
+      ]) flat(px,.007,pz,pw,pd,col.floorD,{mat:'concrete',matScale:1.60,matAmt:.18,gloss:.09});
       for(const [px,pz,pw,pd] of [[0,RZ-.69,RX*2-1.3,.035],[0,-RZ+.69,RX*2-1.3,.035]])
         flat(px,.012,pz,pw,pd,col.brass,{gloss:.56});
 
@@ -380,7 +376,7 @@ const BankCore = (() => {
       for(let x=-8;x<=8;x+=4)
         flat(x,.010,-RZ-5.55,1.55,.09,col.gold,{mode:1,alpha:.72,tag:'门外'});
       box(0,3.45,-RZ-8.10,22.0,6.90,.34,col.wallD,
-        {hard:true,mat:'plaster',matScale:2.7,matAmt:.12,tag:'门外'});
+        {hard:true,mat:'plaster',matScale:.62,matAmt:.12,tag:'门外'});
       box(0,.52,-RZ-7.90,22.2,1.04,.20,col.navyD,{hard:true,tag:'门外'});
       for(let x=-8.0;x<=8.0;x+=3.2) {
         box(x,2.04,-RZ-7.90,2.35,2.46,.08,col.black,{hard:true,gloss:.24,tag:'门外'});
@@ -415,8 +411,8 @@ const BankCore = (() => {
 
       // ---------------------------------------------------------------- the bank's own signage
       // The red municipal-bank name over the entrance, inside, so it reads from the door as well.
-      sign(0,3.16,-RZ+.10,0,'北京银行',col.red,'门',.255);
-      glyphs(0,2.84,-RZ+.06,0,'BEIJING BANK · 营业厅',
+      sign(0,3.16,-RZ+.10,0,'青禾银行',col.red,'门',.255);
+      glyphs(0,2.84,-RZ+.06,0,'QINGHE BANK · 营业厅',
         {size:.090,gap:.026,color:col.goldL,mode:1,glow:.02,lift:.012,tag:'门'});
 
       // ---------------------------------------------------------------- the street door
@@ -483,7 +479,7 @@ const BankCore = (() => {
         setNight,tick,OUT:BANK_OUT,
         RX,RZ,H,
         WIN:{x:0,y:1.60,z:-RZ+.06,hw:3.4,hh:1.30},
-        label:'银行', labelK:'北京银行 · 营业厅',
+        label:'银行', labelK:'青禾银行 · 营业厅',
         indoor:true,cutaway:true,winOn:false,near:.06,far:60,expose:.98,
         // The previous .74 AO strength projected a blurred second copy of this 32x22 m room over
         // its own walls.  Comparable large interiors use roughly .06; subtle contact depth is all

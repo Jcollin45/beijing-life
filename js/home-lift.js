@@ -243,7 +243,8 @@ FlatFit['lift'] = A => {
   const MBT = .035, MPT = .025;
   const MB = IZ1 - .045 + MBT / 2;               // bezel: 5.185..5.220
   const MP = IZ1 - .070 + MPT / 2;               // pane:  5.160..5.185
-  const mx0 = 1.814, mx1 = 3.186, my0 = FY + 1.042, my1 = FY + 1.918, bar = .024;
+  const mx0 = IX0 + .144, mx1 = IX1 - .144;
+  const my0 = FY + 1.042, my1 = FY + 1.918, bar = .024;
   for (const [bx, by, bw, bh] of [
     [CX, my1 + bar / 2, mx1 - mx0 + bar * 2, bar], [CX, my0 - bar / 2, mx1 - mx0 + bar * 2, bar],
     [mx0 - bar / 2, (my0 + my1) / 2, bar, my1 - my0], [mx1 + bar / 2, (my0 + my1) / 2, bar, my1 - my0]])
@@ -276,11 +277,11 @@ FlatFit['lift'] = A => {
 
   // =============================================================== 操作盘, the button panel
   //
-  // On the -x wall beside the door, where your hand is when you walk in. Faces reading out from
-  // the wall at 1.670: plate 1.710, ring 1.723, button 1.739. Everything on this wall is written
+  // On the -x wall beside the door, where your hand is when you walk in. Faces read out from
+  // IX0 by 40, 53 and 69 mm for the plate, button and glyph. Everything on this wall is written
   // at yaw +π/2, which turns a glyph's local +z into world +x — it faces into the car.
   const YAW = Math.PI / 2;
-  R(box(1.690, FY + 1.190, PZ, .040, 1.020, PD, K.steelL,
+  R(box(IX0 + .020, FY + 1.190, PZ, .040, 1.020, PD, K.steelL,
     { hard: true, gloss: .52, tag, ...MET }));
 
   // ---- the car's own floor indicator, at the top of the panel.
@@ -289,7 +290,7 @@ FlatFit['lift'] = A => {
   // could appear is built once at its slot and switched by alpha. Fifteen quads buys an indicator
   // that really counts, which is the whole difference between a ride and a fade — and until the
   // shell calls `HomeLift.tick` it simply sits at 1, which is where the car is.
-  R(box(1.712, FY + 1.570, PZ, .020, .120, .180, K.screen,
+  R(box(IX0 + .042, FY + 1.570, PZ, .020, .120, .180, K.screen,
     { hard: true, mode: 1, glow: .06, gloss: .30, tag }));
   const DIG = { tens: null, ones: [], up: null, dn: null };
   {
@@ -298,7 +299,7 @@ FlatFit['lift'] = A => {
     const y = FY + 1.570, sz = .052, step = sz * .80;
     // local +x maps to world -z at this yaw, so a slot to the reader's left is the larger z
     const put = (off, ch, gl) => {
-      const g = Rg(glyph(1.722, y, PZ - off, YAW, ch,
+      const g = Rg(glyph(IX0 + .052, y, PZ - off, YAW, ch,
         { size: sz, color: K.amber, mode: 1, glow: gl, alpha: 0, tag, lift: .006 }));
       return (g && g[0]) || null;
     };
@@ -309,8 +310,8 @@ FlatFit['lift'] = A => {
   }
 
   // ---- the floor buttons. Odd numbers up the left column, even up the right, lowest at the
-  // bottom — the layout of every panel in the country. Only NUM's two are wired to a stop; the
-  // rest are the floors you do not live on, and are dark.
+  // bottom — the layout of every panel in the country. All twelve map to the real tower decks;
+  // availability is decided by the floor picker rather than falsified with decorative buttons.
   // Printed number → deck index, for all twelve. This was `{ 1: 0, 2: 2 }` and the other ten
   // buttons were dark decoration; TOWER.md's whole premise is that the panel should tell the
   // truth, so every button now maps to a real deck. Whether that deck has anything built on it is
@@ -323,10 +324,10 @@ FlatFit['lift'] = A => {
   // one a millimetre in front of it to tint 开 and 铃, which is two identical quads on the same
   // spot and stripes. The colour is an argument instead.
   function press(bz, by, ch, o = {}) {
-    R(box(1.716, by, bz, .014, .046, .046, K.steelD, { hard: true, gloss: .50, tag }));
-    const face = R(ball(1.729, by, bz, .010, .017, .017, o.face || K.steelL,
+    R(box(IX0 + .046, by, bz, .014, .046, .046, K.steelD, { hard: true, gloss: .50, tag }));
+    const face = R(ball(IX0 + .059, by, bz, .010, .017, .017, o.face || K.steelL,
       { hard: true, mode: 1, glow: o.glow === undefined ? .03 : o.glow, gloss: .55, tag }));
-    Rg(glyph(1.739, by, bz, YAW, ch,
+    Rg(glyph(IX0 + .069, by, bz, YAW, ch,
       { size: .022, gap: .004, color: o.ink || K.steelD, mode: 1,
         glow: o.inkGlow === undefined ? .05 : o.inkGlow, tag, lift: .005 }));
     return face;
@@ -353,11 +354,13 @@ FlatFit['lift'] = A => {
   // =============================================================== the two notices
   //
   // 电梯使用标志 is the most Chinese object in the car: small, dull, and legally required. Both
-  // cards hang above the dado on the panel wall, faces at 1.688 with the writing 4 mm off that.
+  // cards hang above the dado on the panel wall, their faces 18 mm in from IX0 with the writing
+  // clear of that plane.
   function card(z, yc, h, d, lines) {
-    R(box(1.679, yc, z, .018, h, d, K.paper, { hard: true, mode: 1, glow: .04, gloss: .12, tag }));
+    R(box(IX0 + .009, yc, z, .018, h, d, K.paper,
+      { hard: true, mode: 1, glow: .04, gloss: .12, tag }));
     for (const [dy, s, txt, cc] of lines)
-      Rg(glyph(1.688, yc + dy, z, YAW, txt,
+      Rg(glyph(IX0 + .018, yc + dy, z, YAW, txt,
         { size: s, gap: s * .12, color: cc, mode: 1, glow: .02, tag, lift: .004 }));
   }
   // The card widths are set by the longest line, not the other way round: a glyph run is
@@ -385,11 +388,11 @@ FlatFit['lift'] = A => {
   // =============================================================== 广告框
   //
   // Every residential lift in China has a lit frame on the wall, and what is in it is always the
-  // same three trades. On the +x wall, above the rail. Faces: wall 3.330 → frame 3.294 → poster
-  // 3.282, and the poster is inset 50 mm inside the frame all round, so the frame reads as one.
-  R(box(3.312, FY + 1.450, CZ + .020, .036, .900, .700, K.steelD,
+  // same three trades. On the +x wall, above the rail. Frame, poster and writing step inward from
+  // IX1 by 18, 35 and 48 mm, and the poster is inset 50 mm inside the frame all round.
+  R(box(IX1 - .018, FY + 1.450, CZ + .020, .036, .900, .700, K.steelD,
     { hard: true, gloss: .44, tag, ...MET }));
-  R(box(3.295, FY + 1.450, CZ + .020, .026, .800, .600, K.paper,
+  R(box(IX1 - .035, FY + 1.450, CZ + .020, .026, .800, .600, K.paper,
     { hard: true, mode: 1, glow: .09, gloss: .16, tag }));
   // Three posters, not one. This is the cheapest recurring readable-Chinese surface in the game:
   // the player stands still in front of it for up to 7.5 seconds every time they go home, and it
@@ -419,30 +422,33 @@ FlatFit['lift'] = A => {
     [-.070, .040, '中介费一个月', K.gold],
     [-.180, .032, '物业审核 张贴一个月', K.steelD]]];
   for (const [dy, s, txt, cc] of POSTERS[new Date().getDay() % POSTERS.length])
-    Rg(glyph(3.282, FY + 1.450 + dy, CZ + .020, -Math.PI / 2, txt,
+    Rg(glyph(IX1 - .048, FY + 1.450 + dy, CZ + .020, -Math.PI / 2, txt,
       { size: s, gap: s * .12, color: cc, mode: 1, glow: .04, tag, lift: .004 }));
 
   // =============================================================== the ceiling
   //
-  // The shell's own lit panel covers x 1.86..3.14, z 4.26..5.04 and its underside is at 2.125, so
-  // both of these sit in the bare border outside it and hang from 2.140. The grille was 30 mm over
-  // that edge in x and is now 10 mm clear of it.
-  R(box(1.760, CY - .008, CZ, .180, .016, .440, K.steelD, { hard: true, gloss: .50, tag, ...MET }));
+  // Both fittings sit in the bare border outside the shell's central lit panel. Their X positions
+  // follow the inside faces, so changing the car width cannot leave a grille in the lamp or a
+  // camera outside the ceiling.
+  const GRILLE_X = IX0 + .090;
+  R(box(GRILLE_X, CY - .008, CZ, .180, .016, .440, K.steelD,
+    { hard: true, gloss: .50, tag, ...MET }));
   for (let i = 0; i < 4; i++)
-    R(box(1.760, CY - .028, CZ - .150 + i * .10, .150, .012, .016, K.screen,
+    R(box(GRILLE_X, CY - .028, CZ - .150 + i * .10, .150, .012, .016, K.screen,
       { hard: true, gloss: .30, tag }));
   // 应急灯 — the emergency light, on the ceiling border beside the grille. Two props: the battery
-  // box and its lens. It burns at almost nothing now and is the fitting a 停电 has to bring up
-  // when the shell's own car light goes out; the pattern to copy on the driving side is `emLight`
-  // in js/home-lobby.js, placed beside the 安全出口 there. Item 90 (js/disrupt.js) is what wires
-  // it, and that file is nobody's in this wave — recorded in .reports/data-rows-queue.md.
-  R(box(3.010, CY - .008, CZ - .330, .200, .020, .110, K.steelD,
+  // box and its lens. It burns at a low standby glow and rides with the car; the matching landing
+  // fitting is `emLight` in js/home-lobby.js beside the 安全出口.
+  const EMERGENCY_X = IX1 - .320;
+  R(box(EMERGENCY_X, CY - .008, CZ - .330, .200, .020, .110, K.steelD,
     { hard: true, gloss: .46, tag, ...MET }));
-  R(box(3.010, CY - .026, CZ - .330, .150, .014, .070, C('#dff0e0'),
+  R(box(EMERGENCY_X, CY - .026, CZ - .330, .150, .014, .070, C('#dff0e0'),
     { hard: true, mode: 1, glow: .03, tag }));
   // The camera, in the front corner over your shoulder, where every one of them is.
-  R(box(3.210, CY - .010, RZ1 + .075, .110, .020, .110, K.steelD, { hard: true, gloss: .48, tag }));
-  R(ball(3.210, CY - .052, RZ1 + .075, .046, .038, .046, K.screen,
+  const CAMERA_X = IX1 - .120;
+  R(box(CAMERA_X, CY - .010, RZ1 + .075, .110, .020, .110, K.steelD,
+    { hard: true, gloss: .48, tag }));
+  R(ball(CAMERA_X, CY - .052, RZ1 + .075, .046, .038, .046, K.screen,
     { hard: true, mode: 1, gloss: .70, tag }));
 
   // =============================================================== the things you can name
@@ -452,13 +458,13 @@ FlatFit['lift'] = A => {
   // names goes upstairs is a word about nothing.
   const carThings = [];
   for (const [hz, tx, ty, tz, fx, fz, sen, tr, note] of [
-    ['按钮', 1.78, FY + 1.19, PZ, 2.30, PZ + .16,
+    ['按钮', IX0 + .11, FY + 1.19, PZ, CX - .20, PZ + .16,
      '请按二楼。', 'Press the second floor, please.', '按 to press + 钮 button.'],
-    ['扶手', 1.74, FY + .90, CZ + .23, 2.30, CZ + .18,
+    ['扶手', IX0 + .07, FY + .90, CZ + .23, CX - .20, CZ + .18,
      '站稳，扶好扶手。', 'Stand steady, hold the handrail.', '扶 to support + 手 hand.'],
-    ['镜子', 2.60, FY + 1.47, IZ1 - .08, 2.55, CZ + .03,
+    ['镜子', CX + .10, FY + 1.47, IZ1 - .08, CX + .05, CZ + .03,
      '电梯里的镜子照得很清楚。', 'The mirror in the lift is very clear.', '镜 mirror + 子, the noun ending.'],
-    ['广告', 3.28, FY + 1.45, CZ + .02, 2.72, CZ + .02,
+    ['广告', IX1 - .05, FY + 1.45, CZ + .02, CX + .22, CZ + .02,
      '电梯里贴着家政广告。', 'There is a housekeeping advert in the lift.', '广 wide + 告 to tell.'],
   ]) {
     const t = th(hz, tx, ty, tz, sen, tr, note, { focus: [fx, fz], reach: 1.3 });

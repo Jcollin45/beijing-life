@@ -48,6 +48,23 @@ const Build = (() => {
     const hi = make(baseY + (stub - lap + height) / 2, height - stub + lap, { partition: true });
     return [lo, hi];
   }
+  // Custom glazed walls are assembled from panes, mullions, privacy bands and door hardware
+  // whose vertical bounds do not necessarily start at the floor.  `partitionSplit` is the right
+  // helper for a full wall, but applying it to (say) a pane beginning at y=.37 would leave a
+  // second .40 m-high strip whose top is .77 m.  This companion cuts every such element against
+  // the SAME world-space kerb datum.  Anything wholly below the datum remains; anything wholly
+  // above it is flagged whole; a crossing element is split without changing its outer bounds.
+  // As with `partitionSplit`, only rendering changes: callers keep their original solid/blocker.
+  function partitionElement(y, height, make, lap = 0.002) {
+    const base = y - height / 2, top = y + height / 2;
+    if (top <= PARTITION_STUB) return [make(y, height, {}), null];
+    if (base >= PARTITION_STUB) return [null, make(y, height, { partition: true })];
+    const loHeight = PARTITION_STUB - base;
+    const lo = make(base + loHeight / 2, loHeight, {});
+    const hiBase = PARTITION_STUB - lap, hiHeight = top - hiBase;
+    const hi = make(hiBase + hiHeight / 2, hiHeight, { partition: true });
+    return [lo, hi];
+  }
   const texId = t => {
     const objectKey=(typeof t==='object'&&t!==null)||typeof t==='function';
     const ids=objectKey?texIds:pendingTexIds;
@@ -123,6 +140,7 @@ const Build = (() => {
       for (const p of parts) {
         const q = {
           mesh: p.mesh, m, color: o.color || p.color, tex: p.tex, nrm: p.nrm,
+          indexCount: p.indexCount,
           mode: o.mode === undefined ? 0 : o.mode,
           gloss: o.gloss === undefined ? 0.18 : o.gloss,
           alpha: o.alpha === undefined ? 1 : o.alpha,
@@ -135,6 +153,16 @@ const Build = (() => {
         props.push(q); out.push(q);
       }
       return out;
+    }
+    // Prefer a downloaded model without making the authored scene depend on it. The fallback is
+    // required so a missing/failed asset can never silently remove the prop; it is evaluated once
+    // only after model() has reported that no usable parts are available.
+    function modelOr(name, x, y, z, s = 1, o = {}, fallback) {
+      if (typeof fallback !== 'function')
+        throw new TypeError('Build.modelOr: fallback must be a function');
+      const parts = model(name, x, y, z, s, o);
+      if (parts !== null) return parts;
+      return fallback();
     }
     function taper(x, y, z, sx, sy, sz, color, o = {}) {
       return shape('taper', x, y, z, sx, sy, sz, color, o);
@@ -196,7 +224,10 @@ const Build = (() => {
           glyphProportional: proportional, glyphAdvance: advance,
           mode: o.mode === undefined ? 0 : o.mode,
           gloss: o.gloss === undefined ? 0.10 : o.gloss,
-          glow: o.glow || 0, alpha: o.alpha === undefined ? 1 : o.alpha, tag: o.tag };
+          glow: o.glow || 0, alpha: o.alpha === undefined ? 1 : o.alpha, tag: o.tag,
+          // Visual-camera fixture ownership is independent of semantic/pick tags. Preserve the
+          // explicit group on generated character quads just as shape()/box() preserve options.
+          ...(o.cameraGroup === undefined ? {} : { cameraGroup:o.cameraGroup }) };
         props.push(p); out.push(p);
       });
       return out;
@@ -224,7 +255,15 @@ const Build = (() => {
     // surface is single-sided and the eye would otherwise see straight through the block.
     // `top` matters — a single-storey courtyard should not stop a camera that has already
     // risen above its roof, or looking across a narrow alley would be impossible.
-    function blocker(x0, x1, z0, z1, top = 400) { blockers.push({ x0, x1, z0, z1, top }); }
+    function blocker(x0, x1, z0, z1, top = 400, opts) {
+      // Options are semantic only: a caller must never be able to replace the measured bounds by
+      // smuggling x0/x1/z0/z1/top through metadata.
+      const b = { x0, x1, z0, z1, top };
+      if (opts && opts.orbit === true) b.orbit = true;
+      if (opts && Number.isFinite(opts.pad) && opts.pad >= 0) b.pad = opts.pad;
+      blockers.push(b);
+      return b;
+    }
     // Sits above any rug layers below, so furniture shadows fall *onto* a rug instead of
     // being swallowed by it.
     function shade(x, z, w, d, a = .42, y = .020) {
@@ -262,14 +301,30 @@ const Build = (() => {
     function hitBox(o, d, b) {
       const c = Math.cos(b.ry), s = Math.sin(b.ry);
       const px = o[0] - b.x, py = o[1] - b.y, pz = o[2] - b.z;
-      const L = [c * px - s * pz, py, s * px + c * pz];
-      const D = [c * d[0] - s * d[2], d[1], s * d[0] + c * d[2]];
-      const h = [b.sx / 2, b.sy / 2, b.sz / 2];
+      const lx = c * px - s * pz, ly = py, lz = s * px + c * pz;
+      const dx = c * d[0] - s * d[2], dy = d[1], dz = s * d[0] + c * d[2];
+      const hx = b.sx / 2, hy = b.sy / 2, hz = b.sz / 2;
+      // pick() tests every interactive prop under the pointer. Keep the slab arithmetic scalar:
+      // the former L/D/h literals allocated three short-lived arrays per candidate per frame,
+      // turning a crowded room's ordinary camera pan into a steady garbage stream.
       let t0 = -Infinity, t1 = Infinity;
-      for (let i = 0; i < 3; i++) {
-        if (Math.abs(D[i]) < 1e-9) { if (Math.abs(L[i]) > h[i]) return null; continue; }
-        let ta = (-h[i] - L[i]) / D[i], tb = (h[i] - L[i]) / D[i];
-        if (ta > tb) { const q = ta; ta = tb; tb = q; }
+      let ta, tb, q;
+      if (Math.abs(dx) < 1e-9) { if (Math.abs(lx) > hx) return null; }
+      else {
+        ta = (-hx - lx) / dx; tb = (hx - lx) / dx;
+        if (ta > tb) { q = ta; ta = tb; tb = q; }
+        if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t1 < t0) return null;
+      }
+      if (Math.abs(dy) < 1e-9) { if (Math.abs(ly) > hy) return null; }
+      else {
+        ta = (-hy - ly) / dy; tb = (hy - ly) / dy;
+        if (ta > tb) { q = ta; ta = tb; tb = q; }
+        if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t1 < t0) return null;
+      }
+      if (Math.abs(dz) < 1e-9) { if (Math.abs(lz) > hz) return null; }
+      else {
+        ta = (-hz - lz) / dz; tb = (hz - lz) / dz;
+        if (ta > tb) { q = ta; ta = tb; tb = q; }
         if (ta > t0) t0 = ta; if (tb < t1) t1 = tb; if (t1 < t0) return null;
       }
       if (t1 < 0) return null;
@@ -283,8 +338,23 @@ const Build = (() => {
       const tagBox = {};
       // Props whose material could not be resolved yet — see the note further down.
       const pendingMat = [];
-      for (const p of props) {
+      for (let propIndex = 0; propIndex < props.length; propIndex++) {
+        const p = props[propIndex];
         const m = p.m;
+        // Scene sealing is the last boundary before these numbers are packed for culling and sent
+        // to WebGL. A NaN here does not produce a useful exception later: comparisons against it
+        // all return false, it survives culling, and a non-finite uniform can erase or explode a
+        // whole frame. Fail once, at the authored prop, with an index/tag that identifies it.
+        const label = p.tag ? ` tagged ${p.tag}` : ` #${propIndex}`;
+        if (!m || m.length < 16)
+          throw new Error(`Build.finish: prop${label} has no complete transform`);
+        for (let k = 0; k < 16; k++)
+          if (!Number.isFinite(m[k]))
+            throw new Error(`Build.finish: prop${label} has non-finite transform[${k}]`);
+        const color = p.color;
+        if (!color || color.length < 3 || !Number.isFinite(color[0]) ||
+            !Number.isFinite(color[1]) || !Number.isFinite(color[2]))
+          throw new Error(`Build.finish: prop${label} has non-finite color`);
         // `mat:'tile'` names a tiling surface texture (js/assets.js); the renderer wants the GL
         // texture itself. It is resolved here rather than in `shape` because `flat`, `wall` and
         // `rug` push straight into `props` without going through it — which is how the first
@@ -321,6 +391,9 @@ const Build = (() => {
           p.cx = m[12]; p.cy = m[13]; p.cz = m[14];
           p.r = .5 * Math.hypot(sx, sy, sz);
         }
+        if (!Number.isFinite(p.cx) || !Number.isFinite(p.cy) || !Number.isFinite(p.cz) ||
+            !Number.isFinite(p.r) || p.r < 0)
+          throw new Error(`Build.finish: prop${label} has non-finite cull bounds`);
         // The cutaway hides a fixture as a whole, so a cabinet can never disappear while its
         // own door panel and the soap on top of it keep rendering.
         //
@@ -476,17 +549,133 @@ const Build = (() => {
           let changed = false;
           for (const q of b.dynamicCulls) {
             const p = q.p, o = q.o;
-            if (c[o] === p.cx && c[o + 1] === p.cy && c[o + 2] === p.cz) continue;
-            c[o] = p.cx; c[o + 1] = p.cy; c[o + 2] = p.cz;
+            if (!Number.isFinite(p.cx) || !Number.isFinite(p.cy) || !Number.isFinite(p.cz))
+              throw new Error('Build.syncDynamicCulls: moving prop has a non-finite centre');
+            // The packed table is Float32. Compare against the value it can actually retain:
+            // comparing a rounded slot with an unrounded JS number made a mover that stopped at
+            // (say) x=.35 increment its epoch forever, rebuilding the visibility cache every frame.
+            const x = Math.fround(p.cx), y = Math.fround(p.cy), z = Math.fround(p.cz);
+            if (c[o] === x && c[o + 1] === y && c[o + 2] === z) continue;
+            c[o] = x; c[o + 1] = y; c[o + 2] = z;
             changed = true;
           }
           if (changed) b.dynamicCullEpoch++;
         }
       }
 
+      // `clampMove` normally receives a finite body position and radius from the controller. Its
+      // recovery boundary is deliberately stricter: a diagnostic, restored save, or poisoned NPC
+      // must never turn one bad coordinate into a permanently non-finite body. These helpers are
+      // created once with the scene, not on the display-rate clear-space path.
+      const DEFAULT_CLAMP_RADIUS = .30;
+      const clampRecovery = {
+        calls: 0, lastSweepCells: 0, lastSolidVisits: 0,
+        maxSweepCells: 0, maxSolidVisits: 0,
+      };
+      function clampPointInZone(x, z, r) {
+        if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+        for (const q of zones) {
+          const x0 = q.x0 + r, x1 = q.x1 - r, z0 = q.z0 + r, z1 = q.z1 - r;
+          if (x0 <= x1 && z0 <= z1 && x >= x0 && x <= x1 && z >= z0 && z <= z1)
+            return true;
+        }
+        return false;
+      }
+      function clampPointBlocked(x, z, r) {
+        for (const s of solids)
+          if (!s.open && x > s.x0 - r && x < s.x1 + r &&
+              z > s.z0 - r && z < s.z1 + r) return true;
+        return false;
+      }
+      function clearClampPoint(x, z, r) {
+        return clampPointInZone(x, z, r) && !clampPointBlocked(x, z, r);
+      }
+      function clampLowerBound(values, target) {
+        let lo = 0, hi = values.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1;
+          if (values[mid] < target) lo = mid + 1;
+          else hi = mid;
+        }
+        return lo;
+      }
+      function clampUpperBound(values, target) {
+        let lo = 0, hi = values.length;
+        while (lo < hi) {
+          const mid = (lo + hi) >>> 1;
+          if (values[mid] <= target) lo = mid + 1;
+          else hi = mid;
+        }
+        return lo;
+      }
+      function sortUniqueClampCoordinates(values) {
+        values.sort((a, b) => a - b);
+        let kept = 0;
+        for (const value of values)
+          if (!kept || value !== values[kept - 1]) values[kept++] = value;
+        values.length = kept;
+        return values;
+      }
+      function nearestClampPoint(targetX, targetZ, r) {
+        // For axis-aligned zones and colliders, the nearest point in free space is at the target,
+        // a zone edge, a collider edge, or an intersection of two such coordinates. Enumerating
+        // that finite set is complete and deterministic. A coordinate-compressed z difference
+        // sweep marks every blocked intersection in O(Z * S^2 log S), rather than testing every
+        // Cartesian candidate against every solid in O(Z * S^3). This remains reserved for
+        // malformed/embedded-state recovery; the ordinary movement path allocates nothing.
+        if (!Number.isFinite(targetX)) targetX = 0;
+        if (!Number.isFinite(targetZ)) targetZ = 0;
+        let bestX = 0, bestZ = 0, bestD = Infinity;
+        let sweepCells = 0, solidVisits = 0;
+        for (const q of zones) {
+          const x0 = q.x0 + r, x1 = q.x1 - r, z0 = q.z0 + r, z1 = q.z1 - r;
+          if (![x0, x1, z0, z1].every(Number.isFinite) || x0 > x1 || z0 > z1) continue;
+          const xs = [clamp(targetX, x0, x1), x0, x1];
+          const zs = [clamp(targetZ, z0, z1), z0, z1];
+          for (const s of solids) {
+            if (s.open) continue;
+            const left = s.x0 - r, right = s.x1 + r;
+            const back = s.z0 - r, front = s.z1 + r;
+            if (Number.isFinite(left) && left >= x0 && left <= x1) xs.push(left);
+            if (Number.isFinite(right) && right >= x0 && right <= x1) xs.push(right);
+            if (Number.isFinite(back) && back >= z0 && back <= z1) zs.push(back);
+            if (Number.isFinite(front) && front >= z0 && front <= z1) zs.push(front);
+          }
+          sortUniqueClampCoordinates(xs);
+          sortUniqueClampCoordinates(zs);
+          sweepCells += xs.length * zs.length;
+          solidVisits += xs.length * solids.length;
+          const covered = new Int32Array(zs.length + 1);
+          for (const x of xs) {
+            covered.fill(0);
+            for (const s of solids) {
+              if (s.open || !(x > s.x0 - r && x < s.x1 + r)) continue;
+              const lo = clampUpperBound(zs, s.z0 - r);
+              const hi = clampLowerBound(zs, s.z1 + r);
+              if (lo < hi) { covered[lo]++; covered[hi]--; }
+            }
+            let depth = 0;
+            for (let i = 0; i < zs.length; i++) {
+              depth += covered[i];
+              if (depth) continue;
+              const z = zs[i];
+              const d = (x - targetX) * (x - targetX) + (z - targetZ) * (z - targetZ);
+              if (d < bestD) { bestD = d; bestX = x; bestZ = z; }
+            }
+          }
+        }
+        clampRecovery.calls++;
+        clampRecovery.lastSweepCells = sweepCells;
+        clampRecovery.lastSolidVisits = solidVisits;
+        clampRecovery.maxSweepCells = Math.max(clampRecovery.maxSweepCells, sweepCells);
+        clampRecovery.maxSolidVisits = Math.max(clampRecovery.maxSolidVisits, solidVisits);
+        return bestD < Infinity ? [bestX, bestZ] : null;
+      }
+
       return {
         props, things, solids, shadows, glows, blockers, lights, zones, tagBox,
         syncDynamicCulls,
+        clampRecoveryStats() { return { ...clampRecovery }; },
         // Finish any material that could not be uploaded when the room was built. Safe to call
         // as often as you like: it empties its own list, and a room with nothing pending does
         // no work at all.
@@ -542,14 +731,41 @@ const Build = (() => {
         // Keep the body inside the union of walkable zones. Only zones the body already
         // occupies are candidates, so a diagonal step cannot cut the corner of a wall.
         clampMove(px, pz, x, z, r) {
-          const here = zones.filter(q => px >= q.x0 && px <= q.x1 && pz >= q.z0 && pz <= q.z1);
+          const priorFinite = Number.isFinite(px) && Number.isFinite(pz);
+          const destinationFinite = Number.isFinite(x) && Number.isFinite(z);
+          const radiusFinite = Number.isFinite(r) && r >= 0;
+          if (!radiusFinite) r = DEFAULT_CLAMP_RADIUS;
+          if (!priorFinite || !destinationFinite || !radiusFinite) {
+            if (priorFinite && clearClampPoint(px, pz, r)) return [px, pz];
+            const recovered = nearestClampPoint(destinationFinite ? x : priorFinite ? px : 0,
+              destinationFinite ? z : priorFinite ? pz : 0, r);
+            if (recovered) return recovered;
+            throw new Error('Build.clampMove: scene has no collision-free recovery point');
+          }
+          const requestedX = x, requestedZ = z;
+          // This is a display-rate path for the player and nearby NPCs. First determine whether the
+          // old position belongs to any zone, then scan the same array with that predicate; the
+          // previous filter() allocated a temporary candidate array for every body movement sample.
+          let hasHere = false;
+          for (const q of zones)
+            if (px >= q.x0 && px <= q.x1 && pz >= q.z0 && pz <= q.z1) { hasHere = true; break; }
           let bd = Infinity, bx = x, bz = z;
-          for (const q of (here.length ? here : zones)) {
+          for (const q of zones) {
+            if (hasHere && !(px >= q.x0 && px <= q.x1 && pz >= q.z0 && pz <= q.z1)) continue;
             const cx = clamp(x, q.x0 + r, q.x1 - r), cz = clamp(z, q.z0 + r, q.z1 - r);
             const d = (cx - x) * (cx - x) + (cz - z) * (cz - z);
             if (d < bd) { bd = d; bx = cx; bz = cz; }
           }
           x = bx; z = bz;
+          // One obstacle can push the body into an earlier overlapping obstacle. That is rare in
+          // clear space, but a perfectly ordinary diagonal step at a cabinet/wall corner used to
+          // finish inside the wall for one frame and jump back out on the next. Preserve the
+          // established one-pass hot path exactly, then recheck only when an obstacle actually
+          // displaced this sample. Even one later collider can project into an earlier collider
+          // which did not contain the original target. A pathological overlap may cycle between equal
+          // projections; after the bounded retry, retaining a known-clear previous position is
+          // safer than returning a body embedded in either collider.
+          let pushes = 0;
           for (const s of solids) {
             if (s.open) continue;
             if (x > s.x0 - r && x < s.x1 + r && z > s.z0 - r && z < s.z1 + r) {
@@ -560,6 +776,44 @@ const Build = (() => {
               else if (mn === dr) x = s.x1 + r;
               else if (mn === db) z = s.z0 - r;
               else z = s.z1 + r;
+              pushes++;
+            }
+          }
+          let blocked = false;
+          if (pushes > 0) {
+            for (let pass = 1; pass < 4; pass++) {
+              blocked = false;
+              for (const s of solids) {
+                if (!s.open && x > s.x0 - r && x < s.x1 + r &&
+                    z > s.z0 - r && z < s.z1 + r) { blocked = true; break; }
+              }
+              if (!blocked) break;
+              for (const s of solids) {
+                if (s.open) continue;
+                if (x > s.x0 - r && x < s.x1 + r && z > s.z0 - r && z < s.z1 + r) {
+                  const dl = x - (s.x0 - r), dr = (s.x1 + r) - x;
+                  const db = z - (s.z0 - r), df = (s.z1 + r) - z;
+                  const mn = Math.min(dl, dr, db, df);
+                  if (mn === dl) x = s.x0 - r;
+                  else if (mn === dr) x = s.x1 + r;
+                  else if (mn === db) z = s.z0 - r;
+                  else z = s.z1 + r;
+                }
+              }
+            }
+            blocked = false;
+            for (const s of solids) {
+              if (!s.open && x > s.x0 - r && x < s.x1 + r &&
+                  z > s.z0 - r && z < s.z1 + r) { blocked = true; break; }
+            }
+            if (!blocked && !clampPointInZone(x, z, r)) blocked = true;
+          }
+          if (blocked) {
+            if (clearClampPoint(px, pz, r)) { x = px; z = pz; }
+            else {
+              const recovered = nearestClampPoint(requestedX, requestedZ, r);
+              if (recovered) return recovered;
+              throw new Error('Build.clampMove: scene has no collision-free recovery point');
             }
           }
           return [x, z];
@@ -568,9 +822,9 @@ const Build = (() => {
     }
 
     return { props, things, solids, shadows, glows, blockers, lights,
-             transform, material, shape, box, cyl, ball, capsule, taper, model, wall, flat, glyphs,
+             transform, material, shape, box, cyl, ball, capsule, taper, model, modelOr, wall, flat, glyphs,
              solid, blocker, shade, rug, glow, light, thing, finish,
-             partition: partitionSplit };
+             partition: partitionSplit, partitionElement };
   }
 
   // ---- doll's house: which scenes may drop their walls, and how far the eye may then go
@@ -601,9 +855,26 @@ const Build = (() => {
   // the useful half and they are safe everywhere; craning the eye upward is the half that needs
   // a per-scene decision, because a floor roofed by one nocut, deck-undefined slab will simply
   // show you the top of it. The hotel and the office are in exactly that position today.
-  const DOLLHOUSE = {
-    home: { levels: [2], far: 10.5, pitch: 1.45 },
-  };
+  const OFFICE_DOLLHOUSE = Object.freeze({
+    // The 24 x 18 m office plate needs a building-scale overview rather than a room-scale dolly.
+    // The opening fraction in toggleWalls resolves this to 42.5 m at 68 degrees, enough to keep
+    // the complete plate inside even a narrow supported viewport. `focus` recentres that view on
+    // the authored plate instead of following the body into one corner. The opaque boxed soffit
+    // is explicitly removed with its supported overheads; floors and furniture never carry that
+    // marker. The open roof and compact passenger car are intentionally not registered.
+    far: 62, pitch: 1.45, focus: Object.freeze([0, 0]), ceiling: true,
+  });
+  const DOLLHOUSE = Object.freeze({
+    home: Object.freeze({ levels: Object.freeze([2]), far: 10.5, pitch: 1.45 }),
+    officeB1: OFFICE_DOLLHOUSE,
+    office1: OFFICE_DOLLHOUSE,
+    office2: OFFICE_DOLLHOUSE,
+    office3: OFFICE_DOLLHOUSE,
+    office: OFFICE_DOLLHOUSE,
+    office5: OFFICE_DOLLHOUSE,
+    office6: OFFICE_DOLLHOUSE,
+    office7: OFFICE_DOLLHOUSE,
+  });
 
-  return { scene, partition: partitionSplit, PARTITION_STUB, DOLLHOUSE };
+  return { scene, partition: partitionSplit, partitionElement, PARTITION_STUB, DOLLHOUSE };
 })();

@@ -4,12 +4,10 @@
 // `A.y0` is 15.50 and every height in here is written `Y + h`. There are no literal world heights
 // in this file for exactly the reason the note at the top of world.js gives.
 //
-// WHAT THE SHELL BUILDS ON THIS DECK: nothing. `buildShell` pours a floor, a ceiling and four
-// walls for deck 0 and deck 2 only, and `buildShafts` runs its `landing()` for `[0, 2]`. So unlike
-// js/home-corridor.js — which is a fit-out over a shell that already exists — this file is the
-// whole storey: slab, ceiling, perimeter, the wall between the landing and the flat, the front
-// door opening, the faces of both lift shafts, and every collider. See the note at the foot of
-// this file for the two things that has left undone and that only js/world.js can finish.
+// WHAT THE SHELL BUILDS ON THIS DECK. `buildShell` still leaves the slab, ceiling and perimeter to
+// this module, but `buildShafts` now runs across `SHAFT_DECKS`. The real shell owns both shafts,
+// moving doors, indicator and call panel; this file owns the surrounding landing/flat envelope,
+// partitions and fit-out and contributes no duplicate shaft frontage or collision.
 //
 // THE PLAN. The building's footprint is fixed (TOWER.md): x -6..6 everywhere, z 3.2..6.2 the
 // landing, z -5..3.2 the flat side. Six front doors, 601..606, of which 606 is the one that opens.
@@ -301,8 +299,10 @@ FlatFit['f6'] = A => {
   // js/home-walls.js records as the reason the flat downstairs is one region. So the rooms are
   // registered first, the catch-alls last, and the colliders above are the real walls.
   const CEIL = Y + H - .04;
+  const camNear = (w, d) => Math.max(1.9, Math.min(3.4, .42 * Math.min(w, d) + 1.35));
   const Z = (id, x0, x1, z0, z1, lx, lz, ly) =>
-    A.zone({ id, x0, x1, z0, z1, ceil: CEIL, light: [lx, Y + (ly || 2.42), lz] });
+    A.zone({ id, x0, x1, z0, z1, ceil: CEIL, light: [lx, Y + (ly || 2.42), lz],
+             near: camNear(x1 - x0, z1 - z0) });
   Z('玄关', PE - .05, X1, CN - .05, FZ1, 4.55, 2.25);
   Z('卫生间', PB + .05, PE - .05, CN + .05, FZ1, 1.75, 2.25);
   Z('厨房', PK + .05, PB + .05, CN + .05, FZ1, -1.40, 2.25);
@@ -315,10 +315,10 @@ FlatFit['f6'] = A => {
   // The front doorway. The flat's zone stops at z = 3.20 and the landing's starts there, and two
   // zones that only touch cannot be walked between — `clampMove` spends the body radius on each
   // side of the seam. This one straddles it by more than that in both directions.
-  Z('门口', FX - FW / 2, FX + FW / 2, 2.50, 3.90, FX, 3.05, 2.30);
+  Z('门口', FX - FW / 2, FX + FW / 2, FZ1 - .85, FZ1 + .85, FX, 3.05, 2.30);
   Z('走廊', X0, X1, LZ0, LZ1, -2.00, 4.20, 2.45);
   A.zone({ id: '合租', x0: X0, x1: X1, z0: FZ0, z1: FZ1, ceil: CEIL,
-           light: [0.20, Y + 2.40, 0.45] });
+           light: [0.20, Y + 2.40, 0.45], near: camNear(X1 - X0, FZ1 - FZ0) });
 
   // ==================================================================== windows
   //
@@ -418,65 +418,13 @@ FlatFit['f6'] = A => {
   dado('z', X0, 1, [[LZ0, WIN_L.z - WIN_L.w / 2], [WIN_L.z + WIN_L.w / 2, LZ1]]);
   dado('z', X1, -1, [[LZ0, 3.80], [4.62, LZ1]]);
 
-  // ---- both shafts. The shell builds a landing on decks 0 and 2 only, so the whole of this —
-  // the face across the shaft, the jambs, the leaves, the indicator, the call panel — is built
-  // here. The leaves do not move: `leaves` and `doorStops` are private to js/world.js and there is
-  // no way to register a pair from out here. See the note at the foot of this file.
-  function shaftFace(sh, w, working) {
-    const cx = (sh.x0 + sh.x1) / 2, zf = sh.z0, hw = w / 2, DH2 = 2.10;
-    // the wall across the front of the shaft, in three pieces round the opening
-    wall(cx, Y + (DH2 + H) / 2, zf - .002, sh.x1 - sh.x0, H - DH2, PI, col.wall, PL);
-    for (const s of [-1, 1])
-      wall(cx + s * (hw + (sh.x1 - sh.x0 - w) / 4), Y + DH2 / 2, zf - .002,
-           (sh.x1 - sh.x0 - w) / 2, DH2, PI, col.wall, PL);
-    // the flanks, which is all you ever see of the sides of a shaft from a landing
-    if (sh === LB) wall(sh.x0, Y + H / 2, (zf + sh.z1) / 2, sh.z1 - zf, H, -PI / 2, col.wallD, PL);
-    if (sh === LF) wall(sh.x1, Y + H / 2, (zf + sh.z1) / 2, sh.z1 - zf, H, PI / 2, col.wallD, PL);
-    // brushed-steel surround, 20 mm proud of the plaster
-    for (const s of [-1, 1])
-      box(cx + s * (hw + .07), Y + DH2 / 2 + .05, zf - .026, .14, DH2 + .10, .05, col.steelD,
-          { hard: true, gloss: .34, tag: T('电梯'), ...MAT.metal });
-    box(cx, Y + DH2 + .075, zf - .026, w + .42, .14, .05, col.steelD,
-        { hard: true, gloss: .34, tag: T('电梯'), ...MAT.metal });
-    // the two leaves, shut
-    for (const s of [-1, 1]) {
-      box(cx + s * w / 4, Y + DH2 / 2, zf - .050, w / 2, DH2, .045,
-          working ? C('#7e868c') : C('#8a8175'),
-          { hard: true, gloss: .34, tag: T('电梯'), ...MAT.metal });
-      box(cx + s * w / 4, Y + DH2 / 2, zf - .076, w / 2 - .05, DH2 - .10, .012,
-          working ? C('#8d959b') : C('#948b7e'), { hard: true, gloss: .32, tag: T('电梯') });
-    }
-    // the floor indicator over the doors
-    box(cx, Y + DH2 + .34, zf - .030, .52, .30, .06, C('#3c4247'),
-        { hard: true, gloss: .34, tag: T('电梯') });
-    G(cx, Y + DH2 + .34, zf - .066, PI, working ? '六' : '—',
-      { size: .17, color: working ? C('#ff9a4d') : C('#7c6a58'), mode: 1, glow: working ? .16 : 0 });
-    stop(sh.x0 - .10, sh.x1 + .10, zf, sh.z1 + .05);
-  }
-  // The shell now builds a real landing on every deck — doors, surround, indicator, call panel,
-  // moving leaves and an opening collider. This stand-in stands down rather than double-building.
-  if (!A.shellLanding){
-    shaftFace(LF, .80, true);
-    shaftFace(LB, .92, false);
-  }
-  // The second shaft has been out of service since before anybody in 606 moved in.
+  // Shaft walls, doors, controls and collision are shell-owned. The posted notice below is
+  // floor-specific dressing on the shell's out-of-service lift, not a second set of doors.
   box((LB.x0 + LB.x1) / 2, Y + 1.62, LB.z0 - .092, .46, .32, .020, col.paper,
       { hard: true, gloss: .05, ry: .03 });
   G((LB.x0 + LB.x1) / 2, Y + 1.71, LB.z0 - .104, PI, '此梯停用', { size: .052, gap: .010, color: col.redD });
   G((LB.x0 + LB.x1) / 2, Y + 1.61, LB.z0 - .104, PI, '请乘另一部', { size: .042, gap: .008 });
   G((LB.x0 + LB.x1) / 2, Y + 1.52, LB.z0 - .104, PI, '物业管理处', { size: .034, gap: .007, color: col.grey });
-  // the fallback call panel between the two, and its up/down buttons
-  if (!A.shellLanding) { const px = LF.x0 - .28, pz = LF.z0 - .022;
-    box(px, Y + 1.12, pz, .13, .22, .04, C('#d8d3c7'), { hard: true, gloss: .34, tag: T('电梯') });
-    for (const [dy, ch] of [[.045, '▲'], [-.045, '▼']]) {
-      box(px, Y + 1.12 + dy, pz - .024, .055, .055, .012, C('#ffbe6a'),
-          { hard: true, mode: 1, glow: .16, tag: T('电梯') });
-      G(px, Y + 1.12 + dy, pz - .038, PI, ch, { size: .038, color: C('#4a3316'), gloss: .12 });
-    }
-    TH('电梯', px, Y + 1.42, pz - .06, '六楼到了，我按了电梯。', 'Sixth floor — I pressed for the lift.',
-       '电 electricity + 梯 ladder. 上楼 up, 下楼 down.', px, 4.20, 1.9);
-  }
-
   // ---- ceiling services and the lamps. Institutional and cold: four surface bulkheads down a
   // twelve-metre run and one of them dead, which is the true state of every landing of this kind.
   for (let i = 0; i < 4; i++)
@@ -772,7 +720,9 @@ FlatFit['f6'] = A => {
   // ---- 快递. Nobody in 606 has opened any of it. Six boxes against the flat's wall by the door,
   // one of them a rice sack, one a courier's soft bag.
   (function parcels() {
-    const px = 2.10;
+    // Keep the entire pile west of 606's opening. Its former rice sack and collider projected
+    // 40 cm into the only entrance and reduced a comfort-width route to an 8 cm thread.
+    const px = 1.60;
     const stack = [[px, .00, .40, .32, .30, col.card, '收'], [px - .03, .30, .36, .28, .24, C('#c19a70'), '易碎'],
                    [px + .05, .54, .30, .24, .20, col.card, ''], [px + .82, .00, .46, .34, .34, C('#bb956b'), '大件'],
                    [px + .78, .34, .34, .26, .22, col.card, '']];
@@ -792,7 +742,7 @@ FlatFit['f6'] = A => {
     shade(px + .45, FZ1 + .30, 1.90, .48, .34, FL + .010);
     shade(px + 1.42, FZ1 + .30, .55, .34, .26, FL + .008);
   })();
-  stop(1.80, 3.70, FZ1, FZ1 + .50);
+  stop(1.30, 3.28, FZ1, FZ1 + .50);
 
   // ---- shoes outside every door, because in a flat of four nobody's shoes come in. And a mop
   // and bucket the cleaner has left at the west end.
@@ -1285,7 +1235,9 @@ FlatFit['f6'] = A => {
     light(-4.50, CY - .34, -2.70, col.warm, .46, 3.6);
     windowBay(WIN_B1.x, FZ0, WIN_B1.w, WIN_B1.y0, WIN_B1.y1, 0, -1);
     // 上下铺 — a welded steel bunk against the west wall
-    const bx = RX0 + .58, bz = -2.60, BW = 1.02, BL = 2.00;
+    // Twenty-five centimetres north opens a comfort-width turn between the bunk and the desks;
+    // previously the south-west corner was usable by the body but impossible to enter naturally.
+    const bx = RX0 + .58, bz = -2.35, BW = 1.02, BL = 2.00;
     for (const [px, pz] of [[bx - BW / 2 + .04, bz - BL / 2 + .04], [bx + BW / 2 - .04, bz - BL / 2 + .04],
                             [bx - BW / 2 + .04, bz + BL / 2 - .04], [bx + BW / 2 - .04, bz + BL / 2 - .04]])
       cyl(px, FL + .84, pz, .022, 1.68, C('#c7ccd0'), { gloss: .42, tag: T('床') });

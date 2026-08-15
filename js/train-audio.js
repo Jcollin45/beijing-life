@@ -1457,16 +1457,16 @@ const TrainAudio = (() => {
     // instead; and mp3 codes its noise relative to the signal, so lifting it does not lift hiss
     // the way winding up a quiet tape does. Through the rig it now peaks within a hair of the
     // other two.
-    { file: 'audio/mall/untitled.mp3',  title: 'untitled',      gain: .8323 },
+    { file: 'audio/mall/untitled.mp3',  title: '夜色收件人',     gain: .8323 },
     // Quiet in the same way the one above it is, though not by as much: 25.2 dB down rather than
     // 29.7, and with the same headroom to spend. Measured through the rig like the rest — the
     // one thing a gain here must never be is a number copied off a neighbouring track.
-    { file: 'audio/mall/untitled2.mp3', title: 'untitled2',     gain: .4917 },
+    { file: 'audio/mall/untitled2.mp3', title: '橱窗里的雨',     gain: .4917 },
     // 22.6 dB down — quiet like the two above it, and like them measured rather than assumed.
-    { file: 'audio/mall/untitled5.mp3', title: 'untitled5',     gain: .3743 },
+    { file: 'audio/mall/untitled5.mp3', title: '晚风经过中庭',   gain: .3743 },
     // 26.8 dB down. Four of the six masters are quiet and no two by the same amount, which is
     // the argument for a per-track number rather than one lift applied to the folder.
-    { file: 'audio/mall/untitled6.mp3', title: 'untitled6',     gain: .6035 },
+    { file: 'audio/mall/untitled6.mp3', title: '闭店前的星光',   gain: .6035 },
     // Known, measured, and left alone: the four quiet masters above land at -45.7 to -44.8 dB in
     // the room while the five loud ones land at -47.6. That is a 2.2 dB step you can hear at the
     // change of track, and it is not new — it arrived with the original three and every gain since

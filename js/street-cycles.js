@@ -1,25 +1,23 @@
 // 自行车 — the cycles district. STREET.md's S18, and BIG-UPDATES.md's own words for it:
 // bicycles are "the single most Beijing form of transport, absent". `bike()` at street.js:502
-// builds parked bicycles — six leaning on a wall, seven in a rack — and until this file nothing
+// builds parked bicycles — six leaning on a wall, five in a rack — and until this file nothing
 // on two wheels moved anywhere in this game.
 //
 // What this district owns, and nothing else:
-//   - a flow of 自行车 up the painted 非机动车道 (street.js:1079, x 27.80..30.20) and along the
-//     hutong in both directions, because a Chinese bike lane carries both whatever the paint says,
-//     and because bicycles have to outnumber the cars or the street is not Beijing;
-//   - 电动车 — faster, quieter, some under a 雨棚 canopy, some behind a 挡风被 quilt, and two of
-//     them 外卖 riders, which is the most recognisable single figure on a Chinese street in 2026;
-//   - a 三轮车 flatbed, somebody walking a bike, somebody with a child on the rear rack;
-//   - a rack of 共享单车 in an invented operator's colour, kept out of the pedestrian footway;
-//   - all of them stopping at the 红绿灯 and filtering to the front of the queue, which is the one
+//   - one rider in each painted 非机动车道, widely phase-staggered: enough to establish bicycle
+//     life without putting a bicycle person in a pedestrian or shared-surface route;
+//   - 电动车 — faster, quieter and represented here by one 外卖 rider, the most recognisable
+//     single figure on a Chinese street in 2026;
+//   - three widely spaced 共享单车 in an invented operator's colour, kept out of the footway;
+//   - both road riders stopping at the 红绿灯 and filtering to the front of the queue, which is the one
 //     thing a bicycle does that a car cannot;
-//   - and all of them deflecting round the 安全岛, because the refuge takes the outer 0.90 m of
-//     the bike lane and the road district asked this district to steer around it.
+//   - and the west flow continuing behind the 公交站台 and 安全岛 in its own 2.25 m protected
+//     track, without the former 1.50 m pinch or a last-second deflection.
 //
 // It deliberately does NOT build the bike-lane paint, the kerb, the bollards, the crossing, the
 // island, any signal head, or any parked bicycle: street.js and js/street-road.js draw every one
-// of those, and a second copy of a road is worse than no road. The return flow uses the EAST
-// 非机动车道; motor traffic no longer occupies it.
+// of those, and a second copy of a road is worse than no road. The EAST 非机动车道 carries one
+// ordinary open-frame bicycle, leaving its paint and the business/metro elevation legible.
 //
 // ---------------------------------------------------------------------------------------------
 // WHICH WAY A BICYCLE GOES HERE, measured rather than assumed
@@ -30,8 +28,8 @@
 // agrees with js/street-traffic.js, which reached the same answer from the 公交车站 being on the
 // west pavement, and it makes -z north. street.js's own comment at 2281 is the odd one out.
 //
-// The 逆行 stream runs the other way up the same lane and is the minority, squeezed against the
-// motor traffic. That is not a liberty taken with the paint; it is what the lane looks like.
+// The east painted lane carries the legitimate -z return direction. Its lone bicycle begins more
+// than ninety metres from the west-lane moped, so the title/crossing frame never starts as a cohort.
 //
 // ---------------------------------------------------------------------------------------------
 // Why every rider is primitives and not js/figure.js
@@ -39,8 +37,8 @@
 // `drawFigure` is immediate mode — it issues R.draw per limb inside the frame loop and hands back
 // nothing a district builder can push into a prop list. And `.audit.js:327` records this street as
 // FILL-RATE-BOUND, not geometry-bound, while `build.js` carries colour, gloss, alpha and glow PER
-// INSTANCE: twenty-five riders made of six meshes cost the draw calls of one, where twenty-five
-// immediate-mode figures cost several hundred. A seated rider is nine primitives. That is the
+// INSTANCE: a few riders made of six meshes cost the draw calls of one, where the same number of
+// immediate-mode figures costs several dozen. A seated rider is nine primitives. That is the
 // trade, and on this street it is not close.
 //
 // ---------------------------------------------------------------------------------------------
@@ -68,20 +66,21 @@
 // thing in the game that leaves `p.ob === null` rather than deleting it), with the shell, the road
 // and the traffic all built:
 //
-//     west 非机动车道  x 27.70..30.30    544 props     the whole moving road flow
-//     motor lanes      x 30.30..35.10      0 props
-//     east 非机动车道  x 35.10..37.50    return flow   northbound bicycles and mopeds
-//     road pavement    x 23.90..27.50      0 props     pedestrian run kept clear
-//     the hutong       x < 23.90         185 props     the alley riders, mid-lane at z 0.44..0.47
+//     west 非机动车道  x 25.42..27.67    one 外卖 moped
+//     platform/median  x 27.67..29.47      independent of both moving tracks
+//     motor lanes      x 29.47..35.17      one 623 bus in the south path
+//     east 非机动车道  x 35.17..37.42    one bicycle; parking is beyond it on the footway edge
+//     west pavement    x 23.42..25.42      pedestrian run kept clear
+//     hutong/shared surface              no bicycle people; the pedestrian route stays clear
 //
 // Not one moving prop is on the carriageway's footway. A count of props *tagged* 自行车/电动车/外卖
 // reads 51 on the walkway and 0 on the road, but none of those 51 are this district's: they are
 // street.js's own parked row at (-5.0, 3.05), the only `bike()` call in the shell that passes
 // `tagIt`. Nothing here carries a tag at all, for the reason in rule 2 below.
 //
-// The alley riders are in the hutong on purpose — a hutong is a shared surface with no carriageway
-// to be on, which is what the brief asked for and what the place is. They ride the middle of it
-// (z 0.50 and 0.98 in a band that runs -2.35..3.35), not the shopfront side.
+// A former neighbour walking a bicycle used this hutong's centre line and could wait there for the
+// player. That read as a seated bicycle person blocking the walkway, so the complete moving rig is
+// deliberately absent. Shared surfaces are pedestrian space; moving riders stay in protected lanes.
 //
 // ---------------------------------------------------------------------------------------------
 // TICKETS
@@ -97,7 +96,8 @@
 //   safe to delete once the shell settles: it is unreachable on the normal path.
 //
 //   Foreman — resolved: traffic now has one motor lane each way and the old x 36.30 car lane has
-//   been removed. The northbound bicycle stream below occupies the east 非机动车道 at x 36.26.
+//   been removed. The east 非机动车道 is reserved for cycles and parked shared bikes; its single
+//   return rider is phase-staggered from the west-lane delivery moped.
 //
 //   The old footway rack and its two dumped bicycles have also been moved into a marked kerbside
 //   bay at the outer edge of the east cycle track.
@@ -133,9 +133,9 @@
   // Anchored on js/street-road.js's published contract when it is there, and on the same numbers
   // as literals when it is not, so this district is never left guessing at a lane centre.
   const FALLBACK = {
-    lane: { bikeW: 28.35, wrong: 29.60 },
+    lane: { bikeW: 26.545, wrong: 36.295 },
     stop: { flow: -4.00, wrong: 3.60 },
-    island: { x0: 29.30, z0: -3.60, z1: 3.00 },
+    island: { x0: 27.67, z0: -3.60, z1: 3.00 },
     cycle: 66, green: 30, amber: 3,
   };
   function roadSignal() {
@@ -233,13 +233,21 @@
       keep(K.cap(0, (y0 + y1) / 2, (z0 + z1) / 2, d, L, d, c,
         { rx: Math.atan2(dz, dy), gloss: .34 }));
     };
-    // A wheel: one dark tyre and a couple of bars across the rim. A plain disc cannot show that it
-    // is turning — it is rotationally symmetric, so spinning it is a no-op on screen — and the bars
-    // are the whole of what makes a moving bicycle read as moving rather than as sliding.
+    // A wheel: a genuinely open segmented tyre ring and spokes. The old solid cylinder read as a
+    // rank of black discs when five parked bikes lined up in the business/metro oblique view. Short
+    // overlapping capsules retain a round silhouette while preserving visible air through every
+    // wheel; the animated bars make moving machines read as rolling rather than sliding.
     const wheel = (x, z, r, nBar, bar, steerable = false) => {
       if (steerable) m.frontZ = z;
-      keep(K.cyl(x, r, z, r, .052, TYRE, { rz: Math.PI / 2, gloss: .26 }),
+      const tyreD = Math.min(.050, r * .145), rr = r - tyreD * .50, segN = 12;
+      const segL = 2 * rr * Math.sin(Math.PI / segN) + tyreD * .58;
+      for (let i = 0; i < segN; i++) {
+        const a = (i + .5) * Math.PI * 2 / segN;
+        keep(K.cap(x, r + Math.cos(a) * rr, z + Math.sin(a) * rr,
+          tyreD, segL, tyreD, TYRE,
+          { rx: Math.atan2(Math.cos(a), -Math.sin(a)), gloss: .24 }),
         steerable ? { front: true, steerZ: z } : null);
+      }
       for (let i = 0; i < nBar; i++) {
         const off = (i * Math.PI) / nBar;
         m.spokes.push({ p: K.box(x, r, z, .030, r * 1.86, .034, bar,
@@ -336,7 +344,7 @@
         keep(K.box(0, .72, RZ + .58, .96, .34, .05, C(HX.woodD), { hard: true, gloss: G_WOOD }));
         for (let i = 0; i < 3; i++)
           keep(K.box(-.26 + i * .27, .78, RZ - .10 + (i % 2) * .34, .30, .36, .32,
-            i % 2 ? C(HX.canvas) : C(HX.crate), { hard: true, gloss: .18, ry: .2 - i * .18 }));
+            i % 2 ? C(HX.canvas) : C(HX.crate), { gloss: .18, ry: .2 - i * .18 }));
       } else keep(K.box(0, .79, -.44, .23, .035, .34, STEELD, { gloss: .34 }));
 
       if (o.pushed) {
@@ -392,7 +400,11 @@
       // track sideways. Heeling a flatbed cart into a weave looks wrong long before anybody can
       // say why.
       m.tilt = (trike || o.pushed) ? 0 : 1;
-      m.wide = trike ? .50 : o.pushed ? .43 : .27;
+      // Collider half-width includes bars, hands and the support-foot pose, not just the frame.
+      // The pushed machine also includes the walker standing alongside it.
+      // The pushed rig includes the neighbour's full walking stride beside the frame: its
+      // measured emitted half-envelope reaches .788 m while moving and .769 m at rest.
+      m.wide = trike ? .52 : o.pushed ? .80 : .34;
     }
 
     if (kind === 'moped') {
@@ -451,7 +463,7 @@
       if (o.canopy) {
         for (const side of [-.30, .30])
           keep(K.cap(side, 1.28, -.46, .028, .90, .028, STEELD, { rx: .10, ...METAL }));
-        keep(K.box(0, 1.79, .00, .86, .05, 1.42, o.canopy, { hard: true, gloss: .42 }));
+        keep(K.ball(0, 1.79, .00, .43, .045, .71, o.canopy, { mode: 7, gloss: .42 }));
         keep(K.box(0, 1.43, .70, .82, .78, .05, C(HX.clear), { hard: true, rx: -.22, gloss: .5 }));
         keep(K.box(0, 1.76, .66, .88, .12, .26, o.canopy, { hard: true, rx: -.22, gloss: .42 }));
       }
@@ -460,8 +472,17 @@
       // emissive: glowing sign text is the trap that hazes this whole district, and this is sign
       // text.
       if (o.food) {
-        keep(K.box(0, 1.05, -.70, .46, .48, .42, o.food, { hard: true, gloss: .34 }));
-        keep(K.box(0, 1.30, -.70, .48, .04, .44, C(HX.lid), { hard: true, gloss: .30 }));
+        // A strapped insulated pod, not a purple cube carried above the rear wheel.  The rounded
+        // shell and lid keep the useful delivery silhouette without reintroducing a dominant box.
+        keep(K.ball(0, 1.05, -.70, .25, .235, .23, o.food,
+          { mode: 7, gloss: .34 }));
+        keep(K.ball(0, 1.30, -.70, .24, .035, .22, C(HX.lid),
+          { mode: 7, gloss: .30 }));
+        for (const side of [-.18, .18])
+          keep(K.cap(side, 1.05, -.70, .014, .38, .014, C(HX.lid),
+            { gloss: .32 }));
+        keep(K.ball(0, .99, -.935, .10, .035, .012, C(HX.tail),
+          { mode: 1, glow: .018, gloss: .38 }));
         for (const side of [-1, 1])
           for (const g of K.glyphs(side * .24, 1.05, -.70, side * Math.PI / 2, DELIVERY,
               { size: .17, gap: .03, color: C(HX.ink), gloss: .12, lift: .014 }))
@@ -485,7 +506,10 @@
       m.gear = 0;
       m.bias = 0;
       m.tilt = 1;
-      m.wide = .32;
+      // Mirror-to-mirror is 0.89 m. The former .64 m collider left up to 12.5 cm of each stopped
+      // mirror/hand rig walk-through; .45 is the complete stopped support-foot envelope.
+      // The animated riding lean puts the emitted mirror/rig envelope .469 m off centre.
+      m.wide = .47;
     }
 
     // Rule 2 at the top of the file: strip the pick box off every part. `p.ob` is where the prop
@@ -674,14 +698,9 @@
     // outside of every swing — the one moment it should be heeled hardest — and hardest over as it
     // crosses the middle going straight. Nobody can name what is wrong with it; everybody sees it.
     const along = L.cross + L.dir * m.s;
-    // 安全岛. The refuge takes the outer 0.90 m of the lane between z -3.60 and 3.00, so a bicycle
-    // going through the crossing has 27.80–29.30 to ride in — one lane and a half for two streams
-    // and a queue. Two things give at once, and both have to: the lane's own centre moves to the
-    // place it can fit, and the weave and the filtering fan close right up, because a rider in a
-    // pinch stops wandering. Clamping the finished position instead would pile the whole queue on
-    // one edge and kill the filtering, which is the behaviour this district exists to show.
-    // Ramped over three metres either side, so the flow swings in around the island and back out
-    // rather than stepping across.
+    // Optional authored squeeze support remains for other road contracts, but this street publishes
+    // no squeeze: its 1.80 m platform/refuge is an independent strip and the complete 2.25 m cycle
+    // track continues behind it without a lateral snap.
     let mid = L.off, j = 1, pinch = 0;
     const sq = L.sq;
     if (sq) {
@@ -696,7 +715,8 @@
       // east edge contracts to the island face, so even a leaning trike remains physically inside
       // the 1.5 m squeeze rather than merely keeping its centre line there.
       const lo = L.xMin + m.wide + .26;
-      const edge = L.xMax - pinch * (L.xMax - L.pinchEdge);
+      const edge = pinch > 0 && Number.isFinite(L.pinchEdge)
+        ? L.xMax - pinch * (L.xMax - L.pinchEdge) : L.xMax;
       const hi = edge - m.wide - .26;
       across = lo <= hi ? Math.max(lo, Math.min(hi, across)) : (lo + hi) * .5;
     }
@@ -778,16 +798,18 @@
     // centre is never guessed at.
     const LN = (K.road && K.road.bikeW) ? K.road : (SIG && SIG.lanes ? SIG.lanes : null);
     const IS = SIG && SIG.island ? SIG.island : FALLBACK.island;
+    const BP = SIG && SIG.busPlatform ? SIG.busPlatform : null;
     // The front tyre is measured against the painted bar in the tick. Keeping the target itself on
     // the shared road contract avoids the two-metre disagreement the old centre-based offset caused.
     const SL = SIG && SIG.stopLine ? SIG.stopLine : null;
     const STOP_FLOW = SL ? SL.north : FALLBACK.stop.flow;
-    const STOP_WRONG = SL ? SL.south : FALLBACK.stop.wrong;
+    const STOP_RETURN = SL ? SL.south : FALLBACK.stop.wrong;
     // One centre in each painted cycle track. The west stream travels +z and the east stream -z,
     // keeping moving bicycles out of both footways and out of the motor lanes.
     const OFF_FLOW = LN ? LN.bikeW - .20 : FALLBACK.lane.bikeW;
-    // Kept on the inner half because the outer edge now contains the parking bay below.
-    const OFF_RETURN = LN && LN.bikeE ? LN.bikeE - .50 : 35.76;
+    // Hold the moving line 22 cm inside the painted centre. Its handlebar envelope then retains
+    // visible air from the kerb and the separate footway furnishing bay.
+    const OFF_RETURN = (LN && Number.isFinite(LN.bikeE) ? LN.bikeE : 36.295) - .22;
 
     const COATS = ['#2a3646', '#39423a', '#5a4a42', '#7d2f2c', '#3d4f5c', '#8a7f6a',
                    '#2f3f3a', '#b0472f', '#4a4358', '#d9d3c4'].map(C);
@@ -795,24 +817,20 @@
     const FRAMES = ['#2f86bd', '#d9662f', '#4c8a86', '#33383d', '#7a4630',
                     '#3f6d55', '#7b8288', '#9d3728'].map(C);
     const SKINS = ['#e4b08d', '#d79f7c', '#eeba98', '#c98f6b'].map(C);
-    const HELMETS = ['#e8e4d8', '#2d3238', '#d94f2c'].map(C);
-    const FOOD = [C(OPS[1].hex), C('#1f7a86')];       // the two 外卖 jacket-and-box colours
-    const SHELLS = ['#d8dbd8', '#33383d', '#3f4a52'].map(C);
+    const FOOD = C(OPS[1].hex);                       // 外卖 jacket-and-box colour
 
     // ------------------------------------------------ the lanes
     //
     // Recycling runs far beyond the road's declared walk zone (S.road.z0..z1 = ±13.5), because a
     // bicycle that vanishes at thirteen — or beside the hotel at forty-eight — vanishes in sight.
-    const RZ1 = 64, RZ0 = -RZ1, RLEN = RZ1 - RZ0;
-    const AX0 = K.AX0 - 1.5, AX1 = K.AX1 + 1.5, ALEN = AX1 - AX0;
-    // The two centres the streams take where the island pinches the lane: one half a metre off the
-    // kerb, one half a metre off the island, which is as far apart as 1.5 m of lane will put two
-    // streams and a set of handlebars.
-    const BW0 = SIG && SIG.laneEdges ? SIG.laneEdges.bikeW[0] : 27.80;
-    const BW1 = SIG && SIG.laneEdges ? SIG.laneEdges.bikeW[1] : 30.20;
-    const BE0 = SIG && SIG.laneEdges ? SIG.laneEdges.bikeE[0] : 35.10;
+    const RZ1 = 96, RZ0 = -RZ1, RLEN = RZ1 - RZ0;
+    // The protected island is now an independent 1.80 m strip. Both cycle tracks retain their
+    // complete width at the platform and refuge, so no squeeze target or artificial lateral swing
+    // exists in the route.
+    const BW0 = SIG && SIG.laneEdges ? SIG.laneEdges.bikeW[0] : 25.42;
+    const BW1 = SIG && SIG.laneEdges ? SIG.laneEdges.bikeW[1] : 27.67;
+    const BE0 = SIG && SIG.laneEdges ? SIG.laneEdges.bikeE[0] : 35.17;
     const BE1 = SIG && SIG.laneEdges ? SIG.laneEdges.bikeE[1] : 37.42;
-    const SQA = { a0: IS.z0 - .4, a1: IS.z1 + .4 };
     const lane = (axis, dir, off, len, cross, stop, spread, sway, sq) => {
       const L = { axis, dir, off, len, cross, stop, spread, sway, sq: sq || null,
                   list: [], live: [] };
@@ -821,22 +839,10 @@
     // `s` runs 0 at the entry end to `len` at the exit end whichever way round that is, so "the one
     // in front" is always the one with the larger s and the follow model never has to know which
     // way it is pointing.
-    const flow  = lane('z', +1, OFF_FLOW,  RLEN, RZ0, STOP_FLOW - RZ0,  .30, 1,
-      { ...SQA, to: BW0 + .50, j: .10 });
-    const returnFlow = lane('z', -1, OFF_RETURN, RLEN, RZ1, RZ1 - STOP_WRONG, .14, .70);
+    const flow  = lane('z', +1, OFF_FLOW,  RLEN, RZ0, STOP_FLOW - RZ0,  .30, 1);
     flow.xMin = BW0; flow.xMax = BW1;
-    flow.pinchEdge = IS.x0;
-    returnFlow.xMin = BE0; returnFlow.xMax = BE1;
-    returnFlow.pinchEdge = BE1;
-    // The hutong is one lane wide now, not two. Measured against the finished scene rather than
-    // guessed: the colliders the other districts have filled the alley with leave a clear run of
-    // about z -0.05 .. 1.35 at the worst point — a shopfront step at x 6.0..8.3 comes out to
-    // z -0.10, and the south side is built out to z 1.40 from x 17.3. So both directions share one
-    // 1.3 m corridor and pass each other head-on with half the weave of the road, which is what a
-    // hutong is. Widening it would put a bicycle through somebody else's doorstep.
-    const alleyE = lane('x', +1, 0.34, ALEN, AX0, null, .10, .55);
-    const alleyW = lane('x', -1, 1.08, ALEN, AX1, null, .10, .55);
-
+    const returnFlow=lane('z',-1,OFF_RETURN,RLEN,RZ1,RZ1-STOP_RETURN,.18,.45);
+    returnFlow.xMin=BE0;returnFlow.xMax=BE1;
     const born = [];
     function add(L, s, kind, o, spec) {
       const m = machine(K, kind, o);
@@ -852,95 +858,32 @@
       L.list.push(m); all.push(m); born.push(m);
       return m;
     }
-    const BIKE  = { len: 1.85, gap: 1.05, acc: 1.5, brake: 3.4 };
-    const MOPED = { len: 2.00, gap: 1.45, acc: 2.4, brake: 4.6 };
-    const TRIKE = { len: 2.60, gap: 1.30, acc: 1.0, brake: 2.6 };
-    const PUSH  = { len: 2.10, gap: 1.20, acc: 1.0, brake: 2.0 };
+    const MOPED = { len: 2.00, gap: 2.45, acc: 2.4, brake: 4.6 };
+    const BIKE  = { len: 1.76, gap: 2.25, acc: 1.6, brake: 3.2 };
     const dress = () => ({
       frame: pick(FRAMES), coat: pick(COATS), trouser: pick(TROUSERS), skin: pick(SKINS),
       basket: rnd() < .55, basketCol: rnd() < .5 ? C(HX.steelD) : C(HX.wicker),
       build: .92 + rnd() * .16, hairStyle: Math.floor(rnd() * 3),
     });
 
-    // ---- with the flow. The bulk of it: ordinary bicycles, a few 电动车 going through them at
-    // twice the speed, and one 三轮车 everything else has to get round.
-    for (let i = 0; i < 13; i++) {
-      const s = (i + .35) * (RLEN / 13), r = rnd();
-      if (i === 4) {
-        add(flow, s, 'trike', { ...dress(), frame: C(HX.steelD), basket: false },
-          { ...TRIKE, v: 2.2 + rnd() * .4, rank: .30 });
-      } else if (i === 1) {
-        add(flow, s, 'moped', { ...dress(), frame: C(HX.charcoal), coat: FOOD[0],
-          helmet: FOOD[0], food: FOOD[0] }, { ...MOPED, v: 6.4 + rnd() * .8, rank: .06 });
-      } else if (r < .26) {
-        add(flow, s, 'moped', { ...dress(), frame: pick(SHELLS),
-          helmet: rnd() < .5 ? pick(HELMETS) : null,
-          quilt: rnd() < .5 ? pick(COATS) : null,
-          canopy: rnd() < .3 ? C(HX.canopy) : null,
-        }, { ...MOPED, v: 5.6 + rnd() * 1.6, rank: .12 + rnd() * .5 });
-      } else {
-        add(flow, s, 'bike', { ...dress(),
-          helmet: rnd() < .12 ? pick(HELMETS) : null,
-          bag: rnd() < .35 ? pick(COATS) : null,
-        }, { ...BIKE, v: 3.1 + rnd() * 1.3, rank: rnd() });
-      }
-    }
-    // ---- northbound return flow, in the east 非机动车道.
-    for (let i = 0; i < 5; i++) {
-      const s = (i + .6) * (RLEN / 5);
-      if (i === 2) {
-        add(returnFlow, s, 'moped', { ...dress(), frame: C(HX.charcoal), coat: FOOD[1],
-          helmet: FOOD[1], food: FOOD[1] }, { ...MOPED, v: 5.6 + rnd() * 1.0, rank: .05 });
-      } else if (rnd() < .45) {
-        add(returnFlow, s, 'moped', { ...dress(), frame: pick(SHELLS),
-          helmet: rnd() < .4 ? pick(HELMETS) : null,
-          quilt: rnd() < .5 ? pick(COATS) : null },
-          { ...MOPED, v: 4.8 + rnd() * 1.2, rank: .30 + rnd() * .5 });
-      } else {
-        add(returnFlow, s, 'bike', dress(), { ...BIKE, v: 2.9 + rnd() * 1.1, rank: .30 + rnd() * .5 });
-      }
-    }
-    // ---- the hutong, eastbound. Slow, and this is the direction the two wide ones go in: the
-    // walker stands on the machine's local +x, which eastbound puts them at -z — the middle of the
-    // alley — and westbound would put them on the built-out south side.
-    for (let i = 0; i < 3; i++) {
-      const s = (i + .3) * (ALEN / 3);
-      if (i === 0) {
-        add(alleyE, s, 'bike', { ...dress(), pushed: true, wside: 1, basket: true },
-          { ...PUSH, v: 1.15 + rnd() * .2, rank: .10 });
-      } else if (i === 1) {
-        // The full-width 三轮车 belongs in the road flow above. The hutong's measured pinch is only
-        // 1.4 m wide; sending it against a westbound moped made overlap physically unavoidable.
-        add(alleyE, s, 'bike', { ...dress(), frame: C('#5b6a58'), basket: true },
-          { ...BIKE, v: 2.5 + rnd() * .3, rank: .25 });
-      } else {
-        add(alleyE, s, 'bike', dress(), { ...BIKE, v: 2.9 + rnd() * .8, rank: rnd() * .7 });
-      }
-    }
-    // ---- the hutong, westbound. The child on the back belongs here: the alley is where a bicycle
-    // is domestic rather than transport.
-    for (let i = 0; i < 3; i++) {
-      const s = (i + .7) * (ALEN / 3);
-      if (i === 0) {
-        add(alleyW, s, 'bike', { ...dress(), basket: true, child: true, childCoat: C('#c8452f') },
-          { ...BIKE, v: 2.7, rank: .20 });
-      } else if (i === 1) {
-        add(alleyW, s, 'moped', { ...dress(), frame: C(HX.shell), quilt: pick(COATS),
-          helmet: rnd() < .5 ? pick(HELMETS) : null },
-          { ...MOPED, v: 4.2 + rnd() * .8, rank: .30 });
-      } else {
-        add(alleyW, s, 'bike', { ...dress(), bag: rnd() < .4 ? pick(COATS) : null },
-          { ...BIKE, v: 2.8 + rnd() * .9, rank: rnd() * .7 });
-      }
-    }
-
+    // ---- on the road. The return bicycle starts more than ninety metres from the delivery moped,
+    // in the opposite painted track. They therefore provide two directions of life without an
+    // authored title/crossing cohort, and both use the already accepted open-ring machine builder.
+    add(flow, .35 * RLEN, 'moped', { ...dress(), frame: C(HX.charcoal), coat: FOOD,
+      helmet: FOOD, food: FOOD }, { ...MOPED, v: 6.4 + rnd() * .8, rank: .06 });
+    add(returnFlow,.18*RLEN,'bike',{...dress(),frame:C('#3f6d55'),basket:true},
+      {...BIKE,v:4.4+rnd()*.5,rank:.10});
     // ------------------------------------------------ 共享单车, in a marked kerbside bay
     //
     // The rack and two dumped bikes used to occupy the west footway. They now stand parallel to the
-    // east kerb, wholly inside the outer edge of the 非机动车道, leaving the pedestrian pavement
-    // clear and a moving line at x 36.26 beside them.
-    const RKX = 37.03, RK0 = 4.55, RKSTEP = 1.25, WORD = { tag: '自行车' };
-    for (let i = 0; i < 7; i++) {
+    // east kerb in its furnishing band, 35 cm beyond the live cycle edge. Their collider ends at
+    // x38.45, leaving 3.03 m of building-side pavement to the x41.48 frontage. The address opposite
+    // the south civic frontage is also clear of the z4.5 lamp, z6 tree, z6.4 gantry and their swept
+    // maintenance footprints; the old z4.55..10.47 rank intersected all three.
+    // Three machines at 2.60 m centres read as individual parked addresses, not a tyre wall. The
+    // 1.30 m-long bicycle envelopes retain about 1.30 m of visible air between neighbours.
+    const RKX = 38.10, RK0 = -50.60, RKSTEP = 2.60, RKN = 3, WORD = { tag: '自行车' };
+    for (let i = 0; i < RKN; i++) {
       const z = RK0 + i * RKSTEP, op = OPS[i % 2];
       const b = machine(K, 'bike', { frame: C(op.hex), skin: SKINS[0], noRider: true,
         basket: true, basketCol: C(op.hex) });
@@ -949,10 +892,10 @@
       place(b);
       K.shade(RKX, z, .78, 1.45, .24);
     }
-    const RKC = RK0 + RKSTEP * 3;
-    K.box(RKX + .23, .20, RKC, .10, .12, RKSTEP * 6 + 1.20, C(OPS[0].hex),
+    const RKC = RK0 + RKSTEP * (RKN - 1) / 2;
+    K.box(RKX + .23, .20, RKC, .10, .12, RKSTEP * (RKN - 1) + 1.20, C(OPS[0].hex),
       { hard: true, gloss: .34, ...WORD });
-    K.box(RKX + .23, .07, RKC, .17, .10, RKSTEP * 6 + 1.20, C(HX.steelD),
+    K.box(RKX + .23, .07, RKC, .17, .10, RKSTEP * (RKN - 1) + 1.20, C(HX.steelD),
       { hard: true, gloss: .34 });
     // The operator board faces the east footway, where the player reads it from across the kerb.
     K.cyl(RKX + .12, 1.05, RK0 - .72, .045, 2.10, C(HX.steelD), { gloss: .44, ...WORD });
@@ -960,11 +903,11 @@
       { hard: true, gloss: .38, ...WORD });
     K.glyphs(RKX + .205, 1.86, RK0 - .72, Math.PI / 2, OPS[0].name,
       { size: .19, gap: .035, color: C(HX.board), gloss: .12, lift: .012, ...WORD });
-    K.solid(RKX - .33, RKX + .35, RK0 - .72, RK0 + RKSTEP * 6 + .72);
+    K.solid(RKX - .33, RKX + .35, RK0 - .72, RK0 + RKSTEP * (RKN - 1) + .72);
     K.thing('自行车', RKX + .16, 1.10, RKC, '这些共享单车扫码就能骑。',
       'You can scan the code on these shared bikes and ride off.',
       '共享单车 gòngxiǎng dānchē — shared bikes. 扫码 sǎomǎ is scanning the code on the frame.',
-      { focus: [38.35, RKC], reach: 2.4 });
+      { focus: [39.12, RKC], reach: 2.4 });
 
     for (const m of born) { step(m, 0, 0); place(m); }
     if (K.seal) K.seal();
@@ -988,7 +931,7 @@
   // the top of this file. It rebuilds the eleven calls above on top of the *finished* scene, and
   // — this is the part that matters on a fill-rate-bound street — it joins the batches `finish()`
   // already made instead of adding its own. A district appended after `finish` with no batching
-  // costs one draw call per prop, which for nine hundred bicycle parts is the exact regression
+  // costs one draw call per prop, which for hundreds of bicycle parts is the exact regression
   // `44-parade` exists to catch. Delete this block the day street.js declares S before build().
   const deferredWords = [];
   function lateKit() {
@@ -1058,11 +1001,11 @@
                  focus: o.focus || [x, z], reach: o.reach || 1.5 };
       },
       AX0: -27.0, AX1: 25.5,             // street.js:117, the alley extent
-      road: { bikeW: 29.00, south: 31.35, north: 33.80, bikeE: 36.26 },
+      road: { bikeW: 26.545, south: 31.07, north: 33.92, bikeE: 36.295 },
       count: () => mine.length,
       // Join the batches `finish()` already built rather than making new ones. Every prop here is
       // a plain mesh with no texture, no material and the default corner radius, which is exactly
-      // the key half a dozen of the shell's own batches already carry — so nine hundred bicycle
+      // the key half a dozen of the shell's own batches already carry — so the bicycle
       // parts cost their instance rows and not one extra draw call.
       seal() {
         if (!sc.batches) sc.batches = [];
@@ -1129,7 +1072,7 @@
   }
 
   // Alley machines also respect the scene's authored solids. The road streams have dedicated
-  // signal, bus and player rules; scanning the scene only for the six hutong riders keeps shop
+  // signal, bus and player rules; scanning the scene only for the lone hutong rider keeps shop
   // steps, stalls and newly-added street furniture from becoming things a bicycle ghosts through
   // without turning every road rider into an expensive all-solids query.
   function sceneGap(m) {
@@ -1164,27 +1107,29 @@
     const dt = lastT < 0 ? 0 : Math.min(.12, t - lastT);
     lastT = t;
 
-    // How busy the street is. Rush hour is rush hour: everything that owns a bicycle is on it at
-    // eight in the morning and again at six, the middle of the day is two thirds of that, and at
-    // three in the morning there is a 外卖 rider and nobody else. S2, the day's shape, in the one
-    // place it costs nothing — a machine that is not in the flow is stowed and skipped entirely.
-    let density = .72, dark = 0;
+    // How busy the street is. Both protected-track riders run through the day and peaks. No bicycle
+    // person is authored on a pedestrian/shared surface. A machine outside the density envelope is
+    // stowed and skipped entirely.
+    let density = .58, dark = 0;
     if (mins !== undefined) {
       const h = (mins / 60) % 24;
-      if ((h >= 7 && h < 9.5) || (h >= 17 && h < 19.5)) density = 1;
-      else if (h >= 22.5 || h < 5.5) density = .22;
-      else if (h < 6.5 || h >= 21) density = .45;
+      if ((h >= 7 && h < 9.5) || (h >= 17 && h < 19.5)) density = .78;
+      else if (h >= 22.5 || h < 5.5) density = .16;
+      else if (h < 6.5 || h >= 21) density = .34;
       // Lit by 19:15, out again by 06:00, with a ramp either side so a headlight does not snap on
       // between one frame and the next.
       dark = h > 12 ? Math.max(0, Math.min(1, (h - 17.4) / 1.8))
                     : 1 - Math.max(0, Math.min(1, (h - 5.4) / 1.6));
     }
+    const liveSignal = SIG || roadSignal();
+    StreetFit['cycles'].state.emergencyActive = !!(liveSignal && liveSignal.emergency &&
+      liveSignal.emergency.active(t));
     const phase = phaseNow(t), hold = phase !== 'green';
 
     for (const L of lanes) {
       // Who is in the flow this hour, in order. The sort is what lets a queue at the lights build
-      // from the front instead of every rider braking on their own — twenty-five movers is a sort
-      // of nothing, and it buys the one behaviour this district exists to show.
+      // from the front instead of every rider braking on its own. The current sparse flow makes
+      // this cheap, and preserving the ring rule prevents future additions regressing the seam.
       const live = L.live;
       live.length = 0;
       for (const m of L.list) {
@@ -1195,7 +1140,7 @@
       live.sort(FRONT_FIRST);
       for (let i = 0; i < live.length; i++) {
         const m = live[i];
-        let want = m.vFree, hardGap = Infinity;
+        let want = m.vFree, hardGap = Infinity, bodyGap = Infinity;
         // A ring, not a queue: the one in front of the leader is the one at the far end of the
         // lane, which is where the leader meets it after it recycles. Without the wrap the fastest
         // 电动车 in the lane drives through the back of the flow at the seam — far out in
@@ -1215,22 +1160,33 @@
           // Once the front wheel has committed across the paint it continues through the junction;
           // stopping a rider on the zebra when amber turns red was the most visible zombie-like
           // behaviour in this controller.
-          if (d > .22 && d < 26 && !dilemma) {
+          // `.22` is the resting reserve, not the commitment line. Keep holding through tiny
+          // integration round-off anywhere before the paint; only a front wheel genuinely beyond
+          // the stop line (`d <= 0`) is committed and allowed to clear the junction.
+          if (d > 0 && d < 26 && !dilemma) {
             hardGap = Math.min(hardGap, d + m.gap - .22);
             want = Math.min(want, Math.max(0, (d - .22) * 1.35));
           }
         }
-        // The player is a real road user. A rider slows and stops instead of passing through the
-        // body while the moving collider is open.
+        // The player is a real road user. Keep a complete three-metre standing/turning pocket in
+        // front of the body, not merely a collision-sized gap. This matters most at HOME_OUT, the
+        // lock-ups and metro2, but applying it consistently also prevents a road rider from
+        // flanking the player on the zebra. The single alley start is authored outside every
+        // sensitive pocket, so a fresh establishing view never begins with a trapped rider.
         if (body && Number.isFinite(body.x) && Number.isFinite(body.z)) {
-          const gap = obstacleGap(m, body.x, body.z, .36, .36);
+          // A person reading one of the lock-up fronts stands near the north wall, outside the
+          // bicycle's collision-width corridor but still inside the same tiny public room. Treat
+          // the full alley section as shared space so the rider waits before that view instead of
+          // slicing through its middle; road tracks retain the physical-width lateral test.
+          const gap = obstacleGap(m, body.x, body.z, .36, L.axis === 'x' ? 3.0 : .36);
           if (Number.isFinite(gap)) {
             hardGap = Math.min(hardGap, gap);
-            want = Math.min(want, Math.max(0, (gap - m.gap) * 1.55));
+            bodyGap = Math.min(bodyGap, gap);
+            want = Math.min(want, Math.max(0, (gap - 3.20) * 1.55));
           }
         }
-        // The bus enters the west cycle track at its stop; every traffic vehicle is tested so the
-        // same contract also covers an unusual stalled car without hard-coding a bus state.
+        // Every traffic vehicle is tested so an unusual stalled or deflected vehicle is respected.
+        // The protected-stop bus normally remains far enough inside its motor lane to be irrelevant.
         let obstacle = trafficGap(m);
         if (Number.isFinite(obstacle)) {
           hardGap = Math.min(hardGap, obstacle);
@@ -1241,30 +1197,22 @@
           hardGap = Math.min(hardGap, obstacle);
           want = Math.min(want, Math.max(0, (obstacle - m.gap) * 1.55));
         }
-        // Only the westbound hutong stream yields in a head-on meeting. Their authored centres are
-        // now wide enough for an ordinary pair to pass; this branch handles the walked bicycle and
-        // other wider silhouettes without both directions stopping forever.
-        if (L.axis === 'x' && L.dir < 0) for (const o of all) {
-          if (o === m || o.stowed || o.lane === L || o.lane.axis !== 'x' || o.lane.dir === L.dir) continue;
-          const gap = obstacleGap(m, o.px, o.pz, o.len * .5, o.wide);
-          if (Number.isFinite(gap)) {
-            hardGap = Math.min(hardGap, gap);
-            want = Math.min(want, Math.max(0, (gap - m.gap) * 1.55));
-          }
-        }
         const dv = want - m.v;
         m.v += dv > 0 ? Math.min(dv, m.acc * dt) : Math.max(dv, -m.brake * dt);
         if (dt && Number.isFinite(hardGap)) {
-          const free = Math.max(0, hardGap - m.gap);
+          // Ordinary leaders retain the authored machine gap. A player owns the larger 3.20 m
+          // standing/turning pocket promised above; the prior cap ignored that reserve and allowed
+          // braking inertia to carry a moped down to its ordinary 2.45 m following distance.
+          let free = Math.max(0, hardGap - m.gap);
+          if (Number.isFinite(bodyGap)) free = Math.min(free, Math.max(0, bodyGap - 3.20));
           if (m.v * dt > free) m.v = free / dt;
         }
         if (m.v < .01) m.v = 0;
-        // Filtering to the front. As a rider slows they slide sideways out of the single file and
-        // take a place beside the one in front instead of behind it, which is the whole reason a
-        // bicycle beats a car at a red light — and the reason the queue is three abreast at the
-        // stop bar and one abreast twenty metres back from it.
+        // Keep the current singleton lanes centred. The filtering seat remains future-safe for a
+        // later second rider, but one bicycle must not drift sideways as if making room for a queue
+        // that this deliberately sparse release does not build.
         const still = 1 - Math.min(1, m.v / 2.0);
-        const seat = ((i % 3) - 1) * L.spread;
+        const seat = live.length > 1 ? ((i % 3) - 1) * L.spread : 0;
         if (m.v > .18)
           m.fan = damp(m.fan, seat * still, m.v * 1.35, dt);
         step(m, t, dt);
@@ -1272,8 +1220,8 @@
       }
     }
 
-    // Lamps last, and only when the number has moved: writing a glow onto fifty props every frame
-    // for a value that changes twice a day is fifty writes a frame for nothing.
+    // Lamps last, and only when the number has moved: writing every lamp each frame for a value
+    // that changes twice a day is needless work.
     if (dark !== dark0) {
       dark0 = dark;
       for (const m of all)
@@ -1290,7 +1238,7 @@
   };
   StreetFit['cycles'].tick = tick;
   StreetFit['cycles'].show = on => { hidden = !on; };
-  StreetFit['cycles'].state = { lanes, all };
+  StreetFit['cycles'].state = { lanes, all, emergencyActive:false };
   // Empty once street.js declares S before it calls build; anything in it is a word this district
   // built the sign for but could not put in the dictionary.
   StreetFit['cycles'].deferredWords = deferredWords;

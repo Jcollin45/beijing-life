@@ -1,4 +1,4 @@
-// 北京市仁和医院 · 二楼门诊科室
+// 北京市澄安医院 · 二楼门诊科室
 //
 // The second floor is the hospital's outpatient workhorse.  It is arranged the way a large
 // Beijing public hospital is read in practice: room numbers and department colours first, a
@@ -141,7 +141,7 @@ HospFit[2] = A => {
       {mode:1,glow:.06,ry:yaw,tag}),(x-z)*.17);
     ball(x,.99,z,.065,.065,.065,col.steelD,{gloss:.44,tag});
     capsule(x,.91,z,.035,.18,.035,col.steelD,{gloss:.44,tag});
-    ball(x,.82,z,.27,.040,.18,col.steelD,{mode:7,ry:yaw,gloss:.40,tag});
+    ball(x,.82,z,.27,.040,.18,col.steelD,{ry:yaw,gloss:.40,tag});
   }
 
   function namePlate(x,z,yaw,text,tag='医生') {
@@ -574,7 +574,7 @@ HospFit[2] = A => {
     ball(x,.535,z+.10,.18,.018,.225,col.blueL,{mode:1,alpha:.72,gloss:.32,...T});
     box(x,.69,z-.36,.57,.58,.20,col.white,
       {round:.10,mode:7,gloss:.24,...T});
-    box(x,.89,z-.255,.16,.045,.055,col.steelD,{round:.02,mode:7,gloss:.48,...T});
+    box(x,.89,z-.255,.16,.045,.055,col.steelD,{round:.02,gloss:.48,...T});
     solid(x-.36,x+.36,z-.50,z+.48);
     if(accessible) {
       capsule(x,.91,z-.51,.030,.92,.030,col.steelD,

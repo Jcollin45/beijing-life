@@ -227,7 +227,9 @@ const Office = Lazy('Office', () => {
     // round — the pile is the texture, the seams are only the joints.
     for (let i = -4; i <= 4; i++) {
       flat(i * .98, .004, 0, .02, RZ * 2, col.carpetD, { gloss: .08, ...CARPET });
-      flat(0, .004, i * .98, RX * 2, .02, col.carpetD, { gloss: .08, ...CARPET });
+      // Crossing seam strips need a deterministic depth order. At one shared plane their 81
+      // intersections z-fought even though both strokes used the same carpet dye.
+      flat(0, .007, i * .98, RX * 2, .02, col.carpetD, { gloss: .08, ...CARPET });
     }
     // suspended ceiling grid
     for (let i = -4; i <= 4; i++) {
@@ -376,6 +378,9 @@ const Office = Lazy('Office', () => {
       { tag: '打卡机', hard: true, mode: 1, glow: .32 }), .5);
     box(RX - .17, 1.34, pcz, .04, .05, .14, col.black,
       { tag: '打卡机', hard: true, gloss: .30 });
+    // A small cap tied into the clock body supports the label above the display.
+    box(RX - .1475, 1.70, pcz, .025, .16, .30, col.white,
+      { tag: '打卡机', hard: true, gloss: .24 });
     glyphs(RX - .16, 1.70, pcz, -Math.PI / 2, '打卡',
       { size: .085, gap: .02, color: col.charcoal, mode: 1, tag: '打卡机' });
     thing('打卡机', RX - .30, 1.72, pcz, '上班先打卡。', 'You clock in before you start.',
@@ -532,7 +537,7 @@ const Office = Lazy('Office', () => {
       { focus: [RX - 1.30, -1.90], reach: 1.9 });
 
     // and the company's name on the wall by the door, which is the word this room teaches
-    glyphs(2.05, 2.34, RZ - .12, Math.PI, '北京文化传媒',
+    glyphs(1.95, 2.34, RZ - .12, Math.PI, '北京文化传媒',
       { size: .15, gap: .04, color: col.charcoal, mode: 1 });
   }
 

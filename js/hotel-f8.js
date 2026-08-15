@@ -1004,7 +1004,10 @@ const Hotel8Fit = Object.freeze({ floor: 'hotel8', api: 1 });
     nightStand(13.95, -11.85, -Math.PI / 2);
     media(9.54, -12.60, -Math.PI / 2, 1.45);
     windowSeat(10.65, -13.90, 0, 2.10);
-    wardrobe(9.65, -10.10, -Math.PI / 2, 1.55, .42);
+    // Keep the fitted case south of the entry return. At z -10.10 its comfort-inflated north
+    // corner overlapped the guest-door jamb's envelope and reduced the 1.10 m opening to a 4 cm
+    // diagonal pinch; 45 cm south restores a continuous turn without shrinking the storage.
+    wardrobe(9.65, -10.55, -Math.PI / 2, 1.55, .42);
     pendant(11.90, -12.20, 2.44);
     inkArt(12.70, 1.90, -11.56, 1.40, 1.00, Math.PI, 3, '远山图');
     light(12.0, 2.65, -12.6, [1, .84, .60], .34, 6.2);

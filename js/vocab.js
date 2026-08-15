@@ -137,6 +137,7 @@ const RAW = `
 中文|Zhōngwén|Chinese (language)
 工作|gōngzuò|work, job|work
 钱|qián|money|money
+零钱|língqián|small change, loose change|money
 我|wǒ|I, me
 你|nǐ|you
 的|de|(possessive)
@@ -204,9 +205,11 @@ const RAW = `
 黑|hēi|dark
 到期|dàoqī|due, expires|time
 明天|míngtiān|tomorrow|time
+后天|hòutiān|the day after tomorrow|time
 楼|lóu|building, floor|direction
 胡同|hútòng|alley, hutong
 超市|chāoshì|supermarket|food
+菜市场|càishìchǎng|food market, wet market|food
 # The one by your door and the one at the east end are both 超市 and nobody would confuse them:
 # 大 in front of it is doing the same work as "hyper-" does in English.
 大超市|dà chāoshì|hypermarket, the big supermarket|food
@@ -228,6 +231,7 @@ const RAW = `
 窗帘|chuānglián|curtain|home
 拉|lā|to pull, to draw
 阿姨|āyí|auntie, older woman|social
+舞者|wǔzhě|dancer|social
 师傅|shīfu|master, skilled worker|social
 维修工|wéixiūgōng|a repair technician, a maintenance worker|social
 老板|lǎobǎn|boss, shop owner|social
@@ -262,6 +266,7 @@ const RAW = `
 会|huì|can, to know how
 一点儿|yìdiǎnr|a little
 上班|shàngbān|to go to work|work
+合同|hétong|contract|work
 天气|tiānqì|weather|weather
 今天|jīntiān|today|time
 一起|yìqǐ|together|social
@@ -376,6 +381,21 @@ const RAW = `
 培训室|péixùn shì|training room|work
 董事会议室|dǒngshì huìyìshì|boardroom|work
 投影|tóuyǐng|projection|work
+打气筒|dǎqìtǒng|floor pump, bicycle pump|transport
+叫号机|jiàohàojī|queue-ticket machine|work
+付款凭证|fùkuǎn píngzhèng|proof of payment, payment voucher|money
+审计档案|shěnjì dàng'àn|audit files|work
+审计工位|shěnjì gōngwèi|audit workstation|work
+证据清单|zhèngjù qīngdān|evidence list|work
+法规汇编|fǎguī huìbiān|collection of laws and regulations|work
+判例评注|pànlì píngzhù|case-law commentary|work
+诉讼策略|sùsòng cèlüè|litigation strategy|work
+开放工位|kāifàng gōngwèi|open-plan desk, hot desk|work
+东侧开放工位|dōngcè kāifàng gōngwèi|east-side open-plan workstation|work
+水槽|shuǐcáo|sink, basin|home
+茶水台|cháshuǐ tái|office tea point|work
+机房|jīfáng|plant room, machine room|work
+户外工作台|hùwài gōngzuòtái|outdoor workstation|work
 餐盘回收|cānpán huíshōu|tray return|work
 安静舱|ānjìng cāng|quiet pod|work
 屋顶花园|wūdǐng huāyuán|roof garden|work
@@ -395,6 +415,13 @@ const RAW = `
 服务员|fúwùyuán|waiter, waitress, attendant|social
 厨师|chúshī|cook, chef|social
 收银员|shōuyínyuán|cashier|social
+体验师|tǐyànshī|product demonstrator, experience specialist|social
+送货员|sònghuòyuán|delivery worker|social
+面包师|miànbāoshī|baker|social
+领养专员|lǐngyǎng zhuānyuán|adoption specialist|social
+美容师|měiróngshī|groomer, beautician|social
+领班|lǐngbān|shift supervisor, head waiter|social
+作者|zuòzhě|author|social
 点菜|diǎncài|to order food|food
 # The rest of the menu board, and the words you need to hand money over. You read these off
 # the wall in the 餐馆 and off the tickets on the shelves in the 超市, so they belong here.
@@ -487,6 +514,7 @@ const RAW = `
 信号|xìnhào|signal
 盲道|mángdào|tactile paving for the blind|direction
 无障碍|wúzhàng'ài|accessible, step-free|direction
+坡道|pōdào|ramp, sloped access way|direction
 
 # ---- 客舱 on board the aeroplane. Everything you can point at inside the cabin.
 #
@@ -542,6 +570,7 @@ const RAW = `
 机场|jīchǎng|airport|transport
 # ---- 公园 the park, two stops down the line
 湖|hú|lake
+鸭子|yāzi|duck
 桥|qiáo|bridge
 亭子|tíngzi|pavilion
 长椅|chángyǐ|bench
@@ -618,6 +647,7 @@ const RAW = `
 雨林声音|yǔlín shēngyīn|rainforest sounds
 # ---- 大学城 the university district
 校园|xiàoyuán|campus
+门卫|ménwèi|gatekeeper, porter|social
 校园地图|xiàoyuán dìtú|campus map|direction
 学生服务中心|xuéshēng fúwù zhōngxīn|student services centre|social
 学生证|xuéshēngzhèng|student card
@@ -630,6 +660,7 @@ const RAW = `
 跑道|pǎodào|running track
 宿舍|sùshè|dormitory
 大学|dàxué|university
+学校|xuéxiào|school
 教学楼|jiàoxuélóu|teaching building
 教室|jiàoshì|classroom
 黑板|hēibǎn|blackboard
@@ -757,7 +788,7 @@ const RAW = `
 建筑|jiànzhù|a building, architecture
 海关|hǎiguān|customs
 钟楼|zhōnglóu|clock tower
-和平饭店|Hépíng Fàndiàn|the Peace Hotel
+沪岚饭店|Hùlán Fàndiàn|the Hulan Hotel
 饭店|fàndiàn|hotel (and, confusingly, restaurant)
 一晚上|yì wǎnshang|one night|time
 情侣墙|qínglǚ qiáng|the lovers' wall along the embankment
@@ -1074,7 +1105,7 @@ const RAW = `
 药剂师|yàojìshī|pharmacist|medical
 医生|yīshēng|doctor|medical
 医院|yīyuàn|hospital|medical
-# ---- 北京市仁和医院. Public-hospital survival vocabulary, in the order a visit teaches it:
+# ---- 北京市澄安医院. Public-hospital survival vocabulary, in the order a visit teaches it:
 # registration and triage, departments, tests, treatment, then the ward and discharge.
 挂号|guàhào|to register for a medical appointment|medical
 挂号处|guàhàochù|registration desk|medical
@@ -1281,7 +1312,7 @@ X光片|X guāng piàn|X-ray film|medical
 牛奶|niúnǎi|milk|food
 拿铁|nátiě|latte|food
 手续|shǒuxù|formalities, the paperwork
-身份证|shēnfènzhèng|ID card
+身份证|shēnfènzhèng|ID card|money
 扫码|sǎomǎ|to scan the code (to pay)|money
 现金|xiànjīn|cash|money
 表格|biǎogé|spreadsheet, form|work
@@ -1295,6 +1326,7 @@ X光片|X guāng piàn|X-ray film|medical
 鸡蛋|jīdàn|egg|food
 大厅|dàtīng|hall, concourse
 卫生间|wèishēngjiān|toilet, washroom|home
+无障碍卫生间|wúzhàng'ài wèishēngjiān|accessible toilet, accessible washroom|home
 窗口|chuāngkǒu|window, service counter
 篮子|lánzi|basket
 笔记|bǐjì|notes
@@ -1609,6 +1641,29 @@ X光片|X guāng piàn|X-ray film|medical
 安全出口|ānquán chūkǒu|emergency exit|direction
 楼梯|lóutī|stairs, staircase|direction
 消防栓|xiāofángshuān|fire hydrant
+
+# ---- 杨柳消防救援站
+消防站|xiāofángzhàn|fire station|place
+消防车|xiāofángchē|fire engine|transport
+消防员|xiāofángyuán|firefighter|people
+车库|chēkù|vehicle bay, garage|place
+车库门|chēkùmén|appliance-bay door
+出警|chūjǐng|to turn out for an emergency
+水带|shuǐdài|fire hose
+空气呼吸器|kōngqì hūxīqì|self-contained breathing apparatus
+防护服|fánghùfú|protective clothing|clothing
+头盔|tóukuī|helmet|clothing
+装备架|zhuāngbèijià|equipment rack
+值班室|zhíbānshì|watch room, duty room|place
+训练室|xùnliànshì|training room|place
+洗消间|xǐxiāojiān|decontamination room|place
+灭火器|mièhuǒqì|fire extinguisher
+工作台|gōngzuòtái|workbench
+清洗消毒|qīngxǐ xiāodú|wash and decontamination
+调度值班室|diàodù zhíbānshì|dispatch and watch room|place
+报警器|bàojǐngqì|alarm device
+访客登记|fǎngkè dēngjì|visitor registration
+消防宣传栏|xiāofáng xuānchuánlán|fire-safety noticeboard
 
 # ---- words the rest of the building asks for. Every one of these is the headword of a thing that
 # already exists in js/home-*.js with no row here, and Vocab.get has no fallback: walking up to
@@ -2125,6 +2180,36 @@ X光片|X guāng piàn|X-ray film|medical
 留言|liúyán|a message left for you|social
 领取|lǐngqǔ|to collect something you are owed
 挺|tǐng|quite, rather — 挺冷的, the everyday Beijing intensifier
+
+# ---- complete words in the live conversation questions. Questions are the tested half of a
+# conversation: leaving even one Han character unparsed means the card can display the sentence
+# but cannot grade what the player heard. These are entered as the phrase a speaker actually uses
+# where that phrase carries its own meaning (带走, 右手边, 摆餐具), and as the productive verb where
+# it really does stand alone in many sentences (帮, 带, 留).
+带走|dài zǒu|to take away, to go|food
+冰的|bīng de|iced, served cold|food
+处理|chǔlǐ|to handle, deal with
+帮|bāng|to help|social
+东侧|dōngcè|the east side|direction
+两位|liǎng wèi|two people, a party of two|number
+中餐厅|zhōngcāntīng|Chinese restaurant|food
+准备好|zhǔnbèi hǎo|to have ready, be prepared
+空桌|kōng zhuō|an empty table|food
+摆餐具|bǎi cānjù|to set the table|food
+补|bǔ|to replenish, top up
+右手边|yòushǒubiān|on the right-hand side|direction
+为|wèi|for, on behalf of
+箱子|xiāngzi|box, case|home
+小马|Xiǎo Mǎ|Xiao Ma, the player’s familiar address|social
+包|bāo|to wrap or make, as in 包饺子|food
+留|liú|to keep or leave something for someone
+一盘|yì pán|one plateful, one dish|number
+早|zǎo|morning; hello in the morning|time
+零|líng|zero|number
+提前|tíqián|in advance, ahead of time|time
+开始|kāishǐ|to begin, start|time
+带|dài|to take, bring or have someone with you
+广播|guǎngbō|broadcast, public announcement|transport
 稍等|shāo děng|one moment please|social
 客气|kèqi|polite, standing on ceremony|social
 别客气|bié kèqi|not at all, don't mention it|social
@@ -2262,6 +2347,9 @@ X光片|X guāng piàn|X-ray film|medical
 # here and not yet a colleague. When the workplace chapter lands and these become the people you
 # do the job with, that is the moment to move them, and not before.
 收货员|shōuhuòyuán|goods receiver|social
+行李员|xínglǐyuán|bell attendant, porter|social
+夜班前台|yèbān qiántái|night receptionist, night front desk attendant|social
+夜班礼宾|yèbān lǐbīn|night concierge|social
 洗衣房主管|xǐyīfáng zhǔguǎn|laundry supervisor|social
 工程师|gōngchéngshī|engineer|social
 保安员|bǎo'ānyuán|security officer|social
@@ -2441,32 +2529,97 @@ if (Object.keys(DICT).length < 1200)
     + 'search js/vocab.js for one and replace it with a single quote. See the note at the top of '
     + 'RAW. node --check js/vocab.js finds it too.');
 
-const KEY = 'bjlife.knowledge.v2';
+// v3 adds the four production counters (p, t, pd, pn) beside the schedule. Nobody's ninety-day
+// interval is allowed to die for that, so load() reads v3, then v2, then the flat v1 map, and
+// writes whatever it found forward. cleanKnowledge fills the new counters with zero, which is the
+// truth about a save made before typing existed.
+const KEY = 'bjlife.knowledge.v3';
+const KEY2 = 'bjlife.knowledge.v2';
 const OLDKEY = 'bjlife.knowledge.v1';
 
-const MAX = 9;          // familiarity ceiling; at MAX a word retires from review
+// Typing is a setting, not a wall: with it off quiz() never returns a 'type' card and the game
+// behaves exactly as it did before. Default on. The stage it unlocks (produced/toned) may gate
+// optional things and must never gate core progress.
+const TYPE_KEY = 'bjlife.typing.v1';
+let typing = true;
+try { if (localStorage.getItem(TYPE_KEY) === '0') typing = false; } catch (e) { /* no storage */ }
+
+const MAX = 9;          // familiarity ceiling; at MAX the word is mastered, not forgotten forever
 // Reading a word often enough will hide its English (stage 1) but can never master it (stage 2).
 const BRUSH_CAP = 4;
 const BRUSH_STEP = 0.12;
-// review schedule, in seconds of real time — short enough to close the loop inside one sitting
-const IV_FIRST = 75, IV_MUL = 2.3, IV_MAX = 6 * 3600, IV_MISS = 40;
+// Review starts inside one sitting, then stretches into durable memory. Mastered words return as
+// light refreshers instead of vanishing forever after a few hours of play.
+const DAY = 24 * 3600;
+const IV_FIRST = 75, IV_MUL = 2.3, IV_MAX = 90 * DAY, IV_MISS = 40;
+const IV_FLOOR = [0, IV_FIRST, 5 * 60, 25 * 60, 2 * 3600, 8 * 3600,
+                  DAY, 3 * DAY, 7 * DAY, 21 * DAY];
 
 // know[hz] = { n, iv, due, hit, miss }
 let know = load();
 
+// A declaration, not a const: `let know = load()` above runs before this line, and a const here
+// would be in its temporal dead zone when cleanKnowledge reached for it. load()'s three catch
+// blocks would then swallow the ReferenceError and return {} — every save on the machine silently
+// discarded, with no error anywhere. Caught by .typecheck.js's migration assertions.
+function cnt(v) {
+  const n = Number(v);
+  return Number.isSafeInteger(n) && n > 0 ? Math.min(1e6, n) : 0;
+}
+
+function cleanKnowledge(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return null;
+  const out = {};
+  for (const hz of Object.keys(value)) {
+    if (!DICT[hz]) continue;                       // retired/foreign keys are not learnable words
+    const row = value[hz];
+    if (!row || typeof row !== 'object' || Array.isArray(row)) continue;
+    const n = Number(row.n);
+    if (!Number.isFinite(n) || n <= 0) continue;
+    const iv = Number(row.iv), due = Number(row.due), hit = Number(row.hit), miss = Number(row.miss);
+    out[hz] = {
+      n: Math.min(MAX, n),
+      iv: Number.isFinite(iv) ? Math.max(0, Math.min(IV_MAX, iv)) : 0,
+      // A real interval is never more than ninety days ahead. Bounding the absolute timestamp keeps
+      // one damaged record from making a word impossible to review for centuries.
+      due: Number.isFinite(due) ? Math.max(0, Math.min(Date.now() + IV_MAX * 1000, due)) : 0,
+      hit: Number.isSafeInteger(hit) && hit > 0 ? Math.min(1e6, hit) : 0,
+      miss: Number.isSafeInteger(miss) && miss > 0 ? Math.min(1e6, miss) : 0,
+      // v3's production counters. A v2 record has none of these and gets zeroes, which is what a
+      // save made before typing existed actually knows about the player's production.
+      p: cnt(row.p), t: cnt(row.t), pn: cnt(row.pn), pd: cnt(row.pd),
+    };
+  }
+  return out;
+}
+
 function load() {
   try {
-    const v2 = JSON.parse(localStorage.getItem(KEY));
-    if (v2 && typeof v2 === 'object') return v2;
+    const v3 = JSON.parse(localStorage.getItem(KEY));
+    const clean = cleanKnowledge(v3);
+    if (clean) return clean;
+  } catch (e) { /* fall through */ }
+  // v2 is the same record shape without the production counters, so cleanKnowledge already reads
+  // it: n, iv, due, hit and miss come across untouched and only p/t/pn/pd are new. Written
+  // straight back out under the v3 key so the migration happens once, not on every boot.
+  try {
+    const v2 = cleanKnowledge(JSON.parse(localStorage.getItem(KEY2)));
+    if (v2) {
+      try { localStorage.setItem(KEY, JSON.stringify(v2)); } catch (e) { /* full or blocked */ }
+      return v2;
+    }
   } catch (e) { /* fall through */ }
   // migrate the flat v1 format ({ hz: number }) so old saves keep their progress
   try {
     const v1 = JSON.parse(localStorage.getItem(OLDKEY));
-    if (v1 && typeof v1 === 'object') {
+    if (v1 && typeof v1 === 'object' && !Array.isArray(v1)) {
       const out = {};
       for (const k in v1) {
+        if (!DICT[k]) continue;
         const n = Math.min(MAX, Number(v1[k]) || 0);
-        out[k] = { n, iv: n >= 1 ? IV_FIRST : 0, due: n >= 1 ? Date.now() : 0, hit: 0, miss: 0 };
+        if (n > 0)
+          out[k] = { n, iv: n >= 1 ? IV_FIRST : 0, due: n >= 1 ? Date.now() : 0, hit: 0, miss: 0,
+                     p: 0, t: 0, pn: 0, pd: 0 };
       }
       localStorage.setItem(KEY, JSON.stringify(out));
       return out;
@@ -2497,16 +2650,30 @@ function load() {
 
 
 function rec(hz) {
-  return know[hz] || (know[hz] = { n: 0, iv: 0, due: 0, hit: 0, miss: 0 });
+  return know[hz] || (know[hz] = { n: 0, iv: 0, due: 0, hit: 0, miss: 0, p: 0, t: 0, pn: 0, pd: 0 });
 }
 const nOf = hz => (know[hz] ? know[hz].n : 0);
 
-let saveT = 0;
-function save() {
+let saveT = 0, dirty = false;
+function flush() {
+  if (!dirty) return;
+  dirty = false;
   clearTimeout(saveT);
-  saveT = setTimeout(() => {
-    try { localStorage.setItem(KEY, JSON.stringify(know)); } catch (e) { /* storage full or blocked */ }
-  }, 150);
+  try { localStorage.setItem(KEY, JSON.stringify(know)); } catch (e) { /* full or blocked */ }
+}
+function save() {
+  dirty = true;
+  clearTimeout(saveT);
+  saveT = setTimeout(flush, 150);
+}
+// A just-answered card is the most valuable 150 ms in the vocabulary lifecycle. Mobile tab
+// switches and immediate closes can bypass the debounce, so commit at the same two lifecycle
+// boundaries used by conversation progress.
+if (typeof addEventListener === 'function') {
+  addEventListener('pagehide', flush);
+  addEventListener('visibilitychange', () => {
+    if (typeof document !== 'undefined' && document.hidden) flush();
+  });
 }
 
 // stage 0 = full assist, 1 = pinyin only, 2 = hanzi only (mastered)
@@ -2516,7 +2683,7 @@ function stage(hz) {
 }
 const met = hz => nOf(hz) >= 1;
 const retired = hz => nOf(hz) >= MAX;
-const isDue = hz => met(hz) && !retired(hz) && Date.now() >= rec(hz).due;
+const isDue = hz => met(hz) && Date.now() >= rec(hz).due;
 
 let maxLen = 0;
 for (const k in DICT) maxLen = Math.max(maxLen, k.length);
@@ -2532,6 +2699,75 @@ function shuffled(arr) {
 }
 function glosses(e) {
   return e.en.split(/[,;]/).map(s => s.trim().toLowerCase()).filter(Boolean);
+}
+
+// ---------------------------------------------------------------- typed answers and tones
+// A word is not learned until you can produce it from nothing, and everything above this line only
+// ever asked you to pick one of four. What follows turns whatever a learner types into the two
+// things a grade needs — the toneless letters, and whichever tones they actually bothered to give.
+//
+// All six of these are the same answer for 你好 and every one of them has to be accepted:
+//   nihao · ni hao · ni3hao3 · nǐhǎo · nǐ hǎo · NiHao
+// so case, spaces, apostrophes and hyphens come out, diacritics become digits, and ü/v/u: are one
+// letter because no keyboard has ü and everybody types nv for 女.
+const TONE_CHARS = {
+  'ā': 'a1', 'á': 'a2', 'ǎ': 'a3', 'à': 'a4',
+  'ē': 'e1', 'é': 'e2', 'ě': 'e3', 'è': 'e4',
+  'ī': 'i1', 'í': 'i2', 'ǐ': 'i3', 'ì': 'i4',
+  'ō': 'o1', 'ó': 'o2', 'ǒ': 'o3', 'ò': 'o4',
+  'ū': 'u1', 'ú': 'u2', 'ǔ': 'u3', 'ù': 'u4',
+  'ǖ': 'v1', 'ǘ': 'v2', 'ǚ': 'v3', 'ǜ': 'v4',
+  'ü': 'v', 'ń': 'n2', 'ň': 'n3', 'ǹ': 'n4', 'ḿ': 'm2',
+};
+const PY_VOWEL = 'aeiouv';
+
+// One entry per vowel run — the same measure .dictcheck.js:62 uses to count syllables, and it is
+// right for the same reason: a Mandarin syllable has exactly one vowel nucleus. The tone digit
+// written before the next run starts belongs to the run it follows, so ni3hao3 and nǐhǎo and
+// nǐ hǎo all parse to letters "nihao" and tones [3,3].
+//
+// A space, apostrophe or hyphen BREAKS a run rather than being deleted first, which is the whole
+// job those marks do: xi'an is two syllables and xian is one. Tone 0 in the result means "the
+// writer supplied none here", which is not the same as neutral tone and must not be graded as it.
+function pyParse(text) {
+  const raw = String(text == null ? '' : text);
+  const s = (raw.normalize ? raw.normalize('NFC') : raw).toLowerCase().replace(/u:/g, 'v');
+  let letters = '';
+  const tones = [];
+  let inV = false;
+  for (const ch of s) {
+    const mapped = TONE_CHARS[ch];
+    const unit = mapped === undefined ? ch : mapped;
+    for (const c of unit) {
+      if (c >= '0' && c <= '9') {
+        if (tones.length) tones[tones.length - 1] = Number(c);
+        // The digit does NOT end the vowel run. A diacritic expands in place, so kāfēi becomes
+        // ka1fe1i and the i is the back half of the ei nucleus — closing the run on the digit
+        // read 咖啡 as three syllables and marked every correctly-toned answer wrong.
+        continue;
+      }
+      if (c < 'a' || c > 'z') { inV = false; continue; }   // a boundary mark, or punctuation
+      if (PY_VOWEL.indexOf(c) >= 0) { if (!inV) { tones.push(0); inV = true; } }
+      else inV = false;
+      letters += c;
+    }
+  }
+  return { letters, tones };
+}
+
+// The dictionary's own reading, as tones. An unmarked syllable in written pinyin is 轻声 and comes
+// back as 5 — 桌子 zhuōzi is [1,5] — which is a real claim about the word, unlike the 0 pyParse
+// gives back for a syllable the player left untoned.
+function tonesOfReading(py) {
+  return pyParse(py).tones.map(t => t || 5);
+}
+
+// A row with no tone to test. Both marks are the dictionary's own and both are already load-bearing
+// for .dictcheck.js:126 and :117 — a bracketed gloss is this list's mark for a 轻声 particle, and a
+// gloss saying dialect means the reading is not Mandarin. Demanding a tone for either would be
+// demanding a wrong answer.
+function toneless(e) {
+  return !e || /^\s*\(/.test(e.en) || /shanghainese|dialect|cantonese/i.test(e.en);
 }
 
 return {
@@ -2654,11 +2890,25 @@ return {
   },
 
   // A recall check: hanzi -> meaning, then hanzi -> sound, then meaning -> hanzi.
-  quiz(hz) {
+  //
+  // `want` is optional and omitting it is the behaviour this had before typing existed — in
+  // particular quiz(hz) NEVER returns a 'type' card, because game.js:3625 reads q.options.length
+  // without a guard and a card with no options would throw there. The caller opts in, and
+  // wantsType(hz) is how it decides to. With the setting off, asking for one gets the old card.
+  quiz(hz, want) {
     const e = DICT[hz];
     if (!e) return null;
     const n = nOf(hz);
-    const kind = n >= 7 ? 'produce' : n >= 3 ? 'pinyin' : 'meaning';
+    const auto = n >= 7 ? 'produce' : n >= 3 ? 'pinyin' : 'meaning';
+    if (want === 'type' && !typing) want = null;
+    const kind = want === 'type' || want === 'produce' || want === 'pinyin' || want === 'meaning'
+      ? want : auto;
+    // Production: the English, an empty box, and no options to recognise the answer out of.
+    if (kind === 'type') return {
+      kind: 'type', hz, prompt: e.en, expect: e.py,
+      hint: '怎么念？打出拼音 · type the pinyin',
+      tones: this.toneOf(hz),
+    };
     const face = k => kind === 'produce' ? k : kind === 'pinyin' ? DICT[k].py : DICT[k].en;
     const answerGloss = glosses(e);
     const used = new Set([face(hz).toLowerCase()]);
@@ -2700,11 +2950,12 @@ return {
 
   // Score a check. Only this moves a word toward mastery.
   grade(hz, correct) {
-    const r = rec(hz), before = stage(hz);
+    const r = rec(hz), before = stage(hz), beforeN = r.n;
     if (correct) {
       r.hit++;
       r.n = Math.min(MAX, r.n + 1);
-      r.iv = r.iv ? Math.min(r.iv * IV_MUL, IV_MAX) : IV_FIRST;
+      const floor = IV_FLOOR[Math.min(IV_FLOOR.length - 1, Math.max(1, Math.floor(r.n)))];
+      r.iv = r.iv ? Math.min(Math.max(r.iv * IV_MUL, floor), IV_MAX) : IV_FIRST;
     } else {
       r.miss++;
       r.n = Math.max(1, r.n - 1.5);
@@ -2716,9 +2967,77 @@ return {
     return {
       correct, n: r.n, stage: after,
       promoted: after > before, demoted: after < before,
-      retired: retired(hz), nextIn: r.iv * 1000,
+      retired: beforeN < MAX && retired(hz), nextIn: r.iv * 1000,
     };
   },
+
+  // ---- production: typing the word from nothing, and whether the tones came with it.
+  //
+  // The tones of a headword, [2,1] and so on, with 5 for 轻声. A particle or a dialect reading has
+  // no tone to test and comes back [] — never tone-tested, never counted against anybody.
+  toneOf(hz) {
+    const e = DICT[hz] || this.get(hz);
+    if (toneless(e)) return [];
+    return tonesOfReading(e.py);
+  },
+
+  // Score a typed answer. Letters first, tones second, and only ever one schedule move: this ends
+  // in the same grade() every other check goes through, so a typed answer and a tapped one are
+  // worth the same to the review queue and cannot double-count.
+  //
+  //   letters wrong             -> correct false. A miss, and it costs the interval like one.
+  //   letters right, no tones   -> correct true, toneCorrect null. Somebody who types nihao knows
+  //                                the word; punishing them for not knowing the digits is wrong.
+  //   letters right, tones bad  -> correct true, toneCorrect false. A hit for the schedule and
+  //                                NOT a hit for production — p does not move.
+  gradeTyped(hz, text) {
+    const e = DICT[hz] || this.get(hz);
+    if (!e) return null;
+    const want = pyParse(e.py), got = pyParse(text);
+    const correct = got.letters.length > 0 && got.letters === want.letters;
+    let toneCorrect = null;
+    if (correct && got.tones.some(t => t > 0)) {
+      if (this.toneOf(hz).length === 0) toneCorrect = null;   // nothing to be wrong about
+      else {
+        const wt = want.tones.map(t => t || 5);
+        toneCorrect = got.tones.length === wt.length
+                   && got.tones.every((t, i) => t === 0 || t === wt[i]);
+      }
+    }
+    const res = this.grade(hz, correct);
+    if (correct && toneCorrect !== false) {
+      const r = rec(hz), day = Math.floor(Date.now() / 86400000);
+      r.p = (r.p || 0) + 1;
+      // "at least one of those was a different day" — one sitting is recall, two days is memory.
+      if (r.pd !== day) { r.pn = (r.pn || 0) + 1; r.pd = day; }
+      if (toneCorrect === true) r.t = (r.t || 0) + 1;
+      save();
+    }
+    return {
+      ...res, correct, toneCorrect, expected: e.py,
+      got: String(text == null ? '' : text).trim(),
+      produced: this.produced(hz), toned: this.toned(hz),
+    };
+  },
+
+  // A fourth stage that sits above mastered without touching it. stage() still returns 0/1/2 and
+  // every caller of it is untouched; these are asked separately by whatever wants to gate an
+  // OPTIONAL thing on production. Core progress may never depend on either.
+  produced(hz) { const r = know[hz]; return !!r && (r.p || 0) >= 2 && (r.pn || 0) >= 2; },
+  toned(hz) { const r = know[hz]; return !!r && (r.t || 0) >= 2; },
+  typedCounts(hz) { const r = know[hz]; return { p: (r && r.p) || 0, t: (r && r.t) || 0,
+                                                days: (r && r.pn) || 0 }; },
+
+  // The setting. Off means quiz() can never hand back a 'type' card, and nothing else changes.
+  typing: () => typing,
+  setTyping(on) {
+    typing = !!on;
+    try { localStorage.setItem(TYPE_KEY, typing ? '1' : '0'); } catch (e) { /* no storage */ }
+    return typing;
+  },
+  // Whether this word should be asked for by typing rather than recognised. True while the word is
+  // mastered but not yet produced, so production is what the check pushes at until it is reached.
+  wantsType(hz) { return typing && !!DICT[hz] && nOf(hz) >= 7 && !this.produced(hz); },
 
   // Passive exposure: seeing a word in a sentence teaches you a little, never enough.
   brush(hz) {
@@ -2759,12 +3078,15 @@ return {
     return Object.keys(know).filter(met).map(hz => ({
       hz, ...(DICT[hz] || { py: '', en: '' }),
       n: know[hz].n, st: stage(hz), due: isDue(hz), retired: retired(hz),
+      interval: know[hz].iv, dueAt: know[hz].due,
     })).sort((a, b) => (b.due - a.due) || (b.n - a.n));
   },
 
   reset() {
     know = {};
+    dirty = false; clearTimeout(saveT);
     try { localStorage.removeItem(KEY); } catch (_) {}
+    try { localStorage.removeItem(KEY2); } catch (_) {}
     try { localStorage.removeItem(OLDKEY); } catch (_) {}
   },
 };

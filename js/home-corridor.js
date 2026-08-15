@@ -17,29 +17,28 @@
 // 2r = 0.60 for the clear opening the eye sees:
 //
 //     x          -5.50   -4.70   -3.00   -1.00    0.50    2.50    4.00    5.00    5.60
-//     legal run   1.965   1.305   1.305   1.305   2.245   1.045   2.035   1.985   2.245
-//     clear       2.565   1.905   1.905   1.905   2.845   1.645   2.635   2.585   2.845
+//     legal run   1.960   1.300   1.300   1.300   1.040   1.040   1.960   1.980   2.240
+//     clear       2.560   1.900   1.900   1.900   1.640   1.640   2.560   2.580   2.840
 //
 // Read that before trusting any round number about this floor, including the ones this header used
 // to carry. Three things in it are not what you would guess:
 //
-//   * The narrowest run in the building is 1.045 m at x 2.50, across the front of the WORKING
-//     shaft — that one is real, and it is a centre-run, not a width: the clear opening there is
-//     1.645 m. Nothing this file builds puts a collider in that strip.
-//   * The WIDEST point in the building, 2.245 m, is at x 0.50 — directly in front of LIFT_B, the
-//     shaft that is blanked off up here and therefore carries no landing furniture at all. The
-//     open ends match it (2.245 at x 5.60) but do not beat it.
+//   * The narrowest run is 1.040 m across BOTH shaft fronts (x .50 and 2.50), or 1.640 m of visible
+//     clear width. LIFT_B used to measure 2.240 m because its blank-wall collider was not marked as
+//     shell structure and the stale-collider cleanup deleted it; that was a route through a wall,
+//     not extra corridor. `home-public-space-check.js` now asserts the marker and both depths.
+//   * The widest point is the east open end, 2.240 m at x 5.60. The west open end is 1.960 m at
+//     x -5.50 because the hose cabinet occupies part of that end; the two ends are not symmetric.
 //   * The west wing is NOT the corridor's open end. From x -4.70 to x -1.00 the run is a flat
-//     1.305 m for 3.7 m — narrower than the east wing and only 0.26 m wider than the working
+//     1.300 m for 3.7 m — narrower than the east wing and only 0.26 m wider than the working
 //     shaft's landing. That is this fit-out's doing, not the shell's: the wing is pinched between
 //     the south-wall parking (colliders reach ZPARK = ZS + 0.62, :982 and :1022) and the
-//     north-wall shoe band (ZSHOE onward, :1045-:1122), and ZPARK + r .. ZSHOE - r is 1.32 m.
-//     If you add anything to either band in the west wing you are taking it out of a 1.305 m run.
+//     north-wall shoe band (ZSHOE onward, :1045-:1122), and ZPARK + r .. ZSHOE - r is 1.30 m.
+//     If you add anything to either band in the west wing you are taking it out of a 1.300 m run.
 //
-// An earlier version of this header claimed "1.04 m of standing room across their front" and
-// "at each end the corridor opens out to its full 2.24 m of walkable depth". The first number was
-// a legal-centre run described as a width; the second was true of the east end and false of the
-// west. The camera lane's 2.20 m corridor orbit limit was chosen partly against those words.
+// An earlier version called 1.04 m "standing room" and said both ends opened to 2.24 m. The first
+// is a legal-centre run (1.64 m visible clear width); the second is true only of the east end. The
+// table above keeps those units separate so the corridor camera is not tuned against mixed facts.
 //
 // All the storage a corridor here accumulates — the bikes, the shoes, the cardboard, the pushchair
 // — goes in the two wings, which is also where it goes in the real building, and for the same
@@ -115,9 +114,9 @@ FlatFit['corridor'] = A => {
   const ZLOBBY = LF.z0 - R;             // 4.60 — but in front of the shafts this is the north edge
   const XWING0 = LB.x0 - .10 - R;       // -0.80 — west of here the north half opens up
   const XWING1 = LF.x1 + .10 + R;       //  3.80 — and east of here
-  // What this file is allowed to take back off that. 2.245 m is the legal run at the *open ends*
-  // (x 0.50 and x 5.60 in the swept table at the head of this file), not along a whole wing: at
-  // x -4.70 the west wing is 1.305 m of legal centres, 1.905 m clear. The wings can still afford
+  // What this file is allowed to take back off that. 2.240 m is the legal run at the east open end
+  // (x 5.60 in the measured table at the head of this file), not along a whole wing: at x -4.70
+  // the west wing is 1.300 m of legal centres, 1.900 m clear. The wings can still afford
   // a parking strip down one side and a shoe strip down the other; the middle strip gets nothing.
   // BAND is what has to survive both, so the two limits are derived from it rather than chosen and
   // hoped over — a bicycle 10 cm further out of the wall than intended is 10 cm off the walkway.
@@ -384,8 +383,8 @@ FlatFit['corridor'] = A => {
   //
   // Every fitting sits at z < LIFT.z0 so that none of them is inside a shaft, and the two in the
   // wings sit deeper into the room than the four in the middle, because the wings open out to
-  // 2.245 m of legal run at their ends — 1.305 m at x -4.70, so not uniformly — while the middle
-  // strip across the working shaft is 1.045 m, and a lamp on the middle line of that lights
+  // 2.240 m of legal run at the east end — 1.300 m at x -4.70, so not uniformly — while the middle
+  // strip across the working shaft is 1.040 m, and a lamp on the middle line of that lights
   // nothing at the ends.
   //
   // Power .30 and glow .07, not .52 and .13. At the old figures the plaster across the front of
@@ -806,6 +805,25 @@ FlatFit['corridor'] = A => {
   G(sf(.088), Y + .90, SZ + .30, -PI / 2, '常闭', { size: .036, gap: .006, color: col.redD });
   G(sf(.088), Y + .82, SZ + .30, -PI / 2, '防火门', { size: .030, gap: .005, color: col.ink });
 
+  // ---- 猫 at the fire-stair threshold (item 323). The stair beyond this 常闭 door is visual-only
+  // and has no walkable zone, so an interactable behind it would be unreachable. This curled cat,
+  // adapted from the static courtyard cat in js/street-west.js, is tucked against the south jamb
+  // on the corridor side. It has no collider and therefore takes nothing out of the measured east
+  // wing route; deck 2 falls through to the existing global 摸猫 action in js/data.js.
+  const CX = X1 - .32, CZ = SZ - SW / 2 - .20, CT = { tag: '猫' };
+  const catC = C('#716b60'), catD = C('#4d4942');
+  ball(CX, FL + .105, CZ, .145, .095, .120, catC, { gloss: .14, ry: .6, ...CT });
+  ball(CX + .10, FL + .098, CZ + .07, .062, .055, .058, catD, { gloss: .14, ry: .6, ...CT });
+  for (const t of [-1, 1])
+    ball(CX + .085 + t * .026, FL + .142, CZ + .055 + t * .014, .022, .026, .016, catD,
+      { gloss: .14, ...CT });
+  cap(CX - .04, FL + .055, CZ + .11, .026, .21, .026, catD,
+    { rz: PI / 2, ry: 1.15, gloss: .14, ...CT });
+  shade(CX, CZ, .42, .34, .28, MATY + .006);
+  TH('猫', CX, FL + .30, CZ, '防火门边蜷着一只猫。',
+    'A cat is curled up beside the fire door.',
+    '一只猫 — 只 zhī is the measure word for most small animals.', 5.15, 4.03, 1.5);
+
   // =================================================================== 消火栓 the hose cabinet
   const HX = -5.05, HZ = ZS + .11;
   box(HX, Y + 1.14, HZ, .70, 1.00, .22, col.red, { hard: true, gloss: .30, tag: '消火栓' });
@@ -968,7 +986,7 @@ FlatFit['corridor'] = A => {
   // Two rules, and everything below obeys both. Nothing gets a collider in the middle strip
   // (x -0.80 .. 3.80), because that strip is 1.04 m wide and has none to spare. In the wings,
   // south-wall colliders stop at ZPARK and north-wall ones start at ZSHOE, which leaves a
-  // 1.32 m walkway from end to end — wider than the lift lobby it joins.
+  // 1.30 m walkway from end to end — wider than the lift lobby it joins.
 
   // --- 电动车. The e-bike, on charge off an extension lead run out of somebody's flat, directly
   // under the notice on the board that says not to. That is the joke and it is also the truth.

@@ -79,7 +79,10 @@ const CampusInteriors = (() => {
           m.texture === 'steel' ? .44 : .38;
         // Keep plaster variation as a restrained painted tooth; wood, brick, tile and terrazzo
         // retain enough contrast to read as their actual material under interior lighting.
-        o.matAmt=m.texture === 'wood' ? .42 : m.texture === 'plaster' ? .025 : .30;
+        // Painted university plaster needs only a trace of tooth. At capture distance the former
+        // amount resolved as a repeated dirty handprint across otherwise clean civic, dorm and lab
+        // walls, so keep the depth cue without letting the procedural pattern become the finish.
+        o.matAmt=m.texture === 'wood' ? .42 : m.texture === 'plaster' ? .008 : .30;
       }
       if (o.mode === undefined && m.renderMode !== undefined) o.mode=m.renderMode;
       return o;
@@ -296,17 +299,30 @@ const CampusInteriors = (() => {
 
     function renderChair(f,w=.46,h=.84,d=.48,material=f.material) {
       const ground=f.at[1]-base;
-      // A visible under-frame, separate crowned cushion and inset back pad keep the chair from
-      // reading as two perpendicular slabs.  Every part remains inside the declared footprint.
-      localBox(f,0,ground+.37,0,w*.88,.12,d*.76,'M-STEEL-DARK',{round:.018,bevel:.012});
-      // Blueprint yaw zero means the sitter faces local +z.  Keep the back at -z so authored
-      // chair directions, workstation screens and room sightlines all share that convention.
-      localBox(f,0,ground+.47,d*.03,w,.16,d*.84,material,{mode:7,round:.065,gloss:.045});
-      localBox(f,0,ground+.70,-d*.38,w*.94,.48,.075,'M-STEEL-DARK',{round:.026});
-      localBox(f,0,ground+.70,-d*.345,w*.82,.34,.09,material,{mode:7,round:.055,gloss:.045});
-      localBox(f,0,ground+.49,d*.405,w*.82,.025,.025,material,{mode:7,round:.012});
-      for(const dx of [-w*.38,w*.38])for(const dz of [-d*.32,d*.32])
-        localBox(f,dx,ground+.20,dz,.042,.40,.042,'M-STEEL-DARK',{round:.010,bevel:.008});
+      const fallback=()=>{
+        // A visible under-frame, separate crowned cushion and inset back pad keep the chair from
+        // reading as two perpendicular slabs.  Every part remains inside the declared footprint.
+        localBox(f,0,ground+.37,0,w*.88,.12,d*.76,'M-STEEL-DARK',{round:.018,bevel:.012});
+        // Blueprint yaw zero means the sitter faces local +z.  Keep the back at -z so authored
+        // chair directions, workstation screens and room sightlines all share that convention.
+        localBox(f,0,ground+.47,d*.03,w,.16,d*.84,material,{mode:7,round:.065,gloss:.045});
+        localBox(f,0,ground+.70,-d*.38,w*.94,.48,.075,'M-STEEL-DARK',{round:.026});
+        localBox(f,0,ground+.70,-d*.345,w*.82,.34,.09,material,{mode:7,round:.055,gloss:.045});
+        localBox(f,0,ground+.49,d*.405,w*.82,.025,.025,material,{mode:7,round:.012});
+        for(const dx of [-w*.38,w*.38])for(const dz of [-d*.32,d*.32])
+          localBox(f,dx,ground+.20,dz,.042,.40,.042,'M-STEEL-DARK',{round:.010,bevel:.008});
+      };
+      // The first two B01 floors have enough spacing for the resident moulded chair; their tightly
+      // pitched waiting banks and F2's desk-integrated task chairs deliberately stay native. This
+      // removes hundreds of little boxes without another texture allocation, while the exact
+      // authored body remains the load-failure fallback.
+      const mouldedB01=building.id==='B01'&&(
+        (floor.level===1&&(f.prefab==='PF-CHAIR'||f.prefab==='PF-LECTURE-SEAT'))||
+        (floor.level===2&&f.prefab==='PF-CHAIR'));
+      if(mouldedB01)
+        return B.modelOr('plastic_monobloc_chair',f.at[0],ground,f.at[2],.95,
+          {ry:f.yaw||0,color:C0(material),gloss:.10,tag:f.id},fallback);
+      return fallback();
     }
     function renderTable(f,w,h,d,material=f.material) {
       const y=f.at[1]-base;

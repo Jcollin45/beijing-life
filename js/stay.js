@@ -17,7 +17,7 @@
 //     identical after a reload without a single byte in the save (H098, H315).
 const Stay = (() => {
 
-  // ---- the grades, priced off the floor they are on. The rates sit above 和平饭店's ¥220 tourist
+  // ---- the grades, priced off the floor they are on. The rates sit above 沪岚饭店's ¥220 tourist
   // room in Shanghai and well above the ¥150 courtyard 客栈 in Chengdu, which is what a five-star
   // in 商务区 should feel like next to ¥60 a day of rent.
   // `rooms` is a door count, not a capacity estimate. `roomNo` below issues level*100 + i + 1, so
@@ -123,7 +123,7 @@ const Stay = (() => {
     key: null,        // the card in your pocket: {floor,room,lost}
     charges: [],      // incidentals only. Room nights are derived, never posted.
     problem: null,    // {key, reported, fixed, fixDay, told}
-    service: null,    // room service in transit: {hz,en,amt,dueAt}
+    service: null,    // room service in transit: {hz,en,amt,dueAt:absolute game minute}
     laundry: null,    // {sentDay, backDay, amt}
     luggage: null,    // {day, tag}
     clean: 1,         // 0 slept in, 1 serviced
@@ -394,12 +394,12 @@ const Stay = (() => {
     },
 
     // ---- things that arrive later, because in a hotel everything arrives later.
-    orderService(hz, en, amt, minutes, delay) {
+    orderService(hz, en, amt, now, delay) {
       if (!S.b || S.service) return null;
-      S.service = { hz, en, amt, dueAt:minutes + (delay || 28) };
+      S.service = { hz, en, amt, dueAt:now + (delay || 28) };
       return { ...S.service };
     },
-    serviceDue: minutes => !!(S.service && minutes >= S.service.dueAt),
+    serviceDue: now => !!(S.service && now >= S.service.dueAt),
     // Called when the staff member has actually walked it up; the money lands on the bill, not the
     // wallet, which is the point of a room number.
     serviceArrived(day) {

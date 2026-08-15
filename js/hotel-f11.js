@@ -910,7 +910,7 @@ HotelFit.register('hotel11', A => {
   // through BOTH side walls, and the published serviceSpine runs [[16,5.1],[9,5.1],[9,10]]
   // straight along it. Furniture parked there severs the lift-to-dining route.
   box(10.62, .46, 3.55, .58, .92, 1.50, c.walnutL, { hard:true, mode:6, gloss:.26, tag:'备餐间' });
-  box(10.62, .95, 3.55, .66, .07, 1.60, c.steel, { hard:true, mode:7, gloss:.44, tag:'备餐间' });
+  box(10.62, .95, 3.55, .66, .07, 1.60, c.steel, { hard:true, gloss:.44, tag:'备餐间' });
   solid(10.40, 10.94, 2.80, 4.30);
   for (let i = 0; i < 3; i++)
     box(10.62, 1.72 + i * .46, 3.55, .40, .04, 1.36, c.walnutL,
@@ -918,7 +918,7 @@ HotelFit.register('hotel11', A => {
   for (let i = 0; i < 8; i++)
     cyl(10.62, 1.80 + Math.floor(i / 4) * .46, 3.05 + (i % 4) * .42, .10, .10,
       i % 3 ? c.paper : c.celadonL, { gloss:.30, tag:'备餐间' });
-  box(12.28, .48, 6.65, .44, .96, .70, c.steel, { hard:true, mode:7, gloss:.40, tag:'备餐间' });
+  box(12.28, .48, 6.65, .44, .96, .70, c.steel, { hard:true, gloss:.40, tag:'备餐间' });
   solid(12.06, 12.51, 6.30, 7.00);
   luminous(box(11.45, 3.32, 4.62, 1.20, .06, .16, c.white, { hard:true, mode:1, tag:'备餐间' }), .10, .16);
   thing('备餐间', 11.45, 1.20, 4.62, '客房服务从服务梯经备餐间送进套房餐厅。',
@@ -1082,7 +1082,7 @@ HotelFit.register('hotel11', A => {
     { mode:7, gloss:.13, mat:'tile', matScale:.60, matAmt:.16, tag:'布草间' });
   for (const [sx, sz0, sz1] of [[-21.20, -14.00, -9.60], [-18.30, -14.00, -12.80]]) {
     const d = sz1 - sz0, zc = (sz0 + sz1) / 2, yaw = sx < -20 ? E : W;
-    box(sx, 1.10, zc, .44, 2.20, d, c.steel, { hard:true, mode:6, gloss:.34, tag:'布草间' });
+    box(sx, 1.10, zc, .44, 2.20, d, c.steel, { hard:true, gloss:.34, tag:'布草间' });
     for (let i = 0; i < 3; i++) {
       box(sx + (yaw === E ? .06 : -.06), .48 + i * .68, zc, .34, .04, d - .10, c.steel,
         { hard:true, gloss:.36, tag:'布草间' });

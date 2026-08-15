@@ -104,7 +104,7 @@ MallFit['家居店'] = A => {
   // the single exception of `nrmAmt`, which the building leaves at its default 1 and which at that
   // strength reads as dirt on the timber rather than as grain in it.
   const TB = { mat:'wood',    matScale:.90,  matAmt:.30, nrmAmt:.35 };
-  const PL = { mat:'plaster', matScale:2.40, matAmt:.28, nrm:null };
+  const PL = { mat:'plaster', matScale:.62, matAmt:.12, nrm:null };
   const W  = { mode:6, ...TB, gloss:.22 };            // furniture: a rounded silhouette
   const WH = { ...W, hard:true };                     // joinery: machined panels and shelves
   const F  = { mode:7 };                              // cloth, and no material at all

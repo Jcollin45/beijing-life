@@ -14,7 +14,8 @@
 // A 次卧 in a Chinese flat is almost never a guest room kept made up. It is the room the rest of
 // the flat overflows into: a single bed you cannot see the middle of, cartons that have not been
 // opened since the move, the winter quilts in vacuum bags, the suitcase on top of the wardrobe,
-// the drying rack that lives at the window, the exercise bike somebody bought in January. The
+// and the exercise bike somebody bought in January. The service balcony owns the drying rack;
+// duplicating it here used to turn an honest overflow room into a furniture store. The
 // design instruction for this file is therefore *honest, not tidy* — every clear horizontal
 // surface in here has something on it, because that is what makes a room read as lived in rather
 // than as a showroom with the lights off.
@@ -75,13 +76,15 @@ FlatFit['second'] = A => {
   const PT = .10;                             // partition thickness, centred on x = -2.60
   const PF = X1 - PT / 2;                     // -2.65, the partition's face on the bedroom side
   const PB = X1 + PT / 2;                     // -2.55, its face on the study side
-  // The doorway between the two rooms. 0.90, widened from 0.80 on 2026-08-08 with the other four
+  // The doorway between the two rooms. Widened from 0.80 on 2026-08-08 with the other four
   // in the flat: clampMove inflates each jamb by the 0.30 body radius, so 0.80 left a 0.20 m run
   // of legal centre positions, and .flatcheck.js samples the floor on a 0.10 m lattice — a 0.20
   // run passes only when a cell happens to land within millimetres of its middle. It did not here,
   // and the 次卧 read "0 cells at 0.2 m clearance" while showing a clean 100% on the plain fill.
-  // 0.90 gives a 0.30 run, which is three lattice steps and therefore resolvable at any phase.
-  const DZ0 = -2.35, DZ1 = -1.45, DTOP = 2.05;
+  // The opening now runs the last 5 cm to the north return. The old decorative wall nib became a
+  // 65 cm-deep obstruction after body padding, so the .95 m reveal carries a normal .89 m leaf
+  // and gives the turn into both rooms a little tolerance.
+  const DZ0 = -2.35, DZ1 = Z1, DTOP = 2.05;
 
   // ---------------------------------------------------------------------------- palette
   // Deliberately cheaper and greyer than the master bedroom's. This is the room that got the
@@ -146,9 +149,8 @@ FlatFit['second'] = A => {
     const stretch = (z0, z1) => A.partition(Y(0), H, (yc, hh, o) =>
       box(X1, yc, (z0 + z1) / 2, PT, hh, z1 - z0, K.wall, { ...S, ...o }));
     stretch(Z0, DZ0);                                                        // south of the door
-    stretch(DZ1, Z1);                                                        // north of it
     box(X1, Y((DTOP + H) / 2), (DZ0 + DZ1) / 2, PT, H - DTOP, DZ1 - DZ0, K.wall, P); // header
-    stop(PF, PB, Z0, DZ0); stop(PF, PB, DZ1, Z1);
+    stop(PF, PB, Z0, DZ0);
   }
   // The lining and architrave of the doorway, on both faces. A cased opening with no lining is
   // the single clearest tell that a wall is a slab with a hole punched in it.
@@ -178,10 +180,10 @@ FlatFit['second'] = A => {
     // enter it.
     //
     // At 1.52 the leaf lies almost flat against the partition, which is where an open door in a
-    // spare room actually sits, and the opening keeps 0.74 m of its 0.80.
-    const a = 1.52, hx = X1, hz = DZ1 - .02, half = .435, T = .042;   // half the 0.90 leaf, matching the widened reveal
+    // spare room actually sits. The .89 m leaf fits cleanly inside the current .95 m reveal.
+    const a = 1.52, hx = X1, hz = DZ1 - .02, half = .445, T = .042;   // half the .89 leaf in the .95 reveal
     const cx = hx - Math.sin(a) * half, cz = hz - Math.cos(a) * half;
-    box(cx, Y(1.01), cz, T, 1.98, .87, K.cream, { hard: true, gloss: G.paint, ry: a });
+    box(cx, Y(1.01), cz, T, 1.98, .89, K.cream, { hard: true, gloss: G.paint, ry: a });
     // Two sunk panels, so a two-metre door is not one blank sheet.
     for (const dy of [-.44, .44])
       box(cx - Math.sin(a) * .002 + .0, Y(1.01 + dy), cz, .050, .74, .64, K.linen,
@@ -194,7 +196,7 @@ FlatFit['second'] = A => {
     // where the door used to be — it moved with `a`, which is why the room stopped reading as
     // sealed. It was still wrong in kind. At a = 1.52 the leaf's true extent in z is 0.081 m, and
     // clampMove inflates that to 0.681 m of denied centre positions lying directly across the only
-    // way into the room. Measured with the doorway at its new 0.90: the opening's own run of legal
+    // way into the room. Measured when the doorway was 0.90: the opening's own run of legal
     // centres is z -2.05 .. -1.75, and the leaf's inflated footprint reaches -1.83, eating a
     // quarter of it and leaving 0.22 — under the 0.30 that .flatcheck.js's lattice can resolve.
     // The room failed again, on the leaf rather than on the wall.
@@ -323,41 +325,13 @@ FlatFit['second'] = A => {
     stop(-5.97, -5.29, -2.14, Z1);
   }
 
-  // ---------------------------------------------------------------- 晾衣架 · the drying rack
-  // A folding A-frame at the window. It is meant to live on the 阳台 and it is in here because
-  // the balcony rack is full, which is the truest sentence anyone could write about this flat.
-  const RX2 = -5.42, RZ2 = -3.10, RY = .92;
-  {
-    const T = { gloss: G.metal };
-    for (const rx of [-5.62, -5.22]) {
-      cap(rx, Y(RY), RZ2, .018, 1.14, .018, K.chrome, { rx: Math.PI / 2, ...T });
-      for (const s of [-1, 1])                                   // legs, splayed fore and aft
-        cap(rx, Y(.46), RZ2 + s * .565, .017, .948, .017, K.chrome, { rx: -s * .245, ...T });
-      for (const s of [-1, 1])
-        box(rx, Y(.016), RZ2 + s * .68, .05, .032, .09, K.plastic, { hard: true, gloss: G.plastic });
-    }
-    for (const dz of [-.45, -.28, -.11, .06, .23, .40])
-      cap(RX2, Y(RY), RZ2 + dz, .014, .42, .014, K.chrome, { rz: Math.PI / 2, ...T });
-    // ---- 衣服 · what is on it. A rack with nothing on it is a sculpture.
-    [[-.45, C('#c4cdd2'), .40, .30], [-.11, C('#4d6f8e'), .36, .40], [.06, C('#b3aa9c'), .30, .26],
-     [.40, C('#7b6f8c'), .34, .36]].forEach(([dz, c, w, h]) => {
-      box(RX2 + (rnd() - .5) * .04, Y(RY - .02 - h / 2), RZ2 + dz, w, h, .046, c,
-        { hard: true, mode: 7, gloss: G.fabric, tag: '次卧衣服' });
-    });
-    // Two shirts on hangers hooked over the top rail, hanging clear of the bars.
-    [[-5.62, -.30, C('#dad6cd')], [-5.22, .23, C('#5f7f6b')]].forEach(([hx, dz, c]) => {
-      cap(hx, Y(RY + .045), RZ2 + dz, .006, .085, .006, K.chrome, { gloss: G.metal });
-      taper(hx, Y(RY - .09), RZ2 + dz, .26, .11, .045, c, { hard: true, mode: 7, gloss: G.fabric, tag: '次卧衣服' });
-      box(hx, Y(RY - .34), RZ2 + dz, .25, .40, .040, c, { hard: true, mode: 7, gloss: G.fabric, tag: '次卧衣服' });
-    });
-    shade(RX2, RZ2, .80, 1.68, .28);
-    stop(-5.78, -5.06, -3.86, -2.34);
-  }
-
   // ---------------------------------------------------------------- 健身车 · the exercise bike
-  // Bought in January. Used in January. It is now a clothes horse, which is the only job an
-  // exercise bike in a flat has ever actually held down.
-  const EX = -3.30, EZ = -3.55;
+  // Bought in January. Used in January. It is now the room's one clothes horse. The redundant
+  // floor drying rack used to fill the opposite side of this 3.4 m room even though the service
+  // balcony already owns a ceiling rack; removing that duplicate restores a direct window-to-door
+  // sightline. The bike moves 25 cm toward the partition so the useful centre aisle widens without
+  // hiding it behind the bed or changing the lived-in story.
+  const EX = -3.05, EZ = -3.55;
   {
     const M = { gloss: G.metal };
     for (const dz of [-.50, .50])
@@ -383,7 +357,7 @@ FlatFit['second'] = A => {
       box(EX + s * .245, Y(.76), EZ - .38, .095, .40, .075, C('#44586f'),
         { hard: true, mode: 7, gloss: G.fabric, rz: s * .10 });
     shade(EX, EZ - .08, .70, 1.20, .34);
-    stop(-3.66, -2.94, -4.22, -2.90);
+    stop(EX - .36, EX + .36, EZ - .67, EZ + .65);
   }
 
   // ---------------------------------------------------------------- the corners
@@ -396,7 +370,8 @@ FlatFit['second'] = A => {
     cyl(fx, Y(.905), fz - .055, .165, .020, K.steelD, { rx: Math.PI / 2, gloss: .40 });
     cyl(fx, Y(.905), fz - .068, .050, .020, K.plastic, { rx: Math.PI / 2, gloss: .25 });
     shade(fx, fz, .44, .44, .30);
-    stop(-3.12, -2.68, -4.94, -4.50);
+    // The 38 cm fan base is light enough to slide; a stop would inflate it into a 1.04 m obstacle
+    // and join the bike to the south wall across the room's only clear turn.
 
     // A folding stool, the kind that lives against every wall in China.
     const sx = -3.92, sz = -4.58;
@@ -407,7 +382,8 @@ FlatFit['second'] = A => {
         { rz: -Math.cos(a) * .22, rx: Math.sin(a) * .22, gloss: G.plastic });
     }
     shade(sx, sz, .38, .38, .28);
-    stop(-4.10, -3.74, -4.76, -4.40);
+    // Likewise the folding stool yields when touched. Its old 36 cm stop denied almost a square
+    // metre after body padding despite being small enough to pick up with one hand.
 
     // A rolled floor mat and a length of skirting board, leaning in the south-east corner. The
     // leftovers of a job somebody did to the flat and never finished carrying out.
@@ -526,7 +502,7 @@ FlatFit['second'] = A => {
   th('自行车', EX, Y(.98), EZ - .34, '这辆车买了三年，骑过两次。',
     'Three years since this bike was bought. Ridden twice.',
     '自行车 bicycle. 这台是健身车 — an exercise bike — but nobody at home calls it anything but 车.',
-    { focus: [-4.06, EZ - .30], reach: 1.7 });
+    { focus: [-3.86, EZ - .30], reach: 1.7 });
   th('窗帘', X0 + .06, Y(1.66), WZ, '窗帘一直拉着，这屋子白天也是暗的。',
     'The blind stays down; the room is dark even in the daytime.',
     '窗 window + 帘 hanging screen. 拉窗帘 to draw it.',
@@ -535,10 +511,10 @@ FlatFit['second'] = A => {
     'The air conditioner in here is broken and nobody has been called yet.',
     '空 air + 调 to adjust. 开空调 to put it on — if it worked.',
     { focus: [-5.14, WZ + .05], reach: 2.3, tag: '次卧空调' });
-  th('衣服', RX2, Y(.86), RZ2, '衣服还没干，晾在架子上。',
-    'The clothes are not dry yet; they are out on the rack.',
-    '衣服 clothes. 晾衣服 to hang washing out — on a 晾衣架, which is this thing.',
-    { focus: [-4.88, RZ2], reach: 1.7 });
+  th('衣服', EX, Y(.86), EZ - .40, '外套搭在健身车上。',
+    'The jacket has been draped over the exercise bike.',
+    '衣服 clothes. 搭在 dā zài means to drape something over a rail or another object.',
+    { focus: [-3.82, EZ - .22], reach: 1.7 });
 
   // =============================================================== 书房 · the study
   // 1.2 m wide. The desk goes across the south end, the shelving down the east wall, and
@@ -624,17 +600,21 @@ FlatFit['second'] = A => {
       box(CX + s * .235, Y(.73), CZ - .02, .055, .035, .21, K.char, { hard: true, gloss: .26, tag: '椅子' });
     }
     shade(CX, CZ, .60, .60, .34);
-    stop(-2.32, -1.72, -4.32, -3.72);
+    // The chair is on casters in a room only 1.20 m wide. Even an 8 cm pedestal stop becomes a
+    // 76 cm square after body padding and blocks the entire aisle between desk and bookcase.
+    // Keep the visible five-star base; a moving desk chair yields when the player brushes past.
 
     // ---------------------------------------------------------------- 书架 · the bookcase
     // Floor to near-ceiling down the east wall. Its back stands 10 mm clear of x = -1.40 so it
-    // never fights the wall behind it for the same pixels.
-    const SFX = -1.56, SZ = -3.30, SL = 2.00, SH = 2.30, FRONT = -1.685;
+    // never fights the wall behind it for the same pixels. The case is a real 21.5 cm-deep wall
+    // unit, not the old 29 cm case: in a 1.20 m study that extra depth left only an 11 cm
+    // comfort-clear body-centre aisle after the west partition was padded.
+    const SFX = -1.533, SZ = -3.30, SL = 2.00, SH = 2.30, FRONT = -1.625;
     box(-1.425, Y(SH / 2), SZ, .030, SH, SL, K.woodD, { hard: true, mode: 6, gloss: G.wood, tag: '书架' });
     for (const dz of [-SL / 2 + .015, 0, SL / 2 - .015])
-      box(SFX, Y(SH / 2), SZ + dz, .265, SH, .030, K.woodM, { ...BOARD, tag: '书架' });
+      box(SFX, Y(SH / 2), SZ + dz, .185, SH, .030, K.woodM, { ...BOARD, tag: '书架' });
     for (const [y, t] of [[SH - .020, .040], [.020, .040]])
-      box(SFX, Y(y), SZ, .275, t, SL, K.woodM, { ...BOARD, tag: '书架' });
+      box(SFX, Y(y), SZ, .190, t, SL, K.woodM, { ...BOARD, tag: '书架' });
     const SHELVES = [.30, .66, 1.02, 1.38, 1.74, 2.10];
     // Muted first, bright as the exception. A shelf where every spine is saturated averages out
     // to a stripe of colour; a shelf that is mostly brown and grey is the one that reads as books.
@@ -644,7 +624,7 @@ FlatFit['second'] = A => {
     const PAGES = C('#ddd3bb');
     const titleable = [];
     for (const sy of SHELVES) {
-      box(SFX, Y(sy), SZ, .260, .035, SL - .04, K.woodL, { ...BOARD, tag: '书架' });
+      box(SFX, Y(sy), SZ, .180, .035, SL - .04, K.woodL, { ...BOARD, tag: '书架' });
       const top = Y(sy + .0175);
       let z = SZ - SL / 2 + .05;
       while (z < SZ + SL / 2 - .09) {
@@ -653,13 +633,13 @@ FlatFit['second'] = A => {
         if (r < .17) {                                   // a short flat stack, laid on its side
           const sw = .13 + rnd() * .06, n = 2 + ((rnd() * 3) | 0);
           for (let k = 0; k < n; k++) {
-            const d = .18 + rnd() * .045, t = .028 + rnd() * .012;
+            const d = .14 + rnd() * .025, t = .028 + rnd() * .012;
             box(FRONT + d / 2, top + k * .034 + t / 2, z + sw / 2, d, t, sw,
               SPINE[(rnd() * SPINE.length) | 0], { hard: true, gloss: G.matte, ry: (rnd() - .5) * .10, tag: '书架' });
           }
           z += sw + .015; continue;
         }
-        const w = .050 + rnd() * .055, h = .185 + rnd() * .140, d = .175 + rnd() * .055;
+        const w = .050 + rnd() * .055, h = .185 + rnd() * .140, d = .135 + rnd() * .030;
         const lean = r > .88 ? (rnd() - .5) * .26 : 0;
         const cs = Math.cos(lean), sn = Math.abs(Math.sin(lean));
         const cy = top + h / 2 * cs + w / 2 * sn;
@@ -686,23 +666,25 @@ FlatFit['second'] = A => {
           color: lum > .52 ? C('#2b2620') : C('#efe4cd') });
     });
     // ---- 词典 · one fat volume you can actually pick out, standing at the end of a shelf.
-    box(FRONT + .105, Y(.30 + .0175 + .135), SZ + .74, .215, .270, .072, C('#793025'),
+    box(FRONT + .085, Y(.30 + .0175 + .135), SZ + .74, .170, .270, .072, C('#793025'),
       { hard: true, gloss: .12, tag: '词典' });
-    box(FRONT + .112, Y(.30 + .0175 + .135), SZ + .74, .195, .245, .058, PAGES,
+    box(FRONT + .083, Y(.30 + .0175 + .135), SZ + .74, .150, .245, .058, PAGES,
       { hard: true, gloss: G.matte, tag: '词典' });
     box(FRONT + .006, Y(.30 + .0175 + .135), SZ + .74, .012, .200, .058, C('#c9a049'),
       { hard: true, gloss: .22, tag: '词典' });
     // ---- box files, a tin, and magazines flat on the top shelf.
     for (let i = 0; i < 3; i++)
-      box(FRONT + .125, Y(1.74 + .0175 + .155), SZ - .78 + i * .095, .235, .310, .088,
+      box(FRONT + .083, Y(1.74 + .0175 + .155), SZ - .78 + i * .095, .165, .310, .088,
         [C('#4c5a63'), C('#6b5340'), C('#4c5a63')][i], { hard: true, gloss: .14, tag: '书架' });
-    cyl(FRONT + .115, Y(2.10 + .0175 + .075), SZ + .62, .062, .150, C('#3f6b4e'), { gloss: .34, tag: '书架' });
+    cyl(FRONT + .090, Y(2.10 + .0175 + .075), SZ + .62, .052, .150, C('#3f6b4e'), { gloss: .34, tag: '书架' });
     for (let i = 0; i < 5; i++)
-      box(FRONT + .130, Y(2.10 + .0175 + .012 + i * .012), SZ + .10, .215, .011, .175,
+      box(FRONT + .080, Y(2.10 + .0175 + .012 + i * .012), SZ + .10, .160, .011, .175,
         [K.linen, C('#8a6a52'), K.cream, C('#5f7386'), K.linen][i],
         { hard: true, gloss: G.matte, ry: (rnd() - .5) * .10, tag: '书架' });
-    shade(SFX, SZ, .40, SL + .06, .36);
-    stop(-1.72, -1.40, SZ - SL / 2, SZ + SL / 2);
+    shade(SFX, SZ, .28, SL + .06, .36);
+    // Stop begins just outside every visible face (including the slightly yawed labelled spines),
+    // so the avatar never clips the shallower case even though the aisle is now honestly wider.
+    stop(-1.63, -1.40, SZ - SL / 2, SZ + SL / 2);
 
     // ---------------------------------------------------------------- 打印机 · the printer
     // On the floor against the partition, because a 1.2 m wide room has no other flat surface
@@ -714,7 +696,8 @@ FlatFit['second'] = A => {
     box(-2.30, Y(.243), -2.72, .050, .010, .014, C('#7fe0a0'), { ...LIT, glow: .07, tag: '打印机' });
     cap(-2.55, Y(.10), -2.44, .008, .40, .008, K.black, { rx: 1.35, rz: .30, gloss: .20 });
     shade(-2.44, -2.60, .48, .44, .34);
-    stop(-2.65, -2.23, -2.79, -2.41);
+    // Small floor clutter remains visible and interactive, but is not a metre-wide navigation
+    // obstacle after the player's 30 cm collision radius is added on every side.
 
     // ---------------------------------------------------------------- the wall of 奖状
     // Certificates of merit, on the partition's study face. Three of them, and a calendar under.

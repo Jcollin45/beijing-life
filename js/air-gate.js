@@ -140,10 +140,17 @@ AirFit['gate'] = A => {
     const size = o.size || .16, gap = o.gap === undefined ? .04 : o.gap;
     const step = size + gap, lift = o.lift === undefined ? .012 : o.lift;
     const ax = Math.cos(yaw), az = -Math.sin(yaw);
-    const ps = [];
+    // Alpha is fixed when Build.finish chooses batches. Hiding a spare cell with alpha=0 here
+    // strands that cell in the loose path forever, even after a later status makes it visible.
+    // Keep every slot opaque and collapse blank cells instead. Their cull sphere is fixed around
+    // the complete run so a cell first built blank can still appear at either end without having
+    // been frozen as a zero-radius point at the origin.
+    const ps = [], nowhere = M.scale(0, 0, 0);
+    const cullR = Math.hypot(((n - 1) * step + size) / 2, size / 2, lift);
     for (let i = 0; i < n; i++) {
       const p = glyphs(x, y, z, yaw, '正', { ...o, size, gap: 0 })[0];
-      p.alpha = 0; ps.push(p);
+      p.fixed = true; p.cx = x; p.cy = y; p.cz = z; p.r = cullR; p.m = nowhere;
+      ps.push(p);
     }
     // `last` is the string on the glass. A repaint that would write the same characters in the
     // same places does nothing at all: `M.mul` allocates, and rebuilding forty matrices sixty
@@ -158,14 +165,12 @@ AirFit['gate'] = A => {
       last = txt;
       for (let i = 0; i < n; i++) {
         const p = ps[i];
-        if (i >= txt.length) { p.alpha = 0; continue; }
-        p.alpha = 1;
+        if (i >= txt.length) { p.m = nowhere; p.glow = 0; continue; }
         p.ch = txt[i];
         if (color) p.color = color;
         const t = (i - (txt.length - 1) / 2) * step;
         p.m = M.mul(M.trans(x + ax * t, y, z + az * t), M.mul(M.rotY(yaw),
           M.mul(M.trans(0, 0, lift), M.mul(M.rotX(Math.PI / 2), M.scale(size, 1, size)))));
-        p.cx = p.m[12]; p.cy = p.m[13]; p.cz = p.m[14];
       }
     };
     set.ps = ps;

@@ -12,7 +12,7 @@
 // where the room ends. Everything else — the coat hooks, the key dish, the umbrella stand — is
 // ordinary. The shoes are the room.
 //
-//   x 2.60 ································· 5.20
+//   x 2.60 ········································· 6.00
 //         ┌───────────────────────────────────────┐  z 3.20 · the 走廊 wall, and the front door
 //    走道 │ 挂钩  上联 ▓▓▓▓ 大门 ▓▓▓▓ 下联  开关  │
 //    ←──  │ 外套              ↘ swings in      对讲│
@@ -32,8 +32,8 @@
 //
 // **The leaf hinges on its west jamb, so it only ever sweeps x ≥ 3.44.** The swing is a quarter
 // disc centred on (3.44, 3.135) with a 0.92 m radius, and it has to stay empty: it is why the
-// umbrella stand is in the far corner at x 4.98 and not beside the door where it would be handier,
-// why the parcel sits at x 4.80, and why every soft thing — coats, slippers, the folded stool — is
+// umbrella stand is in the far corner at x 5.72 and not beside the door where it would be handier,
+// why the parcel sits at x 5.40, and why every soft thing — coats, slippers, the folded stool — is
 // west of 3.44 where the door cannot reach it. The coats hang at x 2.92 and 3.10 for exactly this
 // reason and for no other.
 //
@@ -65,11 +65,14 @@ FlatFit['entry'] = A => {
   // room in the flat before calling this. Read once, because it is fixed for the whole call.
   // The literal is the contract value from APARTMENT.md and only stands in if the getter is gone.
   const F  = A.y0 !== undefined ? A.y0 : 3.10;
-  const X0 = 2.60, X1 = 5.20, Z0 = 1.60, Z1 = 3.20;   // the room, per APARTMENT.md
+  // The real east edge is the flat's outer wall. The first fit-out stopped at x 5.20 and boxed
+  // the last 80 cm into an inaccessible void even though HomeWalls already registered the entry
+  // through x 6.00. Reclaiming that 1.28 m2 makes the room and its cutaway box agree.
+  const X0 = 2.60, X1 = 6.00, Z0 = 1.60, Z1 = 3.20;
   const CH = 2.60;                                     // ceiling height above F
 
   // The grid lines are taken to be the finished inner faces of the walls, which is the natural
-  // reading of "x 2.6 .. 5.2" for a room you stand in. Everything that backs onto a wall therefore
+  // reading of "x 2.6 .. 6.0" for a room you stand in. Everything that backs onto a wall therefore
   // stops 1.5–3 cm short of the line: if the shell's plaster is exactly on it that gap is a shadow
   // reveal, and if the shell insets its face by a few centimetres the object simply buries its back
   // in the wall, which is invisible either way. Nothing here is coplanar with a wall plane.
@@ -164,43 +167,34 @@ FlatFit['entry'] = A => {
   // and the render showed the shell's boards winning outright: the 落尘区 was simply not there.
   // Everything that lies flat in this room is therefore on a ladder starting at F + .014, with at
   // least 3 mm between any two quads that share a footprint.
-  A.flat(3.93, F + .014, 2.40, 2.48, 1.56, c.tile, { mode:9, gloss:.16, ...Mfloor });
+  A.flat(4.30, F + .014, 2.40, 3.28, 1.56, c.tile, { mode:9, gloss:.16, ...Mfloor });
   // Two darker tiles laid off-pattern, because a floor of one flat colour reads as paint.
   // The second of these was at (4.55, 2.85), where its east edge lapped 30 mm over the doormat at
   // a height difference of 1 mm — invisible head-on and a band of stripes at a grazing angle.
   // Moved east so no two quads on adjacent rungs of the ladder share any footprint at all.
-  for (const [tx, tz] of [[3.20, 2.05], [4.74, 2.88], [2.98, 2.90], [4.92, 2.12]])
+  for (const [tx, tz] of [[3.20, 2.05], [4.74, 2.88], [2.98, 2.90], [5.55, 2.12]])
     A.flat(tx, F + .019, tz, .58, .58, c.tileD, { mode:9, gloss:.16, ...Mfloor });
   // 过门石 — the threshold strip at the 走道 opening.
   A.flat(2.665, F + .023, 2.40, .075, 1.56, c.brass, { mode:1, glow:.03, gloss:G.metal });
 
-  // ================================================================ 墙 the two inner faces
+  // ================================================================ 墙 the inner face
   //
-  // world.js builds "the envelope only ... everything that stands inside these walls belongs to
-  // one of the ten room files". That is literal: the shell puts up the z = 3.20 corridor wall with
-  // this room's doorway in it, and nothing else. A probe of the built scene found no geometry at
-  // all on z = 1.60 or on x = 5.20 — so the 玄关 was a room with one wall, the mirror was screwed
-  // to thin air, and standing at the 鞋柜 you looked straight over it into the 客厅 and the 餐厅.
+  // world.js owns the envelope, including the real east wall at x = 6.00. This room therefore owns
+  // one interior face only: z = 1.60, shared with 客厅/餐厅. The first fit-out also built an east
+  // partition at x = 5.20, stranding the 80 cm behind it as an inaccessible void. The mirror now
+  // hangs on the shell wall and the false partition is gone.
   //
-  // Both faces are set a few millimetres INSIDE the grid line rather than on it, and this is the
-  // whole reason the numbers are 1.612 and 5.188 rather than 1.600 and 5.200:
+  // The shared face is set a few millimetres inside the grid line rather than on it:
   //
-  //   · z = 1.60 is shared with the 客厅 (x 2.6..3.4) and the 餐厅 (x 3.4..5.2), both being written
+  //   · z = 1.60 is shared with the 客厅 (x 2.6..3.4) and the 餐厅 (x 3.4..6.0), both being written
   //     right now by other agents. Every surface here is one-sided, so the correct thing for two
   //     rooms sharing a partition is one inner face each, back to back, and the cavity between them
   //     is never seen from either side. If they line their side on 1.600 facing -z and this one is
   //     on 1.600 facing +z, the two quads are coplanar and the partition flickers in stripes. Eight
   //     millimetres of offset makes that impossible however they build it, and costs nothing.
-  //   · x = 5.20 has no other claimant: the strip x 5.2..6.0, z 1.6..3.2 is not in APARTMENT.md's
-  //     room table at all, so it is a void behind this wall and nobody will ever line it.
-  //
-  // Colour and material come off `A.col`/`A.MAT` rather than this file's own palette, so the two
-  // faces are the same plaster as the rest of the flat instead of nearly the same.
-  // `partition: true` marks these two quads as interior wall for the walls-down setting in
-  // js/game.js (SET.wallsOff, read through `hiddenProp`). The 玄关's south and east faces are
-  // partitions, not shell — the building's own envelope is js/world.js's and keeps you enclosed
-  // with the walls down. Drawing only: `A.stop` below is untouched.
-  // Each face goes up in two quads, matching js/home-walls.js:190. The bottom STUB carries no flag
+  // Colour and material come off `A.col`/`A.MAT` so the face is the same plaster as the rest of
+  // the flat. `partition: true` marks its upper quad for the walls-down setting in js/game.js.
+  // The face goes up in two quads, matching js/home-walls.js. The bottom STUB carries no flag
   // and survives the walls-down cull, so the 玄关 still reads as a room with one way out of it
   // instead of as an unmarked corner of the living room. Quads, not boxes, so the two are edge to
   // edge on the same plane with no shared surface — nothing to z-fight, and no 2 mm fudge needed.
@@ -211,17 +205,10 @@ FlatFit['entry'] = A => {
   const PS = { ...A.MAT.plaster };
   const face = (x, z, w, yaw) => A.partition(F, CH, (yc, hh, o) =>
     A.wall(x, yc, z, w, hh, yaw, A.col.wall, { ...PS, ...o }), 0);
-  face(3.90, 1.612, 2.60, 0);                     // south, faces +z
-  face(5.188, 2.40, 1.60, -Math.PI / 2);          // east, faces -x
-  // Solid, both of them. The only way out of the 玄关 on the inside is west into the 走道 — that
+  face(4.30, 1.612, 3.40, 0);                     // south, faces +z
+  // Solid. The only way out of the 玄关 on the inside is west into the 走道 — that
   // is what makes this a room you pass through rather than a corner of the living room.
-  A.stop(2.60, 5.20, 1.55, 1.66);
-  A.stop(5.13, 5.24, 1.60, 3.20);
-  // Skirting to match the shell's, along the one stretch of these two walls that is not hidden
-  // behind a cabinet. 30 mm thick, its back 2 mm inside the wall face so the two are never
-  // coplanar, and it stops below the mirror (glass starts at F + 0.515) so they cannot intersect.
-  A.box(5.175, F + .065, 2.62, .030, .130, 1.14, A.col.trim,
-    { hard:true, mode:6, gloss:G.wood, ...Mtimber });
+  A.stop(2.60, 6.00, 1.55, 1.66);
 
   // ================================================================ 大门 the front door
   //
@@ -643,31 +630,31 @@ FlatFit['entry'] = A => {
   // superstition it is the wall you are already turning towards on the way out. Full length,
   // because a 玄关 mirror that stops at the waist cannot show you your shoes.
   //
-  // The backer's front face is at x 5.15 and the glass at 5.126: 24 mm apart, and 50 mm off the
-  // wall plane at 5.20. Nothing here is coplanar with anything, which on a flat pale panel mounted
+  // The backer's front face is at x 5.905 and the glass at 5.881: 24 mm apart, and clear of the
+  // shell wall's inner face. Nothing here is coplanar with anything, which on a flat pale panel mounted
   // to a flat pale wall is the difference between a mirror and a field of flickering stripes.
   const MZ = 2.60, MY = F + 1.30, MH = 1.50, MW = .46;
-  A.box(5.175, MY, MZ, .050, MH + .07, MW + .07, c.walnut,
+  A.box(5.930, MY, MZ, .050, MH + .07, MW + .07, c.walnut,
     { hard:true, mode:6, gloss:G.wood, tag: '玄关镜子', ...Mtimber });
-  A.box(5.138, MY, MZ, .024, MH, MW, c.mirror,
+  A.box(5.893, MY, MZ, .024, MH, MW, c.mirror,
     { hard:true, mode:1, glow:.05, gloss:.86, tag: '玄关镜子' });
   // A brass slip round the glass, in four pieces.
   for (const s of [-1, 1]) {
-    A.box(5.132, MY + s * (MH / 2 + .012), MZ, .016, .024, MW + .024, c.brass,
+    A.box(5.887, MY + s * (MH / 2 + .012), MZ, .016, .024, MW + .024, c.brass,
       { hard:true, gloss:G.metal, tag: '玄关镜子', ...Mmetal });
-    A.box(5.132, MY, MZ + s * (MW / 2 + .012), .016, MH + .048, .024, c.brass,
+    A.box(5.887, MY, MZ + s * (MW / 2 + .012), .016, MH + .048, .024, c.brass,
       { hard:true, gloss:G.metal, tag: '玄关镜子', ...Mmetal });
   }
-  A.th('镜子', 5.02, MY + .42, MZ, '出门前照照镜子。', 'Check the mirror before you go out.',
+  A.th('镜子', 5.78, MY + .42, MZ, '出门前照照镜子。', 'Check the mirror before you go out.',
     '镜子 jìngzi. It is on the side wall on purpose: a mirror facing the front door is the one ' +
     'bit of household superstition that really does decide where furniture goes here.',
-    { focus:[4.62, MZ], reach:1.5 });
+    { focus:[5.42, MZ], reach:1.5 });
 
   // ================================================================ 雨伞 the umbrella stand
   //
   // Far corner, well outside the door's arc. A glazed ceramic drum, which is what these are, with
   // three umbrellas leaning at different angles because a stand of parallel umbrellas is a vase.
-  const UX = 4.98, UZ = 2.94;
+  const UX = 5.72, UZ = 2.94;
   A.cyl(UX, F + .21, UZ, .115, .420, C('#4a6d74'), { gloss:.52, tag: '雨伞', ...Mstone });
   A.cyl(UX, F + .415, UZ, .118, .026, C('#3a5a60'), { gloss:.56, tag: '雨伞' });
   A.cyl(UX, F + .012, UZ, .120, .024, C('#3a5a60'), { gloss:.40, tag: '雨伞' });
@@ -685,17 +672,17 @@ FlatFit['entry'] = A => {
   brolly(.045, -.035,  .16, c.navy,        C('#1f2a3a'));
   brolly(-.040, .030, -.13, C('#3f6b4e'),  C('#2c4a37'));
   brolly(.010,  .055,  .06, C('#7d2f3c'),  C('#5c2029'));
-  A.stop(UX - .14, UX + .14, UZ - .14, UZ + .14);
+  // Brush-past floor clutter: a 28 cm stand became an 88 cm obstacle after body padding.
   shade(UX, UZ, .34, .34, .38);
   A.th('雨伞', UX, F + 1.02, UZ - .16, '外面下雨，带把伞。', "It's raining out — take an umbrella.",
     '雨 rain + 伞 umbrella, and 伞 is a picture of one. Measure word 把: 一把伞.',
-    { focus:[4.72, 2.66], reach:1.5 });
+    { focus:[5.42, 2.66], reach:1.5 });
 
   // ================================================================ 快递 the parcel
   //
-  // Left inside the door, because it was handed over across that threshold half an hour ago and
-  // has not moved since. Taped, labelled, and slightly the wrong way up.
-  const PX = 4.78, PZ = 2.42;
+  // In the reclaimed east corner, because it was handed over across the threshold half an hour
+  // ago and has not moved since. It stays visible without sitting in the door-to-hall diagonal.
+  const PX = 5.40, PZ = 2.18;
   A.box(PX, F + .105, PZ, .320, .210, .250, C('#c1a077'),
     { hard:true, ry:.24, gloss:.14, tag: '快递' });
   A.box(PX, F + .212, PZ, .326, .012, .066, C('#d3ccbc'),
@@ -707,12 +694,12 @@ FlatFit['entry'] = A => {
   for (let i = 0; i < 5; i++)
     A.box(PX + .030 - .052 + i * .026, F + .128, PZ - .128, .008, .028, .006, c.ink,
       { hard:true, ry:.24, gloss:G.matte, tag: '快递' });                    // a barcode, at four bars
-  A.stop(PX - .18, PX + .18, PZ - .15, PZ + .15);
+  // Keep the delivery visible without letting a small box close most of the entry's diagonal.
   shade(PX, PZ, .42, .36, .40);
   A.th('快递', PX, F + .34, PZ - .18, '快递放在门口了。', 'The parcel was left by the door.',
     '快 fast + 递 to hand over. Downstairs there are 快递柜 lockers; up here it just gets left ' +
     'against the 鞋柜 until somebody trips over it.',
-    { focus:[4.46, 2.66], reach:1.5 });
+    { focus:[5.12, 2.52], reach:1.5 });
 
   // ================================================================ 小板凳 the folded stool
   //

@@ -179,6 +179,7 @@
 
 HotelFit.register('hotel12', A => {
   const { box, cyl, ball, capsule, taper, flat, glyphs, solid, blocker, shade, glow, thing } = A;
+  const { modelOr } = A.B;
   const { C, col, RX, RZ, H } = A;
   const { onTick, luminous, light, cameraRoom } = A;
 
@@ -194,6 +195,9 @@ HotelFit.register('hotel12', A => {
     night: C('#0c1219'), deck: C('#7a6b57'), silk: C('#91735c'), silkL: C('#c8b69c'),
     celadonL: C('#b3c7ba'), leaf: C('#4f6d51'), leafD: C('#334f31'), ember: C('#df8a3b'),
   };
+  // Project-calibrated indoor plaster repeat. The former 2.30 m scale stretched the source's
+  // variation into metre-wide vertical bands across the private dining rooms.
+  const STONE = { mat: 'plaster', matScale: .62, matAmt: .16, nrmAmt: .62 };
   const CEIL = 4.09;          // underside of the shared shell slab (hotel.js: H-.13, .26 thick)
   const WH = .09;             // half a 0.18 m partition
   const PH = 3.16;            // interior partition height — matches the fit's authored dining wall
@@ -213,7 +217,8 @@ HotelFit.register('hotel12', A => {
     if (x1 - x0 < .02) return;
     const w = x1 - x0, cx = (x0 + x1) / 2;
     Build.partition(0, h, (yc, hh, pf) =>
-      box(cx, yc, z, w, hh, WH * 2, colour, { hard: true, mode: 14, gloss: .12, tag, ...pf }));
+      box(cx, yc, z, w, hh, WH * 2, colour,
+        { hard: true, mode: 14, gloss: .12, ...STONE, tag, ...pf }));
     for (const s of [-1, 1]) {
       box(cx, .11, z + s * (WH + .018), w, .22, .035, c.walnutD, { hard: true, mode: 6, gloss: .28, tag });
       box(cx, h - .07, z + s * (WH + .018), w, .085, .035, c.bronzeD, { hard: true, gloss: .58, tag, partition: true });
@@ -225,7 +230,8 @@ HotelFit.register('hotel12', A => {
     if (z1 - z0 < .02) return;
     const d = z1 - z0, cz = (z0 + z1) / 2;
     Build.partition(0, h, (yc, hh, pf) =>
-      box(x, yc, cz, WH * 2, hh, d, colour, { hard: true, mode: 14, gloss: .12, tag, ...pf }));
+      box(x, yc, cz, WH * 2, hh, d, colour,
+        { hard: true, mode: 14, gloss: .12, ...STONE, tag, ...pf }));
     for (const s of [-1, 1]) {
       box(x + s * (WH + .018), .11, cz, .035, .22, d, c.walnutD, { hard: true, mode: 6, gloss: .28, tag });
       box(x + s * (WH + .018), h - .07, cz, .035, .085, d, c.bronzeD, { hard: true, gloss: .58, tag, partition: true });
@@ -321,13 +327,17 @@ HotelFit.register('hotel12', A => {
   // cones meeting at a point, floating clear of the floor — visible on the fit's own lounge posts.
   // Anything meant to read as a straight column, leg, stem or baluster is built with `cyl`.
   function chairAt(x, z, yaw, tag, cloth) {
-    const s = Math.sin(yaw), co = Math.cos(yaw);
-    box(x, .43, z, .50, .07, .48, cloth, { ry: yaw, mode: 7, gloss: .05, tag });
-    box(x - s * .245, .73, z - co * .245, .50, .56, .07, cloth, { ry: yaw, mode: 7, gloss: .05, tag });
-    box(x - s * .265, 1.02, z - co * .265, .46, .06, .05, c.bronzeD, { ry: yaw, gloss: .58, tag });
-    for (const a of [[-.20, -.19], [.20, -.19], [-.20, .19], [.20, .19]])
-      cyl(x + co * a[0] + s * a[1], .20, z - s * a[0] + co * a[1], .018, .40,
-        c.bronzeD, { gloss: .56, tag });
+    modelOr('green_chair_01', x, 0, z, .992, { ry: yaw, tag, gloss: .22 }, () => {
+      const s = Math.sin(yaw), co = Math.cos(yaw);
+      box(x, .43, z, .50, .07, .48, cloth, { ry: yaw, mode: 7, gloss: .05, tag });
+      box(x - s * .245, .73, z - co * .245, .50, .56, .07, cloth,
+        { ry: yaw, mode: 7, gloss: .05, tag });
+      box(x - s * .265, 1.02, z - co * .265, .46, .06, .05, c.bronzeD,
+        { ry: yaw, gloss: .58, tag });
+      for (const a of [[-.20, -.19], [.20, -.19], [-.20, .19], [.20, .19]])
+        cyl(x + co * a[0] + s * a[1], .20, z - s * a[0] + co * a[1], .018, .40,
+          c.bronzeD, { gloss: .56, tag });
+    });
   }
   function roundTop(x, z, r, top, tag) {
     cyl(x, .035, z, r * .62, .07, c.bronzeD, { gloss: .58, tag });
@@ -593,7 +603,8 @@ HotelFit.register('hotel12', A => {
   }
   // Inside the gallery, the fit's west skyline board runs 1.1 m past the envelope line, so the city
   // appeared indoors. A plaster return closes the gallery's west end over it.
-  box(-21.66, 2.03, -1.76, .06, 4.06, 6.62, c.wall, { hard: true, mode: 14, gloss: .12, tag: '西廊' });
+  box(-21.66, 2.03, -1.76, .06, 4.06, 6.62, c.wall,
+    { hard: true, mode: 14, gloss: .12, ...STONE, tag: '西廊' });
 
   // Bronze pavilion frame — the floor's identity, and the thing that makes the terrace a room
   // without walls.

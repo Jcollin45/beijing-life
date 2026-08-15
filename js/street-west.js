@@ -5,13 +5,13 @@
 // ---------------------------------------------------------------------------------------------
 // What the shell already puts here, and is therefore NOT rebuilt below
 //
-//   the dead-end building at x -33.4 with 李师傅's red door and its 李家 plaque
-//   the brick masses closing the square north (face z -3.0) and south (face z 8.0)
+//   the stepped 李家 compound at x -33.4 with 李师傅's recessed red door and enamel plaque
+//   the separate pitched ranges closing the square north (face z -3.0) and south (face z 8.0)
 //   the 灰砖 boundary wall along z 7.4 from x -33.2 to -23.6, 2.55 m to its coping
-//   one 国槐 at (-29.2, 3.4) — and `tree()` already limewashes the trunk to 1.3 m with a hard top
-//     edge, which is the whitewash band this district was going to be asked for. Nothing to add.
+//   one younger 国槐 on the far western shoulder at (-32.0, 3.0) — `tree()` limewashes its trunk
+//     to a hard top edge, the whitewash band this district was going to be asked for. Nothing to add.
 //   the 麻将 table, its four stools and its 暖壶 at (-29.0, 0.6)
-//   the 公共厕所 at (-27.2, 6.15)
+//   the two-room, bay-built 公共厕所 at (-27.2, 6.15), with real entrance depth and service tap
 //   the pigeons. The shell keeps two 鸽子笼 (x -18.6 and x 8.2) and flies their flocks from its
 //     own tick on a 92-second cycle at radii of 3.4–6.1 m, which brings the nearer flock to within
 //     four metres of this zone and turns it over the roofline you look at from the square. This
@@ -33,14 +33,14 @@
 //
 // The west zone is x -32.2..-25.0, z -3.1..6.4, and `clampMove` inflates every collider by the
 // 0.30 m body radius. Flood-filled through the real `clampMove` before a line of this was written,
-// the square has exactly two ways through it from the alley mouth to 李师傅's door:
+// the square has two deliberate ways through it from the alley mouth to 李师傅's door:
 //
 //   north, along z ≈ -0.8, between the 麻将 table and whatever stands north of it
-//   south, along z ≈ 2.1, a 0.80 m band between the 麻将 table and the 国槐
+//   south, along z ≈ 2.1, between the 麻将 table and the 国槐
 //
-// So the chess pitch is pushed hard against the north wall and given ONE collider, sized so the
-// northern route keeps 0.77 m of clear run — a chess crowd is the classic way to seal a lane, and
-// this one is measured rather than judged from a picture.
+// The shell now fits the 麻将 collider to its apron and moves the tree to the far western shoulder.
+// The tightened front edge of the ONE chess collider below leaves 1.25 m clear on the northern
+// route; the southern apron has no tree edge at all and remains open to the 公厕 approach.
 StreetFit['west'] = S => {
   const { box, cyl, ball, taper, flat, glyphs, solid, shade, thing, cap, light, C, G, col } = S;
   const PI = Math.PI;
@@ -98,7 +98,12 @@ StreetFit['west'] = S => {
     return null;
   };
   // A thing whose word has not landed yet is simply not built. Nothing else about the scene moves.
-  const say = (hz, x, y, z, sentence, tr, note, o) => {
+  // Callers retain a display label as their second argument. It normally equals the headword but
+  // can be a more specific physical label after `word()` falls back. The former wrapper omitted
+  // this parameter and shifted every following argument one place, handing `thing()` a string for
+  // x; accepting it here restores all west things to their authored positions without changing
+  // their vocabulary keys, focus points or reach.
+  const say = (hz, label, x, y, z, sentence, tr, note, o) => {
     if (hz) thing(hz, x, y, z, sentence, tr, note, o);
   };
   // A glyph laid flat, face up. `glyphs` stands every character up on its yaw, which is right for
@@ -112,7 +117,13 @@ StreetFit['west'] = S => {
   // Props that are only out while the game is on. Written once per change, never per frame.
   const kit = [];
   const HIDDEN = M.trs(0, -60, 0, 0, .001, .001, .001);
-  const packable = p => { if (p) kit.push({ p, m0: p.m }); return p; };
+  const packable = p => {
+    if (p) {
+      if (!p.stateOwner) p.stateOwner = 'west:state';
+      kit.push({ p, m0: p.m });
+    }
+    return p;
+  };
 
   // ============================================================ 1 · the chess pitch
   //
@@ -231,7 +242,7 @@ StreetFit['west'] = S => {
   // table, and what the radio stands on.
   box(RX, .24, RZ, .38, .48, .30, K.plasticR, { hard: true, gloss: .26, ry: .35 });
   for (let i = 0; i < 3; i++)
-    box(RX - .10 + i * .10, .24, RZ - .152, .045, .34, .012, K.plasticRD,
+    box(RX - .10 + i * .10, .24, RZ - .160, .045, .34, .012, K.plasticRD,
       { hard: true, gloss: .22, ry: .35 });
   // 收音机 — a transistor set, aerial up, playing 京剧 all afternoon while nobody listens to it.
   const RT = { tag: '收音机' };
@@ -368,8 +379,8 @@ StreetFit['west'] = S => {
       { focus: [GX0, GZ0 + .95], reach: 2.2 });
 
   // ---- the board itself, as something the player can walk up to and be told the word for. The
-  // collider below stops the body at z -1.17, so the focus stands them there and the reach has to
-  // cover the 0.88 m from there to the middle of the board.
+  // collider below stops the body at z -1.40, so the focus stands beyond it and the reach covers
+  // the short look back to the middle of the board.
   const chessWord = word('象棋', '下棋');
   say(chessWord, chessWord, BX, TOP + .12, BZ,
     '大爷们每天下午在这儿下象棋。',
@@ -377,10 +388,10 @@ StreetFit['west'] = S => {
     '象棋 xiàngqí — 象 elephant + 棋 board game. The river across the middle is 楚河汉界.',
     { focus: [BX, BZ + 1.10], reach: 2.6, tag: '象棋' });
 
-  // The whole pitch as ONE collider. Inflated by the body radius this runs x -32.34..-29.21,
-  // z -3.20..-1.17, which leaves the northern route through the square 0.77 m of clear run
-  // between it and the 麻将 table's own collider at z -0.40.
-  solid(BX - 1.29, BX + 1.24, BZ - .85, BZ + .58);
+  // The whole pitch as ONE collider. Its back edge still covers the wall-side trellis posts; the
+  // front edge fits the table and occupied stools instead of claiming the empty spectator apron.
+  // Inflated by the body radius it ends at z -1.40, leaving 1.25 m to the tightened 麻将 collider.
+  solid(BX - 1.29, BX + 1.24, BZ - .85, BZ + .35);
   shade(BX, BZ, 2.9, 2.1, .30);
 
   // ============================================================ 3 · the old wall

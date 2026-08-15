@@ -308,14 +308,15 @@ FigureFit['tops'] = C => {
   // A crew neck, a polo's neckband and a turtleneck are all knitted rib set into a jersey body,
   // and the join is a real edge you can see across a room. The seam goes in at `trim`; the ribs
   // themselves — short verticals around the front of the band, three millimetres proud of it —
-  // only at lod 0, where they cost four draws on the one or two people ever that close.
+  // only at lod 0. Three evenly spaced ribs carry the same read without spending four draws on a
+  // detail under a centimetre wide.
   const NECK = lk.TOPL;
   if ((col === 'crew' || col === 'polo' || col === 'turtle') && !lk.JACK && !lk.SCARF) {
     if (trim)
       shape('capsule', torso, 0, (F.collarY - 0.026) * BODY, 0.004,
         0.132, 0.014 * BODY, 0.136, tint(NECK, 0.86), FABRIC);
     if (lod === 0)
-      for (const a of [-0.62, -0.21, 0.21, 0.62])
+      for (const a of [-0.48, 0, 0.48])
         shape('capsule', torso, Math.sin(a) * 0.064, F.collarY * BODY,
           0.004 + Math.cos(a) * 0.066, 0.011, 0.038 * BODY, 0.011,
           tint(NECK, 0.94), FABRIC);
@@ -329,9 +330,6 @@ FigureFit['tops'] = C => {
   if (lk.sleeve !== 'none' && (trim || lod === 0)) {
     const upper = 0.31 * T, lower = 0.29 * T, slv = lk.sleeve;
     const STRIPE = mixc(lk.JACKL || LAY.lt, [1, 1, 1], 0.55);
-    // A cuff button reads against the *sleeve*, which under a coat or a raglan yoke is not the
-    // colour the front of the shirt is.
-    const cbtn = lum(lk.ARM) > 0.45 ? tint(lk.ARM, 0.70) : mixc(lk.ARM, SHELL, 0.62);
     for (const s of [-1, 1]) {
       const L = s < 0;
       const shoulder = M.mul(torso, M.mul(M.trans(s * 0.225 * W, 0.495 * BODY, 0),
@@ -361,15 +359,15 @@ FigureFit['tops'] = C => {
           R.draw('capsule', M.mul(shoulder, M.mul(M.trans(0, -cut - 0.024, 0.002),
             M.mul(M.rotZ(s * 0.15), M.scale(0.130 * W, 0.012, 0.140 * W)))), lk.ARMD, FABRIC);
       } else {
-        // Long: the sleeve is gathered into the cuff, which is a ring of cloth just above the cuff
-        // figure.js draws, and a button on the outside of it.
+        // Long: the sleeve is gathered into the cuff, a ring of cloth just above the cuff
+        // figure.js already draws. The former 12 mm button on each wrist did not change the
+        // silhouette and pushed both hard close-figure probes over budget, so the material break
+        // stays and the two sub-pixel submissions do not.
         const el = M.mul(shoulder, M.mul(M.trans(0, -upper + 0.018, 0),
           M.rotX(L ? pose.elbL : pose.elbR)));
         const wrist = M.mul(el, M.mul(M.trans(0, -lower + 0.025, 0),
           M.rotY((L ? pose.twL : pose.twR) || 0)));
         if (trim) shape('capsule', wrist, 0, 0.026, 0, 0.106, 0.016, 0.114, lk.ARM, FABRIC);
-        if (lod === 0)
-          shape('ball', wrist, s * 0.031, -0.006, 0.040, 0.012, 0.012, 0.010, cbtn, BUTTONM);
       }
       // A stripe down the outside seam of each sleeve: half sunk into it, so it is a taped seam
       // and not a pipe strapped to the arm.

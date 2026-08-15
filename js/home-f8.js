@@ -4,13 +4,11 @@
 // `A.y0` is 21.70 here and EVERY height in this file is written as `Y + h`. See TOWER.md for the
 // deck contract and the shared brief for the footprint. Nothing below reads a literal deck height.
 //
-// WHAT THE SHELL DOES NOT GIVE THIS DECK. `buildShell`/`buildShafts` in js/world.js still run
-// `for (const f of [0, 2])`: on deck 8 there is no floor, no ceiling, no perimeter wall, no shaft
-// and no lift landing. So this file pours all of it. Every piece of that is marked `--- shell ---`
-// and is the first thing to delete when the Surgeon generalises `buildShell` past two decks.
-// The landing is deliberately built 20 mm in FRONT of the shaft plane the shell would use, so if
-// both ever exist they overlap rather than z-fight — the same trick js/home-corridor.js used on
-// the second shaft's face, and why it is a trick and not a fix is written up in the report.
+// WHAT THIS DECK OWNS. The shared shell now supplies both lift shafts, moving landing doors, the
+// call panel, the arrived-car zone and the fire stair on every served deck. It does not pour an
+// upper floor's slab, ceiling, perimeter or flat plan, so those remain here. The old local shaft
+// fit-out is retained only behind `!A.shellLanding` for older recording toolkits; the normal build
+// contributes its floor-specific finish and outage notice without duplicating shell hardware.
 //
 // The plan. One partition on each axis, three rooms and a landing:
 //
@@ -53,7 +51,7 @@ FlatFit['f8'] = A => {
   const FL = Y + .018;                              // what a thing standing on the floor stands on
   const TRIM = .130;                                // skirting height, same as the shell's
 
-  // My landing plane: 20 mm proud of the shaft, see the note at the top.
+  // Floor dressing sits 20 mm proud of the shared shaft plane; the same datum serves the fallback.
   const SZ = LF.z0 - .020;
   // Front door — the chef's, 806. Same x as the shell's on deck 2 so the tower lines up.
   const FX = 3.90, FW = 1.00, FTOP = 2.05;
@@ -275,11 +273,10 @@ FlatFit['f8'] = A => {
 
   // ==================================================================== zones and colliders
   //
-  // The walkable plan. `clampMove` inflates every one of these inward by the 0.30 m body radius
-  // and keeps the body inside the union, so the partitions above need no collider of their own —
-  // two rooms that only touch are already separated — and the four bridge rectangles are what
-  // join them. Each bridge overlaps both neighbours' INNER rects by >= 0.10 m, which is the whole
-  // reason a doorway is somewhere you walk through rather than a hole you look through.
+  // The walkable plan. `clampMove` inflates every zone inward by the body radius and keeps the body
+  // inside their union. The four bridge rectangles overlap both neighbours even at the stricter
+  // 0.40 m comfort envelope; at their former bounds they overlapped only at r=.30, making the
+  // whole flat a disconnected island for a slightly wider clearance check.
   //
   //   厨房   inner  x -5.70 .. 0.10   z  0.50 .. 2.90
   //   客厅   inner  x  0.70 .. 5.70   z  0.50 .. 2.90
@@ -289,10 +286,10 @@ FlatFit['f8'] = A => {
   A.zone({ id: 'f8l', x0: PX, x1: X1, z0: PZ, z1: ZM, light: [3.00, CY - .34, 1.60], ceil: CY - .05 });
   A.zone({ id: 'f8s', x0: X0, x1: X1, z0: ZS, z1: PZ, light: [-1.20, CY - .34, -2.20], ceil: CY - .05 });
   A.zone({ id: 'f8c', x0: X0, x1: X1, z0: ZM, z1: ZN, light: [0, CY - .34, 4.10], ceil: CY - .05 });
-  A.zone({ id: 'f8kl', x0: -0.30, x1: 1.10, z0: KLZ0, z1: KLZ1, light: [0.40, CY - .34, 2.10] });
-  A.zone({ id: 'f8ks', x0: KSX0, x1: KSX1, z0: -0.50, z1: 0.90, light: [-4.20, CY - .34, 0.20] });
-  A.zone({ id: 'f8ls', x0: LSX0, x1: LSX1, z0: -0.50, z1: 0.90, light: [3.70, CY - .34, 0.20] });
-  A.zone({ id: 'f8gap', x0: 3.40, x1: 4.40, z0: 2.50, z1: 3.90, light: [FX, CY - .34, 3.30] });
+  A.zone({ id: 'f8kl', x0: -0.50, x1: 1.30, z0: KLZ0, z1: KLZ1, light: [0.40, CY - .34, 2.10] });
+  A.zone({ id: 'f8ks', x0: KSX0, x1: KSX1, z0: -0.70, z1: 1.10, light: [-4.20, CY - .34, 0.20] });
+  A.zone({ id: 'f8ls', x0: LSX0, x1: LSX1, z0: -0.70, z1: 1.10, light: [3.70, CY - .34, 0.20] });
+  A.zone({ id: 'f8gap', x0: 3.40, x1: 4.40, z0: 2.30, z1: 4.10, light: [FX, CY - .34, 3.30] });
   // The room box `R.setRoom` measures openness against. Without this the shell hands the shader
   // deck 2's 5.70 m box, every point on this deck is above it, `openness` decides the whole floor
   // is jammed against a ceiling and the place comes out grey. One call, and it is not optional.

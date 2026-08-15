@@ -452,7 +452,11 @@ const Talk = (() => {
     // ---- 小林 at the till in the 超市. The shop already has 超市老板, who asks what you want and
     // whether you need a bag, so she gets the other half of a shop: the basket, the money and
     // what is on the shelf tomorrow. Nothing here repeats a question he already asks.
-    '小林': {
+    //
+    // Qualified by place and role, not her common name.  The zoo also has a visitor called 小林;
+    // a name-only key made him ask ten questions about baskets, cash and supermarket shelves.
+    // A bare 收银员 key is no safer because the mall has cashiers in twelve unrelated tenants.
+    'shop:收银员': {
       huh: ['啊，不好意思，我没听清。', 'Oh — sorry, I did not catch that.'],
       turns: [
         { ask: ['这些都要吗？', 'Do you want all of these?'],
@@ -765,7 +769,7 @@ const Talk = (() => {
           ],
           gain: { mood: 3 },
           alts: [
-            // 海口 HU7802 leaves sixty-five minutes late every day of the week, so this is not a
+            // 海口 HL7802 leaves sixty-five minutes late every day of the week, so this is not a
             // corner case somebody has to be unlucky to see — it is one of the seven flights.
             { when: s => s.has && (s.late || s.cancelled),
               ask: ['您这班延误了，要等一个多小时。',
@@ -1598,15 +1602,147 @@ const Talk = (() => {
     },
   };
 
+  // ---- the second source of asks, and why it is shaped the way it is.
+  //
+  // Everything above is written by hand, retired for good on a right answer, and finite: ninety-one
+  // turns across twenty-five people. That is a fortnight. After it the whole cast goes back to
+  // barking and the listening surface — the one place in this game where a sentence arrives as
+  // sound and has to be understood rather than read off a card — is closed for the rest of the run.
+  //
+  // So there is a generator, and its slots come off the review queue: `Vocab.dueByTopic` and
+  // `Vocab.dueByBand` decide which word gets put in front of you, which makes what a person asks
+  // you the same thing as what you owe. It never displaces an authored turn — `next` reaches it
+  // only when `openTurn` has run out — and a generated turn is never retired, it is regenerated
+  // with a different slot.
+  //
+  // **The hard constraint is the bake.** `js/speech.js` has no synthesiser fallback on purpose: a
+  // line with no clip in `audio/voice/manifest.json` is silent, and lands in `missed` where
+  // `.speechcheck.js` fails on it. A generator that invents sentences invents silence. So a
+  // template carries two word lists and only one of them is live:
+  //
+  //   `words` — slots whose rendered sentence is already baked in this person's voice. These ship.
+  //   `bake`  — slots waiting on a bake run. They are never offered, they never reach `next`, and
+  //             `.talkcheck.js` prints them as the bake list. When a clip lands, the word moves
+  //             from `bake` to `words` and the ask goes live with no other change.
+  //
+  // Every `bake` list is empty now: the run happened, and all 26 slots below are live. The split
+  // stays because it is the mechanism, not a migration step — the next template to be written
+  // starts in `bake` and moves across when its clips exist.
+  //
+  // A slot word must be in the dictionary or it is dead weight. `slotTurn` picks from
+  // `Vocab.dueByTopic` / `dueByBand` / the due list, and all three read `know[]`, which only ever
+  // holds words the dictionary has a row for — so a word `js/vocab.js` has never heard of can be
+  // baked, will pass every check, and can never be chosen. Six were dropped on exactly that
+  // ground before the bake: 零钱, 后天, 今天下午, 合同, 菜市场, 学校. They are ordinary words and
+  // their absence is a `js/vocab.js` gap, not a decision here; add the rows and they can come back.
+  //
+  // `.talkcheck.js` fails if anything in `words` has no clip, which is the check that stops a
+  // template being added ahead of its bake. It is the same split `SCRIPTS`/`SOON` already make
+  // between what is live and what is written and waiting.
+  //
+  // `say` is the reply, and it is deliberately one of that person's *existing* baked lines rather
+  // than a new sentence: a generated turn that needed two bakes instead of one would be twice as
+  // far from shipping, and every one of these people already owns a line that closes an exchange.
+  // The player's own replies need no clip at all — only the NPC speaks — so `opts` is free text
+  // and can be built out of the slot word.
+  //
+  // The wrong option is never nonsense. It is a sensible answer to a *different* question, which
+  // is the thing being tested: hearing 多少 and not 几点 is what tells the two apart.
+  const TEMPLATES = [
+    // ---- the vendor, who asks quantity and price.
+    { id: 'qty', who: ['超市老板'], topic: 'food', band: 3,
+      say: ['给你。', 'Here you are.'],
+      zh: (w) => `${w}要多少？`,
+      en: (w, g) => `How much ${g} do you want?`,
+      opts: (w) => [
+        { zh: '要两个，谢谢。', en: 'Two, thank you.', ok: true },
+        { zh: `不用了，我不买${w}。`, en: `No thanks — I am not buying ${w}.`, ok: true },
+        { zh: '我住二零二。', en: 'I live at 202.' },
+      ],
+      words: ['白菜', '鸡蛋', '苹果', '面条', '西红柿', '土豆', '牛肉', '米饭'], bake: [] },
+
+    { id: 'price', who: ['超市老板'], topic: 'money', band: 2,
+      say: ['给你。', 'Here you are.'],
+      zh: (w) => `${w}还要吗？`,
+      en: (w, g) => `Do you still want the ${g}?`,
+      opts: (w) => [
+        { zh: '要，一共多少钱？', en: 'Yes — how much altogether?', ok: true },
+        { zh: '太贵了，不要了。', en: 'Too dear. I will leave it.', ok: true },
+        { zh: '我七点到。', en: 'I get there at seven.' },
+      ],
+      words: ['发票', '袋子', '现金'], bake: [] },
+
+    // ---- the colleague, who asks what day and what time.
+    { id: 'when', who: ['同事'], topic: 'time', band: 2,
+      say: ['好，那你做吧，我去打印。', 'Fine — you do that, I will go and print.'],
+      zh: (w) => `${w}你有空吗？`,
+      en: (w, g) => `Are you free ${g}?`,
+      opts: (w) => [
+        { zh: '有空，几点？', en: 'I am — what time?', ok: true },
+        { zh: '没空，我要加班。', en: 'I am not — I am working late.', ok: true },
+        { zh: '在三楼。', en: 'On the third floor.' },
+      ],
+      words: ['明天', '星期一', '星期五', '周末', '中午'], bake: [] },
+
+    { id: 'work', who: ['同事'], topic: 'work', band: 3,
+      say: ['那我自己去，你工作吧。', 'I will go on my own then — you get on.'],
+      zh: (w) => `${w}你做完了吗？`,
+      en: (w, g) => `Have you finished the ${g}?`,
+      opts: (w) => [
+        { zh: '做完了，我发给你。', en: 'I have — I will send it over.', ok: true },
+        { zh: '还没有，下午做。', en: 'Not yet — this afternoon.', ok: true },
+        { zh: '要两个，谢谢。', en: 'Two, thank you.' },
+      ],
+      words: ['报告', '表格', '会议'], bake: [] },
+
+    // ---- the neighbour, who asks where you are going.
+    { id: 'where', who: ['王阿姨'], topic: 'transport', band: 2,
+      say: ['那就好。', 'Good, then.'],
+      zh: (w) => `你去${w}吗？`,
+      en: (w, g) => `Are you off to the ${g}?`,
+      opts: (w) => [
+        { zh: '去，我马上走。', en: 'I am — I am leaving now.', ok: true },
+        { zh: '不去，我在家。', en: 'I am not — I am staying in.', ok: true },
+        { zh: '一共十二块。', en: 'Twelve kuai altogether.' },
+      ],
+      words: ['医院', '地铁站', '公园', '银行'], bake: [] },
+
+    // ---- the delivery rider, who asks whether you have a thing on you.
+    { id: 'have', who: ['外卖员'], topic: 'home', band: 3,
+      say: ['谢谢，给个好评！', 'Thanks — leave me a good review!'],
+      zh: (w) => `您有${w}吗？`,
+      en: (w, g) => `Have you got a ${g}?`,
+      opts: (w) => [
+        { zh: '有，我拿给您。', en: 'I have — I will fetch it.', ok: true },
+        { zh: '没有，不好意思。', en: 'I have not, sorry.', ok: true },
+        { zh: '明天见。', en: 'See you tomorrow.' },
+      ],
+      words: ['钥匙', '手机', '雨伞'], bake: [] },
+  ];
+
   // Which turns have been got through. Kept out of the save the world uses, because this is
   // progress through a *conversation* rather than a state of the flat: coming back tomorrow should
   // not mean being asked your name again.
   const KEY = 'bjlife.talk.v1';
   let done = load();
+  function cleanProgress(value) {
+    if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+    const out = {};
+    for (const [id, completed] of Object.entries(value)) {
+      if (completed !== 1 && completed !== true) continue;
+      const match = /^(.*)#(\d+)$/.exec(id);
+      if (!match) continue;
+      const script = SCRIPTS[match[1]] || SOON[match[1]];
+      const turn = Number(match[2]);
+      if (!script || !Number.isSafeInteger(turn) || turn < 0 || turn >= script.turns.length) continue;
+      out[`${match[1]}#${turn}`] = 1;
+    }
+    return out;
+  }
   function load() {
     try {
       const v = JSON.parse(localStorage.getItem(KEY));
-      return v && typeof v === 'object' ? v : {};
+      return cleanProgress(v);
     } catch (_) { return {}; }
   }
   let saveT = 0, dirty = false;
@@ -1641,12 +1777,30 @@ const Talk = (() => {
     return SCRIPTS;
   }
 
-  const scriptFor = n => (n && (table()[n.name] || table()[n.hz])) || null;
+  // A qualified key lets two people share an ordinary name or role without sharing a life. Keep
+  // the established name-then-role fallback for every unqualified script; only rows that need the
+  // extra identity pay for it. `scriptKey` is also accepted by the harness when it enumerates the
+  // table without manufacturing a fake place/name pair.
+  function scriptKeyFor(n) {
+    if (!n) return '';
+    const T = table();
+    const keys = [n.scriptKey];
+    if (n.place) {
+      if (n.name) keys.push(`${n.place}:${n.name}`);
+      if (n.hz) keys.push(`${n.place}:${n.hz}`);
+    }
+    keys.push(n.name, n.hz);
+    return keys.find(k => k && T[k]) || '';
+  }
+  const scriptFor = n => {
+    const k = scriptKeyFor(n);
+    return k ? table()[k] : null;
+  };
 
   // ---- which conversation this is, which is not always this person's name.
   //
-  // `scriptFor` tries the name and falls back to the role, and progress has to be filed under
-  // whichever of the two actually matched. Filing it under the name looks identical until two
+  // `scriptFor` tries an explicit/place-qualified identity, then the name, then the role, and
+  // progress has to be filed under whichever key actually matched. Filing it under the name looks identical until two
   // people share one — and two people in this game are called 小赵. The colleague at the desk next
   // to yours answers to SCRIPTS['同事'] and the agent at the airbridge to SCRIPTS['登机员'], and
   // both of them are `n.name === '小赵'`, so both were filing their finished turns under 小赵#0…3.
@@ -1659,10 +1813,7 @@ const Talk = (() => {
   // cheaper trade than a gate agent with nothing to say.
   function keyFor(n) {
     if (!n) return '';
-    const T = table();
-    if (n.name && T[n.name]) return n.name;
-    if (n.hz && T[n.hz]) return n.hz;
-    return n.name || n.hz || '';
+    return scriptKeyFor(n) || n.name || n.hz || '';
   }
   const idOf = (n, i) => keyFor(n) + '#' + i;
 
@@ -1757,7 +1908,7 @@ const Talk = (() => {
       }
       if ('late' in does) return does.late > 12 ? Stay.lateCheckout(does.late, day) : null;
       if (does.order) return Stay.orderService(does.order, does.orderEn || does.order,
-                                               does.amt | 0, minutesNow(g), does.delay);
+                                               does.amt | 0, gameClockNow(g), does.delay);
       if (does.housekeep) return Stay.housekeep() ? { cleaned: true } : null;
       // ---- a charge taken off after the player queried it out loud.
       //
@@ -1787,6 +1938,10 @@ const Talk = (() => {
   function minutesNow(g) {
     try { return (g && g.state) ? g.state().minutes | 0 : 0; } catch (_) { return 0; }
   }
+  function gameClockNow(g) {
+    try { return (g && typeof g.clockNow === 'function') ? g.clockNow() : 0; }
+    catch (_) { return 0; }
+  }
 
   // `n` is passed through so a `when` can ask about the person doing the asking and not only about
   // the world — the doorman's second greeting is the only thing that needs it, and it needs it
@@ -1814,17 +1969,97 @@ const Talk = (() => {
     for (let i = 0; i < s.turns.length; i++) if (!done[k + i]) return i;
     return -1;
   }
-  const pending = n => openTurn(n) >= 0;
-
-  // The next thing this person still has to ask you, in the version today calls for — or nothing
-  // if you have been through all of it, at which point they go back to having something to say
-  // rather than something to ask.
-  function next(n) {
-    const at = openTurn(n);
-    if (at < 0) return null;
+  function pending(n) {
+    if (openTurn(n) >= 0) return true;
     const s = scriptFor(n);
-    held = { key: idOf(n, at), turn: shape(s.turns[at], n) };
-    return { script: s, turn: held.turn, at };
+    return !!(s && s.turns.length && genReady(keyFor(n)));
+  }
+
+  // ---- the generator, which is what `TEMPLATES` above is for.
+
+  // The due list, at most once every five seconds. `pending` is asked on a frame, and walking
+  // every word the player has ever met sixty times a second to decide whether the prompt over
+  // somebody's head says 说话 is exactly the per-frame work the frame budget forbids.
+  let dueAt = 0, dueCache = [];
+  function dueNow() {
+    const t = Date.now();
+    if (t - dueAt > 5000) {
+      dueAt = t;
+      try { dueCache = Vocab.dueList(); } catch (_) { dueCache = []; }
+    }
+    return dueCache;
+  }
+
+  // A generated ask is an event, not a state. Without the gap, the moment somebody's authored
+  // turns ran out they would have a question over their head permanently and never bark again,
+  // which trades one kind of silence for another. Stamped when the turn is *answered*, so opening
+  // the panel and walking away does not burn it.
+  const GEN_GAP = 150000;
+  const genAt = {};
+  const genReady = key => dueNow().length > 0 && Date.now() - (genAt[key] || 0) > GEN_GAP;
+
+  // A slot template, filled from the queue. `words` only — `bake` is never read here, which is
+  // what stops an unbaked sentence reaching somebody's mouth.
+  function slotTurn(key) {
+    const due = new Set(dueNow());
+    for (const t of TEMPLATES) {
+      if (!t.who.includes(key) || !t.words.length) continue;
+      const live = w => t.words.indexOf(w) >= 0;
+      const w = Vocab.dueByTopic(t.topic).find(live)
+             || Vocab.dueByBand(t.band).find(live)
+             || t.words.find(x => due.has(x));
+      if (!w) continue;
+      const e = Vocab.get(w);
+      return { ask: [t.zh(w), t.en(w, (e && e.en) || w)], opts: t.opts(w),
+               yes: t.say, learn: w, gain: { mood: 2 }, gen: t.id };
+    }
+    return null;
+  }
+
+  // And the fallback, which needs no bake at all: ask an authored question again. The one picked
+  // is the one whose sentence carries the most words you owe, so a second hearing is aimed rather
+  // than random, and never the one asked last so a person cannot get stuck on one question.
+  const reAt = {};
+  function reTurn(n, s, key) {
+    const due = new Set(dueNow());
+    let best = null, bestScore = -1;
+    for (let i = 0; i < s.turns.length; i++) {
+      if (s.turns.length > 1 && reAt[key] === i) continue;
+      const turn = shape(s.turns[i], n);
+      let sc = 0;
+      for (const tk of Vocab.tokenize(turn.ask[0])) if (tk.e && due.has(tk.t)) sc++;
+      if (sc > bestScore) { bestScore = sc; best = { ...turn, alts: null, gen: 're', from: i }; }
+    }
+    if (best) reAt[key] = best.from;
+    return best;
+  }
+
+  function generate(n) {
+    const s = scriptFor(n);
+    if (!s || !s.turns.length) return null;
+    const key = keyFor(n);
+    if (!genReady(key)) return null;
+    return slotTurn(key) || reTurn(n, s, key);
+  }
+
+  // The next thing this person still has to ask you, in the version today calls for. Authored
+  // turns first and always — a generated one may only fill the space *after* the written ones have
+  // been got through, never displace one that is still open.
+  function next(n) {
+    const s = scriptFor(n);
+    if (!s) return null;
+    const at = openTurn(n);
+    if (at >= 0) {
+      held = { key: idOf(n, at), turn: shape(s.turns[at], n) };
+      return { script: s, turn: held.turn, at };
+    }
+    const g = generate(n);
+    if (!g) return null;
+    const gat = s.turns.length;
+    held = { key: idOf(n, gat), turn: g, gen: true };
+    // A one-off copy so the panel's 问题 counter reads 4/4 rather than 5/4. `answer` re-reads the
+    // real script off `scriptFor`, so nothing downstream is handed the padded one.
+    return { script: { ...s, turns: s.turns.concat([g]) }, turn: g, at: gat };
   }
 
   // ---- what a question tests, and how far one answer is allowed to move it.
@@ -1857,22 +2092,61 @@ const Talk = (() => {
     // What the four in the terminal are reading, for the console and for the harness: the proof
     // that a tree responds to the world is being able to see the world it is responding to.
     situation,
+    // How a person resolves to a conversation, and where their progress is filed. Exported
+    // because `.talkcheck.js` had reimplemented both as `[name, hz]` and the real order is
+    // `[scriptKey, place:name, place:hz, name, hz]` — so a place-qualified script such as
+    // `shop:收银员` looked orphaned to the harness while resolving perfectly well in the game.
+    // A check that re-derives the logic it is testing drifts from it; this is the one copy.
+    scriptKeyFor, keyFor,
     scriptFor, next, pending,
+
+    // ---- the generator, opened up for the check and the bake and for nothing else.
+    TEMPLATES,
+    // Every sentence the slot templates can ever put in somebody's mouth. `templateAsks()` is the
+    // live half — what `next` can reach today, every one of which must have a clip or somebody
+    // opens their mouth and nothing comes out. `templateAsks(true)` adds the pending half, which
+    // is the bake list. `.talkcheck.js` reads both and treats them differently on purpose.
+    templateAsks(all) {
+      const out = [];
+      for (const t of TEMPLATES) {
+        const push = (w, live) => out.push({ id: t.id, who: t.who, word: w, live,
+                                             zh: t.zh(w), say: t.say[0] });
+        for (const w of t.words) push(w, true);
+        if (all) for (const w of t.bake) push(w, false);
+      }
+      return out;
+    },
+    // The turn this person would be generated right now with the every-two-and-a-half-minutes gap
+    // ignored, so a check can see the generator without waiting on a clock.
+    genFor(n) {
+      const s = scriptFor(n);
+      if (!s || !s.turns.length) return null;
+      return slotTurn(keyFor(n)) || reTurn(n, s, keyFor(n));
+    },
 
     // Answer the turn they are on. Returns what they say back, what it did to your vocabulary and
     // what it does to you — the caller owns the world, so effects are described rather than applied.
     answer(n, at, pick) {
       const s = scriptFor(n);
-      if (!s || !s.turns[at]) return null;
+      if (!s) return null;
       // The version the panel opened with if this is the turn it opened with, and otherwise a
-      // fresh read — which is the path a test that answers by index takes.
+      // fresh read — which is the path a test that answers by index takes. A generated turn is not
+      // in `s.turns` and has no fresh read: it exists only for as long as it is held, which is the
+      // whole conversation, and answering one by index without opening it is not a thing to do.
       const key = idOf(n, at);
-      const turn = (held && held.key === key) ? held.turn : shape(s.turns[at], n);
+      const open = held && held.key === key;
+      const gen = !!(open && held.gen);
+      if (!gen && !s.turns[at]) return null;
+      const turn = open ? held.turn : shape(s.turns[at], n);
       const opt = turn.opts[pick];
       if (!opt) return null;
       const ok = !!opt.ok;
       const moved = score(turn.ask[0], ok);
-      if (ok) { done[idOf(n, at)] = 1; save(); }
+      // Authored turns retire on a right answer and generated ones never do — they are regenerated
+      // with a different slot instead, which is the only reason there is anything left to say on
+      // day forty. The gap is stamped either way: a question answered wrong has still been asked.
+      if (gen) genAt[keyFor(n)] = Date.now();
+      else if (ok) { done[idOf(n, at)] = 1; save(); }
       // ---- `does`, and the one thing in this file that is not purely descriptive.
       //
       // Mood is the only currency the nine street conversations ever needed, and mood is all
@@ -1924,6 +2198,18 @@ const Talk = (() => {
         add(t);
         if (t.alts) for (const a of t.alts) add({ ...t, ...a });
       }
+      // And the live half of the generator. A slot template's rendered ask is a sentence this
+      // person can be made to say, so it belongs here for both of this list's readers: the
+      // prefetch, which should have it in hand, and `.talkcheck.js`, whose existing "every line
+      // has a clip" claim is then the thing that fails when a template is moved to `words` ahead
+      // of its bake. The `bake` half is deliberately absent — it is not a line anybody can say
+      // yet, and listing it here would claim it was.
+      const key = keyFor(n);
+      for (const t of TEMPLATES) {
+        if (!t.who.includes(key)) continue;
+        out.add(t.say[0]);
+        for (const w of t.words) out.add(t.zh(w));
+      }
       return [...out];
     },
 
@@ -1932,7 +2218,7 @@ const Talk = (() => {
       const T = table();
       return Object.keys(T).map(k => ({
         name: k, turns: T[k].turns.length,
-        lines: this.linesOf({ name: k }).length,
+        lines: this.linesOf({ scriptKey: k, name: k }).length,
         // How many of those turns have a second thing to say depending on what is going on.
         alts: T[k].turns.reduce((a, t) => a + (t.alts ? t.alts.length : 0), 0),
       }));

@@ -62,7 +62,10 @@ StreetFit['civic'] = S => {
   const emis = (p, k = 1) => { lit.push({ p, g0: p.glow || 0, k }); return p; };
   const pool = (x, z, w, d, k, c) => {
     pools.push({ g: glow(M.trs(x, .034, z, 0, w, 1, d), c || C('#ffd8a4'), 0), k }); };
-  const hours = (p, on) => { swap.push({ p, m0: p.m, on }); return p; };
+  const hours = (p, on) => {
+    if (!p.stateOwner) p.stateOwner = 'civic:state';
+    swap.push({ p, m0: p.m, on }); return p;
+  };
 
   // ============================================================ 地铁 the two entrances
   //
@@ -72,10 +75,10 @@ StreetFit['civic'] = S => {
   // most recognisable object at a Beijing metro entrance. A mouth without one is a mouth in some
   // other city.
   //
-  // Almost all of this hangs off the mouth's own structure or stands inside the collider the
-  // shell already put round it — `solid(cx-2.05, cx+1.30, cz-.90, cz+1.30)` — so it costs the
-  // pavement nothing. The two exceptions, the route map and the bin, stand on walkable paving
-  // and carry their own colliders; both are measured against `clampMove` below.
+  // All raised fittings either hang off the mouth or sit inside its unchanged
+  // `solid(cx-1.03, cx+1.03, cz-.80, cz+1.12)` footprint. The map and bin used to add two more
+  // pavement colliders; both are structure-mounted now, so the first four metres contain only
+  // flush tactile paving and the existing stair footprint.
   //
   // Tags matter here. The shell tags its own mouth 'metro1'/'metro2' and hangs the 地铁站 thing
   // off that tag, so anything that should open 地铁站 when you point at it takes the same tag —
@@ -85,70 +88,86 @@ StreetFit['civic'] = S => {
     const T = { tag };
     const LC = o.lineCol;
 
-    // ---- the name board, hung under the fascia. This is the piece that turns "a subway
-    // entrance" into "this subway entrance": the station's name, its romanisation underneath the
-    // way every board in the city carries it, and the line's colour as a band below with the line
-    // number in it. The shell's fascia says 地铁站 and nothing else, so from the pavement the two
-    // mouths were indistinguishable apart from the totem.
-    //
-    // At y 1.86 it hangs over the head of the flight, which is where these actually are, and
-    // clear of the fascia at 2.23..2.57 so the two never fight for the same pixels.
-    emis(box(cx, 1.86, cz - .540, 2.46, .52, .07, SIGNW,
-      { hard: true, gloss: .18, glow: .02, ...T }), .30);
-    glyphs(cx + .20, 1.96, cz - .585, Math.PI, o.name,
-      { size: .175, gap: .05, color: INK, mode: 1, lift: .010, tag });
-    glyphs(cx + .20, 1.755, cz - .585, Math.PI, o.pinyin,
-      { size: .082, gap: .022, color: SUBINK, mode: 1, lift: .010, tag });
-    // the line band under it, and the line's number on it
-    emis(box(cx, 1.50, cz - .550, 2.46, .16, .06, LC,
-      { hard: true, gloss: .22, glow: .03, ...T }), .30);
-    glyphs(cx, 1.50, cz - .585, Math.PI, o.line,
-      { size: .105, gap: .026, color: SIGNW, mode: 1, lift: .009, tag });
+    // ---- station identity. The former 2.46 m board hung at eye height straight across the stair
+    // and turned an entrance into a white barricade. This framed, shallow sign sits above a full
+    // two metres of clear opening. Its two separated message rails, edge frame, line badge and
+    // exit plate read as fitted signwork from both sides; there is no blank rear billboard.
+    const signZ = cz - .405;
+    for (const y of [2.025, 2.335])
+      box(cx + .06, y, signZ + .018, 1.54, .040, .070, col.steelD,
+        { hard:true, gloss:G.metal, ...T });
+    for (const x of [cx - .71, cx + .83])
+      box(x, 2.18, signZ + .018, .040, .27, .070, col.steelD,
+        { hard:true, gloss:G.metal, ...T });
+    box(cx - .585, 2.18, signZ - .018, .18, .23, .018, LC,
+      { hard:true, mode:1, gloss:.20, ...T });
+    emis(box(cx + .16, 2.235, signZ - .012, .92, .105, .018, C('#23384d'),
+      { hard:true, gloss:.20, glow:.016, ...T }), .24);
+    emis(box(cx + .16, 2.105, signZ - .012, .92, .065, .018, C('#d6e1e3'),
+      { hard:true, gloss:.18, glow:.012, ...T }), .18);
+    glyphs(cx + .16, 2.235, signZ - .030, Math.PI, o.name,
+      { size:.080, gap:.024, color:SIGNW, mode:1, lift:.008, tag });
+    glyphs(cx + .16, 2.105, signZ - .030, Math.PI, o.pinyin,
+      { size:.036, gap:.009, color:SUBINK, mode:1, lift:.008, tag });
+    glyphs(cx - .585, 2.18, signZ - .036, Math.PI, o.line,
+      { size:.040, gap:.006, color:SIGNW, mode:1, lift:.007, tag });
 
-    // ---- the roundel. The shell builds one on the fascia, but it is a cylinder laid over with
-    // `rz`, which puts its face along ±x — edge-on to the person walking up to it, so from the
-    // approach it reads as a white sliver rather than a disc. This one is laid with `rx`, which
-    // is what faces a disc down -z, and it carries the line colour so the two mouths differ at a
-    // glance. The shell's is left where it is: this file only adds.
-    cyl(cx - .95, 1.86, cz - .620, .155, .035, SIGNW, { rx: Math.PI / 2, mode: 1, gloss: .20, ...T });
-    cyl(cx - .95, 1.86, cz - .656, .118, .030, LC, { rx: Math.PI / 2, mode: 1, gloss: .20, ...T });
-    glyphs(cx - .95, 1.86, cz - .678, Math.PI, '地铁',
-      { size: .070, gap: .004, color: SIGNW, mode: 1, lift: .008, tag });
+    // 出入口 occupies the fascia's deliberately open right-hand bay. Twin short brackets tie the
+    // plate back to the canopy cross-member and keep its lower edge above the station-name frame.
+    for (const x of [cx + .69, cx + .98])
+      box(x, 2.65, cz - .33, .035, .30, .035, col.steelD,
+        { hard:true, gloss:G.metal, ...T });
+    emis(box(cx + .835, 2.51, cz - .405, .34, .22, .028, SIGNW,
+      { hard:true, gloss:.20, glow:.018, ...T }), .32);
+    box(cx + .835, 2.51, cz - .378, .39, .265, .022, col.steelD,
+      { hard:true, gloss:G.metal, ...T });
+    emis(box(cx + .835, 2.51, cz - .414, .33, .21, .018, SIGNW,
+      { hard:true, gloss:.20, glow:.018, ...T }), .32);
+    // At yaw PI the larger x is the visual left, hence letter then 口 in world coordinates.
+    glyphs(cx + .91, 2.51, cz - .438, Math.PI, o.exitLetter,
+      { size:.135, gap:0, color:INK, mode:1, lift:.007, tag });
+    glyphs(cx + .765, 2.51, cz - .438, Math.PI, '口',
+      { size:.085, gap:0, color:SUBINK, mode:1, lift:.007, tag });
 
-    // ---- 出入口 and its letter, standing 20 mm proud of the fascia. Every mouth in the city is
-    // lettered and it is the letter people say to each other: 我在 C 口.
-    emis(box(cx + 1.06, 2.40, cz - .555, .42, .28, .05, SIGNW,
-      { hard: true, gloss: .20, glow: .02, ...T }), .35);
-    // At yaw PI the glyph quad's local +x maps to world -x, so the LEFT of a line of text is at
-    // the LARGER x. Written the other way round the plate read 口A.
-    glyphs(cx + 1.16, 2.40, cz - .585, Math.PI, o.exitLetter,
-      { size: .17, gap: 0, color: INK, mode: 1, lift: .008, tag });
-    glyphs(cx + .97, 2.40, cz - .585, Math.PI, '口',
-      { size: .105, gap: 0, color: SUBINK, mode: 1, lift: .008, tag });
-
-    // ---- 线路图, the network map, on its own two legs on the approach. Deliberately narrow at
-    // 1.06 m: it stands on walkable pavement and has to leave a clear run past it.
-    const mx = cx + 1.38, mz = cz - 1.15;
-    for (const s of [-1, 1])
-      box(mx + s * .42, .62, mz, .055, 1.24, .055, col.steelD,
-        { hard: true, gloss: G.metal, tag: '线路图' });
-    box(mx, 1.52, mz, 1.06, .76, .07, col.steelD, { hard: true, gloss: G.metal, tag: '线路图' });
-    emis(box(mx, 1.52, mz - .055, .98, .68, .04, C('#d3d7d6'),
-      { hard: true, gloss: .16, glow: .03, tag: '线路图' }), .30);
-    glyphs(mx, 1.79, mz - .090, Math.PI, '线路图',
-      { size: .058, gap: .016, color: INK, mode: 1, lift: .008, tag: '线路图' });
-    // the runs. A metro diagram is 45s and straights with interchange dots on them, and at
-    // reading distance that is the whole of what one of these is.
-    const runs = [[LINE10, -.16, .06, .74, 0], [LINE6, .10, -.10, .60, .34],
-                  [C('#c8442f'), -.02, -.20, .52, -.28], [C('#3f8f4c'), .18, .16, .44, .18]];
+    // ---- 线路图. A rail-mounted schematic, not a white billboard. Two stand-off brackets carry
+    // a 36 cm open frame; the only face is lightly translucent glass, densely fitted with a header,
+    // coloured routes and interchange nodes. Daylight remains visible beneath and around it, and
+    // its right edge stays inside the mouth collider.  On the constrained 商务区 footway it is
+    // mounted to the kerb-side rail; putting it on the building side would spend 31 cm of the
+    // recovered two-metre through-route.  The hutong mouth keeps its original side.
+    const constrained = tag === 'metro1';
+    const mx = cx + (constrained ? -.84 : 1.16), mountX = cx + (constrained ? -.93 : 1.07);
+    const mz = cz - .44, MT = { tag:'线路图' };
+    for (const y of [1.23, 1.57]) {
+      box(mountX, y, mz + .055, .18, .026, .050, col.steelD,
+        { hard:true, gloss:G.metal, ...MT });
+      cap(mountX, y - .045, mz + .06, .012, .16, .012, col.steelD,
+        { rz:-.72, gloss:G.metal, ...MT });
+    }
+    for (const x of [mx - .165, mx + .165])
+      box(x, 1.40, mz, .026, .48, .045, col.steelD,
+        { hard:true, gloss:G.metal, ...MT });
+    for (const y of [1.16, 1.64])
+      box(mx, y, mz, .36, .026, .045, col.steelD,
+        { hard:true, gloss:G.metal, ...MT });
+    box(mx, 1.40, mz - .028, .30, .41, .012, C('#b9d2d7'),
+      { hard:true, mode:1, alpha:.38, gloss:G.glass, ...MT });
+    emis(box(mx, 1.58, mz - .045, .28, .055, .012, C('#1b4f86'),
+      { hard:true, mode:1, glow:.018, ...MT }), .22);
+    glyphs(mx, 1.58, mz - .054, Math.PI, '线路图',
+      { size:.033, gap:.007, color:SIGNW, mode:1, lift:.006, tag:'线路图' });
+    const runs = [[LINE10, -.015, .075, .25, 0], [LINE6, .015, -.025, .25, .34],
+                  [C('#c8442f'), -.025, -.115, .22, -.28], [C('#3f8f4c'), .025, .145, .20, .18]];
     for (const [c, dx, dy, w, rz] of runs)
-      box(mx + dx, 1.50 + dy, mz - .090, w, .026, .012, c,
-        { hard: true, rz, mode: 1, gloss: .10, tag: '线路图' });
-    for (let i = 0; i < 7; i++)
-      cyl(mx - .34 + i * .11, 1.50 + Math.sin(i * 1.7) * .13, mz - .104, .014, .010, INK,
-        { rx: Math.PI / 2, mode: 1, gloss: .10, tag: '线路图' });
-    solid(mx - .50, mx + .50, mz - .07, mz + .07);
-    thing('线路图', mx, 1.52, mz - .10, '你看一下线路图，我们坐几号线？',
+      box(mx + dx, 1.38 + dy, mz - .050, w, .014, .009, c,
+        { hard:true, rz, mode:1, gloss:.10, ...MT });
+    for (let i = 0; i < 6; i++)
+      cyl(mx - .115 + i * .046, 1.38 + Math.sin(i * 1.45) * .085, mz - .060,
+        .009, .008, INK, { rx:Math.PI / 2, mode:1, gloss:.10, ...MT });
+    for (const x of [mx - .08, mx + .08])
+      box(x, 1.22, mz - .048, .11, .035, .009, SIGNW,
+        { hard:true, mode:1, gloss:.12, ...MT });
+    thing('线路图', mx, 1.40, mz - .07, '你看一下线路图，我们坐几号线？',
       'Have a look at the route map — which line do we take?',
       '线 line + 路 route + 图 diagram. 换乘 is to change lines; 几号线 asks which line.',
       { tag: '线路图', focus: o.mapFocus, reach: 2.0 });
@@ -164,87 +183,138 @@ StreetFit['civic'] = S => {
     for (let i = 0; i < 8; i++) for (const dz of [-1.13, -.99])
       cyl(cx - .78 + i * .222, .030, cz + dz, .030, .014, TACTD, { gloss: .10, ...T });
 
-    // ---- 安检. The security check, just inside the mouth: a scanner with a rubber-curtained
-    // tunnel, roller beds either side, the monitor on its stalk and a table with the wand on it.
-    // Stood on the landing at the head of the flight, inside the collider the shell already put
-    // round the whole mouth, and 0.19 m clear of the nearest the body can stand.
-    const sz0 = cz + 1.08, ST = { tag: '安检' };
-    box(cx, .52, sz0, 1.02, 1.04, .62, C('#6b737b'), { hard: true, gloss: .34, ...ST });
-    box(cx, 1.05, sz0, 1.06, .06, .66, C('#4a5158'), { hard: true, gloss: .30, ...ST });
-    box(cx, .58, sz0 - .335, .54, .58, .05, C('#15181b'), { hard: true, gloss: .20, ...ST });
-    for (let i = 0; i < 5; i++)                                     // the lead curtain strips
-      box(cx - .20 + i * .10, .60, sz0 - .375, .085, .52, .012, C('#4d545a'),
-        { hard: true, gloss: .18, ...ST });
-    for (const s of [-1, 1]) {                                      // the roller beds
-      box(cx + s * .84, .40, sz0, .64, .06, .52, col.steelD, { hard: true, gloss: G.metal, ...ST });
-      for (let i = 0; i < 5; i++)
-        cyl(cx + s * .84 - .24 + i * .12, .452, sz0, .026, .48, col.steel,
-          { rx: Math.PI / 2, gloss: G.metal, ...ST });
-      box(cx + s * .84, .19, sz0, .07, .38, .07, col.steelD, { hard: true, gloss: G.metal, ...ST });
+    // ---- 安检. Two genuinely open tunnels share the landing: a walk-through sensor arch and a
+    // skeletal bag lane. There is no cabinet, side shell, curtain or waist-high face. The belt is
+    // nine separate rollers on four legs; every other piece is a post or rail with daylight around
+    // it, including in the exact station-return sightline.
+    const sz0 = cz + .37, sx0 = cx + .39, ST = { tag:'安检' };
+    for (const q of [-1, 1]) {
+      const z = sz0 + q * .27;
+      for (const s of [-1, 1])
+        box(sx0 + s * .26, 1.14, z, .038, 1.20, .038, C('#596269'),
+          { hard:true, gloss:.34, ...ST });
+      box(sx0, 1.75, z, .56, .045, .038, C('#41484e'),
+        { hard:true, gloss:.32, ...ST });
     }
-    box(cx + .86, .48, sz0 + .04, .40, .05, .30, C('#8d4a2c'), { hard: true, gloss: .28, ...ST });
-    // the monitor the guard watches, on its stalk, turned back toward the machine
-    box(cx - .62, 1.42, sz0 + .16, .06, .46, .07, col.steelD, { hard: true, gloss: G.metal, ...ST });
-    box(cx - .62, 1.76, sz0 + .16, .07, .30, .40, C('#26292d'), { hard: true, gloss: .30, ...ST });
-    emis(box(cx - .665, 1.76, sz0 + .16, .012, .25, .34, C('#2a5068'),
-      { hard: true, mode: 1, glow: .04, ...ST }), .28);
-    // the table beside it, with the wand and a bottle of water left on it
-    box(cx - 1.02, .38, sz0 - .10, .42, .04, .60, C('#9a8a6e'), { hard: true, gloss: G.wood, ...ST });
+    for (const s of [-1, 1]) {
+      box(sx0 + s * .26, 1.75, sz0, .038, .045, .58, C('#41484e'),
+        { hard:true, gloss:.32, ...ST });
+      box(sx0 + s * .265, .49, sz0, .028, .055, 1.04, col.steelD,
+        { hard:true, gloss:G.metal, ...ST });
+    }
+    for (let i = 0; i < 9; i++)
+      cyl(sx0, .50, sz0 - .46 + i * .115, .018, .48, col.steel,
+        { rz:Math.PI / 2, gloss:G.metal, ...ST });
+    for (const q of [-1, 1]) for (const s of [-1, 1])
+      box(sx0 + s * .245, .25, sz0 + q * .46, .032, .50, .032, col.steelD,
+        { hard:true, gloss:G.metal, ...ST });
+    for (const s of [-1, 1]) for (const y of [1.01, 1.31, 1.60])
+      emis(ball(sx0 + s * .235, y, sz0 - .285, .016, .016, .016,
+        s < 0 ? C('#62b778') : C('#d3a245'), { mode:1, glow:.035, ...ST }), .20);
+
+    const wx = cx - .45;
+    for (const q of [-1, 1]) {
+      const z = sz0 - .02 + q * .17;
+      for (const s of [-1, 1])
+        box(wx + s * .25, 1.03, z, .042, 1.72, .042, C('#5d666e'),
+          { hard:true, gloss:.34, ...ST });
+      box(wx, 1.91, z, .54, .050, .042, C('#4a5259'),
+        { hard:true, gloss:.32, ...ST });
+    }
+    for (const s of [-1, 1])
+      box(wx + s * .25, 1.91, sz0 - .02, .042, .050, .38, C('#4a5259'),
+        { hard:true, gloss:.32, ...ST });
     for (const s of [-1, 1]) for (const q of [-1, 1])
-      box(cx - 1.02 + s * .16, .18, sz0 - .10 + q * .24, .04, .38, .04, col.steelD,
-        { hard: true, gloss: G.metal, ...ST });
-    cap(cx - 1.02, .46, sz0 - .26, .022, .28, .022, C('#2a2d31'), { rz: 1.35, gloss: .30, ...ST });
-    cyl(cx - .92, .49, sz0 + .10, .032, .22, C('#7fa7c4'), { mode: 1, alpha: .82, gloss: .40, ...ST });
-    // and the sign over it, which is the two characters everybody reads without stopping
-    emis(box(cx, 2.06, sz0 - .44, .76, .20, .05, C('#1b4f86'), { hard: true, gloss: .24, ...ST }), .5);
-    glyphs(cx, 2.06, sz0 - .472, Math.PI, '安检',
-      { size: .135, gap: .05, color: SIGNW, mode: 1, lift: .009, tag: '安检' });
-    thing('安检', cx, 1.30, sz0 - .35, '进地铁站要先过安检，包放传送带上。',
+      box(wx + s * .25, .18, sz0 - .02 + q * .17, .10, .045, .10, col.steelD,
+        { hard:true, gloss:G.metal, ...ST });
+    for (const s of [-1, 1])
+      emis(box(wx + s * .13, 1.91, sz0 - .215, .035, .022, .014,
+        s < 0 ? C('#62b778') : C('#d3a245'), { hard:true, mode:1, glow:.05, ...ST }), .25);
+
+    // The screen clips to the east tunnel post; the wand hangs from the west arch. Neither gains a
+    // stand, table or cabinet of its own.
+    box(sx0 + .285, 1.43, sz0 + .08, .020, .22, .27, C('#26292d'),
+      { hard:true, gloss:.30, ...ST });
+    emis(box(sx0 + .273, 1.43, sz0 + .08, .009, .175, .22, C('#2a5068'),
+      { hard:true, mode:1, glow:.035, ...ST }), .26);
+    cap(wx - .285, 1.18, sz0 - .12, .014, .24, .014, C('#2a2d31'),
+      { rz:1.35, gloss:.30, ...ST });
+
+    // A small framed sign bridges the two frames above head height, leaving the whole lower opening.
+    emis(box(cx - .03, 2.08, sz0 - .27, .48, .18, .025, C('#1b4f86'),
+      { hard:true, gloss:.24, glow:.025, ...ST }), .45);
+    for (const x of [cx - .285, cx + .225])
+      box(x, 2.08, sz0 - .245, .030, .22, .050, col.steelD,
+        { hard:true, gloss:G.metal, ...ST });
+    glyphs(cx - .03, 2.08, sz0 - .295, Math.PI, '安检',
+      { size:.115, gap:.04, color:SIGNW, mode:1, lift:.008, tag:'安检' });
+    thing('安检', cx, 1.30, sz0 - .25, '进地铁站要先过安检，包放传送带上。',
       'To enter the station you go through the security check; bags go on the belt.',
       '安 safe + 检 to inspect. 过安检 is to go through it — every station in the city has one.',
       { tag: '安检', focus: o.checkFocus, reach: 2.4 });
 
     // ---- the roll-down grille. Down between 23:20 and 05:10 and gone the rest of the day, which
-    // is the one thing that says at a glance that the network has shut. The housing it rolls into
-    // stays all day; the curtain does not.
+    // is the one thing that says at a glance that the network has shut. A segmented housing stays
+    // all day; the closed barrier is an honest open mesh, never a 2.24 × 2.26 m steel slab.
     const shut = h => h >= 23.33 || h < 5.17;
-    box(cx, 2.30, cz - .30, 2.34, .18, .16, col.steelD, { hard: true, gloss: .38, ...T });
-    hours(box(cx, 1.13, cz - .30, 2.24, 2.26, .05, col.steel,
-      { hard: true, gloss: .40, mat: 'steel', matScale: .55, matAmt: .40, ...T }), shut);
-    for (let i = 0; i < 11; i++)
-      hours(box(cx, .10 + i * .205, cz - .350, 2.20, .05, .02, C('#8a9096'),
-        { hard: true, gloss: .34, ...T }), shut);
+    for (let i = 0; i < 5; i++)
+      box(cx - .88 + i * .44, 2.31, cz - .30, .39, .16, .14, col.steelD,
+        { hard:true, gloss:.38, ...T });
+    for (let i = 0; i < 13; i++)
+      hours(box(cx - 1.02 + i * .17, 1.12, cz - .325, .024, 2.04, .024, col.steel,
+        { hard:true, gloss:.40, mat:'steel', matScale:.55, matAmt:.40, ...T }), shut);
+    for (let i = 0; i < 9; i++)
+      hours(box(cx, .13 + i * .245, cz - .327, 2.08, .024, .024, C('#8a9096'),
+        { hard:true, gloss:.34, ...T }), shut);
+    hours(box(cx, .075, cz - .325, 2.14, .055, .035, col.steelD,
+      { hard:true, gloss:.38, ...T }), shut);
 
     // ---- the centre handrail. The shell puts one down each side; a flight this wide has one up
     // the middle too, and it is the piece that makes a stair read as a public stair.
-    cap(cx, .70, cz + .06, .028, 1.70, .028, col.steelD,
-      { rx: Math.PI / 2 - .34, gloss: G.metal, ...T });
-    for (const dz of [-.55, .55])
-      cap(cx, .40, cz + .06 + dz, .024, .62, .024, col.steelD, { gloss: G.metal, ...T });
+    cap(cx, .69, cz + .08, .028, 1.72, .028, col.steelD,
+      { rx:Math.PI / 2 + .13, gloss:G.metal, ...T });
+    for (const [dz, h] of [[-.56, .72], [.52, .55]])
+      cap(cx, .10 + h / 2, cz + dz, .024, h, .024, col.steelD,
+        { gloss:G.metal, ...T });
 
     // ---- lit from below. Two tubes under the canopy and a pool on the paving in front of the
     // steps: at night a metro mouth is a lit hole in a dark pavement, and it was as dark as
     // everything round it.
-    for (const dz of [.10, 1.00]) {
-      emis(box(cx, 2.49, cz + dz, 2.10, .06, .11, C('#e6e6dc'),
-        { hard: true, mode: 1, glow: .03, ...T }), .55);
-      lamps.push(light(cx, 2.42, cz + dz, [.92, .96, 1.0], .50, 5.0));
+    for (const dz of [.04, .67]) {
+      for (const s of [-1, 0, 1])
+        emis(box(cx + s * .68, 2.69, cz + dz, .58, .035, .055, C('#e6e6dc'),
+          { hard:true, mode:1, glow:.025, ...T }), .46);
+      lamps.push(light(cx, 2.58, cz + dz, [.92, .96, 1.0], .46, 4.6));
     }
-    pool(cx, cz - .45, 3.6, 3.2, .34, C('#cfe2ee'));
+    pool(cx, cz - .42, 3.0, 2.8, .30, C('#cfe2ee'));
 
-    // ---- the bin beside the mouth, which every one of them has and which is where the free
-    // papers and the milk tea cups go.
-    const bx = cx + 1.42, bz = cz + .70;
-    box(bx, .42, bz, .46, .84, .38, C('#3c4a3f'), { hard: true, gloss: .26, ...T });
-    box(bx, .87, bz, .50, .06, .42, C('#2b3630'), { hard: true, gloss: .28, ...T });
+    // ---- compact open litter basket, tucked behind the east rear post. Four legs, two perimeter
+    // rings and sparse ties replace the merged green faces visible from the business return.
+    const bx = cx + 1.25, bz = cz + .77;
+    for (const s of [-1, 1]) for (const q of [-1, 1])
+      box(bx + s * .12, .34, bz + q * .09, .024, .58, .024, col.steelD,
+        { hard:true, gloss:G.metal, ...T });
+    for (const y of [.08, .64]) {
+      for (const q of [-1, 1])
+        box(bx, y, bz + q * .10, .29, .026, .026, C('#2b3630'),
+          { hard:true, gloss:.28, ...T });
+      for (const s of [-1, 1])
+        box(bx + s * .14, y, bz, .026, .026, .22, C('#2b3630'),
+          { hard:true, gloss:.28, ...T });
+    }
     for (const s of [-1, 1])
-      box(bx, .70, bz + s * .135, .40, .22, .012, C('#1d241f'), { hard: true, gloss: .20, ...T });
-    solid(bx - .25, bx + .25, bz - .21, bz + .21);
+      box(bx + s * .06, .64, bz, .085, .014, .07, C('#171b19'),
+        { hard:true, gloss:.16, ...T });
+    for (const s of [-1, 1])
+      cap(bx + s * .07, .35, bz - .105, .010, .42, .010, C('#3c4a3f'),
+        { rz:s * .20, gloss:.22, ...T });
+    box(bx, .045, bz - .14, .10, .020, .07, col.steelD,
+      { hard:true, gloss:G.metal, ...T });
   }
 
-  metroFit(38.70, -5.20, 'metro1', {
+  metroFit(38.45, -5.20, 'metro1', {
     name: '商务区', pinyin: 'Shangwuqu', line: '10号线', lineCol: LINE10, exitLetter: 'C',
-    checkFocus: [38.70, -3.15], mapFocus: [39.40, -7.10],
+    checkFocus: [38.45, -3.15], mapFocus: [38.20, -7.10],
   });
   metroFit(19.40, 2.30, 'metro2', {
     name: '杨柳胡同', pinyin: 'Yangliu Hutong', line: '6号线', lineCol: LINE6, exitLetter: 'A',
@@ -253,164 +323,116 @@ StreetFit['civic'] = S => {
 
   // ============================================================ 药店 the chemist's
   //
-  // The pharmacy is the one shopfront on the far parade that is also a DOOR — `PHARMACY_OUT`
-  // records where the body comes back out of js/pharmacy.js. Which bay it lands on is decided by
-  // the shell's seeded random stream, and the seed puts it at z -10.08 — inside the 7.2 m mass of
-  // the 购物中心 entrance, which is built afterwards at z -9.20 and buries it completely. Standing
-  // on the marked spot you face a sheet of mall glass; the sign, the door and the whole shop are
-  // a metre inside a shopping centre. It has presumably never once been visible.
-  //
-  // That cannot be fixed where it is caused, because the cause is in js/street.js and this file
-  // may only add. What it can do is move the door to a bay that is empty and build the chemist's
-  // there. The bay chosen is the shuttered one centred on z -4.92: its north half, z -5.30 to
-  // -2.10, is the only stretch of far frontage inside the walkable strip with nothing on it —
-  // the mall ends at -5.60, the metro canopy at -3.68 and x 40.15, the 面包房's board starts at
-  // -2.05. The standing spot goes at z -2.90, which is 0.70 m clear of the metro's collider and
-  // on the reachable side of it.
-  //
-  // The `thing` is MOVED, not duplicated, so there is still exactly one 药店 in the street and
-  // `pick` cannot hand back the wrong one. `th.exit.at` is the same object `PHARMACY_OUT` points
-  // at, so writing through it moves both, and pharmacy.js copies it later.
-  // The standing spot is NOT in front of the door. Measured with the real `clampMove` at r 0.30,
-  // (39.30, -2.90) sits inside the collider of the parade's own tree pit at (39.40, -3.00) — the
-  // body was pushed 0.50 m off it every time, which is a door you can never quite stand at. The
-  // spot goes 0.80 m north of the door instead, where the pavement is clear, and the leaf is
-  // 1.41 m away on the diagonal: well inside the thing's 2.4 m reach.
-  // MIRRORED onto the corner block's east elevation, flush with 北京银行 — see
-  // STREET-BLUEPRINT.md and sheet A02. Every x in this section is reflected about x = 31.99, so
-  // the shopfront glass lands at 23.52 where the bank's is at 23.515 and the two read as one
-  // elevation; the glyph yaws turn from -PI/2 to +PI/2 and the two rz values negate, because that
-  // is what a reflection in x does to a rotation about z.
-  //
-  // z -6.90 .. -3.60, which is the 3.30 m bay north of the bank: 0.20 m to the branch at -7.10,
-  // 0.55 m to the block's own corner at -3.05. The standing spot is at x 24.68, east of the
-  // 24.30 the road zone's clampMove holds the body at, and the whole frontage sits in the 0.88 m
-  // strip in front of it that the body can never enter — so nothing here needs a collider either.
-  const PHZ = -5.25, PHDOOR = -4.45, PHSTAND = -3.65;
-  const PT = { tag: '药店' };
-  // The door is CREATED here now, where the shop is, instead of being found on the far parade and
-  // dragged across the road. Dragging it left the parade unit's BOARD behind — still lettered
-  // 药店, still pickable, eighteen metres from the real chemist and on the other side of a
-  // carriageway. street.js no longer letters any parade unit 药店 at all: it is out of both TEACH
-  // and SHOPNAMES, and `PHARMACY_OUT` is a constant on the shell rather than something the seeded
-  // shuffle discovers. pharmacy.js reads the same object off the scene and needs no change.
-  thing('药店', 23.38, 3.34, PHZ,
+  // This is a complete second address, not the last pane of the bank. The bank ends at z=-7.75;
+  // the pharmacy starts at -6.25, so the visible service/fire reveal is exactly 1.50 m. Its other
+  // return stops at -3.35, 30 cm before the corner block ends. Both returns reach the real headwall.
+  const PH0 = -6.25, PH1 = -3.35, PHZ = (PH0 + PH1) / 2, PHDOOR = -4.05;
+  const PH_OUT = { x: 24.98, z: PHDOOR, yaw: -Math.PI / 2 };
+  const PT = { tag: '药店' }, PMAT = { mat: 'plaster', matScale: 2.60, matAmt: .14 };
+  Object.assign(S.PHARMACY_OUT, PH_OUT);       // keep Street and pharmacy.js on one return object
+
+  const pharmacyDoor = thing('药店', 23.66, 3.62, PHZ,
     '药店几点关门？', 'What time does the pharmacy shut?',
     '药 medicine + 店 shop. 买药 is to buy medicine; 药方 is a prescription.',
-    { focus: [24.68, PHSTAND], reach: 2.4 }).exit = { place: 'pharmacy', at: S.PHARMACY_OUT };
+    { focus: [PH_OUT.x, PH_OUT.z], reach: 2.5, tag: '药店' });
+  pharmacyDoor.exit = { place: 'pharmacy', at: { x: 1.90, z: -2.55, yaw: 0 } };
 
-  // The shell of the unit. A back wall and two jambs with a head over them, NOT one solid block:
-  // a block would have nothing to be a window in, and the shop behind the glass has to be a room
-  // with a depth to it or the glazing reads as a stain on a wall. Same move the office lobby
-  // makes forty lines up in street.js, and for the same reason.
-  const PMAT = { mat: 'plaster', matScale: 2.60, matAmt: .14 };
-  box(22.68, 2.10, PHZ, .60, 4.20, 3.30, col.render, { hard: true, gloss: G.paint, ...PMAT, ...PT });
-  for (const s of [-1, 1])
-    box(23.26, 2.10, PHZ + s * 1.50, .76, 4.20, .30, col.render,
+  // Real returns and headwall. The outer face is x=23.66; glass at x=23.50 is recessed 16 cm.
+  // No collider is added: the corner block already owns the wall and its walk zone keeps player
+  // centres at x>=24.30, leaving the whole 2.52 m kerb-side footway intact.
+  const PW = PH1 - PH0, DIV = -4.72;
+  box(23.32, .26, PHZ, .66, .52, PW, col.stoneD, { hard: true, gloss: .24, ...PT });
+  for (const z of [PH0 + .17, PH1 - .17])
+    box(23.32, 2.08, z, .66, 4.16, .34, col.render,
       { hard: true, gloss: G.paint, ...PMAT, ...PT });
-  box(23.26, 3.90, PHZ, .76, .60, 3.30, col.render, { hard: true, gloss: G.paint, ...PMAT, ...PT });
-  box(23.38, .08, PHZ, .30, .16, 3.00, col.stoneD, { hard: true, gloss: .26, ...PT });   // threshold
+  box(23.32, 3.70, PHZ, .66, .92, PW, col.render,
+    { hard: true, gloss: G.paint, ...PMAT, ...PT });
+  box(23.38, 1.48, DIV, .54, 2.96, .14, col.charcoal,
+    { hard: true, gloss: .28, ...PT });
 
-  // ---- the fascia and the name. Green, because a chemist's fascia in this city is green, with
-  // the light bar under it that is what actually makes one legible at ten at night.
-  box(23.38, 3.34, PHZ, .26, .74, 3.06, RXD, { hard: true, gloss: .26, ...PT });
-  glyphs(23.52, 3.42, PHZ - .52, Math.PI / 2, '药店',
-    { size: .46, gap: .16, color: C('#f4fff8'), mode: 1, lift: .014, tag: '药店' });
-  glyphs(23.52, 3.04, PHZ - .52, Math.PI / 2, '24小时',
-    { size: .150, gap: .05, color: C('#bfe8cf'), mode: 1, lift: .014, tag: '药店' });
-  glyphs(23.52, 3.34, PHZ + .86, Math.PI / 2, '中西药',
-    { size: .215, gap: .07, color: C('#dff4e8'), mode: 1, lift: .014, tag: '药店' });
-  emis(box(23.38, 2.92, PHZ, .26, .06, 3.00, RXL, { hard: true, mode: 1, glow: .05, ...PT }), .55);
-
-  // ---- the green cross. The one sign that is identical everywhere and that is read at fifty
-  // metres without being read. Two crossed boxes on a bracket off the frontage: a closed box has
-  // six faces, so it is legible from both directions without being built twice. Brightest thing
-  // on the street after dark, which is the whole point of it.
-  // At the SOUTH end of the fascia, which is where it went first, the cross stood inside the metro
-  // canopy's z range (-5.68..-3.68) and was invisible from the pavement in both directions. It goes
-  // on the north jamb instead — the side the body can actually reach, since the mouth seals the
-  // pavement south of it — with the bracket buried in the jamb the way a real one is.
-  const CZ0 = PHZ + 1.35;
-  box(23.36, 3.05, CZ0, .44, .09, .09, col.steelD, { hard: true, gloss: G.metal, ...PT });
-  box(23.76, 3.05, CZ0, .17, .84, .17, C('#f4fff8'), { hard: true, gloss: .22, ...PT });
-  box(23.76, 3.05, CZ0, .19, .26, .84, C('#f4fff8'), { hard: true, gloss: .22, ...PT });
-  emis(box(23.765, 3.05, CZ0, .21, .70, .21, RX, { hard: true, mode: 1, glow: .10, ...PT }), .85);
-  emis(box(23.765, 3.05, CZ0, .23, .21, .70, RX, { hard: true, mode: 1, glow: .10, ...PT }), .85);
-  lamps.push(light(23.93, 3.05, CZ0, [.42, 1.0, .62], .50, 4.4));
-
-  // ---- the window, and what is in it. A chemist's window is three shelves of boxes and nothing
-  // else, and the boxes are how you tell one from an optician's without reading the sign.
-  const WZ = PHZ - .72;
-  emis(box(23.04, 1.40, WZ, .05, 2.30, 1.40, C('#a9bcae'),
-    { hard: true, mode: 1, glow: .03, ...PT }), .30);
+  // Display window: three open shelf lines and varied medicine boxes sit behind the glass, so the
+  // address reads as a working chemist before any lettering is legible.
+  const W0 = PH0 + .34, W1 = DIV - .10, WZ = (W0 + W1) / 2, WW = W1 - W0;
+  emis(box(23.435, 1.48, WZ, .045, 2.60, WW, C('#a9bcae'),
+    { hard: true, mode: 1, glow: .025, ...PT }), .25);
   const BOXC = [C('#c8492f'), C('#2f6fa8'), C('#d9b13f'), C('#4f8f52'), C('#b4573f'), C('#3f7f86')];
   for (let sh = 0; sh < 3; sh++) {
-    box(23.24, .70 + sh * .62, WZ, .34, .035, 1.30, C('#d8d2c2'), { hard: true, gloss: .22, ...PT });
-    for (let i = 0; i < 6; i++) {
-      const c = BOXC[(i * 5 + sh * 2) % BOXC.length];
-      box(23.24, .84 + sh * .62, WZ - .54 + i * .216, .17, .24, .15, c,
+    const sy = .62 + sh * .68;
+    box(23.465, sy, WZ, .055, .04, WW - .12, C('#d8d2c2'),
+      { hard: true, gloss: .22, ...PT });
+    for (let i = 0; i < 5; i++) {
+      // A working pharmacy shelf is faced and restocked by hand, not stamped as a perfect 3×5
+      // primitive grid.  Two intentional gaps, three carton heights and shallow alternating rows
+      // preserve order without making the whole window read as one repeated mesh.
+      if ((sh === 1 && i === 2) || (sh === 2 && i === 0)) continue;
+      const bh = [.22,.27,.24][(i + sh) % 3], bw = [.11,.14,.12][(i * 2 + sh) % 3];
+      const depth = [.070,.085,.062][(i + sh * 2) % 3];
+      box(23.48 - depth * .08, sy + bh * .5 + .025,
+        W0 + .15 + i * ((WW - .30) / 4) + ((i + sh) % 2 ? .018 : -.012),
+        depth, bh, bw, BOXC[(i * 5 + sh * 2) % BOXC.length],
         { hard: true, gloss: .24, ...PT });
     }
   }
-  box(23.52, 1.40, WZ, .04, 2.28, 1.34, col.glassDay,
-    { hard: true, mode: 1, alpha: .50, gloss: G.glass, ...PT });
-  // the frame round it: sill, head and two mullions, standing 20 mm proud of the glass
-  box(23.54, .14, WZ, .26, .26, 1.48, col.charcoal, { hard: true, gloss: .28, ...PT });
-  box(23.54, 2.66, WZ, .26, .22, 1.48, col.charcoal, { hard: true, gloss: .28, ...PT });
-  for (const s of [-1, 1])
-    box(23.54, 1.40, WZ + s * .72, .26, 2.52, .13, col.charcoal, { hard: true, gloss: .28, ...PT });
+  box(23.50, 1.48, WZ, .035, 2.54, WW - .05, col.glassDay,
+    { hard: true, mode: 1, alpha: .42, gloss: G.glass, ...PT });
+  for (const y of [.18, 2.78])
+    box(23.60, y, WZ, .24, .14, WW + .10, col.charcoal, { hard: true, gloss: .28, ...PT });
+  for (const z of [W0 - .04, W1 + .04])
+    box(23.60, 1.48, z, .24, 2.74, .12, col.charcoal, { hard: true, gloss: .28, ...PT });
 
-  // ---- the door, two leaves with pull bars, at the north end where the body can reach it.
-  // The lit panel behind it is not enough on its own: a 2.2 x 1.24 m sheet of emissive with two
-  // clear leaves in front of it is a lightbox, not a shop, and after dark it blew out into a
-  // white slab. So there is a room behind the door — a counter across it and two runs of shelf
-  // over that, which is what you actually see through a chemist's door at night.
-  emis(box(22.98, 1.16, PHDOOR, .05, 2.20, 1.24, C('#a9bcae'),
-    { hard: true, mode: 1, glow: .03, ...PT }), .24);
-  box(23.16, .46, PHDOOR - .06, .26, .92, .84, C('#c2bcae'), { hard: true, gloss: .26, ...PT });
-  box(23.16, .935, PHDOOR - .06, .30, .05, .88, C('#8d8579'), { hard: true, gloss: .30, ...PT });
-  for (const sy of [1.42, 1.82]) {
-    box(23.08, sy, PHDOOR + .34, .20, .035, .82, C('#d8d2c2'), { hard: true, gloss: .22, ...PT });
-    for (let i = 0; i < 4; i++)
-      box(23.08, sy + .13, PHDOOR + .05 + i * .19, .13, .21, .13, BOXC[(i * 3 + (sy > 1.6 ? 1 : 0)) % BOXC.length],
-        { hard: true, gloss: .24, ...PT });
-  }
+  // Recessed double door. A dim counter and shelf line behind it give the opening depth at night;
+  // the clear 1.08 m threshold and tactile route have no queue rail or freestanding clutter.
+  emis(box(23.435, 1.46, PHDOOR, .045, 2.62, 1.10, C('#b9c9bf'),
+    { hard: true, mode: 1, glow: .025, ...PT }), .22);
+  box(23.46, .53, PHDOOR - .02, .06, .88, .72, C('#c2bcae'),
+    { hard: true, gloss: .25, ...PT });
+  box(23.47, .98, PHDOOR - .02, .07, .05, .76, C('#8d8579'),
+    { hard: true, gloss: .30, ...PT });
   for (const s of [-1, 1]) {
-    box(23.5, 1.16, PHDOOR + s * .33, .035, 2.16, .60, col.glassDay,
-      { hard: true, mode: 1, alpha: .52, gloss: G.glass, ...PT });
-    cap(23.55, 1.06, PHDOOR + s * .12, .022, .78, .022, col.steel, { gloss: G.metal, ...PT });
+    box(23.50, 1.45, PHDOOR + s * .27, .035, 2.58, .50, col.glassDay,
+      { hard: true, mode: 1, alpha: .45, gloss: G.glass, ...PT });
+    cap(23.56, 1.22, PHDOOR + s * .11, .020, .62, .020, col.steel,
+      { rx: Math.PI / 2, gloss: G.metal, ...PT });
   }
-  box(23.52, 1.16, PHDOOR, .09, 2.34, .07, col.charcoal, { hard: true, gloss: .30, ...PT });
-  for (const s of [-1, 1])
-    box(23.52, 1.16, PHDOOR + s * .70, .09, 2.34, .12, col.charcoal, { hard: true, gloss: .30, ...PT });
-  box(23.52, 2.38, PHDOOR, .09, .12, 1.52, col.charcoal, { hard: true, gloss: .30, ...PT });
+  box(23.60, 1.45, PHDOOR, .24, 2.72, .07, col.charcoal, { hard: true, gloss: .30, ...PT });
+  for (const z of [PHDOOR - .58, PHDOOR + .58])
+    box(23.60, 1.45, z, .24, 2.72, .12, col.charcoal, { hard: true, gloss: .30, ...PT });
+  box(23.60, 2.82, PHDOOR, .24, .14, 1.28, col.charcoal, { hard: true, gloss: .30, ...PT });
+  flat(23.91, .019, PHDOOR, .62, 1.18, col.stoneD, { gloss: .22, ...PT });
+  flat(24.48, .020, PHDOOR, 1.14, .28, TACT, { gloss: .12, ...PT });
 
-  // the plates beside it: the state-insurance plate, and the shopfront-tidiness notice that is
-  // screwed to every business on every street in this city
-  box(23.56, 1.72, PHDOOR + .92, .04, .36, .27, C('#1b4f86'), { hard: true, gloss: .30, ...PT });
-  glyphs(23.585, 1.72, PHDOOR + .92, Math.PI / 2, '医保定点',
-    { size: .072, gap: .012, color: SIGNW, mode: 1, vertical: true, lift: .008, tag: '药店' });
-  box(23.56, 1.28, PHDOOR + .92, .04, .22, .21, C('#d8d2c2'), { hard: true, gloss: .24, ...PT });
-  glyphs(23.585, 1.28, PHDOOR + .92, Math.PI / 2, '门前三包',
-    { size: .043, gap: .006, color: INK, mode: 1, lift: .008, tag: '药店' });
+  // Restrained green fascia fixed to the headwall. The glyphs stay unlit; only the returned panel
+  // and a small projecting cross brighten at night, preserving legibility without bloom haze.
+  emis(box(23.66, 3.70, PHZ, .12, .46, PW - .38, RXD,
+    { hard: true, mode: 1, glow: .018, gloss: .24, ...PT }), .34);
+  glyphs(23.735, 3.75, PHZ - .30, Math.PI / 2, '药店',
+    { size: .31, gap: .11, color: C('#f4fff8'), mode: 1, lift: .012, tag: '药店' });
+  glyphs(23.735, 3.47, PHZ - .30, Math.PI / 2, '中西药',
+    { size: .115, gap: .04, color: C('#dff4e8'), mode: 1, lift: .010, tag: '药店' });
+  glyphs(23.735, 3.65, PHZ + .78, Math.PI / 2, '24小时',
+    { size: .105, gap: .032, color: C('#bfe8cf'), mode: 1, lift: .010, tag: '药店' });
 
-  // ---- the queue rail: two chrome posts and a strap making a short lane at the door, which is
-  // what every counter in this country grows the moment two people are at it.
-  for (const dz of [-.64, .10]) {
-    cyl(23.84, .48, PHDOOR + dz, .045, .96, col.steel, { gloss: G.metal, ...PT });
-    cyl(23.84, .024, PHDOOR + dz, .13, .04, col.steelD, { gloss: .34, ...PT });
-  }
-  box(23.84, .88, PHDOOR - .27, .035, .05, .72, C('#9c2f26'), { hard: true, gloss: .26, ...PT });
-  // and the camera over it, which every one of these has
-  box(23.48, 3.92, CZ0 + .12, .18, .14, .50, col.render, { hard: true, gloss: G.paint });
-  box(23.74, 3.88, CZ0 + .12, .34, .13, .13, C('#d8d5cc'), { hard: true, rz: .22, gloss: .30 });
-  cyl(23.92, 3.84, CZ0 + .12, .065, .10, C('#1a1d20'), { rz: -Math.PI / 2, gloss: .44 });
-  // The pool the green cross throws was left on the FAR PARADE when the chemist was mirrored onto
-  // the west footway: at x 39.95 it lit two metres of pavement eighteen metres and one carriageway
-  // away from the lamp casting it, and the cross itself lit nothing. 24.30 is 1.0 m in front of the
-  // 23.30 building line, under the bracket at 23.93. Same omission in the `shade` at the bottom of
-  // this file; both are fixed, neither was in the brief.
-  pool(24.30, PHZ - .40, 2.6, 4.4, .26, C('#bff0d2'));
+  // Keep the projecting cross on the pharmacy return: even its 66 cm horizontal arm leaves
+  // 1.29 m of the 1.50 m inter-address reveal visually open beside the bank.
+  const CROSSZ = PH0 + .12;
+  box(23.51, 3.18, CROSSZ, .34, .08, .08, col.steelD, { hard: true, gloss: G.metal, ...PT });
+  box(23.82, 3.18, CROSSZ, .15, .66, .15, C('#f4fff8'), { hard: true, gloss: .22, ...PT });
+  box(23.82, 3.18, CROSSZ, .17, .22, .66, C('#f4fff8'), { hard: true, gloss: .22, ...PT });
+  emis(box(23.825, 3.18, CROSSZ, .19, .54, .19, RX,
+    { hard: true, mode: 1, glow: .08, ...PT }), .64);
+  emis(box(23.825, 3.18, CROSSZ, .21, .19, .54, RX,
+    { hard: true, mode: 1, glow: .08, ...PT }), .64);
+  lamps.push(light(24.02, 3.04, PHZ, [.42, 1.0, .62], .38, 3.7));
+
+  // Required civic plates remain on the divider, not in the 1.50 m service reveal or the doorway.
+  box(23.67, 1.72, DIV, .04, .34, .25, C('#1b4f86'), { hard: true, gloss: .30, ...PT });
+  glyphs(23.695, 1.72, DIV, Math.PI / 2, '医保定点',
+    { size: .064, gap: .010, color: SIGNW, mode: 1, vertical: true, lift: .007, tag: '药店' });
+  box(23.67, 1.28, DIV, .04, .20, .19, C('#d8d2c2'), { hard: true, gloss: .24, ...PT });
+  glyphs(23.695, 1.28, DIV, Math.PI / 2, '门前三包',
+    { size: .038, gap: .005, color: INK, mode: 1, lift: .006, tag: '药店' });
+
+  pool(24.42, PHZ, 2.2, 3.2, .20, C('#bff0d2'));
 
   // ============================================================ 西人行道 the west footway's wall
   //
@@ -642,16 +664,40 @@ StreetFit['civic'] = S => {
     const c = BIKEC[i % BIKEC.length], lean = ((i * 37) % 11 - 5) * .014, parts = [];
     const P = p => { parts.push(p); return p; };
     const L = { rx: lean, gloss: .34 };
-    for (const dx of [-.50, .50]) {
-      P(cyl(BX + dx, .34, z, .335, .045, C('#2c3035'), { rx: Math.PI / 2, gloss: .22 }));
-      P(cyl(BX + dx, .34, z, .085, .052, col.steel, { rx: Math.PI / 2, gloss: G.metal }));
-    }
+    // Segment the tyres into real rings. From the metro anchor the old cylinders collapsed into a
+    // row of ten black discs; these twelve short arcs preserve the same wheel envelope with sky
+    // and spokes visible through every centre.
+    const wheel = x => {
+      const n = 12, r = .335, seg = 2 * r * Math.sin(Math.PI / n) * 1.06;
+      for (let j = 0; j < n; j++) {
+        const a = j * Math.PI * 2 / n;
+        P(cap(x + Math.cos(a) * r, .34 + Math.sin(a) * r, z,
+          .024, seg, .024, C('#2c3035'), { rz:a, gloss:.22 }));
+      }
+      for (let j = 0; j < 4; j++) {
+        const a = j * Math.PI / 2;
+        P(cap(x + Math.cos(a) * .16, .34 + Math.sin(a) * .16, z,
+          .009, .29, .009, col.steel, { rz:a - Math.PI / 2, gloss:G.metal }));
+      }
+      P(cyl(x, .34, z, .035, .050, col.steelD, { rx:Math.PI / 2, gloss:G.metal }));
+    };
+    wheel(BX - .50); wheel(BX + .50);
     P(cap(BX + .06, .60, z, .028, .90, .028, c, { rz: -1.24, ...L }));     // top tube
     P(cap(BX + .12, .42, z, .026, .84, .026, c, { rz: -1.86, ...L }));     // down tube
     P(cap(BX - .30, .56, z, .024, .52, .024, c, { rz: -.30, ...L }));      // seat tube
     P(cap(BX + .42, .96, z, .022, .44, .022, C('#2a2d31'), { rx: Math.PI / 2, gloss: .38 }));
     P(box(BX - .32, .87, z, .24, .07, .10, C('#2a2d31'), { gloss: .30 }));  // saddle
-    P(box(BX + .60, .74, z, .20, .26, .26, C('#8a8f95'), { hard: true, gloss: .26 })); // basket
+    // Open wire basket: base, four corners and a top ring, never a grey cube on the frontage.
+    P(box(BX + .60, .62, z, .18, .024, .20, C('#8a8f95'), { hard:true, gloss:.26 }));
+    for (const s of [-1, 1]) for (const q of [-1, 1])
+      P(box(BX + .60 + s * .08, .73, z + q * .09, .018, .22, .018,
+        C('#8a8f95'), { hard:true, gloss:.26 }));
+    for (const q of [-1, 1])
+      P(box(BX + .60, .84, z + q * .10, .20, .018, .018,
+        C('#8a8f95'), { hard:true, gloss:.26 }));
+    for (const s of [-1, 1])
+      P(box(BX + .60 + s * .09, .84, z, .018, .018, .20,
+        C('#8a8f95'), { hard:true, gloss:.26 }));
     if (!live) return;
     for (const p of parts) hours(p, h => h > 6.6 + (i % 5) * .42 && h < 19.4 + (i % 4) * .55);
   }
@@ -678,28 +724,54 @@ StreetFit['civic'] = S => {
     cap(40.245 + (i % 3) * .04, .845, 1.59 + (i % 4) * .022, .006, .05, .006, C('#e6e0cf'),
       { rz: 1.1 + i * .3, gloss: .10 });
 
-  // ---- the courier, waiting. Which is to say his hand trolley and his stack of parcels, parked
-  // at the door between nine and seven; anybody who has stood outside an office block in this
-  // city has walked round exactly this.
+  // ---- the courier, waiting. An open hand trolley with soft, varied consignments, parked at the
+  // door between nine and seven. The former four-box tower aligned behind the metro and read as a
+  // beige wall; nothing here now rises as one opaque stack.
   const CX = 40.30, CRZ = 3.24, onShift = h => h > 9 && h < 19;
-  hours(box(CX, .045, CRZ, .48, .07, .34, C('#3c4147'), { hard: true, gloss: .30 }), onShift);
+  const courier = p => hours(p, onShift), PARC = [C('#c3a878'), C('#b39a6c'), C('#cbb488')];
+  // Slatted toe plate and upright back: the paving remains visible through the chassis.
+  for (const x of [CX - .17, CX, CX + .17])
+    courier(box(x, .055, CRZ - .03, .09, .035, .31, C('#3c4147'),
+      { hard:true, gloss:.30 }));
+  for (const q of [-1, 1])
+    courier(box(CX, .055, CRZ - .03 + q * .15, .43, .035, .025, C('#3c4147'),
+      { hard:true, gloss:.30 }));
   for (const s of [-1, 1])
-    hours(cyl(CX + s * .20, .09, CRZ - .12, .085, .05, C('#22262b'),
-      { rz: Math.PI / 2, gloss: .24 }), onShift);
-  for (const s of [-1, 1])
-    hours(cap(CX + s * .20, .62, CRZ + .16, .018, 1.16, .018, C('#54595e'),
-      { rx: .12, gloss: G.metal }), onShift);
-  hours(cap(CX, 1.18, CRZ + .23, .018, .40, .018, C('#54595e'),
-    { rz: Math.PI / 2, gloss: G.metal }), onShift);
-  const PARC = [C('#c3a878'), C('#b39a6c'), C('#cbb488')];
-  for (let i = 0; i < 4; i++) {
-    const ry = ((i % 3) - 1) * .10;
-    const px = CX + ((i % 2) - .5) * .04, py = .18 + i * .21, pz = CRZ - .02 + ((i % 3) - 1) * .03;
-    hours(box(px, py, pz, .40, .20, .30, PARC[i % PARC.length],
-      { hard: true, ry, gloss: .18 }), onShift);
-    hours(box(px - .208, py, pz, .012, .05, .28, C('#d8b23f'),
-      { hard: true, ry, gloss: .20 }), onShift);
+    courier(cap(CX + s * .20, .62, CRZ + .16, .018, 1.16, .018, C('#54595e'),
+      { rx:.12, gloss:G.metal }));
+  courier(cap(CX, 1.18, CRZ + .23, .018, .40, .018, C('#54595e'),
+    { rz:Math.PI / 2, gloss:G.metal }));
+  for (const y of [.38, .72])
+    courier(cap(CX, y, CRZ + .18, .014, .38, .014, C('#6d7378'),
+      { rz:Math.PI / 2, gloss:G.metal }));
+  // Two small open wheel rings rather than black end discs.
+  for (const s of [-1, 1]) {
+    const x = CX + s * .20, n = 8, r = .085, seg = 2 * r * Math.sin(Math.PI / n) * 1.06;
+    for (let i = 0; i < n; i++) {
+      const a = i * Math.PI * 2 / n;
+      courier(cap(x, .10 + Math.sin(a) * r, CRZ - .12 + Math.cos(a) * r,
+        .012, seg, .012, C('#22262b'), { rx:-a, gloss:.24 }));
+    }
+    courier(cyl(x, .10, CRZ - .12, .024, .042, col.steelD,
+      { rz:Math.PI / 2, gloss:G.metal }));
   }
+  // Canvas satchel with a separate flap and strap.
+  courier(taper(CX - .12, .25, CRZ - .02, .22, .32, .18, PARC[0], { gloss:.16, ry:-.10 }));
+  courier(box(CX - .12, .34, CRZ - .115, .18, .07, .014, PARC[1],
+    { hard:true, rx:-.12, gloss:.16 }));
+  courier(cap(CX - .12, .43, CRZ - .02, .012, .42, .012, C('#7d6547'),
+    { rx:.32, gloss:.20 }));
+  // A tied soft sack beside it, modelled from overlapping rounded volumes.
+  courier(ball(CX + .12, .22, CRZ + .015, .135, .19, .12, PARC[2], { gloss:.14 }));
+  courier(ball(CX + .12, .34, CRZ + .015, .09, .09, .085, PARC[1], { gloss:.14 }));
+  courier(cap(CX + .12, .40, CRZ + .015, .010, .16, .010, C('#8a6d42'),
+    { rz:Math.PI / 2, gloss:.18 }));
+  // Rolled document tube clips horizontally across the open back frame.
+  courier(cyl(CX, .62, CRZ + .13, .055, .30, C('#9b7650'),
+    { rz:Math.PI / 2, gloss:.18 }));
+  for (const s of [-1, 1])
+    courier(cyl(CX + s * .14, .62, CRZ + .13, .058, .018, C('#6f5237'),
+      { rz:Math.PI / 2, gloss:.20 }));
 
   // the lobby, lit and empty after dark. The shell's cove is already on the street's own night
   // list; this is the light it should have been throwing onto the pavement, which nothing was.
@@ -733,11 +805,39 @@ StreetFit['civic'] = S => {
   // the gap between the 商务区 metro canopy, which ends at -3.68, and the bike rank, which starts
   // at -1.20 — 2.48 m, and the cart is 1.2 m long.
   const HX = 40.05, HZ = -2.70;
-  box(HX, .48, HZ, .52, .58, .86, HIVIS, { hard: true, gloss: .24 });
-  box(HX, .81, HZ, .56, .06, .90, C('#b04d16'), { hard: true, gloss: .26 });
-  box(HX - .03, .28, HZ, .48, .30, .78, C('#3c4147'), { hard: true, gloss: .20 });
+  // The former three nested bodies were an orange waist-high cube in the metro view. An open
+  // chassis, corner stanchions and two perimeter rings keep the same service-cart envelope while
+  // letting the pavement and frontage show through it.
   for (const s of [-1, 1])
-    cyl(HX + s * .22, .10, HZ - .28, .10, .06, C('#22262b'), { rz: Math.PI / 2, gloss: .24 });
+    box(HX + s * .23, .24, HZ, .032, .055, .78, col.steelD,
+      { hard:true, gloss:G.metal });
+  for (const q of [-1, 1])
+    box(HX, .24, HZ + q * .38, .49, .055, .032, col.steelD,
+      { hard:true, gloss:G.metal });
+  for (const s of [-1, 1]) for (const q of [-1, 1])
+    box(HX + s * .23, .52, HZ + q * .38, .032, .56, .032, HIVIS,
+      { hard:true, gloss:.24 });
+  for (const y of [.50, .80]) {
+    for (const s of [-1, 1])
+      box(HX + s * .23, y, HZ, .032, .032, .80, C('#b04d16'),
+        { hard:true, gloss:.26 });
+    for (const q of [-1, 1])
+      box(HX, y, HZ + q * .39, .49, .032, .032, C('#b04d16'),
+        { hard:true, gloss:.26 });
+  }
+  for (const q of [-.22, 0, .22])
+    box(HX, .29, HZ + q, .45, .022, .026, C('#3c4147'),
+      { hard:true, gloss:.20 });
+  // Two open tyre rings on the axle; even this small service prop contributes no black discs.
+  for (const s of [-1, 1]) {
+    const x = HX + s * .22, n = 8, r = .10, seg = 2 * r * Math.sin(Math.PI / n) * 1.06;
+    for (let i = 0; i < n; i++) {
+      const a = i * Math.PI * 2 / n;
+      cap(x, .12 + Math.sin(a) * r, HZ - .28 + Math.cos(a) * r,
+        .014, seg, .014, C('#22262b'), { rx:-a, gloss:.24 });
+    }
+    cyl(x, .12, HZ - .28, .027, .045, col.steelD, { rz:Math.PI / 2, gloss:G.metal });
+  }
   cap(HX, .60, HZ + .52, .022, .92, .022, col.steelD, { rx: Math.PI / 2, gloss: G.metal });
   // The broom, leaning on the cart. `cap` builds along local Y and `rz` lays it over, so where
   // the two ends land has to be worked out rather than eyeballed: at rz -0.42 the head is
@@ -747,7 +847,14 @@ StreetFit['civic'] = S => {
   for (let i = 0; i < 7; i++)
     cap(HX - .45, .085, HZ - .17 + (i - 3) * .032, .009, .30, .009, C('#8a7444'),
       { rz: -.42 + (i - 3) * .06, gloss: .10 });
-  box(HX - .32, .42, HZ + .42, .10, .30, .26, C('#5a6066'), { hard: true, rz: .22, gloss: .28 });
+  // Shallow dustpan: a floor plate, two lips and a handle rather than another grey block.
+  box(HX - .32, .29, HZ + .42, .12, .018, .24, C('#5a6066'),
+    { hard:true, rz:.22, gloss:.28 });
+  for (const s of [-1, 1])
+    box(HX - .32 + s * .055, .34, HZ + .42, .014, .10, .24, C('#5a6066'),
+      { hard:true, rz:.22, gloss:.28 });
+  cap(HX - .32, .55, HZ + .48, .014, .46, .014, col.steelD,
+    { rz:.22, gloss:G.metal });
   // the sign that says whose pavement this is, which is on every block in the city
   cyl(39.98, .95, -10.85, .034, 1.90, col.steelD, { gloss: G.metal });
   box(39.98, 2.00, -10.85, .05, .42, .34, C('#1b6f4f'), { hard: true, gloss: .26 });
@@ -759,56 +866,46 @@ StreetFit['civic'] = S => {
   // ---- 公示栏, the community notice board. Two panels behind glass with real notices pinned in
   // them: a water shut-off, the refuse timetable, the clinic's hours and something for rent. The
   // header is red, because it always is.
-  // Into 杨柳西口. A community notice board belongs where the community sits, and since 广场舞
-  // moved there the square is where they are. It is freestanding on two posts and already faces
-  // -x, which in the square is the way the chess table and the dance pitch are, so it needed
-  // moving and not mirroring. Clear of the tree at (-29.2, 3.4) by 3.0 m and of the nearest
-  // dancer by 0.9 m; the west zone is x -32.2..-25.0, z -3.10..6.40.
-  const NX = -26.20, NZ = 4.10, NT = { tag: '公示栏' };
+  // Into 杨柳西口. The first placement at (-26.20,4.10) put the 公厕 approach camera *inside*
+  // the board's two-metre span: its white back and grey frame hid both toilet entries. It now
+  // sits against the rear boundary wall, west of the toilet parcel, and faces the square. Two
+  // separately framed bays and a supported rain cap replace the one tall cabinet-like sheet.
+  const NX = -31.00, NZ = 7.04, NT = { tag: '公示栏' };
   for (const s of [-1, 1])
-    box(NX + .10, .78, NZ + s * .82, .09, 1.56, .09, col.steelD, { hard: true, gloss: G.metal, ...NT });
-  box(NX + .06, 1.72, NZ, .16, 1.44, 1.98, C('#5a6066'), { hard: true, gloss: .30, ...NT });
-  emis(box(NX - .055, 1.72, NZ, .05, 1.20, 1.80, C('#cbc7b8'),
-    { hard: true, mode: 1, glow: .02, ...NT }), .35);
-  box(NX, 2.60, NZ, .12, .32, 1.98, C('#9c2f26'), { hard: true, gloss: .26, ...NT });
-  glyphs(NX - .075, 2.60, NZ, -Math.PI / 2, '社区公示栏',
+    box(NX + s * .82, .78, NZ - .10, .09, 1.56, .09, col.steelD,
+      { hard: true, gloss: G.metal, ...NT });
+  for (const s of [-1, 1]) {
+    box(NX + s * .47, 1.72, NZ - .02, .90, 1.44, .16, C('#5a6066'),
+      { hard: true, gloss: .30, ...NT });
+    emis(box(NX + s * .47, 1.72, NZ - .125, .78, 1.20, .05, C('#cbc7b8'),
+      { hard: true, mode: 1, glow: .02, ...NT }), .35);
+  }
+  box(NX, 2.60, NZ - .02, 1.98, .32, .12, C('#9c2f26'),
+    { hard: true, gloss: .26, ...NT });
+  glyphs(NX, 2.60, NZ - .090, Math.PI, '社区公示栏',
     { size: .175, gap: .05, color: C('#f2e8d4'), mode: 1, lift: .010, tag: '公示栏' });
+  box(NX, 2.84, NZ + .01, 2.18, .10, .48, C('#545b60'),
+    { hard:true, gloss:.30, rx:-.05, ...NT });
+  for (const s of [-1, 1])
+    cap(NX + s * .82, 2.64, NZ - .04, .018, .42, .018, col.steelD,
+      { rx:-.72, gloss:G.metal, ...NT });
   const NOTES = ['停水通知', '垃圾分类', '门诊时间', '此处招租'];
   for (let i = 0; i < 4; i++) {
-    const nz = NZ - .68 + (i % 2) * 1.36, ny = 2.02 - ((i / 2) | 0) * .60;
-    box(NX - .10, ny, nz, .012, .48, .58, C('#f6f3ea'), { hard: true, gloss: .12, ...NT });
-    glyphs(NX - .108, ny + .16, nz, -Math.PI / 2, NOTES[i % NOTES.length],
+    const nx = NX - .47 + (i % 2) * .94, ny = 2.02 - ((i / 2) | 0) * .60;
+    box(nx, ny, NZ - .158, .58, .48, .012, C('#f6f3ea'),
+      { hard: true, gloss: .12, ...NT });
+    glyphs(nx, ny + .16, NZ - .168, Math.PI, NOTES[i % NOTES.length],
       { size: .062, gap: .014, color: C('#8d2a22'), mode: 1, lift: .006, tag: '公示栏' });
   }
   thing('公示栏', NX, 1.90, NZ, '公示栏上贴着停水通知。',
     'There is a water shut-off notice up on the board.',
     '公示 to announce publicly + 栏 a railed board. 通知 is a notice; 贴 is to stick one up.',
-    { tag: '公示栏', focus: [-27.30, NZ], reach: 1.9 });
+    { tag: '公示栏', focus: [NX, NZ - 1.15], reach: 1.9 });
 
-  // ---- 志愿服务站. The red-and-white stall that stands on every corner of this city: a parasol,
-  // a folding table, an urn of hot water and a board with the two words on it.
-  // MOVED to the west footway with the two shops, and mirrored to face +x like them: every VX
-  // offset flips sign and the glyph yaw turns from -PI/2 to +PI/2. It is freestanding, so it
-  // stands ON the pavement at x 25.00 rather than against the 23.30 building line — the parasol
-  // is 1.92 m across and at 24.10 it would have grown through the shopfronts.
-  //
-  // z 12.00, not 7.00: the road tree that moved to (25.4, 9.4) reaches z 10.6 with its crown, and
-  // 11.04 .. 12.96 clears it. The zone ends at 13.5.
-  const VX = 25.00, VZ = 12.00;
-  cyl(VX, 1.10, VZ, .035, 2.20, col.steelD, { gloss: G.metal });
-  taper(VX, 2.02, VZ, 1.80, .34, 1.80, REDV, { gloss: .18 });
-  taper(VX, 1.90, VZ, 1.92, .12, 1.92, C('#eae6dc'), { gloss: .18 });
-  for (let i = 0; i < 6; i++)
-    cap(VX, 1.90, VZ, .010, .92, .010, C('#c9c4b8'), { ry: i * .5236, rz: 1.42, gloss: .20 });
-  box(VX, .34, VZ, .52, .05, 1.12, C('#eae6dc'), { hard: true, gloss: .22 });
-  for (const s of [-1, 1]) for (const q of [-1, 1])
-    cap(VX + s * .20, .17, VZ + q * .47, .016, .34, .016, col.steelD, { gloss: G.metal });
-  box(VX + .015, .30, VZ, .50, .44, 1.08, REDV, { hard: true, gloss: .20 });
-  glyphs(VX + .272, .30, VZ, Math.PI / 2, '志愿服务站',
-    { size: .105, gap: .028, color: C('#f6ece0'), mode: 1, lift: .008 });
-  cyl(VX - .02, .51, VZ - .36, .09, .30, C('#c9c4b8'), { gloss: .30 });
-  cyl(VX - .02, .675, VZ - .36, .095, .035, C('#8a8f95'), { gloss: .34 });
-  box(VX - .04, .47, VZ + .36, .26, .20, .30, C('#e2ded2'), { hard: true, gloss: .18 });
+  // The former freestanding 志愿服务站 occupied almost the whole two-metre public
+  // footway but had no collider, forcing a choice between walk-through furniture and an illegal
+  // pinch.  There is no measured furnishing bay here, so the honest solution is clear pavement;
+  // the pharmacy, noticeboard, hedges and staffed metro entrance already give this block civic life.
 
   // ---- the hedge. Clipped box in stone planters down the civic stretch, which is what separates
   // a pavement that has been looked after from one that has not.

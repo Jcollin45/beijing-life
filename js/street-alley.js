@@ -55,7 +55,6 @@
     wash:    [ 7.40, 19.30],  // out after breakfast, taken in before dark
     quilt:   [ 8.00, 16.60],  // 晒被子 — bedding over the wall while the sun is on it
     cat:     [ 9.80, 16.80],  // the cat follows the sun onto the coping
-    nap:     [11.30, 15.30],  // the 躺椅 comes out for the flat part of the afternoon
     speaker: [17.70, 20.60],  // the trolley is wheeled out first and taken away last
     dance:   [17.90, 20.40],  // 广场舞
     stools:  [18.50, 22.60],  // 马扎 out along the wall, cards, a thermos
@@ -141,7 +140,7 @@
     const CROCK = C('#4e3a2c'), CROCKL = C('#6b5138'), CLOTH = C('#d8d2c0');
     const ENAMEL = C('#e8e6dd'), ENAMELR = C('#b8443a'), GALV = C('#9aa0a2');
     const BINB = C('#2f6f9c'), BING = C('#3d7a4a'), BINR = C('#a4392f'), BINK = C('#585d63');
-    const CHALK = C('#cfc9b6'), WET = C('#4a4b48'), BAMBOO = C('#c2a76a'), BAMBOOD = C('#9b8450');
+    const CHALK = C('#cfc9b6'), WET = C('#4a4b48'), BAMBOOD = C('#9b8450');
     const QUILT1 = C('#b8455a'), QUILT2 = C('#3f7f8c'), QUILT3 = C('#d8b23f');
     const FUR = C('#c98d4e'), FURW = C('#e6ded0'), FURD = C('#9a6a38');
     const WIRE = C('#232526'), BAKE = C('#8c7f6a'), LAMPW = C('#ffd9a0');
@@ -153,6 +152,7 @@
     const open = () => { mark = P.length; };
     const close = w => {
       const props = P.slice(mark); mark = -1;
+      for (const p of props) if (!p.stateOwner) p.stateOwner = 'alley:timed-tableau';
       const rec = { props, m0: props.map(p => p.m), h0: w[0], h1: w[1], on: true };
       if (props.length) SETS.push(rec);
       return rec;
@@ -193,7 +193,7 @@
       box(x - .665, .60, z + .06, .05, .16, .17, C('#b8b0a0'), { hard: true, gloss: .10 });
     })();
 
-    // ---- 垃圾分类, four bins under the banner street.js already wired to this wall
+    // ---- 垃圾分类, four sorting bins under the banner street.js already wired to this wall
     // (street.js:3354, 垃圾分类从我做起). The banner had nothing at all underneath it, which made
     // it a slogan about an absence. The real set is four and the colours are national: blue
     // 可回收物, green 厨余垃圾, red 有害垃圾, grey 其他垃圾, in that order.
@@ -202,15 +202,46 @@
       const z = 3.44, T = { tag: '垃圾' };
       BINS.forEach(([c, name], i) => {
         const x = -22.15 + i * .56;
-        box(x, .43, z, .50, .78, .44, c, { hard: true, gloss: .30, ...T });
-        box(x, .845, z + .015, .51, .06, .45, [c[0] * .78, c[1] * .78, c[2] * .78],
-          { hard: true, gloss: .34, ...T });                    // the lid, sat slightly proud
-        box(x, .885, z - .16, .30, .04, .10, [c[0] * .68, c[1] * .68, c[2] * .68],
-          { hard: true, gloss: .34, ...T });                    // the foot-pedal linkage
+        const dark = [c[0] * .68, c[1] * .68, c[2] * .68];
+        const rim = [c[0] * .80, c[1] * .80, c[2] * .80];
+        // A lower wheel pod, wider hopper and sloping deposit flap give these the silhouette of
+        // municipal sorting bins. The old version was literally one coloured .50×.78×.44 box
+        // with a lid; even the alleged pedal had accidentally been authored above its roof.
+        box(x, .31, z + .025, .39, .48, .34, dark,
+          { hard: true, gloss: .28, round: .045, ...T });
+        box(x, .565, z, .43, .11, .38, c,
+          { hard: true, gloss: .29, round: .035, ...T });
+        box(x, .70, z + .008, .47, .22, .41, c,
+          { hard: true, gloss: .30, round: .045, ...T });
+        // Returned lid, hinge barrel and rear push handle: the top now has supported mechanics
+        // rather than being a second floating slab.
+        box(x, .835, z + .015, .50, .065, .44, rim,
+          { hard: true, gloss: .34, round: .055, ...T });
+        cyl(x, .805, z + .205, .025, .40, dark,
+          { rz: Math.PI / 2, gloss: .36, ...T });
+        cap(x, .795, z + .255, .012, .36, .012, col.steelD,
+          { rz: Math.PI / 2, gloss: G.metal, ...T });
+        // The front flap has a proud return, hinge and two vertical impact ribs. It is shallow
+        // enough to stay in the unreachable wall strip and angled enough to catch alley light.
+        box(x, .685, z - .213, .36, .18, .032, rim,
+          { hard: true, gloss: .35, rx: -.10, round: .025, ...T });
+        cyl(x, .778, z - .205, .018, .34, dark,
+          { rz: Math.PI / 2, gloss: .34, ...T });
         for (const s of [-1, 1])
-          cyl(x + s * .19, .045, z - .16, .045, .05, col.charcoal,
+          cap(x + s * .165, .40, z - .184, .009, .55, .009, rim,
+            { gloss: .30, ...T });
+        // Axle, paired wheels and a pedal at ankle height complete a supported, movable object.
+        cap(x, .105, z + .12, .012, .39, .012, col.steelD,
+          { rz: Math.PI / 2, gloss: G.metal, ...T });
+        for (const s of [-1, 1]) {
+          cyl(x + s * .205, .105, z + .12, .055, .055, col.charcoal,
             { rz: Math.PI / 2, gloss: .30, ...T });
-        glyphs(x, .52, z - .225, Math.PI, name,
+          cyl(x + s * .235, .105, z + .12, .024, .010, GALV,
+            { rz: Math.PI / 2, gloss: .42, ...T });
+        }
+        box(x, .055, z - .215, .24, .035, .10, dark,
+          { hard: true, gloss: .32, round: .018, ...T });
+        glyphs(x, .675, z - .236, Math.PI, name,
           { size: .085, gap: .022, color: col.white, mode: 1, lift: .006, tag: '垃圾' });
       });
       thing('垃圾', -21.00, 1.00, 3.02, '垃圾要分类，厨余的放绿色桶。',
@@ -353,45 +384,231 @@
       ball(x + .22, .022, z0 + 1.60, .065, .020, .050, col.stone, { gloss: .18, ry: .50 });
     })();
 
-    // ---- the three lock-ups in the block's own ground floor: 小卖部, 修鞋配钥匙, 打印复印. All three
-    // are the same object — a housing surface-mounted on the block's face, with a roller shutter
-    // that travels — because that is what makes "one by one" legible: three of the same door in a
-    // row, shutting three quarters of an hour apart, in one view.
+    // ---- the three lock-ups in the block's own ground floor: 修鞋配钥匙, 打印复印 and 小卖部.
+    // They used to be one grey shutter copied three times. Even fully open, each opening read as
+    // an opaque slab: the dark backing was almost flush with the shutter plane, the fascia hid
+    // behind the housing, and there was no door, return, mullion or interior to establish depth.
     //
-    // Surface-mounted rather than cut in: the wall is street.js's and this only ever adds to it.
-    // `stock` is the corner shop — a shelf, a counter, and the light that stays on behind the
-    // steel long after the door is down.
-    const lockup = (x, name, sub, board, stock) => {
-      const w = 1.46, y0 = .08, hgt = 1.92, z = BLK + .02, zf = z + .15;
-      box(x, y0 + hgt / 2, z + .08, w + .20, hgt + .16, .17, col.renderD, { hard: true, gloss: .20 });
-      // The dark of the inside, kept a clear 45 mm *behind* the housing's own front face. At the
-      // same plane it flickered against it, which is the coplanar fault this project has paid for
-      // three times.
-      box(x, y0 + hgt * .50, z + .10, w, hgt * .90, .02, C('#1e2228'), { hard: true, gloss: .10 });
-      box(x, y0 + .60, zf - .03, w - .10, .06, .26, BAKE, { hard: true, gloss: .24 });
-      if (stock) {
-        for (let i = 0; i < 8; i++) {                                  // the stock on the shelf
-          const k = jit(x + i, 7.7);
-          box(x - .54 + i * .155, y0 + 1.02 + (k > .5 ? .30 : 0), z + .12, .12, .19, .07,
-            [C('#b8443a'), C('#3d7a4a'), C('#d8b23f'), C('#3f6f8c')][i % 4],
-            { hard: true, gloss: .30 });
-        }
-        emit(box(x, y0 + 1.36, z + .11, w - .14, .06, .03, LAMPW, { hard: true, mode: 1 }),
-          .55, H.shop);
-        lamp(M.trs(x, .03, BLK + 1.10, 0, 3.40, 1, 2.20), C('#ffc98a'), .26, H.lit);
-      }
-      box(x, y0 + hgt + .20, z + .13, w + .08, .32, .05, board, { hard: true, gloss: .24 });
-      // The sign: characters mode 1 and NOT emissive, the board behind them glowing. Five glyphs
-      // each carrying a light mask of their own is the room-wide haze this project has paid for.
-      glyphs(x, y0 + hgt + .20, z + .17, 0, name,
-        { size: .21, gap: .07, color: col.cream, mode: 1, lift: .008 });
-      glyphs(x, y0 + hgt - .12, z + .17, 0, sub,
-        { size: .105, gap: .040, color: C('#c9c2ae'), mode: 1, lift: .008 });
-      if (stock)
-        emit(box(x, y0 + hgt + .20, z + .145, w + .04, .26, .02, board, { hard: true, mode: 1 }),
-          .30, H.lit);
-      return { x, w, top: y0 + hgt + .02, zf };
+    // This is still a shallow surface-mounted conversion of street.js's wall — cutting a literal
+    // void would mean owning that file — but the 19..31 cm reveal is now constructed honestly.
+    // Side returns, head and sill make the cavity; glazing sits ahead of recognisable working
+    // stock; the entrance is a separately framed leaf. Three different setbacks, heights, widths,
+    // palettes and door positions keep the addresses independent, with 38..48 cm of original wall
+    // showing between the openings. Every tagged surface stops at z -2.40 or farther back, still
+    // 5 cm behind the nearest legal body edge at -2.35.
+    const SHOP_GLASS = C('#73939a'), SHOP_DARK = C('#20282b'), ALUM = C('#454e55');
+    const tag = name => ({ tag: name });
+
+    const opening = (cfg) => {
+      const { x, w, top, front, frame, name } = cfg;
+      const T = tag(name), back = BLK + .015, y0 = .07;
+      const innerW = w - .20, innerH = top - y0 - .18;
+      // The interior back is the only broad dark plane. It is 18..29 cm behind the glazing, not
+      // pasted on it, and is broken by the tenant-specific shelving and work equipment below.
+      box(x, y0 + innerH / 2, back, innerW, innerH, .025, SHOP_DARK,
+        { hard: true, mode: 11, gloss: .06, ...T });
+      for (const s of [-1, 1])
+        box(x + s * (w / 2 - .055), y0 + innerH / 2, (back + front) / 2,
+          .11, innerH + .18, front - back, frame,
+          { hard: true, gloss: .27, ...T });
+      box(x, top - .055, (back + front) / 2, w, .11, front - back, frame,
+        { hard: true, gloss: .27, ...T });
+      box(x, y0 + .035, (back + front) / 2, w - .10, .07, front - back, col.stoneD,
+        { hard: true, mode: 11, gloss: .18, ...T });
+      // A translucent shopfront, with its own head and sill beads. One unframed glass sheet would
+      // still read as the old blank box in this renderer.
+      box(x, y0 + innerH / 2, front - .018, innerW, innerH, .018, SHOP_GLASS,
+        { hard: true, mode: 18, alpha: .23, gloss: .78, ...T });
+      box(x, top - .18, front + .006, innerW, .045, .035, ALUM,
+        { hard: true, gloss: .42, ...T });
+      box(x, y0 + .15, front + .006, innerW, .055, .035, ALUM,
+        { hard: true, gloss: .42, ...T });
+      return { ...cfg, back, y0, innerW, innerH, zf: front };
     };
+
+    const door = (k, dx, dw, frame, kick, handleSide = 1) => {
+      const x = k.x + dx, y0 = k.y0 + .04, top = k.top - .16, T = tag(k.name);
+      const h = top - y0;
+      for (const s of [-1, 1])
+        box(x + s * (dw / 2 - .025), y0 + h / 2, k.zf + .022, .05, h, .055, frame,
+          { hard: true, gloss: .42, ...T });
+      box(x, top - .025, k.zf + .022, dw, .05, .055, frame,
+        { hard: true, gloss: .42, ...T });
+      box(x, y0 + .16, k.zf + .026, dw - .08, .30, .04, kick,
+        { hard: true, gloss: .30, ...T });
+      box(x, y0 + .16 + (h - .34) / 2, k.zf + .026, dw - .08, h - .34, .025, SHOP_GLASS,
+        { hard: true, mode: 18, alpha: .34, gloss: .82, ...T });
+      cap(x + handleSide * (dw / 2 - .10), 1.20, k.zf + .060, .012, .34, .012, col.steel,
+        { gloss: G.metal, ...T });
+      for (const hy of [1.03, 1.37])
+        ball(x + handleSide * (dw / 2 - .10), hy, k.zf + .060, .022, .022, .022, col.steel,
+          { gloss: G.metal, ...T });
+      return x;
+    };
+
+    // A sign is allowed to be rectangular; it is not allowed to be one floating coloured block.
+    // These are shallow backed panels in returned frames, tied into the wall by visible stays.
+    const fascia = (k, cfg) => {
+      const { y, h, w, board, edge, ink, text, sub, lit } = cfg;
+      const z = k.back + .025, face = k.zf + .018, T = tag(k.name);
+      for (const s of [-1, 1])
+        cap(k.x + s * (w / 2 - .09), y, (z + face) / 2, .012, face - z, .012, col.steelD,
+          { rx: Math.PI / 2, gloss: G.metal, ...T });
+      const panel = box(k.x, y, face, w - .08, h - .08, .028, board,
+        { hard: true, mode: lit ? 1 : 0, gloss: .22, ...T });
+      for (const s of [-1, 1]) {
+        box(k.x + s * (w / 2 - .025), y, face + .006, .05, h, .055, edge,
+          { hard: true, gloss: .30, ...T });
+        box(k.x, y + s * (h / 2 - .025), face + .006, w, .05, .055, edge,
+          { hard: true, gloss: .30, ...T });
+      }
+      glyphs(k.x, y + .035, face + .030, 0, text,
+        { size: cfg.size, gap: cfg.gap, color: ink, mode: 1, lift: .006, tag: k.name });
+      glyphs(k.x, y - h * .31, face + .030, 0, sub,
+        { size: .060, gap: .014, color: cfg.subInk || ink, mode: 1, lift: .005, tag: k.name });
+      if (lit) emit(panel, .27, H.lit);
+      return panel;
+    };
+
+    const shoe = opening({ x: -14.07, w: 1.48, top: 2.65, front: BLK + .29,
+      frame: C('#355a63'), name: '修鞋配钥匙' });
+    (() => {
+      const T = tag(shoe.name), split = shoe.x - .18;
+      // Timber repair bench on four legs, a peg rail and a proper open display bay.
+      box(split + .18, .66, shoe.back + .09, .80, .07, .24, BAKE,
+        { hard: true, gloss: .24, ...T });
+      for (const sx of [-.16, .48]) for (const z of [shoe.back + .01, shoe.back + .17])
+        cap(split + sx, .34, z, .018, .64, .018, BAMBOOD, { gloss: G.wood, ...T });
+      box(split + .16, 1.73, shoe.back + .035, .74, .38, .025, C('#6d604f'),
+        { hard: true, mode: 11, gloss: .12, ...T });
+      for (let i = 0; i < 7; i++)
+        cap(split - .10 + (i % 4) * .17, 1.64 + ((i / 4) | 0) * .17, shoe.back + .06,
+          .010, .13, .010, i % 2 ? GALV : C('#b38a35'), { rz: (i - 3) * .08, gloss: .40, ...T });
+      for (let i = 0; i < 3; i++) {                              // repaired shoes, paired not boxes
+        const sx = split - .08 + i * .27;
+        ball(sx, .78, shoe.back + .18, .105, .055, .18, i === 1 ? C('#7a4d34') : C('#303238'),
+          { gloss: .18, ry: -.12 + i * .12, ...T });
+        box(sx, .735, shoe.back + .18, .19, .026, .30, C('#202225'),
+          { hard: true, gloss: .20, ry: -.12 + i * .12, ...T });
+      }
+      box(split + .49, 1.22, shoe.back + .10, .18, .50, .20, C('#2c3438'),
+        { hard: true, gloss: .22, ...T });
+      cyl(split + .49, 1.50, shoe.back + .10, .08, .09, C('#8a6a42'), { gloss: .24, ...T });
+      door(shoe, -.45, .46, C('#304d54'), C('#59666a'), -1);
+      box(shoe.x + .50, 1.33, shoe.zf + .030, .035, 2.28, .045, ALUM,
+        { hard: true, gloss: .40, ...T });
+      // Door-only rain lip: 24 cm, not the 1.2 m blind that used to fill close views elsewhere.
+      box(shoe.x - .45, 2.70, shoe.zf + .055, .56, .055, .15, C('#426f78'),
+        { hard: true, gloss: .26, ...T });
+      for (const s of [-1, 1])
+        cap(shoe.x - .45 + s * .22, 2.61, shoe.zf + .01, .010, .12, .010, col.steelD,
+          { rx: .65, gloss: G.metal, ...T });
+      fascia(shoe, { y: 3.39, h: .56, w: 1.56, board: C('#2f5f6a'), edge: C('#263f45'),
+        ink: col.cream, text: '修鞋配钥匙', sub: '修鞋 · 配钥匙', size: .180, gap: .033 });
+      box(shoe.x - .61, 2.96, shoe.zf + .020, .19, .32, .028, C('#e7e1cf'),
+        { hard: true, gloss: .18, ...T });
+      glyphs(shoe.x - .61, 2.96, shoe.zf + .040, 0, '12号',
+        { size: .070, gap: .012, vertical: true, color: C('#285485'), mode: 1, lift: .004, tag: shoe.name });
+    })();
+
+    const print = opening({ x: -12.21, w: 1.32, top: 2.78, front: BLK + .21,
+      frame: C('#d7d4cc'), name: '打印复印' });
+    (() => {
+      const T = tag(print.name);
+      // A compact copier assembled from cabinet, paper tray, output throat and control deck.
+      box(print.x - .34, .70, print.back + .10, .42, .64, .30, C('#deddd8'),
+        { hard: true, gloss: .24, ...T });
+      box(print.x - .34, 1.05, print.back + .07, .46, .10, .34, C('#30363a'),
+        { hard: true, gloss: .28, ...T });
+      box(print.x - .34, .93, print.back + .255, .27, .065, .025, C('#171b1e'),
+        { hard: true, gloss: .18, ...T });
+      box(print.x - .22, 1.13, print.back + .11, .16, .055, .14, C('#6e8588'),
+        { hard: true, mode: 1, gloss: .32, ry: -.18, ...T });
+      for (let i = 0; i < 3; i++)
+        box(print.x - .34, .47 + i * .16, print.back + .265, .30, .045, .025, C('#aeb1ad'),
+          { hard: true, gloss: .22, ...T });
+      // Ordered sample sheets behind the other pane give the shop its business from the lane.
+      for (let i = 0; i < 3; i++) {
+        const px = print.x + .13 + i * .16, py = 1.48 + (i % 2) * .24;
+        box(px, py, print.back + .045, .13, .20, .012, C('#eee9dc'),
+          { hard: true, mode: 1, gloss: .10, ry: (i - 1) * .035, ...T });
+        box(px, py + .065, print.back + .054, .085, .018, .008,
+          [C('#9b3b35'), C('#315e78'), C('#50704c')][i], { hard: true, mode: 1, gloss: .08, ...T });
+      }
+      door(print, .37, .44, C('#777e80'), C('#b5453d'), 1);
+      box(print.x - .02, 1.39, print.zf + .030, .035, 2.42, .045, C('#8e9291'),
+        { hard: true, gloss: .38, ...T });
+      // A tiny document shelf inside the reveal, set back from the walking edge.
+      box(print.x - .40, 1.30, print.back + .16, .30, .045, .20, C('#b8453c'),
+        { hard: true, gloss: .24, ...T });
+      for (let i = 0; i < 4; i++)
+        box(print.x - .49 + i * .06, 1.34 + i * .009, print.back + .16, .05, .018, .14,
+          C('#eee9dc'), { hard: true, gloss: .10, ...T });
+      fascia(print, { y: 3.53, h: .48, w: 1.40, board: C('#f0ece2'), edge: C('#8a3c33'),
+        ink: C('#8a3c33'), subInk: C('#555d61'), text: '打印复印', sub: '照片 · 塑封',
+        size: .205, gap: .050 });
+      box(print.x - .55, 2.99, print.zf + .020, .17, .34, .028, C('#e7e1cf'),
+        { hard: true, gloss: .18, ...T });
+      glyphs(print.x - .55, 2.99, print.zf + .040, 0, '14号',
+        { size: .070, gap: .012, vertical: true, color: C('#8a3c33'), mode: 1,
+          lift: .004, tag: print.name });
+      for (const sx of [-.45, .45])
+        cap(print.x + sx, 3.00, (print.back + print.zf) / 2, .010, print.zf - print.back, .010,
+          col.steelD, { rx: Math.PI / 2, gloss: G.metal, ...T });
+    })();
+
+    const kiosk = opening({ x: -10.35, w: 1.52, top: 2.58, front: BLK + .32,
+      frame: C('#345c4b'), name: '杨柳小卖部' });
+    (() => {
+      const T = tag(kiosk.name), colors = [C('#b8443a'), C('#3d7a4a'), C('#d8b23f'), C('#3f6f8c')];
+      // Two real shelf uprights and three thin decks; merchandise sits behind the glass rather
+      // than being pasted onto a blank backing plane.
+      for (const sx of [-.48, .10])
+        for (const s of [-1, 1])
+          cap(kiosk.x + sx + s * .22, 1.28, kiosk.back + .10, .013, 1.58, .013, GALV,
+            { gloss: G.metal, ...T });
+      for (const sy of [.72, 1.15, 1.58]) {
+        box(kiosk.x - .19, sy, kiosk.back + .11, 1.12, .035, .24, GALV,
+          { hard: true, gloss: .38, ...T });
+        for (let i = 0; i < 7; i++) {
+          const px = kiosk.x - .68 + i * .16, ph = i % 3 === 0 ? .20 : .15;
+          if (i % 2)
+            cyl(px, sy + ph / 2 + .035, kiosk.back + .19, .038, ph, colors[(i + (sy * 10 | 0)) % 4],
+              { gloss: .34, ...T });
+          else
+            box(px, sy + ph / 2 + .035, kiosk.back + .19, .095, ph, .07,
+              colors[(i + (sy * 10 | 0)) % 4], { hard: true, gloss: .26, round: .018, ...T });
+        }
+      }
+      // A counter with open toe-space and a stainless top, not one green chest in the opening.
+      box(kiosk.x + .36, .76, kiosk.back + .13, .48, .055, .30, C('#a9926a'),
+        { hard: true, gloss: .22, ...T });
+      for (const sx of [.18, .54]) for (const z of [kiosk.back + .03, kiosk.back + .23])
+        cap(kiosk.x + sx, .39, z, .017, .72, .017, C('#6f5d43'), { gloss: G.wood, ...T });
+      box(kiosk.x + .36, .805, kiosk.back + .13, .53, .035, .33, col.steel,
+        { hard: true, gloss: .48, ...T });
+      box(kiosk.x + .37, .92, kiosk.back + .13, .19, .13, .16, C('#292f34'),
+        { hard: true, gloss: .24, ...T });
+      box(kiosk.x + .37, 1.005, kiosk.back + .12, .15, .055, .12, C('#68878a'),
+        { hard: true, mode: 1, gloss: .38, ry: -.12, ...T });
+      door(kiosk, .48, .44, C('#2d5847'), C('#356957'), 1);
+      box(kiosk.x + .16, 1.31, kiosk.zf + .030, .035, 2.18, .045, C('#47705d'),
+        { hard: true, gloss: .38, ...T });
+      emit(box(kiosk.x - .26, 2.24, kiosk.back + .055, .68, .045, .035, LAMPW,
+        { hard: true, mode: 1, ...T }), .45, H.shop);
+      lamp(M.trs(kiosk.x, .03, BLK + .92, 0, 3.00, 1, 1.90), C('#ffc98a'), .24, H.lit);
+      box(kiosk.x + .48, 2.64, kiosk.zf + .055, .56, .055, .15, C('#3d725b'),
+        { hard: true, gloss: .25, ...T });
+      for (const s of [-1, 1])
+        cap(kiosk.x + .48 + s * .22, 2.56, kiosk.zf + .01, .010, .12, .010, col.steelD,
+          { rx: .64, gloss: G.metal, ...T });
+      fascia(kiosk, { y: 3.42, h: .62, w: 1.62, board: C('#a13a31'), edge: C('#315441'),
+        ink: C('#f0dfad'), text: '杨柳小卖部', sub: '烟酒 · 冷饮', size: .190, gap: .040, lit: true });
+      box(kiosk.x + .67, 2.91, kiosk.zf + .022, .17, .34, .030, C('#254f88'),
+        { hard: true, gloss: .30, ...T });
+      glyphs(kiosk.x + .67, 2.91, kiosk.zf + .043, 0, '16号',
+        { size: .066, gap: .012, vertical: true, color: col.white, mode: 1, lift: .004, tag: kiosk.name });
+    })();
     // The east end of the courtyard wall was where this wanted to be — a corner shop belongs on a
     // corner — but js/street-civic.js's metro mouth now occupies x 20.9..23.1 out to z 3.60, and a
     // hatch inside a subway entrance is worse than a hatch in the wrong place.
@@ -410,36 +627,63 @@
     // gas riser at -10.9 the same way. Both risers have moved to where they can be seen; see
     // street.js's services block.
     //
-    // Which shop goes where: the one with the light on is nearest the way home.
-    const shoe = lockup(-14.07, '修鞋配钥匙', '换拉链 · 打鞋掌', C('#2f5f6a'));
-    const print = lockup(-12.21, '打印复印', '照片 · 传真 · 塑封', C('#8a3c33'));
-    const kiosk = lockup(-10.35, '杨柳小卖部', '烟酒 · 冷饮 · 话费充值', col.red, true);
-
-    // Each shutter is one box carrying the corrugated-steel sample, whose y-scale and y-centre the
-    // tick drives. The roll it comes off and the guides either side do not move. One prop apiece,
-    // which is what makes "one by one" cost three matrix writes an evening.
-    const shutter = (k, depth, opens, shuts) => {
+    // Each shutter has a thin curtain, visible slats and a separate moving bottom rail. The old
+    // version was one smooth grey rectangle, so at night the whole redesign disappeared behind
+    // the exact block treatment it replaced. Slats contract into the housing with the curtain;
+    // twelve writes per address while travelling, none at all for the rest of the day.
+    const shutter = (k, cfg, opens, shuts) => {
+      const { fill, edge, slats: n } = cfg, depth = .035, T = tag(k.name);
       const hgt = k.top - .06;
-      box(k.x, k.top + .10, k.zf + depth * .30, k.w + .16, .20, .18, col.steelD,
-        { hard: true, gloss: .36 });
-      // The guides stand a clear 50 mm proud of the shutter they hold, which is what a channel
-      // does and, more to the point, is what keeps two parallel faces off the same plane.
+      box(k.x, k.top + .095, k.zf + .025, k.w + .14, .19, .16, edge,
+        { hard: true, gloss: .36, ...T });
       for (const s of [-1, 1])
-        box(k.x + s * (k.w / 2 + .04), k.top / 2, k.zf + depth * 1.6, .06, k.top, .12,
-          col.steelD, { hard: true, gloss: .34 });
-      const p = box(k.x, k.top - hgt / 2, k.zf + depth, k.w, hgt, .05, col.steel,
-        { hard: true, gloss: .40, mat: 'steel', matScale: .55, matAmt: .40 });
-      SHUTTERS.push({ p, x: k.x, top: k.top, z: k.zf + depth, w: k.w, h: hgt, opens, shuts, u: -1 });
+        box(k.x + s * (k.w / 2 + .032), k.top / 2, k.zf + .045, .055, k.top, .10,
+          edge, { hard: true, gloss: .34, ...T });
+      // The fixed door/mullion faces end at zf + .0525. Keep the moving curtain 6 mm proud of
+      // that plane: sharing it made the closed shops flicker between aluminium and steel even
+      // though the slats and bottom rail were already correctly farther forward.
+      const curtainZ = k.zf + depth + .006;
+      const p = box(k.x, k.top - hgt / 2, curtainZ, k.w, hgt, .035, fill,
+        { hard: true, gloss: .38, mat: 'steel', matScale: .50, matAmt: .28, ...T });
+      const battens = [];
+      for (let i = 0; i < n; i++)
+        battens.push(box(k.x, k.top - (i + .5) * hgt / n, k.zf + .058,
+          k.w - .045, .025, .022, i % 3 === 2 && cfg.accent ? cfg.accent : edge,
+          { hard: true, gloss: .36, ...T }));
+      const rail = box(k.x, .075, k.zf + .065, k.w + .025, .075, .06, edge,
+        { hard: true, gloss: .36, ...T });
+      // Curtain, slats and bottom rail all travel inside the same full-height doorway envelope.
+      // Give every moving piece the same fixed conservative cull sphere: retaining each tiny
+      // build-time sphere made the raised slats disappear independently at camera-cell edges, and
+      // left the rescaled curtain as an unexplained transform/ob mismatch after hours.
+      const movingCull = {
+        x:k.x, y:k.top / 2, z:k.zf + .055,
+        r:.5 * Math.hypot(k.w + .025, k.top + .075, .10) + .02,
+      };
+      const own = (part, moving) => {
+        moving.stateOwner = `alley:shop-shutter:${k.name}`;
+        moving.shutterAssembly = k.name;
+        moving.shutterPart = part;
+        moving.shutterFullHeight = hgt;
+        moving.fixed = true;
+        moving.cx = movingCull.x; moving.cy = movingCull.y; moving.cz = movingCull.z;
+        moving.r = movingCull.r;
+      };
+      own('curtain', p);
+      for (const batten of battens) own('batten', batten);
+      own('rail', rail);
+      SHUTTERS.push({ p, battens, rail, n, x: k.x, top: k.top, z: curtainZ,
+        front: k.zf + .058, w: k.w, h: hgt, edge, opens, shuts, u: -1 });
     };
-    shutter(kiosk, .03, 6.50, 21.10);
-    shutter(shoe, .03, 8.60, 18.70);
-    shutter(print, .03, 8.90, 19.40);
+    shutter(kiosk, { fill:C('#52635a'), edge:C('#273f36'), accent:C('#9d3a31'), slats:10 }, 6.50, 21.10);
+    shutter(shoe, { fill:C('#718087'), edge:C('#314a52'), slats:9 }, 8.60, 18.70);
+    shutter(print, { fill:C('#c9cac5'), edge:C('#777c7d'), accent:C('#913e37'), slats:8 }, 8.90, 19.40);
 
     // The line of light that gets out under a shutter which is down but not asleep. This is most
     // of what a hutong looks like at eleven: not darkness, but the two or three places somebody
     // is still up behind a steel door.
-    emit(box(kiosk.x, .07, kiosk.zf + .06, kiosk.w - .10, .045, .02, LAMPW,
-      { hard: true, mode: 1 }), .70, H.slit);
+    emit(box(kiosk.x, .07, kiosk.zf + .075, kiosk.w - .12, .035, .018, LAMPW,
+      { hard: true, mode: 1, tag: kiosk.name }), .62, H.slit);
 
     // ================================================================================= the day
     // Everything below belongs to an hour. `open()` / `close(window)` bracket each group and the
@@ -451,11 +695,13 @@
     (() => {
       // The coping is 42 cm thick (z 3.74..4.16), so a quilt folded over it caps the whole width
       // and falls down the alley face with a 10 mm gap — hung off `WALL - .30` it floated a
-      // third of a metre clear of the wall it was supposed to be draped over.
+      // third of a metre clear of the wall it was supposed to be draped over. The fold sits 8 mm
+      // above the masonry's lower tile plane: visually immaterial, but no coincident underside is
+      // submitted where the two independently-owned builders meet.
       const zc = 3.95, zf = WALL - .06, T = { tag: '被子' };
       [[9.10, QUILT1, 1.30], [10.62, QUILT2, 1.12], [11.90, QUILT3, .74]].forEach(([x, c, w], i) => {
         const drop = 1.00 - i * .07;
-        box(x, WTOP + .06, zc, w, .13, .52, c,
+        box(x, WTOP + .208, zc, w, .13, .52, c,
           { mode: 7, gloss: G.fabric, round: .06, ...T });        // folded over the coping
         box(x, WTOP - drop / 2, zf, w, drop, .10, c,
           { mode: 7, gloss: G.fabric, round: .03, rz: (jit(x, i) - .5) * .03, ...T });
@@ -534,43 +780,6 @@
     })();
     close(H.cat);
 
-    // ---- 11:30 the 躺椅. Somebody's father asleep in a bamboo recliner by the door with a hat
-    // over his face, from after lunch until the shadow reaches him. The man is on the roster at
-    // the bottom of this file; this is the chair, the hat, the tea and the fan. The back is on the
-    // wall side so he faces out into the alley, which is the whole point of sitting there.
-    open();
-    (() => {
-      // x -3.20, not -1.00. At -1.00 the recliner stood dead centre of the 单元门 — its canopy
-      // runs -1.75 .. 1.75 — so the first thing the player saw on stepping out of their own front
-      // door, every single time, was the back of a bamboo chair. -3.20 keeps it against a wall
-      // (the noodle shop's east pier), keeps it facing out into the alley, and clears both the
-      // canopy by 1.15 m and street-retail.js's drinks cabinet at -4.45 .. -3.79 by 0.29 m.
-      const x = -3.20, z = BLK + .40;
-      for (const s of [-1, 1]) {
-        cap(x + s * .30, .30, z + .10, .022, .72, .022, BAMBOO, { rx: Math.PI / 2, gloss: G.wood });
-        cap(x + s * .30, .50, z - .32, .022, .62, .022, BAMBOO, { rx: .90, gloss: G.wood });
-        cap(x + s * .30, .16, z + .38, .020, .32, .020, BAMBOOD, { rz: s * .20, gloss: G.wood });
-        cap(x + s * .30, .16, z - .16, .020, .32, .020, BAMBOOD, { rz: -s * .20, gloss: G.wood });
-      }
-      for (let i = 0; i < 7; i++)                                  // the woven seat
-        cap(x, .30, z - .18 + i * .095, .012, .60, .012, i % 2 ? BAMBOO : BAMBOOD,
-          { rz: Math.PI / 2, gloss: G.wood });
-      // A thin load-bearing woven pan sits directly beneath the visible bamboo slats.  Besides
-      // making the recliner physically credible, it gives the seating resolver a horizontal top
-      // instead of asking it to infer support from seven rotated capsules.
-      box(x, .30, z + .10, .58, .04, .58, BAMBOOD,
-        { hard:true, mode:7, gloss:G.wood, tag:'躺椅' });
-      for (let i = 0; i < 6; i++)                                  // and the reclined back
-        cap(x, .34 + i * .105, z - .26 - i * .070, .012, .60, .012, i % 2 ? BAMBOO : BAMBOOD,
-          { rz: Math.PI / 2, gloss: G.wood });
-      ball(x + .42, .62, z + .06, .19, .07, .19, C('#d8c68e'), { gloss: .14, rz: .28 });
-      cyl(x + .42, .68, z + .06, .09, .10, C('#c6b078'), { gloss: .14, rz: .28 });
-      cyl(x - .54, .12, z + .16, .045, .24, C('#8a7a3c'), { gloss: .62, alpha: .85 });
-      cyl(x - .54, .25, z + .16, .048, .02, C('#b8443a'), { gloss: .50 });
-      box(x - .68, .015, z + .30, .20, .03, .24, C('#3d7a8c'), { hard: true, gloss: .30, ry: .50 });
-    })();
-    close(H.nap);
-
     // ---- 17:45 广场舞. The single most recognisable evening sight in urban China, and the game did
     // not have it. The women are people, on the roster below; what is built here is the reason
     // they are standing in the middle of an alley — a speaker the size of a suitcase on a folding
@@ -590,8 +799,22 @@
       for (const s of [-1, 1])
         cap(x + s * .21, .58, z + .20, .016, .92, .016, GALV, { rz: s * .04, gloss: G.metal });
       cap(x, 1.03, z + .20, .016, .42, .016, GALV, { rz: Math.PI / 2, gloss: G.metal });
-      box(x, .46, z, .52, .62, .38, C('#26292c'), { hard: true, gloss: .26, tag: '音箱' });
-      box(x, .78, z, .46, .04, .34, C('#33383d'), { hard: true, gloss: .32, tag: '音箱' });
+      box(x, .46, z, .52, .62, .38, C('#26292c'),
+        { hard: true, gloss: .26, round: .045, tag: '音箱' });
+      // Recessed baffle, corner guards, feet and a real top handle turn the cabinet from one
+      // charcoal cuboid into luggage-grade sound equipment that can survive being trolleyed out.
+      box(x, .47, z - .201, .44, .52, .025, C('#1c2023'),
+        { hard: true, mode: 11, gloss: .12, round: .035, tag: '音箱' });
+      for (const sx of [-1, 1]) {
+        cap(x + sx * .235, .46, z - .178, .011, .52, .011, C('#555b5f'),
+          { gloss: G.metal, tag: '音箱' });
+        cyl(x + sx * .18, .145, z + .13, .025, .030, C('#15181a'),
+          { gloss: .22, tag: '音箱' });
+      }
+      cap(x, .785, z + .02, .012, .25, .012, GALV,
+        { rz: Math.PI / 2, gloss: G.metal, tag: '音箱' });
+      box(x, .78, z, .46, .04, .34, C('#33383d'),
+        { hard: true, gloss: .32, round: .025, tag: '音箱' });
       cyl(x, .40, z - .20, .155, .04, C('#3d4348'),
         { rx: Math.PI / 2, gloss: .34, tag: '广场舞' });            // the big driver, facing out
       cyl(x, .40, z - .218, .125, .02, C('#15181a'),
@@ -653,8 +876,19 @@
       mazha(x - .52, z - .10, .30, C('#2f5f7a'));
       mazha(x + .10, z - .22, -.50, C('#7a3a3f'));
       mazha(x + .62, z - .04, .90, C('#5c6248'));
-      box(x + .06, .17, z + .16, .48, .34, .38, C('#8a7a3c'), { hard: true, gloss: .22, ry: .10 });
-      box(x + .06, .35, z + .16, .52, .02, .42, C('#a08d63'), { hard: true, gloss: .20, ry: .10 });
+      // An open slatted tea crate instead of a solid ochre block: four posts, returned faces and
+      // a separate worn top. It still occupies the exact same envelope and supports every prop.
+      for (const ox of [-.18, .30]) for (const oz of [-.02, .34])
+        cap(x + ox, .17, z + oz, .017, .32, .017, C('#6e6038'),
+          { gloss: G.wood, ry: .10 });
+      for (const oz of [-.02, .34]) for (const sy of [.09, .18, .27])
+        box(x + .06, sy, z + oz, .46, .055, .025, C('#8a7a3c'),
+          { hard: true, gloss: .20, ry: .10, round: .012 });
+      for (const ox of [-.18, .30]) for (const sy of [.09, .18, .27])
+        box(x + ox, sy, z + .16, .025, .055, .33, C('#7c6c38'),
+          { hard: true, gloss: .20, ry: .10, round: .012 });
+      box(x + .06, .35, z + .16, .52, .02, .42, C('#a08d63'),
+        { hard: true, gloss: .20, ry: .10, round: .018 });
       cyl(x - .10, .48, z + .14, .045, .24, C('#b8443a'), { gloss: .34 });      // the thermos
       cyl(x - .10, .61, z + .14, .036, .03, col.steel, { gloss: .50 });
       for (let i = 0; i < 6; i++)                                               // the cards
@@ -670,9 +904,11 @@
 
     open();
     (() => {                                                       // the phone, face up on the crate
-      emit(box(-4.10, .372, 3.34, .075, .005, .145, C('#cfe4f2'),
+      // The stools moved to 杨柳西口 long ago, but these two literals did not: the lit phone was
+      // still twenty-three metres away on bare paving. Keep it on the physical top it names.
+      emit(box(-27.44, .372, -1.43, .075, .005, .145, C('#cfe4f2'),
         { hard: true, mode: 1, ry: .34 }), .55, H.phone);
-      lamp(M.trs(-4.10, .045, 3.30, 0, .90, 1, .80), C('#a8c8e8'), .10, H.phone);
+      lamp(M.trs(-27.44, .045, -1.43, 0, .90, 1, .80), C('#a8c8e8'), .10, H.phone);
     })();
     close(H.phone);
 
@@ -682,7 +918,10 @@
     // 0.80 m strip means the game can be played without narrowing the alley by a centimetre.
     open();
     (() => {
-      const x = -17.60, z = BLK + .33;
+      // Shifted 70 cm west to free the block's construction joint at x -16.85 for the complete
+      // utility-pole assembly. The former east stool sat at -16.90, exactly where that pole and
+      // its 76 cm collider need to stand; the table, both stools and both seated men move as one.
+      const x = -18.30, z = BLK + .33;
       box(x, .33, z, .74, .05, .58, BAKE, { hard: true, gloss: .22 });          // the table
       for (const [ox, oz] of [[-.30, -.22], [.30, -.22], [-.30, .22], [.30, .22]])
         cap(x + ox, .16, z + oz, .018, .32, .018, C('#6a5a44'), { gloss: G.wood });
@@ -781,7 +1020,14 @@
         if (Math.abs(u - s.u) < .012) continue;
         s.u = u;
         const hh = s.h * u;
-        s.p.m = M.trs(s.x, s.top - hh / 2, s.z, 0, s.w, hh, .05);
+        s.p.m = M.trs(s.x, s.top - hh / 2, s.z, 0, s.w, hh, .035);
+        // Slats and bottom rail travel with the curtain. Leaving these at their authored full-
+        // height matrices made an "open" shop retain a grey ladder across its glass; scaling the
+        // battens themselves would turn them into hairlines, so their spacing contracts instead.
+        for (let i = 0; i < s.battens.length; i++)
+          s.battens[i].m = M.trs(s.x, s.top - (i + .5) * hh / s.n,
+            s.front, 0, s.w - .045, .025, .022);
+        s.rail.m = M.trs(s.x, s.top - hh, s.front + .007, 0, s.w + .025, .075, .06);
       }
 
       // ---- the people, if there is a door for them. `StreetCast` above is the way in and needs
@@ -825,11 +1071,11 @@
   // into the alley — the only reading of the two that puts him the right way round.
   (function addPeople() {
 
-    // ---- 广场舞. Six women, two rows of three with the one who knows the routine out in front,
+    // ---- 广场舞. Four women with the one who knows the routine out in front,
     // all facing the speaker against the north wall. `act:'dance'` is the pose game.js:3038 already
     // carries — the park's dancers are the reason it exists — and a single `spots` window means
-    // `npcAwake` has them off the street entirely outside it. Six bodies between six and eight in
-    // the evening, and none at any other hour of the day.
+    // `npcAwake` has them off the street entirely outside it. Four bodies in the open west square
+    // read as a social group without turning the alley approach into a chorus line.
     // The pitch is in 杨柳西口 now — see the speaker above. Every dancer is offset by the same
     // (-22.60, +1.32) the speaker moved by, so the formation, the spacing and the way each of them
     // faces the box are bit-identical to what was shipped; only the ground under it changed.
@@ -851,60 +1097,50 @@
                       pants:'#39414b', shoe:'#e8e2d6', sleeve:'short', collar:'polo',
                       vest:'#5c6248',
                       tall:0.91, wide:1.12, headScale:0.99, stoop:0.08, age:0.70, faceSeed:317 }],
-      [-28.70, 1.12, { skin:'#dcae86', hair:'#7a716a', hairStyle:'bun', top:'#3f6f8c',
-                       pants:'#3a4148', shoe:'#d8d2c0', sleeve:'short',
-                       tall:0.94, wide:1.06, headScale:1.00, age:0.55, faceSeed:331 }],
-      [-27.15, 1.12, { skin:'#c9915f', hair:'#524a42', hairStyle:'perm', top:'#d8b23f',
-                       pants:'#2f3742', shoe:'#e4ded0', sleeve:'short', collar:'polo',
-                       hat:'visor', hatColor:'#e4dcc4',
-                       tall:0.90, wide:1.14, headScale:1.01, stoop:0.06, age:0.66, faceSeed:337 }],
     ];
     DANCERS.forEach(([x, z, look], i) => CAST.push({
       hz: '大妈', place: 'street', look,
       temper: ['genial', 'steady', 'brash', 'genial', 'steady', 'genial'][i],
-      // Six women on one beat is a chorus line; six a quarter-second apart is a hutong. The
+      // Four women on one beat is a chorus line; four a quarter-second apart is a hutong. The
       // spread comes from the pace, which the pose reads as the tempo of the step.
       speed: 0.90 + (i % 3) * 0.04,
       spots: [{ h0: H.dance[0], h1: H.dance[1], at: [x, z], face: face(x, z), act: 'dance' }],
     }));
 
-    // ---- 上学. Three children with satchels and the grandmother walking the smallest, down the
-    // alley between ten to seven and twenty past eight and gone for the rest of the day.
-    // `patrol` + `hours` is 豆豆's own pattern (data.js:135). The route is z ≈ -0.6, which is the
-    // one line through this alley that is clear from x -27.0 to x 25.5.
+    // ---- 上学. Two children with satchels and a grandmother following behind. The former
+    // four-person cohort shared one 84-minute window and one z≈-.6 route with riders and couriers;
+    // live samples repeatedly collapsed them into a wall of bodies at x 7..10. The older child
+    // goes first, then the younger child, then the grandmother: their windows never overlap. All
+    // three patrols use the wall-side half of the lane, at least 3.7 m off the shop glass,
+    // preserving the central sightline and each address's first two metres of breathing room.
     const KIDS = [
       [{ skin:'#eec39b', hair:'#241f1c', hairStyle:'tousled', top:'#d8443a', pants:'#39476a',
          shoe:'#e8e2d6', sleeve:'short', bag:'pack', bagColor:'#2f6f9c',
          tall:0.72, wide:0.82, youth:1, headScale:1.08, faceSeed:347 },
-       1.32, [[-13.0, -0.60], [23.0, -0.52]]],
+       1.32, [[-13.0, .95], [23.0, .95]], [6.82, 7.32]],
       [{ skin:'#e0b48c', hair:'#2b241f', hairStyle:'bob', top:'#e0a63a', pants:'#3a4a5c',
          shoe:'#d64f3f', sleeve:'short', bag:'pack', bagColor:'#b8443a',
          tall:0.76, wide:0.84, youth:1, headScale:1.07, faceSeed:349 },
-       1.26, [[-9.4, -0.72], [22.0, -0.44]]],
-      [{ skin:'#d3a179', hair:'#1f1b18', hairStyle:'short', top:'#3d7a6a', pants:'#2f3742',
-         shoe:'#e4ded0', sleeve:'short', bag:'pack', bagColor:'#4f6f3a',
-         tall:0.80, wide:0.86, youth:0.92, headScale:1.06, faceSeed:353 },
-       1.20, [[-2.0, -0.66], [21.0, -0.58]]],
+       1.26, [[-11.0, .85], [22.0, .85]], [7.34, 7.72]],
     ];
-    KIDS.forEach(([look, speed, patrol]) => CAST.push({
+    KIDS.forEach(([look, speed, patrol, hours]) => CAST.push({
       hz: '小孩', place: 'street', look, temper: 'eager', speed,
-      hours: [H.school[0], H.school[1]], patrol,
+      hours, patrol,
     }));
-    // The grandmother, on the same route at half the pace — which is what makes them a pair rather
-    // than two people who happen to be going the same way.
+    // The grandmother follows at half the pace after the children have cleared the lane.
     CAST.push({
       hz: '大妈', place: 'street', temper: 'steady', speed: 0.72,
       look: { skin:'#cba078', hair:'#b4afa6', hairStyle:'bun', top:'#8a8478', pants:'#3a4148',
               shoe:'#4a4f57', sleeve:'long', collar:'polo', vest:'#5a5f52',
               bag:'tote', bagColor:'#7a6a4a',
               tall:0.87, wide:1.08, headScale:0.99, stoop:0.16, age:0.84, faceSeed:359 },
-      hours: [H.school[0], H.school[1]], patrol: [[-2.6, -0.50], [20.4, -0.62]],
+      hours: [7.76, 8.10], patrol: [[-2.6, .95], [21.4, .95]],
     });
 
     // ---- 象棋. Two men over the board under the bulb, from a quarter to seven until the light
     // goes off. `seatY` puts them on the stools built above rather than on the paving.
-    [[-18.30, '#c9915f', '#4b443d', 'buzz', '#9a958a'],
-     [-16.90, '#d3a179', '#a8a29a', 'short', '#6a7480']].forEach(([x, skin, hair, style, top], i) => {
+    [[-19.00, '#c9915f', '#4b443d', 'buzz', '#9a958a'],
+     [-17.60, '#d3a179', '#a8a29a', 'short', '#6a7480']].forEach(([x, skin, hair, style, top], i) => {
       CAST.push({
         hz: '大爷', place: 'street', temper: i ? 'steady' : 'brash', speed: 0.80,
         look: { skin, hair, hairStyle: style, top, pants:'#2f3742', shoe:'#3a3f45',
@@ -918,15 +1154,5 @@
       });
     });
 
-    // ---- and the man asleep in the bamboo chair after lunch, which is the whole of the midday
-    // shift on this street: one person, not moving, in the shade, facing out.
-    CAST.push({
-      hz: '大爷', place: 'street', temper: 'steady', speed: 0.75,
-      look: { skin:'#c08a5a', hair:'#9c968c', hairStyle:'short', top:'#d9d4c6',
-              pants:'#4a5158', shoe:'#3a3f45', sleeve:'short', collar:'shirt',
-              tall:0.99, wide:1.12, headScale:1.02, stoop:0.08, age:0.78, faceSeed:373 },
-      seatY: 0.32,
-      spots: [{ h0: H.nap[0] + .1, h1: H.nap[1] - .1, at: [-3.20, -2.40], face: 0, act: 'sit' }],
-    });
   })();
 })();

@@ -1,4 +1,4 @@
-// 北京市仁和医院 · 1F — 门诊大厅, registration, triage and the 24-hour emergency department.
+// 北京市澄安医院 · 1F — 门诊大厅, registration, triage and the 24-hour emergency department.
 HospFit[1] = A => {
   const { box,cyl,ball,capsule,taper,flat,glyphs,solid,shade,light,thing,
           RX,RZ,H,col,fc,luminous,liveScreen,partitionZ,partitionX,sign,doorPlate,screen,
@@ -541,7 +541,8 @@ HospitalCast.push(
   { hz:'观察病人', place:'hospital', temper:'patient',seatY:.82,
     look:{skin:'#deb087',hair:'#302824',hairStyle:'bob',top:'#a6c1c5',pants:'#56616a',
       shoe:'#ded9cf',tall:.94,wide:.98,faceSeed:7152},
-    spots:[{h0:0,h1:24,at:[11.00,8.90],face:0,act:'sit'}] }
+    // Sit on the clear centre mattress, not the raised folded blanket at z 9.17.
+    spots:[{h0:0,h1:24,at:[11.00,8.55],face:0,act:'sit'}] }
   ,{ hz:'病人', place:'hospital', temper:'weary',seatY:.82,
     look:{skin:'#c78f6c',hair:'#272321',hairStyle:'short',top:'#b8cbd0',pants:'#59646c',
       shoe:'#dedbd2',tall:.98,wide:1.02,stoop:.06,faceSeed:7153},

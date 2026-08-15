@@ -53,8 +53,9 @@
 // that decides whether a crate needs a collider is done once, here, and every placement below is
 // measured against it rather than looked at:
 //
-//     S.LANE_ZONE   x 39.30 .. 58.30   z -11.90 .. -6.50      the zone, as published above
-//     body centre   x 39.60 .. 58.00   z -11.60 ..  -6.80     the same, less the 0.30 m radius
+//     throat        x 39.30 .. 43.85   z -11.90 .. -6.50
+//     internal      x 42.85 .. 58.30   z -12.90 .. -5.50
+//     body overlap  x 43.15 .. 43.55   after each zone spends the 0.30 m body radius
 //
 // So there is a **1.00 m strip against each frontage that the body can never enter**: z -12.60 ..
 // -11.60 on the south, z -6.80 .. -5.80 on the north. Everything this file stands on the pavement
@@ -87,8 +88,13 @@
   // ---------------------------------------------------------------- the lane, measured
   const LX0 = 41.60;            // the mouth, on the far building line
   const LX1 = 59.00;            // the closed east end
-  const LZ0 = -12.60;           // SOUTH frontage plane, outward normal +1
-  const LZ1 = -5.80;            // NORTH frontage plane, outward normal -1
+  // The road can only spare the original 6.80 m portal, but the lane now opens by a metre on
+  // each side once past its gateway. A narrow urban threshold is believable; forcing that same
+  // width through the whole shopping street is not. MOUTH_* stays aligned with street.js's hole,
+  // while LZ* is the quieter 8.80 m internal frontage datum.
+  const MOUTH_Z0 = -12.60, MOUTH_Z1 = -5.80;
+  const LZ0 = -13.60;           // SOUTH internal frontage plane, outward normal +1
+  const LZ1 = -4.80;            // NORTH internal frontage plane, outward normal -1
   const LZC = (LZ0 + LZ1) / 2;  // -9.20, which is where the mall portal used to stand
   const WALL = 8.0;             // how deep the side blocks are
   // 11.0, not the 13.5 this was first built at. Measured off the live site at 12:00: a 6.80 m lane
@@ -107,11 +113,11 @@
   const GRP = [];                       // { w, ps: [{ p, day, night }], on }
   const grp = w => { const g = { w, ps: [], on: null }; GRP.push(g); return g; };
   const NIGHT = grp(null);
-  // A10. One shutter prop per unit, parked under the floor while the shop trades.
+  // A10. One shutter prop per unit, rolled into its housing while the shop trades.
   const SHUT = [];                      // { p, x, z, top, wid, h, hrs, open }
-  // Parked forty metres under the floor at a millionth of its size — js/street-alley.js's idiom,
-  // and the reason a closed shop costs one matrix write rather than a draw.
-  const HIDDEN = M.trs(0, -60, 0, 0, .001, .001, .001);
+  // Keep the open state in the real world and fully inside the existing 2.89..3.11 m roll housing.
+  // A buried 1 mm placeholder still entered the static draw list and carried no state ownership.
+  const rolledShutter = (x, z, wid, top) => M.trs(x, top + .12, z, 0, wid, .06, .04);
   // The same window test `npcAwake` uses in game.js, so a shutter and the shopkeeper behind it
   // can never disagree about what time it is.
   const within = (h, a, b) => (b > 24 ? (h >= a || h < b - 24) : (h >= a && h < b));
@@ -122,14 +128,17 @@
 
     // The zone. Published the way js/street-hotel.js publishes its forecourt, because `zones` is
     // built in the scene object at the end of street.js's `build` and a district cannot push into
-    // it directly. x0 39.30 overlaps the road zone (which ends at 39.80) so the two are genuinely
-    // connected once clampMove has spent the body radius on each edge — the same overlap the
-    // hospital spine uses at its south end.
-    S.LANE_ZONE = { id: 'lane', x0: 39.30, x1: LX1 - .70, z0: LZ0 + .70, z1: LZ1 - .70,
-                    light: [50.0, 5.4, LZC] };
+    // it directly. x0 39.30 overlaps the far-east pavement, while x1 44.10 overlaps the internal
+    // lane by 1.25 m. That preserves 35 cm of shared centre band after clampMove spends the strict
+    // .45 m envelope on both sides; the old one-metre joint left only ten centimetres.
+    S.LANE_THROAT_ZONE = { id: 'lane-throat', x0: 39.30, x1: LX0 + 2.50,
+      z0: MOUTH_Z0 + .70, z1: MOUTH_Z1 - .70, light: [42.1, 4.8, LZC] };
+    S.LANE_ZONE = { id: 'lane', x0: LX0 + 1.25, x1: LX1 - .70,
+      z0: LZ0 + .70, z1: LZ1 - .70, light: [50.0, 5.4, LZC] };
 
     const PAVE = C('#b8b2a4'), PAVED = C('#a49e91');
-    const REND = C('#cdc6b6'), RENDD = C('#a8a294'), BAND = C('#8d8779');
+    const REND = C('#cdc6b6'), RENDW = C('#d8cbb7'), RENDS = C('#aeb7aa');
+    const BRICK = C('#9f7663'), RENDD = C('#a8a294'), BAND = C('#8d8779');
     const GLASSD = C('#26313a'), GLASS = C('#9bb8c4'), WARMI = C('#e9d3a6'), COOLI = C('#dfe8ee');
     const RED = C('#9c2a22'), REDD = C('#6e1c17'), CREAM = C('#e9dfc6'), STEEL = C('#8b9095');
     const PMAT = { mat: 'plaster', matScale: 2.6, matAmt: .13 };
@@ -157,50 +166,157 @@
 
     // ---------------------------------------------------------------- the ground
     // Paved, not asphalt: this is a 步行街 and the surface is the first thing that says so.
-    flat((LX0 + LX1) / 2, .008, LZC, LX1 - LX0, LZ1 - LZ0 + .40, PAVE,
-      { mode: 9, gloss: .16, mat: 'stone', matScale: 1.1, matAmt: .18 });
+    // A 2.4 m throat at the road then a broad internal pavement. Overlap conceals the rectangular
+    // seam and reads as a simple flare without adding an unwalkable decorative pinch point.
+    flat(LX0 + 1.20, .008, LZC, 2.40, MOUTH_Z1 - MOUTH_Z0 + .40, PAVE,
+      { mode: 9, gloss: .16, mat: 'paving', matScale: 1.1, matAmt: .18 });
+    flat((LX0 + 1.90 + LX1) / 2, .008, LZC, LX1 - LX0 - 1.90, LZ1 - LZ0 + .40, PAVE,
+      { mode: 9, gloss: .16, mat: 'paving', matScale: 1.1, matAmt: .18 });
     flat((LX0 + LX1) / 2, .010, LZC, LX1 - LX0, 1.60, PAVED, { mode: 9, gloss: .18 });
     for (let x = LX0 + 1.6; x < LX1 - 1.0; x += 2.40)
       flat(x, .012, LZC, .12, 1.60, C('#8f8a7e'), { gloss: .14 });
 
-    // ---------------------------------------------------------------- the two side blocks
-    for (const n of [1, -1]) {
-      const zf = n > 0 ? LZ0 : LZ1;              // this side's frontage plane
-      const cz = zf - n * (WALL / 2);            // the mass sits BEHIND it
-      box((LX0 + LX1) / 2, BH / 2, cz, LX1 - LX0, BH, WALL, REND,
+    // ---------------------------------------------------------------- six separate side buildings
+    // The first version was two 17.4 m boxes with a continuous glass strip. From the mouth it
+    // read as a loading trench, regardless of how carefully the individual shop windows were
+    // dressed. These six envelopes keep every tenant on the same public frontage datum while
+    // giving the lane real party-wall gaps, different depths, separate roof lines and visible
+    // returns. The gaps remain outside LANE_ZONE, so they provide daylight without inventing a
+    // route behind the scenery.
+    const SIDES = [
+      { n: 1, x: 43.22, w: 3.04, h: 7.85, d: 5.55, set: .08, tint: RENDW, bays: 2, shift: -.10 },
+      { n: 1, x: 46.48, w: 3.06, h: 9.55, d: 6.30, set: .00, tint: BRICK, bays: 2, shift:  .12 },
+      { n: 1, x: 53.18, w: 9.72, h: 8.55, d: 7.20, set: .22, tint: REND,  bays: 4, shift: -.22 },
+      { n:-1, x: 46.20, w: 8.80, h:10.35, d: 7.10, set: .12, tint: REND,  bays: 4, shift:  .22 },
+      { n:-1, x: 52.65, w: 3.35, h: 7.70, d: 5.35, set: .32, tint: RENDS, bays: 2, shift: -.10 },
+      { n:-1, x: 56.70, w: 3.70, h: 9.20, d: 6.15, set: .04, tint: RENDW, bays: 2, shift:  .14 },
+    ];
+    for (const b of SIDES) {
+      const zf = b.n > 0 ? LZ0 : LZ1;
+      const front = zf - b.n * b.set;
+      const back = front - b.n * b.d;
+      const cz = (front + back) * .5;
+      box(b.x, b.h / 2, cz, b.w, b.h, b.d, b.tint,
         { hard: true, mode: 14, gloss: G.paint, ...PMAT });
-      box((LX0 + LX1) / 2, BH + .30, cz, LX1 - LX0 + .22, .60, WALL + .22, RENDD,
-        { hard: true, gloss: G.paint });
-      // the dark shopfront band at street level and the canopy over it, in FRONT of the plane
-      box((LX0 + LX1) / 2, 2.05, zf + n * .17, LX1 - LX0, 4.10, .34, GLASSD,
-        { hard: true, gloss: .30 });
-      box((LX0 + LX1) / 2, 4.44, zf + n * .28, LX1 - LX0 + .24, .28, .55, RENDD,
-        { hard: true, gloss: G.paint });
-      // the string course the fascia datum sits above, as the block in the hutong has
-      box((LX0 + LX1) / 2, 3.00, zf + n * .06, LX1 - LX0 + .12, .22, .12, BAND,
-        { hard: true, gloss: G.paint });
-      blocker(LX0 - .4, LX1 + .4, Math.min(zf, cz - n * WALL / 2), Math.max(zf, cz - n * WALL / 2), BH);
-      solid(LX0 - .4, LX1 + .4, Math.min(zf, cz - n * WALL / 2), Math.max(zf, cz - n * WALL / 2));
 
-      // upper windows, so the lane has storeys over it the way the road does
-      const bays = Math.round((LX1 - LX0) / 3.4);
-      for (let f = 0; f < 2; f++) for (let i = 0; i < bays; i++) {   // two rows now, not three: 9.25 + 0.81 clears an 11.0 parapet
-        const wx = LX0 + (i + .5) * ((LX1 - LX0) / bays), wy = 6.4 + f * 2.85;
-        box(wx, wy, zf + n * .04, 2.16, 1.62, .08, GLASSD, { hard: true, gloss: .20 });
-        emis(box(wx, wy, zf + n * .09, 2.00, 1.46, .04, GLASS,
+      // Thin perimeter pieces make a plausible parapet; a second, shifted roof volume prevents
+      // even the widest anchor from ending as one extruded cuboid.
+      box(b.x, b.h + .17, front - b.n * .18, b.w + .10, .34, .18, RENDD,
+        { hard: true, gloss: G.paint });
+      box(b.x, b.h + .17, back + b.n * .18, b.w + .10, .34, .18, RENDD,
+        { hard: true, gloss: G.paint });
+      for (const sx of [-1, 1])
+        box(b.x + sx * (b.w / 2 - .09), b.h + .17, cz, .18, .34, Math.max(.5, b.d - .36),
+          RENDD, { hard: true, gloss: G.paint });
+      if (b.w > 3.5)
+        box(b.x + b.shift, b.h + .52, cz - b.n * b.d * .18,
+          Math.min(b.w - 1.15, b.w * .58), 1.04, Math.min(3.15, b.d * .48), b.tint,
+          { hard: true, mode: 14, gloss: G.paint, ...PMAT });
+
+      // Each address owns its plinth, canopy and string course. The 30–55 cm slots between them
+      // expose the side returns and stop the shopfronts becoming one uninterrupted light bar.
+      // The plinth is the dark reveal BEHIND the tenant glazing. Putting its centre at +n*.17
+      // placed its outer face 10 mm ahead of every pane, which is why the live lane rendered as
+      // two uninterrupted black walls despite having modeled shopfronts. Recess it to the fabric
+      // side of the frontage datum so each door, mullion and lit interior is actually visible.
+      box(b.x, 2.05, zf - b.n * .17, b.w - .12, 4.10, .34, GLASSD,
+        { hard: true, gloss: .30 });
+      box(b.x, 4.44, zf + b.n * .28, b.w + .06, .28, .55, RENDD,
+        { hard: true, gloss: G.paint });
+      box(b.x, 3.00, zf + b.n * .06, b.w, .22, .12, BAND,
+        { hard: true, gloss: G.paint });
+
+      const x0 = b.x - b.w / 2, x1 = b.x + b.w / 2;
+      blocker(x0, x1, Math.min(front, back), Math.max(front, back), b.h);
+      solid(x0, x1, Math.min(front, back), Math.max(front, back));
+
+      const rows = b.h >= 9.0 ? 2 : 1;
+      const bayStep = (b.w - .44) / b.bays;
+      const ww = Math.min(1.78, bayStep - .28);
+      for (let f = 0; f < rows; f++) for (let i = 0; i < b.bays; i++) {
+        const wx = b.x + (i - (b.bays - 1) / 2) * bayStep;
+        const wy = 6.10 + f * 2.56;
+        box(wx, wy, front + b.n * .048, ww + .14, 1.50, .08, GLASSD,
+          { hard: true, gloss: .20 });
+        emis(box(wx, wy, front + b.n * .098, ww, 1.34, .04, GLASS,
           { hard: true, mode: 1, gloss: G.glass }), .13);
-        box(wx, wy - .88, zf + n * .14, 2.36, .08, .20, RENDD, { hard: true, gloss: G.paint });
+        box(wx, wy - .82, front + b.n * .148, ww + .26, .08, .20, RENDD,
+          { hard: true, gloss: G.paint });
       }
     }
 
-    // ---------------------------------------------------------------- the closed east end
-    box(LX1 + 1.5, BH / 2, LZC, 3.0, BH, LZ1 - LZ0 + WALL * 2, REND,
+    // ---------------------------------------------------------------- a garden terminus, not a sealed wall
+    // Collision closes the authored lane at LX1, but the eye meets an open courtyard threshold:
+    // a small glazed pavilion is offset south, a timber trellis frames a planted view in the
+    // middle, and a low north planter leaves sky across most of the 8.8 m end. Nothing resembles
+    // the old full-width slab or the later oversized double door.
+    blocker(LX1 - .02, LX1 + 2.20, LZ0 - .4, LZ1 + .4, 8.2);
+    solid(LX1 - .02, LX1 + 2.20, LZ0 - .4, LZ1 + .4);
+    const ENDX = LX1 + .76, PAVZ = LZ0 + 1.55;
+    const COMMUNITY_GLASS = 'lane-community-room-glass';
+    // Community room: a compact rendered volume with a split glazed face, timber screen and a
+    // hovering roof edge. Its frontage is only 2.65 m of the end rather than dominating it.
+    box(ENDX, 2.12, PAVZ, 1.50, 4.24, 2.70, RENDW,
       { hard: true, mode: 14, gloss: G.paint, ...PMAT });
-    blocker(LX1, LX1 + 3.2, LZ0 - .4, LZ1 + .4, BH);
-    solid(LX1 - .02, LX1 + 3.2, LZ0 - .4, LZ1 + .4);
-    for (let i = 0; i < 5; i++)                                  // a stair up, so the end is a place
-      box(LX1 - .55 + i * .28, (.18 + i * .17) / 2, LZC, .28, .18 + i * .17, 4.60, C('#b4aea0'),
-        { hard: true, mode: 9, gloss: .20 });
+    box(LX1 - .045, 1.78, PAVZ - .48, .07, 3.22, 1.38, GLASSD,
+      { hard: true, gloss: .24 });
+    for (const dz of [-.88, -.44, 0]) {
+      emis(box(LX1 - .086, 1.78, PAVZ + dz, .025, 3.05, .36, GLASS,
+        { hard: true, mode: 1, alpha: .55, gloss: G.glass,
+          alphaGroup: COMMUNITY_GLASS }), .10);
+      box(LX1 - .13, 1.80, PAVZ + dz - .20, .08, 3.20, .055, STEEL,
+        { hard: true, gloss: G.metal });
+    }
+    // A warmer single door sits beside the window wall instead of one giant pale double door.
+    box(LX1 - .05, 1.62, PAVZ + .72, .075, 2.96, .74, C('#725844'),
+      { hard: true, gloss: G.wood });
+    emis(box(LX1 - .094, 1.72, PAVZ + .72, .025, 2.42, .54, GLASS,
+      { hard: true, mode: 1, alpha: .48, gloss: G.glass,
+        alphaGroup: COMMUNITY_GLASS }), .09);
+    cap(LX1 - .15, 1.58, PAVZ + .92, .020, .24, .020, STEEL,
+      { rx: Math.PI / 2, gloss: G.metal });
+    box(LX1 - .12, 3.92, PAVZ, .34, .18, 3.02, C('#5d4636'),
+      { hard: true, gloss: G.wood });
+    for (const dz of [-1.14, -.76, -.38, 0, .38, .76, 1.14])
+      box(LX1 - .18, 4.06, PAVZ + dz, .58, .10, .12, C('#80634b'),
+        { hard: true, gloss: G.wood });
+    for (let i = 0; i < 3; i++)
+      box(LX1 - .52 + i * .20, (.14 + i * .13) / 2, PAVZ, .22, .14 + i * .13, 2.42,
+        C('#b4aea0'), { hard: true, mode: 9, gloss: .20 });
+
+    // Open timber threshold in the centre. The crosspiece is thin and high, with 2.85 m of clear
+    // view beneath it; the invisible end collision is explained by the planted courtyard beyond.
+    const TRELLIS_Z = [LZC - 1.42, LZC + 1.42];
+    for (const z of TRELLIS_Z) {
+      box(LX1 + .02, 2.12, z, .18, 4.24, .18, C('#6d523d'),
+        { hard: true, gloss: G.wood });
+      box(LX1 - .18, .22, z, .54, .44, .54, C('#857764'),
+        { hard: true, gloss: .20 });
+    }
+    box(LX1 + .02, 4.16, LZC, .20, .18, 3.02, C('#6d523d'),
+      { hard: true, gloss: G.wood });
+    for (let i = 0; i < 5; i++)
+      box(LX1 + .18 + i * .20, 4.22, LZC, .10, .10, 3.18, C('#8a6a4d'),
+        { hard: true, gloss: G.wood });
+
+    // Layered planting beyond the threshold: branching trunk and three offset crowns avoid the
+    // toy-like lollipop silhouette of the previous single sphere.
+    const TREE_X = LX1 + .86, TREE_Z = LZC + .12;
+    cyl(TREE_X, 1.20, TREE_Z, .13, 2.40, C('#6e5941'), { gloss: G.wood });
+    for (const [dx, dz, rz] of [[-.18,-.28,-.58],[.16,.18,.52]])
+      cap(TREE_X + dx * .45, 2.12, TREE_Z + dz * .45, .055, .95, .055, C('#6e5941'),
+        { rz, gloss: G.wood });
+    [[-.42,0,.62,.58],[.34,-.22,.72,.66],[.08,.42,.66,.60]].forEach(([dx,dz,rx,ry]) =>
+      ball(TREE_X + dx, 2.90 + dz * .18, TREE_Z + dz, rx, ry, .60, col.greenD,
+        { mode: 15, gloss: .12 }));
+    // Two short planters terminate the flanks, leaving the trellis bay visibly open.
+    for (const [z,w] of [[LZC + 2.55, 1.55], [LZ1 - .48, .78]]) {
+      box(LX1 + .20, .38, z, .72, .76, w, BRICK,
+        { hard: true, mode: 14, gloss: G.paint, ...PMAT });
+      for (let j = -1; j <= 1; j++)
+        ball(LX1 + .10, .82, z + j * w * .27, .34, .34, .34,
+          j === 0 ? col.green : col.greenD, { mode: 15, gloss: .12 });
+    }
 
     // ---------------------------------------------------------------- the small units
     // Explicit, not a seeded shuffle: this is an eighteen-metre lane and a random sign row over
@@ -245,7 +361,7 @@
         { hard: true, mode: 1, glow: .10 }), .70, UG);
       const gs = Math.min(FASCIAH * .82, (w - .24) / nm.length * .92);
       for (const g of glyphs(ux, FASCIA, zf + n * .42, yawOf(n), nm,
-          { size: gs, gap: gs * .14, color: base === C('#b8862f') ? C('#2a2723') : CREAM,
+          { size: gs, gap: gs * .14, color: nm === '面包房' ? C('#2a2723') : CREAM,
             mode: 1, glow: .26, lift: .012 }))
         emis(g, .60, UG);
       for (const s of [-1, 1]) {
@@ -274,13 +390,20 @@
 
       // ---- A10. The 卷帘门 and the box it rolls into. The housing is permanent and sits at
       // 2.89..3.11, under the fascia band's 3.12 and clear of the string course at 3.00. The
-      // shutter is ONE prop, parked under the floor while the shop trades and written once on the
-      // frame the hour changes — see `SHUT` in the tick.
+      // shutter is ONE prop, retracted inside its roll housing while the shop trades and written
+      // once on the frame the hour changes — see `SHUT` in the tick.
       box(ux, 3.00, zf + n * .40, w - .04, .22, .30, C('#7f8489'), { hard: true, gloss: .34 });
-      const sh = box(ux, 1.45, zf + n * .40, w - .16, 2.86, .05, C('#9aa0a6'), { hard: true, gloss: .28 });
-      sh.m = HIDDEN;
+      const closedHeight = 2.86 * drop;
+      const sh = box(ux, 1.45, zf + n * .40, w - .16, 2.86, .05, C('#9aa0a6'),
+        { hard: true, gloss: .28, stateOwner: 'lane:shutter', shutterTop:2.88,
+          shutterClosedHeight:closedHeight });
+      // Pin a conservative sphere to the real doorway. The open matrix lives inside the housing,
+      // while the same prop expands down over the doorway after hours.
+      sh.fixed = true; sh.cx = ux; sh.cy = 1.45; sh.cz = zf + n * .40;
+      sh.r = .55 * Math.hypot(w - .16, 2.86);
+      sh.m = rolledShutter(ux, zf + n * .40, w - .16, 2.88);
       SHUT.push({ p: sh, x: ux, z: zf + n * .40, top: 2.88,
-                  wid: w - .16, h: 2.86 * drop, hrs, open: null });
+                  wid: w - .16, h: closedHeight, hrs, open: null });
 
       // ---- A12. A second 侧招 rank. Three box signs in the whole district before this, all on
       // the alley; the lane had none, and a lane is read down its LENGTH, where a sign lying flat
@@ -323,44 +446,65 @@
     // rather than rotated out of the parade's -x one: a rotation swaps the size arguments of
     // every box as well as its position and there is no identity to check the result against.
     const MX = 46.60, MZ = LZ1, MN = -1;
-    box(MX, 3.35, MZ + MN * .58, 7.20, 6.70, 1.12, C('#2a2d31'),
-      { hard: true, gloss: .30, tag: '购物中心' });
-    box(MX, 3.08, MZ + MN * 1.16, 5.95, 5.75, .10, GLASSD, { hard: true, gloss: .22, tag: '购物中心' });
-    emis(box(MX, 3.08, MZ + MN * 1.22, 5.72, 5.55, .045, GLASS,
-      { hard: true, mode: 1, alpha: .70, gloss: G.glass, tag: '购物中心' }), .16);
-    emis(box(MX, 2.12, MZ + MN * 1.10, 5.22, 3.86, .05, WARMI,
-      { hard: true, mode: 1, glow: .08, tag: '购物中心' }), .42);
-    // ---- A13, the mall's half. Its slot is narrower than 大超市's: the pane's back face is at
-    // -6.9975 and the GLASSD frame's front at -7.010, so 12.5 mm to work in. One dark box inset
-    // 0.45 m off the glass, plus a floor line, which is what turns a shopping centre's glazing
-    // into two storeys of atrium rather than one sheet. No new emissive here either.
-    box(MX, 3.08, MZ + MN * 1.205, 4.82, 4.65, .008, C('#1a1f26'), { hard: true, gloss: .12 });
-    box(MX, 2.30, MZ + MN * 1.213, 4.60, .09, .006, C('#454e59'), { hard: true, gloss: .16 });
-    for (const s of [-1, 1]) {
-      box(MX + s * .82, 1.50, MZ + MN * 1.34, .10, 2.88, .14, col.gold,
+    // Five individually framed bays replace the old 5.95 m glass sheet and the opaque portal box.
+    // The district body supplies the wall behind; thin stone jambs and a shadowed reveal create
+    // the depth. The middle pair are doors, the outer bays are displays, and no visible element is
+    // wider than the address needs to read as one entrance.
+    const MALL_FACE = MZ + MN * .22, MALL_BACK = MZ - MN * .04;
+    for (const s of [-1, 1])
+      box(MX + s * 3.08, 3.12, MALL_BACK, .48, 6.24, .72, C('#c8c0b2'),
+        { hard: true, mode: 14, gloss: .24, ...PMAT, tag: '购物中心' });
+    box(MX, 5.96, MALL_BACK, 5.72, .56, .72, C('#c8c0b2'),
+      { hard: true, mode: 14, gloss: .24, ...PMAT, tag: '购物中心' });
+    box(MX, .13, MALL_FACE, 5.70, .26, .54, C('#5f6265'),
+      { hard: true, gloss: .24, tag: '购物中心' });
+    const MALL_BAYS = [-2.28, -1.14, 0, 1.14, 2.28];
+    MALL_BAYS.forEach((dx, bi) => {
+      const door = bi === 2;
+      box(MX + dx, 2.86, MALL_BACK + MN * .010, 1.02, 5.34, .055, C('#182029'),
+        { hard: true, gloss: .14, tag: '购物中心' });
+      emis(box(MX + dx, 2.86, MALL_FACE, .92, 5.18, .035, GLASS,
+        { hard: true, mode: 1, alpha: .58, gloss: G.glass, tag: '购物中心' }), door ? .16 : .10);
+      emis(box(MX + dx, 2.04, MALL_BACK + MN * .018, .76, 3.10, .018,
+        door ? WARMI : C('#4e5c68'),
+        { hard: true, mode: 1, glow: door ? .035 : .012, tag: '购物中心' }), door ? .24 : .09);
+      box(MX + dx, 4.22, MALL_FACE + MN * .018, .94, .065, .055, STEEL,
         { hard: true, gloss: G.metal, tag: '购物中心' });
-      cap(MX + s * .23, 1.46, MZ + MN * 1.44, .026, .46, .026, col.goldL,
+    });
+    for (const dx of [-2.85, -1.71, -.57, .57, 1.71, 2.85])
+      box(MX + dx, 2.88, MALL_FACE + MN * .025, .075, 5.42, .075, STEEL,
+        { hard: true, gloss: G.metal, tag: '购物中心' });
+    for (const s of [-1, 1]) {
+      box(MX + s * .34, 1.52, MALL_FACE + MN * .055, .065, 2.82, .08, col.gold,
+        { hard: true, gloss: G.metal, tag: '购物中心' });
+      cap(MX + s * .18, 1.46, MALL_FACE + MN * .09, .022, .34, .022, col.goldL,
         { gloss: G.metal, tag: '购物中心' });
     }
-    box(MX, 5.42, MZ + MN * 1.35, 6.25, 1.12, .24, REDD, { hard: true, gloss: .28, tag: '购物中心' });
-    emis(box(MX, 4.82, MZ + MN * 1.48, 6.05, .08, .03, col.goldL,
-      { hard: true, mode: 1, glow: .12, tag: '购物中心' }), .85);
-    for (const g of glyphs(MX, 5.42, MZ + MN * 1.46, Math.PI, '北京新天地',
-      { size: .50, gap: .16, color: col.goldL, mode: 1, glow: .22, lift: .012, tag: '购物中心' }))
-      emis(g, .70);
-    box(MX - 3.18, 4.70, MZ + MN * 2.05, .86, 3.30, .42, REDD,
+    // A shallow glass-and-steel rain hood marks the threshold without consuming the lane.
+    box(MX, 4.66, MZ + MN * .53, 4.40, .12, .72, STEEL,
+      { hard: true, gloss: G.metal, tag: '购物中心' });
+    box(MX, 4.73, MZ + MN * .53, 4.12, .045, .66, GLASS,
+      { hard: true, mode: 1, alpha: .42, gloss: G.glass, tag: '购物中心' });
+    box(MX, 5.48, MZ + MN * .31, 4.75, .82, .20, REDD,
       { hard: true, gloss: .28, tag: '购物中心' });
-    glyphs(MX - 3.18, 4.70, MZ + MN * 2.28, Math.PI, '购物中心',
-      { size: .33, gap: .12, vertical: true, color: col.goldL, mode: 1, glow: .18, tag: '购物中心' });
+    emis(box(MX, 5.02, MZ + MN * .34, 4.55, .06, .03, col.goldL,
+      { hard: true, mode: 1, glow: .10, tag: '购物中心' }), .72);
+    for (const g of glyphs(MX, 5.48, MZ + MN * .34, Math.PI, '北京新天地',
+      { size: .44, gap: .14, color: col.goldL, mode: 1, glow: .18, lift: .012, tag: '购物中心' }))
+      emis(g, .70);
+    box(MX - 3.18, 4.22, MZ + MN * .56, .62, 2.55, .28, REDD,
+      { hard: true, gloss: .28, tag: '购物中心' });
+    glyphs(MX - 3.18, 4.22, MZ + MN * .72, Math.PI, '购物中心',
+      { size: .25, gap: .09, vertical: true, color: col.goldL, mode: 1, glow: .14, tag: '购物中心' });
     for (const s of [-1, 1]) {
-      taper(MX + s * 2.65, .28, MZ + MN * 2.05, .54, .56, .54, C('#8a8378'), { gloss: .24 });
-      ball(MX + s * 2.65, .68, MZ + MN * 2.05, .35, .38, .35, col.green, { mode: 15, gloss: .12 });
+      taper(MX + s * 2.65, .28, MZ + MN * .70, .54, .56, .54, C('#8a8378'), { gloss: .24 });
+      ball(MX + s * 2.65, .68, MZ + MN * .70, .35, .38, .35, col.green, { mode: 15, gloss: .12 });
     }
-    if (typeof light === 'function') light(MX, 3.2, MZ + MN * 2.4, [1.0, .84, .60], .40, 7.0);
-    thing('购物中心', MX, 5.42, MZ + MN * 1.30, '这个购物中心有电影院和美食广场。',
+    if (typeof light === 'function') light(MX, 3.2, MZ + MN * .80, [1.0, .84, .60], .40, 7.0);
+    thing('购物中心', MX, 5.42, MZ + MN * .32, '这个购物中心有电影院和美食广场。',
       'This shopping mall has a cinema and a food court.',
       '购物 shopping + 中心 centre. 商场 is the everyday shorter word.',
-      { focus: [MX, MZ + MN * 2.55], reach: 2.4 });
+      { focus: [MX, MZ + MN * .88], reach: 2.4 });
 
     // ---------------------------------------------------------------- 大超市, SOUTH side
     // n = +1, so everything in front is at SZ + d, and the two anchors face each other down the
@@ -374,51 +518,78 @@
     // and what the fallback was doing anyway. The leg that actually needed fixing is the return
     // one, and that lives in js/market.js's own `OUT`.
     const SX = 52.80, SZ = LZ0, SN = 1;
-    box(SX, 2.90, SZ + SN * .50, 9.60, 5.80, 1.00, C('#dcd6c8'),
-      { hard: true, gloss: .24, tag: '大超市' });
-    emis(box(SX, 2.30, SZ + SN * 1.06, 8.90, 4.20, .05, GLASS,
-      { hard: true, mode: 1, alpha: .62, gloss: G.glass, tag: '大超市' }), .14);
-    emis(box(SX, 2.10, SZ + SN * .98, 8.40, 3.60, .05, COOLI,
-      { hard: true, mode: 1, glow: .07, tag: '大超市' }), .40);
-    // ---- A13 · the reveal, which is A11's own fix applied to the anchor it skipped. Before this,
-    // 9.60 m of hypermarket was a lit box: a COOLI panel at glow .07 straight behind a .62-alpha
-    // pane, read from four metres away in a 6.80 m lane instead of across a 9.84 m carriageway.
-    //
-    // Same construction as street.js:2965 and the same two constraints. **No new emissive** — the
-    // lane is at 102 quads and this is plain geometry. And it has to live in the 3 cm slot between
-    // the pane's back face at -11.565 and the lit panel's front at -11.595, because every surface
-    // in this renderer is single-sided and there is no building a box you can see the inside of.
-    //
-    // Inset 0.45 m on every side of the glass, so what is left of the COOLI reads as the light
-    // spilling round a dark interior rather than as the interior itself.
-    box(SX, 2.10, SZ + SN * 1.012, 8.00, 3.30, .010, C('#1d232a'), { hard: true, gloss: .12 });
-    // Aisle ends and a shelf line, in the last free millimetres in front of the reveal. Plain
-    // geometry costs nothing here and it is the difference between a dark panel and a shop.
-    for (const s of [-2.7, -.9, .9, 2.7])
-      box(SX + s, 1.90, SZ + SN * 1.026, .16, 2.60, .008, C('#39424c'), { hard: true, gloss: .14 });
-    for (const y of [1.15, 2.35])
-      box(SX, y, SZ + SN * 1.026, 7.60, .10, .008, C('#4a545f'), { hard: true, gloss: .14 });
-    box(SX, 5.05, SZ + SN * 1.10, 9.20, 1.10, .26, REDD, { hard: true, gloss: .26, tag: '大超市' });
-    emis(box(SX, 4.46, SZ + SN * 1.24, 9.00, .08, .03, C('#f2e4c4'),
-      { hard: true, mode: 1, glow: .12, tag: '大超市' }), .85);
-    for (const g of glyphs(SX, 5.05, SZ + SN * 1.22, 0, '大超市',
-      { size: .62, gap: .20, color: C('#f2e4c4'), mode: 1, glow: .22, lift: .012, tag: '大超市' }))
-      emis(g, .70);
+    // Six framed bays replace the former 8.90 m pane and 9.20 m sign bar. The centre pair are
+    // automatic doors; four display bays show shelf rhythm behind glass. Stone end piers and a
+    // lintel are separate pieces, so the address reads as a fitted shopfront rather than a box.
+    const MARKET_FACE = SZ + SN * .22, MARKET_BACK = SZ - SN * .04;
     for (const s of [-1, 1])
-      box(SX + s * .78, 1.30, SZ + SN * 1.12, 1.44, 2.60, .06, STEEL,
+      box(SX + s * 4.38, 2.78, MARKET_BACK, .52, 5.56, .72, C('#d5cec0'),
+        { hard: true, mode: 14, gloss: .24, ...PMAT, tag: '大超市' });
+    box(SX, 5.30, MARKET_BACK, 8.24, .52, .72, C('#d5cec0'),
+      { hard: true, mode: 14, gloss: .24, ...PMAT, tag: '大超市' });
+    box(SX, .13, MARKET_FACE, 8.20, .26, .52, C('#5f6265'),
+      { hard: true, gloss: .24, tag: '大超市' });
+    const MARKET_BAYS = [-3.25, -1.95, -.65, .65, 1.95, 3.25];
+    MARKET_BAYS.forEach((dx, bi) => {
+      const door = bi === 2 || bi === 3;
+      box(SX + dx, 2.48, MARKET_BACK + SN * .010, 1.16, 4.56, .055, C('#1d252c'),
+        { hard: true, gloss: .13, tag: '大超市' });
+      emis(box(SX + dx, 2.48, MARKET_FACE, 1.06, 4.40, .035, GLASS,
+        { hard: true, mode: 1, alpha: .55, gloss: G.glass, tag: '大超市' }), door ? .15 : .09);
+      emis(box(SX + dx, 2.02, MARKET_BACK + SN * .018, .88, 3.08, .018,
+        door ? COOLI : C('#53616a'),
+        { hard: true, mode: 1, glow: door ? .03 : .01, tag: '大超市' }), door ? .22 : .08);
+      if (!door) for (const y of [1.18, 2.20, 3.20])
+        box(SX + dx, y, MARKET_FACE + SN * .018, .90, .055, .045, C('#67727a'),
+          { hard: true, gloss: .18, tag: '大超市' });
+    });
+    for (const dx of [-3.90, -2.60, -1.30, 0, 1.30, 2.60, 3.90])
+      box(SX + dx, 2.50, MARKET_FACE + SN * .025, .075, 4.66, .075, STEEL,
         { hard: true, gloss: G.metal, tag: '大超市' });
-    for (let i = 0; i < 5; i++) {                                  // the nested trolleys outside
-      const tx = SX + 3.05 + i * .30;
-      taper(tx, .52, SZ + SN * 2.15, .80, .40, .50, STEEL,
+    for (const s of [-1, 1]) {
+      box(SX + s * .66, 1.56, MARKET_FACE + SN * .055, .06, 2.90, .08, STEEL,
         { hard: true, gloss: G.metal, tag: '大超市' });
-      cap(tx - .34, .84, SZ + SN * 2.15, .018, .46, .018, C('#c8452f'),
-        { rz: Math.PI / 2, gloss: .30, tag: '大超市' });
+      cap(SX + s * .38, 1.48, MARKET_FACE + SN * .09, .022, .42, .022, STEEL,
+        { gloss: G.metal, tag: '大超市' });
     }
-    if (typeof light === 'function') light(SX, 3.2, SZ + SN * 2.4, [.80, .88, 1.0], .34, 7.0);
-    thing('大超市', SX, 5.05, SZ + SN * 1.30, '大超市什么都有，比小卖部便宜。',
+    // Three independent headwall panels keep the supermarket legible without a nine-metre slab.
+    box(SX, 5.02, SZ + SN * .27, 4.35, .88, .22, REDD,
+      { hard: true, gloss: .26, tag: '大超市' });
+    box(SX - 3.18, 5.02, SZ + SN * .25, 1.30, .68, .18, C('#3e7658'),
+      { hard: true, gloss: .25, tag: '大超市' });
+    box(SX + 3.18, 5.02, SZ + SN * .25, 1.30, .68, .18, C('#3e7658'),
+      { hard: true, gloss: .25, tag: '大超市' });
+    for (const g of glyphs(SX, 5.02, SZ + SN * .40, 0, '大超市',
+      { size: .56, gap: .18, color: C('#f2e4c4'), mode: 1, glow: .18, lift: .012, tag: '大超市' }))
+      emis(g, .66);
+    glyphs(SX - 3.18, 5.02, SZ + SN * .355, 0, '生鲜',
+      { size: .28, gap: .10, color: C('#eef3e8'), mode: 1, lift: .008, tag: '大超市' });
+    glyphs(SX + 3.18, 5.02, SZ + SN * .355, 0, '日用',
+      { size: .28, gap: .10, color: C('#eef3e8'), mode: 1, lift: .008, tag: '大超市' });
+    for (let i = 0; i < 3; i++) {                                  // nested tight to the east pier
+      const tx = SX + 3.18 + i * .27;
+      taper(tx, .52, SZ + SN * .72, .80, .40, .50, STEEL,
+        { hard: true, gloss: G.metal, tag: '大超市' });
+      cap(tx - .34, .84, SZ + SN * .72, .018, .46, .018, C('#c8452f'),
+        { rz: Math.PI / 2, gloss: .30, tag: '大超市' });
+      // The baskets deliberately nest, but each remains a complete trolley: a low chassis,
+      // splayed uprights and four ground-contact wheels.  Without these parts the old three
+      // tapers floated 32 cm above the pavement and read as interpenetrating wire bins.
+      box(tx, .225, SZ + SN * .72, .48, .035, .28, STEEL,
+        { hard:true, gloss:G.metal, tag:'大超市' });
+      for (const side of [-1,1]) {
+        cap(tx + side * .25, .37, SZ + SN * .72, .014, .30, .014, STEEL,
+          { rz:side * .16, gloss:G.metal, tag:'大超市' });
+        for (const fore of [-1,1])
+          cyl(tx + side * .25, .075, SZ + SN * (.72 + fore * .14), .055, .026, col.black,
+            { rz:Math.PI / 2, gloss:.28, tag:'大超市' });
+      }
+    }
+    if (typeof light === 'function') light(SX, 3.2, SZ + SN * .82, [.80, .88, 1.0], .34, 7.0);
+    thing('大超市', SX, 5.05, SZ + SN * .30, '大超市什么都有，比小卖部便宜。',
       'The hypermarket has everything, and it is cheaper than the corner shop.',
       '大 big + 超市 supermarket. The 超市 by your door is a 便利店 by comparison.',
-      { focus: [SX, SZ + SN * 2.55], reach: 2.6 }).exit = { place: 'market' };
+      { focus: [SX, SZ + SN * .90], reach: 2.6 }).exit = { place: 'market' };
 
     // ================================================================ the ground in front of them
     // STOREFRONT-UPGRADES.md items A6, B1–B6 and C4. Every placement below is inside one of the
@@ -428,8 +599,8 @@
 
     // ---- A4 again, on the fifth glass door in the lane. 大超市 is a named shop and its doors
     // are the ones a learner actually walks through.
-    pay(SX - .48, 1.42, SZ + SN * 1.12, SN);
-    pay(SX + 1.08, 1.42, SZ + SN * 1.12, SN);
+    pay(SX - .48, 1.42, SZ + SN * .24, SN);
+    pay(SX + 1.08, 1.42, SZ + SN * .24, SN);
 
     // ---- B1. Goods on the pavement, outside all four units. street-retail.js's header makes the
     // case in one line — "a Chinese shop's stock starts outside its door" — and the lane had
@@ -439,46 +610,64 @@
 
     // 面包房 — the crates the morning's bread came out in, stacked and not yet taken in. x 42.84
     // .. 43.46, which is the clear window between its west planter (42.20..42.60) and the sacks.
-    for (let i = 0; i < 3; i++)
-      box(43.15 + (i % 2) * .04, .09 + i * .15, -11.98, .62, .14, .42,
-        C(i === 1 ? '#8c6b3f' : '#a3814e'), { hard: true, gloss: .18 });
-    ball(43.30, .60, -12.02, .15, .08, .11, C('#c89a58'), { gloss: .14 });
-    box(43.70, .34, -12.06, .46, .68, .26, C('#8a8378'), { hard: true, gloss: .20 });  // flour sacks
-    ball(43.70, .74, -12.06, .23, .13, .14, C('#ded5c0'), { gloss: .12 });
+    for (let i = 0; i < 3; i++) {
+      const cx=43.15+(i%2)*.04, cy=.09+i*.15, tone=C(i===1?'#8c6b3f':'#a3814e');
+      box(cx,cy-.05,-12.98,.58,.035,.38,tone,{hard:true,gloss:.18});
+      for(const sx of [-1,1])for(const sz of [-1,1])
+        cap(cx+sx*.27,cy,-12.98+sz*.17,.010,.11,.010,tone,{gloss:G.wood});
+      for(const sz of [-1,1])
+        cap(cx,cy+.05,-12.98+sz*.17,.010,.55,.010,tone,{rz:Math.PI/2,gloss:G.wood});
+    }
+    ball(43.30, .60, -13.02, .15, .08, .11, C('#c89a58'), { gloss: .14 });
+    // Three soft flour sacks with tied necks; the former .68 m grey cabinet-shaped "sack" was the
+    // only vertical cuboid in the bakery stock and read as a utility box.
+    for(const [ox,yy,lean] of [[-.11,.22,-.10],[.11,.25,.12],[.01,.57,.04]]){
+      ball(43.70+ox,yy,-13.06,.21,.24,.14,C('#cfc6b4'),{mode:7,gloss:.12,ry:lean});
+      cap(43.70+ox,yy+.22,-13.06,.012,.12,.012,C('#8a7658'),{rz:lean,gloss:.16});
+    }
 
     // 花店 — three zinc buckets between the planters, and a tiered stand against the glass. The
     // one shop on this lane whose stock IS the shopfront.
     [[46.32, '#b8455a'], [46.62, '#d8b23f'], [46.92, '#e6dfd0']].forEach(([bxx, hex], i) => {
-      cyl(bxx, .21, -12.02, .155, .42, C('#9aa0a2'), { gloss: G.metal });
-      ball(bxx, .56, -12.02, .17, .17, .17, C(hex), { mode: 15, gloss: .14 });
-      ball(bxx, .48, -12.02, .13, .10, .13, col.greenD, { mode: 15, gloss: .12 });
+      cyl(bxx, .21, -13.02, .155, .42, C('#9aa0a2'), { gloss: G.metal });
+      ball(bxx, .56, -13.02, .17, .17, .17, C(hex), { mode: 15, gloss: .14 });
+      ball(bxx, .48, -13.02, .13, .10, .13, col.greenD, { mode: 15, gloss: .12 });
     });
     for (let i = 0; i < 3; i++)
-      box(46.60, .30 + i * .32, -12.14 + i * .015, 1.10, .05, .14, C('#6b5a44'),
+      box(46.60, .30 + i * .32, -13.14 + i * .015, 1.10, .05, .14, C('#6b5a44'),
         { hard: true, gloss: .22 });
     for (let i = 0; i < 6; i++)
-      ball(46.16 + (i % 3) * .44, .40 + Math.floor(i / 3) * .32, -12.13,
+      ball(46.16 + (i % 3) * .44, .40 + Math.floor(i / 3) * .32, -13.13,
         .12, .12, .10, C(['#c0485a', '#e0a63a', '#8a4a7a'][i % 3]), { mode: 15, gloss: .14 });
 
-    // 奶茶店 — the crate of empties, east of the door line (its stiles are at 52.24 and 53.16).
-    for (let i = 0; i < 2; i++)
-      box(53.45, .13 + i * .27, -6.38, .56, .26, .40, C('#3d6f8c'), { hard: true, gloss: .22 });
-    for (let i = 0; i < 6; i++)
-      cyl(53.25 + (i % 3) * .20, .48, -6.48 + Math.floor(i / 3) * .18, .048, .16,
-        C('#dfe8ee'), { gloss: .34 });
+    // 奶茶店 — two open bottle crates east of the door line. The old pair were simply two blue
+    // cubes with bottles floating behind them; slatted bases, corner posts and returned top rails
+    // expose the empties and keep this small object from becoming the strongest block in the bay.
+    for (let layer = 0; layer < 2; layer++) {
+      const cy=.14+layer*.29, cc=C(layer?'#355f79':'#3d6f8c');
+      box(53.45,cy-.11,-5.38,.52,.045,.36,cc,{hard:true,gloss:.22});
+      for(const sx of [-1,1])for(const sz of [-1,1])
+        cap(53.45+sx*.24,cy,-5.38+sz*.16,.012,.25,.012,cc,{gloss:.24});
+      for(const sz of [-1,1])
+        cap(53.45,cy+.11,-5.38+sz*.16,.012,.50,.012,cc,{rz:Math.PI/2,gloss:.24});
+      for(let i=0;i<3;i++){
+        cyl(53.27+i*.18,cy+.10,-5.39,.037,.19,C('#dfe8ee'),{gloss:.34});
+        cyl(53.27+i*.18,cy+.205,-5.39,.018,.025,C('#a8bfd0'),{gloss:.30});
+      }
+    }
 
     // 书店 — the trestle of remainders every bookshop in this city puts out, and a spinner. West
     // of the door stile at 56.04 and east of its planter's 55.40, which is a 0.64 m window.
-    box(55.72, .36, -6.40, .60, .05, .44, C('#7a6a4a'), { hard: true, gloss: G.wood });
+    box(55.72, .36, -5.40, .60, .05, .44, C('#7a6a4a'), { hard: true, gloss: G.wood });
     for (const s of [-.24, .24])
-      box(55.72 + s, .18, -6.40, .05, .36, .40, C('#6b5a44'), { hard: true, gloss: G.wood });
+      box(55.72 + s, .18, -5.40, .05, .36, .40, C('#6b5a44'), { hard: true, gloss: G.wood });
     for (let i = 0; i < 6; i++)
-      box(55.50 + (i % 3) * .22, .42 + Math.floor(i / 3) * .05, -6.44 + (i % 2) * .10,
+      box(55.50 + (i % 3) * .22, .42 + Math.floor(i / 3) * .05, -5.44 + (i % 2) * .10,
         .18, .045, .30, C(['#9c3a30', '#2f5f8c', '#c8a24a'][i % 3]),
         { hard: true, gloss: .24 });
-    cyl(57.25, .55, -6.42, .022, 1.10, STEEL, { gloss: G.metal });
+    cyl(57.25, .55, -5.42, .022, 1.10, STEEL, { gloss: G.metal });
     for (let i = 0; i < 4; i++)
-      box(57.25 + Math.cos(i * 1.571) * .17, .78, -6.42 + Math.sin(i * 1.571) * .17,
+      box(57.25 + Math.cos(i * 1.571) * .17, .78, -5.42 + Math.sin(i * 1.571) * .17,
         .26, .34, .03, C(['#c8a24a', '#9c3a30', '#dfe8ee', '#3d7a5a'][i]),
         { ry: i * 1.571, hard: true, gloss: .22 });
 
@@ -499,36 +688,72 @@
       glyphs(ex, .60, ez + nn * .026, yawOf(nn), '新到',
         { size: .13, gap: .03, color: tint, mode: 1, lift: .006 });
     };
-    easel(44.40, -11.95, 1, C('#e0a63a'));
-    easel(51.95, -6.46, -1, C('#e8b4c0'));
+    easel(44.40, -12.95, 1, C('#e0a63a'));
+    easel(51.95, -5.46, -1, C('#e8b4c0'));
 
     // ---- B2. A delivery. One 三轮车 in the district outside the alley's 超市, and none here.
     // Pulled up ALONGSIDE the frontage rather than backed square into it, and that is a measured
     // decision, not a stylistic one: backed in square it is 1.90 m of lane and fails B1's floor.
     // The gate's clampMove scan measured the first shipped depth at 3.55 m clear against a 3.40 m
     // floor — see the note in this file's header for why that number and not this file's own.
-    // The bed is 0.70 deep now rather than 0.88 and the collider stops at -10.84, which is 0.22 m
-    // of margin bought back. It is still the narrowest point in the lane.
-    const TB = 50.50, TZ = -11.22;
-    box(TB, .62, TZ, 1.55, .30, .70, C('#3d6f5a'), { hard: true, gloss: .26 });      // the bed
-    box(TB, .82, TZ - .31, 1.55, .40, .06, C('#356252'), { hard: true, gloss: .26 });
-    box(TB, .82, TZ + .31, 1.55, .40, .06, C('#356252'), { hard: true, gloss: .26 });
-    box(TB - .90, .78, TZ, .30, .62, .48, C('#2f3742'), { hard: true, gloss: .30 });  // the saddle end
-    cyl(TB - .96, 1.02, TZ, .026, .48, STEEL, { rz: Math.PI / 2, gloss: G.metal });   // handlebar
+    // The bed is only 0.70 m deep and is tucked another 45 cm toward the shopfront. Its visual
+    // edge now stops at -12.29, leaving the centre run conspicuously open instead of merely legal.
+    const TB = 50.50, TZ = -12.67;
+    const TRIKE = C('#3d6f5a'), TRIKED = C('#294d40');
+    // Open chassis rails and a slatted load bed replace the green cargo cuboid.
+    for (const zz of [TZ - .27, TZ + .27]) {
+      cap(TB, .55, zz, .026, 1.46, .026, TRIKED, { rz: Math.PI / 2, gloss: G.metal });
+      for (let k = 0; k < 3; k++)
+        cap(TB - .52 + k * .52, .78, zz, .022, .44, .022, TRIKE, { gloss: G.metal });
+      for (const yy of [.64, .84])
+        cap(TB, yy, zz, .021, 1.42, .021, TRIKE, { rz: Math.PI / 2, gloss: G.metal });
+    }
+    for (let k = 0; k < 5; k++)
+      box(TB - .60 + k * .30, .57, TZ, .24, .065, .56, C('#6d593c'),
+        { hard:true, gloss:G.wood });
+    // Step-through front frame, fork, saddle, battery cradle and handlebar.
+    cap(TB - .70, .55, TZ, .027, .72, .027, TRIKE, { rz:.76, gloss:G.metal });
+    cap(TB - .92, .57, TZ, .025, .72, .025, TRIKED, { rz:-.28, gloss:G.metal });
+    cap(TB - 1.02, .60, TZ, .022, .62, .022, STEEL, { rz:.16, gloss:G.metal });
+    cap(TB - .98, 1.02, TZ, .020, .48, .020, STEEL,
+      { rx:Math.PI / 2, gloss:G.metal });
+    box(TB - .72, .86, TZ, .28, .055, .19, col.black, { hard:true, gloss:.28 });
+    taper(TB - .48, .43, TZ, .32, .38, .28, C('#38424b'), { gloss:.28 });
+    // Wheels are open rings with spokes, never black pucks.
+    const trikeWheel = (wx, wz) => {
+      const wr=.255, wn=8, seg=2*wr*Math.sin(Math.PI/wn)*1.10;
+      for(let k=0;k<wn;k++){
+        const a=k*Math.PI*2/wn;
+        cap(wx+Math.cos(a)*wr,.28+Math.sin(a)*wr,wz,.020,seg,.020,col.black,
+          {rz:a,gloss:.25});
+      }
+      for(let k=0;k<3;k++)
+        cap(wx,.28,wz,.008,.44,.008,STEEL,{rz:k*Math.PI/3,gloss:G.metal});
+      cyl(wx,.28,wz,.050,.08,STEEL,{ry:Math.PI/2,rz:Math.PI/2,gloss:G.metal});
+    };
     for (const [wx, wz] of [[TB + .62, TZ - .24], [TB + .62, TZ + .24], [TB - 1.02, TZ]])
-      cyl(wx, .28, wz, .28, .07, col.black,
-        { ry: Math.PI / 2, rz: Math.PI / 2, gloss: .26 });
-    for (let i = 0; i < 3; i++)                                                       // the load
-      box(TB - .30 + i * .46, .92, TZ + (i % 2) * .07, .42, .30, .34,
-        C(i === 1 ? '#a3814e' : '#8c6b3f'), { hard: true, gloss: .18 });
+      trikeWheel(wx,wz);
+    // Airy produce crates: base, corner posts and top rails with the goods visible between them.
+    const laneCrate = (cx, cy, cz, tone, n=3) => {
+      box(cx,cy-.13,cz,.40,.055,.32,tone,{hard:true,gloss:G.wood});
+      for(const sx of [-1,1])for(const sz of [-1,1])
+        cap(cx+sx*.18,cy,cz+sz*.14,.012,.30,.012,tone,{gloss:G.wood});
+      for(const sz of [-1,1])
+        cap(cx,cy+.13,cz+sz*.14,.012,.38,.012,tone,{rz:Math.PI/2,gloss:G.wood});
+      for(let i=0;i<n;i++)
+        ball(cx+(i-1)*.10,cy+.10+(i%2)*.04,cz+(i%2?-.05:.05),.075,.060,.070,
+          C(i%2?'#7e9a4a':'#c08b3d'),{gloss:.16});
+    };
+    for (let i = 0; i < 3; i++)
+      laneCrate(TB - .30 + i * .46, .91, TZ + (i % 2) * .07,
+        C(i === 1 ? '#a3814e' : '#8c6b3f'));
     box(TB + .20, 1.12, TZ, 1.30, .05, .64, C('#5a6a52'), { mode: 7, gloss: G.fabric });
     // The load half off, on the ground beside the tailboard. These stand EAST of the bed, so the
     // collider has to run out to 52.25 to cover them — a wider stretch of lane at the same depth,
     // which costs nothing, where leaving them out would have left two crates you walk through.
     for (let i = 0; i < 2; i++)
-      box(TB + 1.02 + i * .48, .18, TZ - .10 + i * .16, .44, .34, .34, C('#8c6b3f'),
-        { hard: true, gloss: .18 });
-    solid(49.30, 52.25, -12.60, -10.84);
+      laneCrate(TB + 1.02 + i * .48, .25, TZ - .10 + i * .16, C('#8c6b3f'),2);
+    solid(49.30, 52.25, -13.60, -12.29);
 
     // ---- B3. Bins. The lane had none. Two, as a pair, which is how this city puts them out —
     // 可回收物 beside 其他垃圾 — and they go on the north side because that is the only place on
@@ -538,103 +763,118 @@
     // between the mall's east edge (50.20) and 奶茶店's west planter (51.20) is 1.00 m, which
     // takes two at 0.46. Each is 0.46 deep at z -6.39, so -6.62..-6.16: clear of the body limit
     // at -6.80 by 0.18 m and of the shopfront band's face at -6.14 by 0.02.
-    [[50.47, '#3d7a4a', '可回收物'], [50.95, '#585d63', '其他垃圾']].forEach(([bx, hex, lab]) => {
-      box(bx, .38, -6.39, .46, .76, .46, C(hex), { hard: true, gloss: .30 });
-      box(bx, .79, -6.39, .49, .06, .49, C('#2f3338'), { hard: true, gloss: .34 });
-      box(bx, .82, -6.43, .26, .04, .20, C('#1b1e21'), { hard: true, gloss: .20 });
-      glyphs(bx, .44, -6.622, Math.PI, lab,
+    [[50.43, '#3d7a4a', '可回收物'], [50.99, '#585d63', '其他垃圾']].forEach(([bx, hex, lab]) => {
+      const body=C(hex), dark=C('#2f3338');
+      taper(bx,.40,-5.39,.40,.68,.38,body,{hard:true,gloss:.30});
+      box(bx,.76,-5.39,.43,.055,.42,dark,{hard:true,gloss:.34,rz:-.035});
+      cap(bx,.80,-5.48,.012,.24,.012,C('#171a1d'),{rz:Math.PI/2,gloss:.24});
+      cap(bx,.72,-5.22,.012,.34,.012,C('#1b1e21'),{rz:Math.PI/2,gloss:.26});
+      for(const sx of [-1,1])
+        ball(bx+sx*.14,.08,-5.42,.045,.045,.035,col.black,{gloss:.22});
+      box(bx,.05,-5.24,.17,.035,.11,dark,{hard:true,gloss:.24});
+      glyphs(bx, .44, -5.585, Math.PI, lab,
         { size: .078, gap: .016, color: C('#f0efe8'), mode: 1, lift: .006 });
     });
 
     // ---- B6. Pavement wear. Six flat quads, no collider, and the lane stops reading as new
     // tile. The alley has puddles and made-good patches; this is the same argument.
     flat(50.00, .014, LZC, 13.60, 2.30, C('#ada698'), { gloss: .13 });         // the desire line
-    flat(52.90, .015, -10.90, 2.40, 1.40, C('#8f8b80'), { gloss: .52 });       // wet, by the doors
-    flat(46.20, .015, -9.60, 1.80, 1.10, C('#9c968a'), { gloss: .20 });        // a made-good patch
-    flat(48.60, .015, LZC, .55, 5.00, C('#a8a294'), { gloss: .17 });           // a trench, reinstated
+    flat(52.90, .019, -10.90, 2.40, 1.40, C('#8f8b80'), { gloss: .52 });       // wet, by the doors
+    flat(46.20, .019, -9.60, 1.80, 1.10, C('#9c968a'), { gloss: .20 });        // a made-good patch
+    flat(48.60, .020, LZC, .55, 5.00, C('#a8a294'), { gloss: .17 });           // a trench, reinstated
     flat(43.50, .016, -9.30, 1.20, .90, C('#8a867c'), { gloss: .40 });         // the gully's stain
     flat(52.70, .016, -7.40, .95, .75, C('#95907f'), { gloss: .46 });          // spilt tea
 
     // ---- C4. 店猫. The alley has two and the trading half had none. Asleep on the bakery's
     // crates, which are the warmest thing on this pavement at four in the afternoon. One prop
     // group, no tick: a cat that breathes is a per-frame write for an object 40 cm across.
-    ball(43.13, .61, -11.98, .21, .13, .15, C('#c98d4e'), { mode: 15, gloss: .10 });
-    ball(42.95, .66, -12.00, .10, .09, .09, C('#d69a58'), { mode: 15, gloss: .10 });
+    ball(43.13, .61, -12.98, .21, .13, .15, C('#c98d4e'), { mode: 15, gloss: .10 });
+    ball(42.95, .66, -13.00, .10, .09, .09, C('#d69a58'), { mode: 15, gloss: .10 });
     for (const s of [-1, 1])
-      ball(42.95 + s * .05, .74, -12.00, .035, .045, .02, C('#9a6a38'), { mode: 15, gloss: .10 });
-    cap(43.27, .60, -11.90, .035, .30, .035, C('#b8813f'), { ry: .7, rz: 1.2, gloss: .10 });
+      ball(42.95 + s * .05, .74, -13.00, .035, .045, .02, C('#9a6a38'), { mode: 15, gloss: .10 });
+    cap(43.27, .60, -12.90, .035, .30, .035, C('#b8813f'), { ry: .7, rz: 1.2, gloss: .10 });
 
     // ---------------------------------------------------------------- the gateway at the mouth
-    // A 步行街 in this city is announced. Two piers and a beam across the entrance with the
-    // street's name on both faces, so it reads from the crossing and again on the way out.
-    for (const s of [-1, 1]) {
-      const pz = LZC + s * ((LZ1 - LZ0) / 2 - .45);
-      box(LX0 + .55, 3.10, pz, 1.10, 6.20, .90, REDD, { hard: true, gloss: .26 });
-      box(LX0 + .55, 6.35, pz, 1.26, .40, 1.06, RED, { hard: true, gloss: .26 });
-      solid(LX0 + .00, LX0 + 1.10, pz - .45, pz + .45);
+    // The first gateway was a six-metre-high pair of 1.10 m masonry piers with a full-span beam.
+    // It measured five metres clear yet read as a tunnel from the crossing. Keep the address, but
+    // make it urban wayfinding rather than architecture: two slim paired steel markers sit beyond
+    // the body envelope, short cantilevers stop well before the centre, and sky stays continuous.
+    const GATE_Z = [MOUTH_Z0 + .16, MOUTH_Z1 - .16];
+    for (let gi = 0; gi < GATE_Z.length; gi++) {
+      const pz = GATE_Z[gi], inward = gi === 0 ? 1 : -1;
+      for (const px of [LX0 + .18, LX0 + .58]) {
+        box(px, 2.55, pz, .14, 5.10, .18, REDD, { hard: true, gloss: .34 });
+        box(px, .16, pz, .34, .32, .44, C('#77716a'), { hard: true, gloss: .22 });
+      }
+      box(LX0 + .38, 4.88, pz + inward * .72, .54, .16, 1.62, REDD,
+        { hard: true, gloss: .32 });
+      box(LX0 + .36, 3.18, pz + inward * .06, .09, 1.94, .72, RED,
+        { hard: true, gloss: .30 });
+      for (const g of glyphs(LX0 + .305, 3.18, pz + inward * .06, -Math.PI / 2,
+          gi === 0 ? '新天地' : '步行街',
+          { size: .25, gap: .08, vertical: true, color: col.goldL,
+            mode: 1, glow: .18, lift: .008 }))
+        emis(g, .72);
     }
-    box(LX0 + .55, 6.55, LZC, 1.10, .90, LZ1 - LZ0 - .9, REDD, { hard: true, gloss: .26 });
-    for (const s of [-1, 1])
-      for (const g of glyphs(LX0 + .55 + s * .56, 6.55, LZC, s > 0 ? Math.PI / 2 : -Math.PI / 2,
-          '新天地步行街',
-          { size: .46, gap: .16, color: col.goldL, mode: 1, glow: .20, lift: .012 }))
-        emis(g, .80);
-    if (typeof light === 'function') light(LX0 + 1.8, 4.0, LZC, [1.0, .82, .58], .34, 9.0);
+    // One low directory plate faces the crossing. It is fixed to the north marker and leaves no
+    // freestanding pole in the arrival apron.
+    box(LX0 + .07, 1.45, MOUTH_Z1 - .16, .07, 1.44, .78, C('#2f3a44'),
+      { hard: true, gloss: .28 });
+    box(LX0 + .025, 2.20, MOUTH_Z1 - .16, .10, .08, .84, REDD,
+      { hard: true, gloss: .26 });
+    glyphs(LX0 - .015, 1.67, MOUTH_Z1 - .16, -Math.PI / 2, '新天地步行街',
+      { size: .125, gap: .028, color: C('#e8dfc6'), mode: 1, lift: .006 });
+    glyphs(LX0 - .015, 1.30, MOUTH_Z1 - .16, -Math.PI / 2, '面包花店奶茶书店',
+      { size: .082, gap: .018, color: C('#b9c2ca'), mode: 1, lift: .006 });
+    if (typeof light === 'function') light(LX0 + 1.8, 4.0, LZC, [1.0, .82, .58], .28, 8.0);
 
-    // ---- B5. Clutter at the mouth, so the lane reads from the crossing as somewhere to go
-    // rather than as a gap in a parade. The mouth's clear width is the gap between the two piers'
-    // own colliders — z -11.70 to -6.70, **5.00 m** — and nothing added here is a collider, so it
-    // stays 5.00 m against the item's 4.00 m floor.
-    //
-    // The 导览牌 is mounted ON the north pier's lane-facing side rather than standing beside it,
-    // and that is a measurement rather than a preference: the pier is a 1.10 × 0.90 mass at
-    // x 41.60..42.70, z -6.70..-5.80, and a freestanding board anywhere in front of it either
-    // stands inside the pier or stands inside 北京新天地, whose own frontage runs to z -6.94 from
-    // x 43.00 east. There is no gap between the two. Hung on the pier at z -6.74 it is 0.26 m
-    // clear of where the pier's own `solid` holds the body.
-    box(42.15, 1.10, -6.74, .70, 1.50, .07, C('#2f3a44'), { hard: true, gloss: .28 });
-    box(42.15, 1.89, -6.74, .76, .10, .11, REDD, { hard: true, gloss: .26 });
-    glyphs(42.15, 1.44, -6.777, Math.PI, '新天地步行街',
-      { size: .155, gap: .035, color: C('#e8dfc6'), mode: 1, lift: .006 });
-    glyphs(42.15, .96, -6.777, Math.PI, '面包房花店',
-      { size: .105, gap: .028, color: C('#b9c2ca'), mode: 1, lift: .006 });
-    glyphs(42.15, .74, -6.777, Math.PI, '奶茶店书店',
-      { size: .105, gap: .028, color: C('#b9c2ca'), mode: 1, lift: .006 });
-    // The same pier's WEST face, which is the one B5's acceptance test actually looks at: from the
-    // west footway at (26, -9) the board above is edge-on and reads as a dark line. Verified on
-    // the live site — the gateway beam carries from the crossing and the 导览牌 does not, so the
-    // mouth gets a second plate facing the crossing. Yaw -PI/2 faces (-1, 0, 0).
-    box(41.55, 2.30, -6.25, .07, 1.16, .84, C('#2f3a44'), { hard: true, gloss: .28 });
-    box(41.55, 2.96, -6.25, .11, .10, .90, REDD, { hard: true, gloss: .26 });
-    glyphs(41.51, 2.42, -6.25, -Math.PI / 2, '新天地步行街',
-      { size: .135, gap: .03, color: C('#e8dfc6'), mode: 1, lift: .006 });
-    glyphs(41.51, 2.06, -6.25, -Math.PI / 2, '面包房花店书店',
-      { size: .095, gap: .022, color: C('#b9c2ca'), mode: 1, lift: .006 });
-    for (const px of [42.68, 43.98]) {                              // 隔离桩, and the chain slung
-      cyl(px, .43, -11.94, .042, .86, C('#b03a2e'), { gloss: .30 });   // between them
-      ball(px, .89, -11.94, .055, .06, .055, C('#dfe3e6'), { gloss: G.metal });
-    }
-    cyl(43.33, .74, -11.94, .014, 1.30, C('#8b9095'), { rz: Math.PI / 2, gloss: G.metal });
+    // The resulting first impression is a full 6.2 m of open paving. No chain, bollard rank or
+    // freestanding directory occupies the sightline or suggests that pedestrians must queue.
 
-    // ---- B4. 共享单车 at the lane's mouth. They bank up outside a 步行街 in this city and
-    // street-cycles.js:937 already put a rack on the east kerb; nothing marked the lane's own
-    // mouth. The bay is x 39.80 .. 41.05, z -13.45 .. -12.40: south of the mouth, on the far
-    // pavement, where the road zone stops the body at x 39.50 and the lane zone (z >= -11.90,
-    // body -11.60) does not reach. Outside every zone, so no collider and no width to argue
-    // about. Four machines at seven primitives each rather than street.js's twenty-five-primitive
-    // `bike` — at fifteen metres down the road nothing on a shared bike resolves but its colour.
-    flat(40.45, .013, -12.92, 1.60, .10, C('#c8b45a'), { gloss: .18 });
-    flat(40.45, .013, -13.58, 1.60, .10, C('#c8b45a'), { gloss: .18 });
-    [[-12.40, '#e8b81f'], [-12.75, '#2f7ac4'], [-13.10, '#e8b81f'], [-13.45, '#3d9c62']]
+    // ---- B4. 共享单车. Two machines form a small kerb bay south of the gateway; the previous
+    // bank of four dominated the doorway in perspective and duplicated the larger road rack.
+    flat(40.45, .013, -13.68, 1.60, .10, C('#c8b45a'), { gloss: .18 });
+    flat(40.45, .013, -14.18, 1.60, .10, C('#c8b45a'), { gloss: .18 });
+    // Built as open spoked machines, not four black cylinder faces. From a street-length view the
+    // old solid wheel discs were the dominant shapes in the bay and made the bicycles read as a
+    // stack of tyres. Ten short tyre arcs leave daylight through each wheel; four spokes, a hub,
+    // fork, stays, crank, bars and rack then keep the silhouette legible from either approach.
+    const cycleWheel = (wx, bz) => {
+      const WR = .27, N = 10, SEG = 2 * WR * Math.sin(Math.PI / N) * 1.10;
+      for (let k = 0; k < N; k++) {
+        const a = k * Math.PI * 2 / N;
+        cap(wx + Math.cos(a) * WR, .30 + Math.sin(a) * WR, bz,
+          .018, SEG, .018, col.black, { rz: a, gloss: .25 });
+      }
+      for (let k = 0; k < 4; k++)
+        cap(wx, .30, bz, .007, .47, .007, col.steel, { rz: k * Math.PI / 4, gloss: G.metal });
+      cyl(wx, .30, bz, .037, .08, col.steelD,
+        { ry: Math.PI / 2, rz: Math.PI / 2, gloss: G.metal });
+    };
+    [[-13.68, '#e8b81f'], [-14.18, '#3d9c62']]
       .forEach(([bz, hex]) => {
         const fr = C(hex);
-        for (const wx of [39.98, 40.92])
-          cyl(wx, .30, bz, .30, .06, col.black, { ry: Math.PI / 2, rz: Math.PI / 2, gloss: .24 });
-        cyl(40.45, .48, bz, .026, .92, fr, { ry: Math.PI / 2, rz: Math.PI / 2, gloss: .32 });
-        cyl(40.24, .56, bz, .024, .50, fr, { rz: .55, gloss: .32 });
-        cyl(40.76, .58, bz, .024, .54, fr, { rz: -.40, gloss: .32 });
-        box(40.22, .74, bz, .20, .05, .11, col.black, { hard: true, gloss: .28 });
-        taper(40.86, .80, bz, .28, .22, .22, C('#9aa0a2'), { gloss: .30 });
+        cycleWheel(39.98, bz); cycleWheel(40.92, bz);
+        // Two triangles and returned stays form a recognisable step-through frame.
+        cap(40.45, .51, bz, .022, .86, .022, fr, { rz: Math.PI / 2, gloss: .32 });
+        cap(40.23, .53, bz, .021, .52, .021, fr, { rz: .53, gloss: .32 });
+        cap(40.67, .55, bz, .020, .57, .020, fr, { rz: -.48, gloss: .32 });
+        cap(40.20, .51, bz, .020, .45, .020, fr, { rz: -.32, gloss: .32 });
+        cap(40.84, .55, bz, .018, .57, .018, col.steelD, { rz: .18, gloss: G.metal });
+        cap(40.92, .83, bz, .016, .32, .016, col.steel,
+          { rx: Math.PI / 2, gloss: G.metal });
+        box(40.19, .76, bz, .20, .045, .10, col.black, { hard: true, gloss: .28 });
+        cyl(40.43, .35, bz, .080, .025, col.steelD,
+          { ry: Math.PI / 2, rz: Math.PI / 2, gloss: G.metal });
+        for (const side of [-.11, .11])
+          cap(40.43, .29, bz + side, .014, .18, .014, col.black,
+            { rz: Math.PI / 2, gloss: .25 });
+        // A wire basket and low rear carrier, both visibly supported.
+        taper(40.86, .80, bz, .27, .21, .21, C('#9aa0a2'), { gloss: .30 });
+        for (const zoff of [-.12, .12])
+          cap(40.08, .70, bz + zoff, .012, .36, .012, col.steelD,
+            { rz: Math.PI / 2, gloss: G.metal });
+        cap(39.93, .63, bz, .012, .30, .012, col.steelD, { rz: -.18, gloss: G.metal });
       });
     cyl(41.24, .48, -13.72, .030, .96, C('#6a7076'), { gloss: G.metal });
     box(41.24, 1.06, -13.72, .52, .30, .04, C('#2f5f8c'), { hard: true, gloss: .28 });
@@ -653,7 +893,12 @@
         { rx: Math.PI / 2, gloss: .24 });
       for (let i = 0; i < 9; i++) {
         const u = (i + .5) / 9, dz = LZ0 + .3 + u * (LZ1 - LZ0 - .6);
-        emis(ball(wx, 5.30 - sag * Math.sin(u * Math.PI) - .10, dz, .055, .062, .055,
+        const by = 5.30 - sag * Math.sin(u * Math.PI) - .10;
+        // A straight messenger cable can carry a sagging festoon only through pendant drops.
+        // Model every drop instead of leaving the centre bulbs floating over half a metre below it.
+        cap(wx, (5.30 + by) * .5, dz, .006, 5.30 - by, .006, C('#3a3a36'),
+          { gloss:.22, tag:'灯串' });
+        emis(ball(wx, by, dz, .055, .062, .055,
           C('#ffe6b4'), { mode: 1, glow: .04 }), .55);
       }
     }
@@ -685,7 +930,8 @@
       const open = within(h, s.hrs[0], s.hrs[1]);
       if (open === s.open) continue;
       s.open = open;
-      s.p.m = open ? HIDDEN : M.trs(s.x, s.top - s.h / 2, s.z, 0, s.wid, s.h, .05);
+      s.p.m = open ? rolledShutter(s.x, s.z, s.wid, s.top) :
+        M.trs(s.x, s.top - s.h / 2, s.z, 0, s.wid, s.h, .05);
     }
   };
 
@@ -717,33 +963,33 @@
       look: { skin:'#e0b48c', hair:'#3a322c', hairStyle:'bun', top:'#e8e2d6', pants:'#3a4148',
               shoe:'#d8d2c0', sleeve:'short', collar:'polo', apron:'#8a6a3f',
               tall:0.93, wide:1.04, headScale:1.00, age:0.44, faceSeed:401 },
-      spots: [{ h0: 6.8, h1: 19.8, at: [43.70, -11.72], face: 0, act: 'vend' }],
+      spots: [{ h0: 6.8, h1: 19.8, at: [43.70, -12.72], face: 0, act: 'vend' }],
     });
     CAST.push({
       hz: '老板', place: 'street', temper: 'steady', speed: .76,
       look: { skin:'#cba078', hair:'#8e877e', hairStyle:'short', top:'#4f6a80', pants:'#333a42',
               shoe:'#3a3f45', sleeve:'long', collar:'shirt', glasses:true,
               tall:1.00, wide:1.02, headScale:1.01, stoop:0.11, age:0.71, faceSeed:403 },
-      spots: [{ h0: 9.8, h1: 21.8, at: [56.50, -6.55], face: Math.PI, act: 'read' }],
+      spots: [{ h0: 9.8, h1: 21.8, at: [56.50, -5.55], face: Math.PI, act: 'read' }],
     });
 
     // ---- C1. Two on routes, end to end. `hours` + `patrol` is 豆豆's own pattern (data.js:135).
-    // The two lines are z -9.60 and -8.55, which clear the 三轮车 at -11.10 and the mall's door
-    // planters at -8.12 by 0.43 m — NPCs are drawn and never collided, but a person walking
-    // through a planter still looks like one.
+    // The two lines stay near opposite shop edges at z -10.65 and -7.75. That leaves a calm
+    // 2.9-metre visual centre aisle even when both walkers meet; NPCs need to respect perceived
+    // breathing room just as much as colliders do.
     CAST.push({
       hz: '路人', place: 'street', temper: 'brisk', speed: 1.06,
       look: { skin:'#dcae86', hair:'#241f1c', hairStyle:'ponytail', top:'#b8455a', pants:'#39414d',
               shoe:'#e8e2d6', sleeve:'short', bag:'shoulder', bagColor:'#5a4a3c',
               tall:0.95, wide:0.96, headScale:1.00, age:0.31, faceSeed:409 },
-      hours: [10.0, 21.0], patrol: [[42.60, -9.60], [57.40, -9.05]],
+      hours: [10.0, 21.0], patrol: [[42.60, -10.65], [57.40, -10.35]],
     });
     CAST.push({
       hz: '路人', place: 'street', temper: 'bored', speed: 0.88,
       look: { skin:'#c89468', hair:'#2b2320', hairStyle:'short', top:'#5c6248', pants:'#2f3742',
               shoe:'#d64f3f', sleeve:'half', collar:'polo', pack:true, packColor:'#3f6350',
               tall:1.02, wide:1.06, headScale:1.01, stoop:0.05, age:0.38, faceSeed:411 },
-      hours: [10.0, 21.0], patrol: [[57.20, -8.55], [42.80, -8.95]],
+      hours: [10.0, 21.0], patrol: [[57.20, -7.75], [42.80, -8.05]],
     });
 
     // ---- C2. 排队. The word exists at the breakfast stall and nowhere else on this street, and
@@ -751,12 +997,12 @@
     // and half seven, which is the hour a Beijing supermarket actually has a queue at its door.
     // Same shape as the stall's: a `spots` window, so outside it they are off the street entirely
     // rather than standing in a line nobody is joining.
-    [[-11.05, 'patient', { skin:'#d3a179', hair:'#b0aba2', hairStyle:'perm', top:'#4f7a68',
+    [[-12.15, 'patient', { skin:'#d3a179', hair:'#b0aba2', hairStyle:'perm', top:'#4f7a68',
                            pants:'#3a4148', shoe:'#dfd8ca', sleeve:'short', collar:'polo',
                            bag:'tote', bagColor:'#9c8a6a',
                            tall:0.89, wide:1.11, headScale:0.98, stoop:0.12, age:0.77,
                            faceSeed:419 }, undefined],
-     [-10.55, 'bored',   { skin:'#e3b58b', hair:'#2b2320', hairStyle:'tousled', top:'#3f6f8c',
+     [-11.20, 'bored',   { skin:'#e3b58b', hair:'#2b2320', hairStyle:'tousled', top:'#3f6f8c',
                            pants:'#414954', shoe:'#e9e2d5', sleeve:'short',
                            tall:0.98, wide:0.98, headScale:1.02, age:0.34, faceSeed:421 },
       'phone'],

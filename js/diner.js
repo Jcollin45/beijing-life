@@ -34,7 +34,7 @@ const Diner = Lazy('Diner', () => {
   const G = { matte: .06, wood: .20, paint: .16, metal: .58, glass: .80, fabric: .04 };
 
   const B = Build.scene({ fabricGloss: G.fabric });
-  const { box, cyl, ball, capsule, taper, model, wall, flat, glyphs,
+  const { box, cyl, ball, capsule, taper, model, modelOr, wall, flat, glyphs,
           solid, shade, glow, thing } = B;
 
   // ---------------------------------------------------------------- dimensions
@@ -145,33 +145,34 @@ const Diner = Lazy('Diner', () => {
     for (const [ox, oz] of [[-.44, -.28], [.44, -.28], [-.44, .28], [.44, .28]])
       capsule(cx + ox, .37, cz + oz, .028, .74, .028, col.steelD, { gloss: G.metal });
     box(cx, .12, cz, .92, .04, .60, col.steelD, { ...T, hard: true, gloss: G.metal });
-    // Chairs: a padded seat with a back, on the same four splayed legs the stools had.
-    //
-    // The seat centre and height are the stool's to the millimetre, and they have to stay that
-    // way — `.sitcheck.js` measures every sitter against the nearest seat pan within 65 cm, and
-    // the diners in this room are placed off exactly these coordinates. The pan is a box rather
-    // than a disc now, which the harness is happy with (it wants something at seat height that
-    // is wider than it is tall); the backrest at .69 is above the band it looks in, so it
-    // cannot be mistaken for a second seat.
-    //
-    // `ry: a` turns each chair to face the table: rotY(a) sends local +z to (sin a, 0, cos a),
-    // which is the outward radial, so the back lands behind the sitter rather than across them.
+    // The room already owns this carved Chinese stool for the spare by the pass. Reusing it here
+    // replaces the block-built chair bodies without another fetch, texture or draw submission.
+    // Keep the original green pan above it: that non-fixed box is the runtime's exact .475 m seat
+    // support, while imported model parts are deliberately ignored by the sitter resolver.
+    // `ry:a` leaves the model's long axis tangent to the table. If the model is unavailable the
+    // callback rebuilds every piece of the old padded chair, including that same support pan.
     for (let i = 0; i < n; i++) {
       const a = i * Math.PI / 2 + .4, sx = cx + Math.sin(a) * .95, sz = cz + Math.cos(a) * .78;
-      box(sx, .44, sz, .38, .07, .38, col.green, { ry: a, gloss: .20 });
-      box(sx, .395, sz, .35, .03, .35, col.woodD, { ry: a, hard: true, gloss: G.wood });
-      // The back sits 21 cm out — just clear of the seat's own rear edge at 19, so a seated
-      // figure's torso does not push through it.
-      box(sx + Math.sin(a) * .21, .69, sz + Math.cos(a) * .21, .36, .38, .05, col.green,
-        { ry: a, gloss: .20 });
-      for (const s of [-1, 1])
-        capsule(sx + Math.sin(a) * .21 + Math.cos(a) * s * .155, .60,
-          sz + Math.cos(a) * .21 - Math.sin(a) * s * .155,
-          .022, .48, .022, col.woodD, { gloss: G.wood });
-      for (let k = 0; k < 4; k++)
-        capsule(sx + Math.sin(k * 1.57 + .8) * .12, .21, sz + Math.cos(k * 1.57 + .8) * .12,
-          .020, .42, .020, col.steelD, { gloss: G.metal, rz: Math.sin(k * 1.57 + .8) * .10,
-            rx: -Math.cos(k * 1.57 + .8) * .10 });
+      const nativeChair = () => {
+        box(sx, .44, sz, .38, .07, .38, col.green, { ry: a, gloss: .20 });
+        box(sx, .395, sz, .35, .03, .35, col.woodD, { ry: a, hard: true, gloss: G.wood });
+        // The back sits 21 cm out — just clear of the seat's own rear edge at 19, so a seated
+        // figure's torso does not push through it.
+        box(sx + Math.sin(a) * .21, .69, sz + Math.cos(a) * .21, .36, .38, .05, col.green,
+          { ry: a, gloss: .20 });
+        for (const s of [-1, 1])
+          capsule(sx + Math.sin(a) * .21 + Math.cos(a) * s * .155, .60,
+            sz + Math.cos(a) * .21 - Math.sin(a) * s * .155,
+            .022, .48, .022, col.woodD, { gloss: G.wood });
+        for (let k = 0; k < 4; k++)
+          capsule(sx + Math.sin(k * 1.57 + .8) * .12, .21, sz + Math.cos(k * 1.57 + .8) * .12,
+            .020, .42, .020, col.steelD, { gloss: G.metal, rz: Math.sin(k * 1.57 + .8) * .10,
+              rx: -Math.cos(k * 1.57 + .8) * .10 });
+        return null;
+      };
+      const rendered = modelOr('chinese_stool', sx, 0, sz, .64228775,
+        { ry: a, gloss: .22, tag: '餐桌' }, nativeChair);
+      if (rendered) box(sx, .44, sz, .38, .07, .38, col.green, { ry: a, gloss: .20 });
     }
     // The permanent furniture of a table like this: vinegar, chilli oil, a napkin box, and a
     // cylinder of chopsticks.
@@ -765,17 +766,19 @@ const Diner = Lazy('Diner', () => {
     // ---- 牛肉面 a bowl of beef noodles on the pass, ready to be picked up. This is what you
     // came in for, and it is a whole prop rather than a decal because you are about to eat it.
     const bx = mx0 - .95, by = 1.10, bz = cz - .18;
-    cyl(bx, by + .08, bz, .17, .16, col.white, { tag: '牛肉面', gloss: .30 });
-    cyl(bx, by + .16, bz, .155, .02, col.broth, { tag: '牛肉面', mode: 1, gloss: .44 });
-    for (let i = 0; i < 7; i++)
-      capsule(bx + (rnd() - .5) * .18, by + .17, bz + (rnd() - .5) * .18, .007, .16, .007,
-        col.noodle, { tag: '牛肉面', rz: Math.PI / 2, ry: rnd() * 3, gloss: .20 });
-    for (let i = 0; i < 4; i++)
-      box(bx - .06 + (i % 2) * .09, by + .18, bz - .05 + ((i / 2) | 0) * .08, .07, .02, .05,
-        col.meat, { tag: '牛肉面', hard: true, gloss: .28, ry: rnd() });
-    for (let i = 0; i < 5; i++)
-      cyl(bx + (rnd() - .5) * .20, by + .185, bz + (rnd() - .5) * .20, .012, .01,
-        col.scallion, { tag: '牛肉面', mode: 1 });
+    modelOr('beef_noodle_bowl', bx, by, bz, 1, { tag:'牛肉面', gloss:.30 }, () => {
+      cyl(bx, by + .08, bz, .17, .16, col.white, { tag: '牛肉面', gloss: .30 });
+      cyl(bx, by + .16, bz, .155, .02, col.broth, { tag: '牛肉面', mode: 1, gloss: .44 });
+      for (let i = 0; i < 7; i++)
+        capsule(bx + (rnd() - .5) * .18, by + .17, bz + (rnd() - .5) * .18, .007, .16, .007,
+          col.noodle, { tag: '牛肉面', rz: Math.PI / 2, ry: rnd() * 3, gloss: .20 });
+      for (let i = 0; i < 4; i++)
+        box(bx - .06 + (i % 2) * .09, by + .18, bz - .05 + ((i / 2) | 0) * .08, .07, .02, .05,
+          col.meat, { tag: '牛肉面', hard: true, gloss: .28, ry: rnd() });
+      for (let i = 0; i < 5; i++)
+        cyl(bx + (rnd() - .5) * .20, by + .185, bz + (rnd() - .5) * .20, .012, .01,
+          col.scallion, { tag: '牛肉面', mode: 1 });
+    });
     for (let i = 0; i < 3; i++)
       steamRigs.push(ball(bx, by + .24 + i * .07, bz, .05, .05, .05, C('#eef3f6'),
         { mode: 1, alpha: 0 }));

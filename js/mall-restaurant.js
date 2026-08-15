@@ -364,7 +364,10 @@ window.RestaurantSys = (function () {
       if (o.d.share) dishes += o.n;
       if (o.d.staple) staples += o.n;
     }
-    const boxes = opt.boxes || 0, boxFee = boxes * BOX_FEE;
+    // A takeaway always leaves the pass in one box. Keep that fee inside the same bill object the
+    // menu, affordability guard and till consume; `boxes` remains explicit for dine-in leftovers.
+    const boxes = opt.boxes == null ? (opt.takeaway && L.length ? 1 : 0) : (opt.boxes || 0);
+    const boxFee = boxes * BOX_FEE;
     // 中午十二点前用餐，饮料免费. The food court PA announces this all morning (`ad:food` in js/mall.js),
     // so it has to be true at the till or the building is lying to the player — which is the whole
     // point of .patruth.js. 用餐 is eating here: a boxed order is 打包, not 用餐, so takeaway pays.
@@ -423,13 +426,30 @@ window.RestaurantSys = (function () {
       const g = G(); if (!g || !g.setMoney) return;
       g.setMoney(Math.max(0, H.money() - n));
     },
-    // 刷卡. The bank account is game.js's and this module will not reach into it uninvited: if the
-    // lead binds a `card` the money comes off the card, and until then the method is offered only
-    // when an account exists and says out loud that it settled in cash. A payment method that
-    // silently debits the wrong pot is worse than one method fewer.
+    // 刷卡. A bound host owns its transaction. Production uses game.js's atomic bank debit; an old
+    // host without that seam may fall back to cash, but only when that cash actually exists.
     card(n) {
-      if (host && host.card) return host.card(n);
-      H.spend(n); return { fell_back:true };
+      if (host && host.card) {
+        try { return host.card(n) === false ? false : { paid:true }; } catch (e) { return false; }
+      }
+      const g = G();
+      if (g && typeof g.bankCardPurchase === 'function') {
+        try { return g.bankCardPurchase(n) ? { paid:true } : false; } catch (e) { return false; }
+      }
+      if (H.money() < n) return false;
+      H.spend(n); return { paid:true, fell_back:true };
+    },
+    canCard(n) {
+      if (host && host.card) {
+        if (!host.canCard) return true;
+        try { return !!host.canCard(n); } catch (e) { return false; }
+      }
+      const g = G();
+      try {
+        const b = g && g.bank && g.bank();
+        if (!b || !b.hasCard) return false;
+        return typeof g.bankCardPurchase === 'function' ? Number(b.balance) + 1e-9 >= n : H.money() >= n;
+      } catch (e) { return false; }
     },
     // This read `g.bank().open` first and was silently always false, so 刷卡 never appeared on the
     // bill at all. The field on game.js's `bankAccount` (js/game.js:7173) is `hasCard`, beside
@@ -635,6 +655,8 @@ window.RestaurantSys = (function () {
     // row so the total below it adds up on screen, and only when it is actually taking money off.
     if (b.promo) rows.push({ off:true, hz:'饮料免费', py:'yǐnliào miǎnfèi',
       en:'drinks are free before noon — the food court says so all morning', right:`−¥${b.promo}` });
+    if (b.boxFee) rows.push({ off:true, hz:'打包盒', py:'dǎbāo hé',
+      en:'takeaway box', right:`¥${b.boxFee}` });
     for (const t of tips) rows.push({ off:true, hz:t.hz, py:t.py, en:t.en, right:'建议' });
     rows.push({ req:true, hz:'忌口', py:'jìkǒu', en:`what you cannot eat — ${describeReq()}`, right:'说一下' });
     if (state.order.length) rows.push({ place:true, hz:'就这些', py:'jiù zhèxiē',
@@ -747,15 +769,15 @@ window.RestaurantSys = (function () {
     state.placed = true;
     const names = b.lines.map(o => `${o.d.hz}${o.n > 1 ? '×' + o.n : ''}`).join('、');
     if (takeaway) {
-      H.spend(b.total + BOX_FEE);
+      H.spend(b.total);
       state.leftovers = { kind:'外卖', kindEn:'takeaway', what:names,
         food: Math.min(60, b.food * .55), at: H.minutes(), day: H.day() };
-      state.spend += b.total + BOX_FEE; state.visits++;
+      state.spend += b.total; state.visits++;
       H.advance(12);
-      H.say(`外卖打包好了 · <span class="dim">${esc(names)} · ¥${b.total} + ¥${BOX_FEE} 打包盒 — it is in your bag</span>`);
+      H.say(`外卖打包好了 · <span class="dim">${esc(names)} · ¥${b.total - b.boxFee} + ¥${b.boxFee} 打包盒 — it is in your bag</span>`);
       H.sentence('打包带走。');
-      H.diary(`在${NAME}打包了${names}，${b.total + BOX_FEE}块。`,
-        `Takeaway from ${NAME_EN}: ${b.lines.map(o => o.d.en).join(', ')}. ¥${b.total + BOX_FEE}.`, 'diner-takeaway');
+      H.diary(`在${NAME}打包了${names}，${b.total}块。`,
+        `Takeaway from ${NAME_EN}: ${b.lines.map(o => o.d.en).join(', ')}. ¥${b.total}.`, 'diner-takeaway');
       state.order = []; state.placed = false; state.party = 0;
       H.save(); return true;
     }
@@ -855,7 +877,7 @@ window.RestaurantSys = (function () {
     rows.push({ pay:'cash', hz:'现金', py:'xiànjīn', en:'cash — they will have to find change',
       right:`¥${b.total}`, off:H.money() < b.total });
     if (H.hasCard()) rows.push({ pay:'card', hz:'刷卡', py:'shuā kǎ', en:'card — the terminal is on the till',
-      right:`¥${b.total}` });
+      right:`¥${b.total}`, off:!H.canCard(b.total) });
     rows.push({ fapiao:true, hz:'开发票', py:'kāi fāpiào',
       en:'ask for a receipt you can claim back — the thing every business meal in China ends with',
       right: state.fapiao ? '✓' : '' });
@@ -897,7 +919,8 @@ window.RestaurantSys = (function () {
       en: ways > 1 ? `your share of ${ways}` : 'the whole bill' }];
     rows.push({ pay:'scan', hz:'扫码', py:'sǎo mǎ', en:'scan the code', right:`¥${mine}`, off:H.money() < mine });
     rows.push({ pay:'cash', hz:'现金', py:'xiànjīn', en:'cash', right:`¥${mine}`, off:H.money() < mine });
-    if (H.hasCard()) rows.push({ pay:'card', hz:'刷卡', py:'shuā kǎ', en:'card', right:`¥${mine}` });
+    if (H.hasCard()) rows.push({ pay:'card', hz:'刷卡', py:'shuā kǎ', en:'card', right:`¥${mine}`,
+      off:!H.canCard(mine) });
     rows.push({ back:true, hz:'返回', py:'fǎnhuí', en:'back' });
     P.show({ title:`${NAME} · 付钱`, sub:`¥${mine} · ¥${H.money()} 在身上`, rows,
       onPick(r) { if (r.back) { openBill(); return false; } return r.pay ? settle(r.pay, b, ways) : false; } });
@@ -911,7 +934,13 @@ window.RestaurantSys = (function () {
       H.say(`钱不够 · <span class="dim">¥${mine} needed; you have ¥${H.money()}</span>`); return false;
     }
     let note = '';
-    if (method === 'card') { const r = H.card(mine); if (r && r.fell_back) note = '（走的现金）'; }
+    if (method === 'card') {
+      const r = H.card(mine);
+      if (!r) {
+        H.say(`银行卡余额不够 · <span class="dim">¥${mine} needed; payment cancelled</span>`); return false;
+      }
+      if (r.fell_back) note = '（走的现金）';
+    }
     else H.spend(mine);
     state.spend += mine; state.visits++;
     if (state.pendingBoxes) {

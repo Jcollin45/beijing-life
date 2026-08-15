@@ -5,15 +5,12 @@
 // Nothing here may be written floor-relative: world.js checks, warns and lifts, but a room that
 // needs rescuing is a room that was built in the lobby.
 //
-// WHAT THE SHELL DOES NOT GIVE THIS DECK
+// WHAT THE SHELL GIVES THIS DECK
 //
-// `buildShell` and `buildShafts` in js/world.js run for decks 0 and 2 only — `for (const f of
-// [0, 2])`, twice. Wave 0 of TOWER.md generalised the *state* machine (DECK, ZONE/SOL/SHA/GLO,
-// setFloor, roomAt, deckDecals, DECK_OF) but not the *geometry*, so on deck 3 there is no floor,
-// no ceiling, no perimeter wall, no shaft enclosure and no lift landing until this file lays them.
-// All of that is therefore built here, and the lift frontage is built behind a guard
-// (`shellLanding` below) so that it takes itself out the day the shell starts generating one per
-// deck rather than z-fighting with it.
+// `buildShell` still pours the slab, ceiling and perimeter only for decks 0 and 2, so this file
+// owns deck 3's envelope and fit-out. `buildShafts`, however, now runs over `SHAFT_DECKS` and gives
+// every served deck real shaft walls, moving landing doors, an indicator and a live call panel.
+// This module deliberately contributes no shaft frontage or shaft collision of its own.
 //
 // THE PLAN
 //
@@ -43,6 +40,7 @@ FlatFit['f3'] = A => {
     return HomeF3;
   }
   const box = A.box, cyl = A.cyl, ball = A.ball, wall = A.wall, flat = A.flat;
+  const modelOr = A.modelOr;
   const cap = A.cap || A.capsule || A.box;
   const taper = A.taper || A.box;
   const ceiling = A.ceiling;
@@ -74,7 +72,9 @@ FlatFit['f3'] = A => {
   // 老李's own front door, 301. The one door on this floor that opens - and it is standing open,
   // which is both the cheapest way to make a floor visitable without owning js/game.js's door
   // machinery and exactly what a retired couple's door does all afternoon.
-  const FX = 3.90, FW = 1.00, FTOP = 2.05;
+  // The 1.20 m opening matches the other occupied upper flats and keeps the always-open security
+  // leaf plus padded winter curtain from turning 301's only entrance into a shoulder-width slot.
+  const FX = 3.90, FW = 1.20, FTOP = 2.05;
 
   // The partitions inside the flat. The spine runs the depth of the building at x = -2.60 with
   // three doorways in it; two cross walls split the west band into 厨房 / 卧室 / 书房.
@@ -85,14 +85,6 @@ FlatFit['f3'] = A => {
     kitchen: [2.05, 2.90], bed: [-0.15, 0.70], study: [-2.65, -1.80],
   };
   const BAL = [2.40, 4.40];             // the sliding opening onto the 阳台, as [x0, x1]
-
-  // Has the shell learned to build a landing on this deck? The day `buildShafts` runs for every
-  // deck instead of `[0, 2]`, everything under `if (!shellLanding)` below becomes a second copy of
-  // geometry that already exists, on the same planes. Measured rather than assumed: any prop the
-  // shell has already put in the shaft's own footprint at this deck's height is one.
-  const shellLanding = (A.props || []).some(p => p.m && p.m[13] > Y + .20 && p.m[13] < Y + H
-    && p.m[14] > LF.z0 - .40 && p.m[14] < LF.z1 + .10
-    && p.m[12] > LF.x0 - 1.0 && p.m[12] < LF.x1 + 1.0);
 
   // ------------------------------------------------------------------ palette
   // Two palettes really: the landing is the same painted municipal cream and green-grey as your
@@ -331,9 +323,12 @@ FlatFit['f3'] = A => {
   // overhead bulb and its own camera ceiling; the doorways get overlapping strips, because
   // `clampMove` insets every zone by the 0.30 body radius and two zones that merely TOUCH leave a
   // 0.60 m band nobody can cross. That has sealed a floor in this project twice.
+  // Keep the orbit inside the room it frames. The limit is eased by game.js and never overwrites
+  // the player's chosen zoom, so crossing a doorway settles instead of snapping or exposing walls.
+  const camNear = (w, d) => Math.max(1.9, Math.min(3.4, .42 * Math.min(w, d) + 1.35));
   const zn = (id, x0, x1, z0, z1, lx, lz, ly) =>
     A.zone({ id, x0, x1, z0, z1, light: [lx, Y + (ly === undefined ? 2.34 : ly), lz],
-             ceil: CY - .06 });
+             ceil: CY - .06, near: camNear(x1 - x0, z1 - z0) });
   zn('f3', X0, X1, ZW, ZN, 0, 4.30, 2.30);                       // the landing - REQUIRED
   zn('laoli', SPX + .15, X1, BZ, 1.45, 2.10, -0.70);             // 客厅
   zn('lidoor', SPX + .15, X1, 0.60, ZW, 4.30, 2.35);             // 玄关, overlapping 客厅
@@ -365,27 +360,9 @@ FlatFit['f3'] = A => {
   for (const [z0, z1] of SPANS) stop(SPX - SPT / 2 - .02, SPX + SPT / 2 + .02, z0, z1);
   for (const zz of [KZ, UZ]) stop(X0, SPX + SPT / 2, zz - .07, zz + .07);
   for (const [x0, x1] of [[SPX, BAL[0]], [BAL[1], X1]]) stop(x0, x1, BZ - .07, BZ + .07);
-  // The two shafts. LIFT_B never opens anywhere in this building, so it is solid to its edges.
-  stop(LB.x0 - .10, LB.x1 + .10, LB.z0, LB.z1 + .05);
-  // LIFT is two piers with the door opening left CLEAR between them, and this is not cosmetic.
-  //
-  // `goFloor` in js/world.js now accepts any live deck, so the car really does come here — but
-  // `buildShafts` still runs `for (const f of [0, 2])` (world.js:773, 797), so deck 3 gets no
-  // registered leaves, no `doorStops` record, and `carZone` is pushed into ZONE[0] and ZONE[2]
-  // only. With the whole footprint walled, as it was first written, a player who rode up here
-  // was pushed out of the car by the collider on arrival and could then never get back in: the
-  // floor was reachable and had no way off it but the stairs, which do not open either.
-  //
-  // The piers stand exactly where the shell's own do — `landing()` guards x sh.x0-.10 .. cx-hw
-  // and cx+hw .. sh.x1+.10 for a DOORW/2 half-width — so the 0.80 m opening and the 0.20 m band
-  // of standing room inside it are the ones the working lift already has on deck 2, not a slot
-  // invented here. The door collider that belongs across that opening is the shell's, because
-  // only the shell knows whether the car is actually at this deck; until it generates one per
-  // deck, the opening is passable at all times. Walking into an empty shaft looks wrong. Being
-  // stranded on the third floor is worse, and it is the one of the two that is a trap.
-  const LHW = ((A.CAR && A.CAR.door) || .80) / 2, LCX = (LF.x0 + LF.x1) / 2;
-  stop(LF.x0 - .10, LCX - LHW, LF.z0, LF.z1 + .05);
-  stop(LCX + LHW, LF.x1 + .10, LF.z0, LF.z1 + .05);
+  // Shaft collision is dynamic shell state: it owns the dead shaft, the working piers and the
+  // door stop that opens only when the car is here. Duplicating any of those from a floor module
+  // can leave an invisible stop across a visibly open lift.
 
   // =================================================================================== LANDING
   //
@@ -418,15 +395,8 @@ FlatFit['f3'] = A => {
   dado('z', X0, 1, [[ZW, WZ - WW / 2], [WZ + WW / 2, ZN]]);
   dado('z', X1, -1, [[ZW, SZ - SW / 2], [SZ + SW / 2, ZN]]);
 
-  // ------------------------------------------------------------------ the two shafts
-  //
-  // See `shellLanding` above: this whole block is the shell's job the day `buildShafts` runs for
-  // more than decks 0 and 2, and it removes itself when that lands rather than z-fighting with it.
-  // Until then, without it the corridor's north end is an open void with the car swinging past in
-  // it. The car never stops here — `goFloor` in js/world.js still collapses every request to deck
-  // 0 or 2 — so these doors are shut, which is what a lift that is somewhere else looks like.
-  // The shell builds a real landing on every deck (SHAFT_DECKS, js/world.js:246), so the
-  // stand-in that used to sit here under `if (!shellLanding)` was dead code. Removed 2026-08-09.
+  // The two shaft faces and their controls are supplied once by the shell. Keeping the landing
+  // decoration here clear of that frontage is part of the floor/shell ownership contract.
 
   // ------------------------------------------------------------------ ceiling services
   // The sprinkler main hugs the flat's wall at z = 3.38, the only line down this landing that is
@@ -1018,24 +988,29 @@ FlatFit['f3'] = A => {
 
     // --- two armchairs, turned in towards the table, each with its own antimacassar
     function armchair(x, z, ry) {
-      const c = Math.cos(ry), s2 = Math.sin(ry);
-      const at = (ox, oz) => [x + ox * c - oz * s2, z + ox * s2 + oz * c];
-      box(x, FL + .20, z, .84, .40, .80, col.woodD, { hard: true, gloss: .28, ry, tag: '椅子', ...P.wood });
-      box(x, FL + .06, z, .90, .12, .86, col.woodD, { hard: true, gloss: .30, ry, ...P.wood });
-      box(x, FL + .46, z, .62, .16, .60, col.cloth, { gloss: .05, ry, ...P.cloth, tag: '椅子' });
-      const [bx, bz] = at(0, .30);
-      box(bx, FL + .70, bz, .84, .58, .18, col.woodD, { hard: true, gloss: .28, ry, ...P.wood });
-      box(bx, FL + .68, bz - .10 * c, .62, .46, .14, col.clothD, { gloss: .05, ry, ...P.cloth });
-      box(bx, FL + .995, bz, .40, .012, .22, col.lace, { hard: true, gloss: .04, ry });
-      for (const sd of [-1, 1]) {
-        const [ax, az] = at(sd * .36, 0);
-        box(ax, FL + .52, az, .14, .30, .80, col.woodD, { hard: true, gloss: .30, ry, ...P.wood });
-        box(ax, FL + .68, az, .16, .015, .32, col.lace, { hard: true, gloss: .04, ry });
-      }
+      modelOr('apartment_cane_armchair', x, FL, z, 1, { ry, tag:'椅子', gloss:.18 }, () => {
+        const c = Math.cos(ry), s2 = Math.sin(ry);
+        const at = (ox, oz) => [x + ox * c - oz * s2, z + ox * s2 + oz * c];
+        box(x, FL + .20, z, .84, .40, .80, col.woodD, { hard: true, gloss: .28, ry, tag: '椅子', ...P.wood });
+        box(x, FL + .06, z, .90, .12, .86, col.woodD, { hard: true, gloss: .30, ry, ...P.wood });
+        box(x, FL + .46, z, .62, .16, .60, col.cloth, { gloss: .05, ry, ...P.cloth, tag: '椅子' });
+        const [bx, bz] = at(0, .30);
+        box(bx, FL + .70, bz, .84, .58, .18, col.woodD, { hard: true, gloss: .28, ry, ...P.wood });
+        box(bx, FL + .68, bz - .10 * c, .62, .46, .14, col.clothD, { gloss: .05, ry, ...P.cloth });
+        box(bx, FL + .995, bz, .40, .012, .22, col.lace, { hard: true, gloss: .04, ry });
+        for (const sd of [-1, 1]) {
+          const [ax, az] = at(sd * .36, 0);
+          box(ax, FL + .52, az, .14, .30, .80, col.woodD, { hard: true, gloss: .30, ry, ...P.wood });
+          box(ax, FL + .68, az, .16, .015, .32, col.lace, { hard: true, gloss: .04, ry });
+        }
+      });
       stop(x - .52, x + .52, z - .50, z + .50);
       sha(x, z, .96, .94, .32);
     }
-    armchair(-1.62, 0.44, 0.62);
+    // Keep the west chair south of the 卧室 doorway. Beside the sofa it left only a body-width
+    // turn at the jamb; grouped off the tea table it preserves the conversation circle and a full
+    // comfort-width approach to both west-side rooms.
+    armchair(-1.00, -0.95, 0.38);
     armchair(2.22, 0.44, -0.62);
 
     // --- 茶几. No collider: it is 0.42 m high, and a solid there closes the only gap between the
@@ -1635,8 +1610,9 @@ FlatFit['f3'] = A => {
     for (const s of [-1, 1])
       cyl(DX2 - .085, FL + 1.065 + s * .0, DZ2 - .02 + s * .045, .020, .014, C('#b6a478'),
           { rz: PI / 2, gloss: .45 });
-    // 衣柜 — a two-door wardrobe under the cross wall, facing south down the room
-    const WDX = -3.66, WDZ = KZ - .32;
+    // 衣柜 — under the cross wall, but west of the doorway's turning square. Its former east
+    // edge left only 44 cm to the spine, so the room was body-reachable but not comfort-reachable.
+    const WDX = -4.20, WDZ = KZ - .32;
     box(WDX, FL + .96, WDZ, 1.20, 1.92, .58, col.woodM, { hard: true, gloss: .28, tag: '衣柜', ...P.wood });
     box(WDX, FL + 1.94, WDZ, 1.26, .07, .62, col.woodD, { hard: true, gloss: .32, ...P.wood });
     for (const dx of [-.29, .29]) {
@@ -1815,7 +1791,7 @@ FlatFit['f3'] = A => {
      '床 bed. 一床被子 — a quilt takes the measure word 床 as well.', -3.90, -0.10, 2.4);
   TH('台灯', SPX - .47, Y + 1.19, -0.81, '床头的台灯还开着。', 'The bedside lamp is still on.',
      '台 table + 灯 lamp.', -3.80, -0.90, 1.9);
-  TH('衣柜', -3.66, Y + 1.20, KZ - .62, '衣柜是他们结婚时买的。',
+  TH('衣柜', -4.20, Y + 1.20, KZ - .62, '衣柜是他们结婚时买的。',
      'They bought the wardrobe when they married.',
      '衣 clothes + 柜 cabinet.', -3.66, 0.10, 2.0);
   TH('书桌', -4.60, Y + .78, ZS + .74, '他每天在书桌上练字。',

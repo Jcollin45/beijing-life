@@ -110,7 +110,14 @@ const Street = Lazy('Street', () => {
 
   const B = Build.scene({ fabricGloss: G.fabric });
   const { box, cyl, ball, capsule, taper, flat, glyphs,
-          solid, blocker, shade, glow, thing } = B;
+          solid, blocker: rawBlocker, shade, glow, thing } = B;
+  // Every entry in Street's camera-blocker list is opaque architectural fabric: a complete
+  // building mass, returned gate, pavilion or transit shell. None is a chair/pole-sized obstacle
+  // that should force a close-up. Author the policy once at the scene boundary so district modules
+  // cannot accidentally omit it when they add another facade. Build.blocker still owns the exact
+  // measured bounds and whitelists metadata; this wrapper adds only the Street-wide orbit identity.
+  const blocker = (x0, x1, z0, z1, top = 400, opts) =>
+    rawBlocker(x0, x1, z0, z1, top, { ...(opts || {}), orbit:true });
 
   // ---------------------------------------------------------------- dimensions
   const AZ = 2.35;                        // walkable edge on the building side
@@ -160,7 +167,14 @@ const Street = Lazy('Street', () => {
   // The courtyard side sits well back: at five metres across, the camera could never get
   // far enough from either wall to look at anything square on.
   const CW = 2.55, CWZ = 3.95, SZ = 3.35;
-  const RD0 = 27.5, RD1 = 37.5;           // the road
+  // Continuous right-of-way contract, west frontage to east frontage. RD0/RD1 are the kerb
+  // construction datums; KW/KE are the actual road-side faces. The 14.00 m face-to-face section
+  // preserves two cycle tracks, a protected median/platform and one motor lane each way without
+  // stealing the 4.06 m east footway needed by the 商务区 metro entrance.
+  const RD0 = 25.34, RD1 = 37.50, KW = RD0 + .08, KE = RD1 - .08;
+  const BW0 = KW, BW1 = 27.67, PL0 = BW1, PL1 = 29.47;
+  const MS0 = PL1, MS1 = 32.67, MN0 = MS1, MN1 = 35.17, BE0 = MN1, BE1 = KE;
+  const ROAD_C = MS1;
   const SW1 = 41.0;                       // far pavement edge
 
   // Emissive things whose brightness rides the clock, and glass that reflects the sky by
@@ -194,13 +208,21 @@ const Street = Lazy('Street', () => {
   // Where you stand after stepping out of your own 单元门. The inbound half of the pair is
   // `HOME_LOBBY_ENTRY` in js/game.js; this is the outbound half, and it is exported so a caller
   // can arrive at the door it left by instead of falling through to the scene default.
-  const HOME_OUT = { x: DOOR + .1, z: -1.35, yaw: Math.PI * .5 };
+  // Stand in the alley centre rather than tight against the entrance reveal. At z=-.20 the
+  // recessed portal is 2.00 m behind the body, remains within every interaction's 2.2 m reach,
+  // and the full player-height camera can establish the street without filling half the frame
+  // with the door surround.
+  const HOME_OUT = { x: DOOR + .1, z: -.20, yaw: Math.PI * .5 };
 
   // ---- the things that move. Collected as the street is built and driven by `tick`, which the
   // loop calls for whichever place you are standing in. Until this existed the hutong was a
   // photograph: the loft's pigeons never left the boards, the steamers never steamed, and the
   // washing hung dead still on a street whose own weather system has a wind in it.
   const birds = [], steam = [], wash = [], stall = [];
+  const moveDynamic = (p, m) => {
+    p.m = m;
+    p.cx = m[12]; p.cy = m[13]; p.cz = m[14];
+  };
   const HIDDEN = M.trs(0, -60, 0, 0, .001, .001, .001);
   let stallUp = null;                    // whether the cart is on the pavement right now
   let windK = 0;                         // how hard it is blowing, set from the weather
@@ -322,7 +344,7 @@ const Street = Lazy('Street', () => {
           SL, { hard: true, mode: 13, rx: s * a, gloss: .20, ...RTILE });
         box(cx, base - .07, cz + s * (half + .17), len + .34, .13, .40,
           SD, { hard: true, mode: 13, rx: s * a, gloss: .18, ...RTILE });
-        box(cx, base - .19, cz + s * (half + .30), len + .30, .09, .13,
+        box(cx, base - .18, cz + s * (half + .30), len + .30, .09, .13,
           col.trunk, { hard: true, gloss: G.wood });
       }
     }
@@ -356,39 +378,66 @@ const Street = Lazy('Street', () => {
     const tagIt = meta === true || !!(named && named.tag);
     const z = CWZ, T = tagIt ? { tag: '大门' } : {};
     const doorCol = named && named.door ? named.door : col.red;
+    // Three addresses, three construction histories. The old version changed the flowerpot by
+    // each door but repeated the same 2.6 m brick rectangle and roof three times; from player
+    // height that still read as cloned scenery. Keep a common hutong-gate grammar while changing
+    // the opening, pier proportions, ridge height, roof offset and couplet at each household.
+    const gp = named && named.detail === 'commuter' ?
+      { open:1.48, pier:.56, top:2.78, roofW:2.82, roofD:1.42, base:2.91, rise:.34,
+        off:-.08, brick:col.brickD, lian:['平安即是家门福','孝友可为子弟箴'], head:'四季平安' } :
+      named && named.detail === 'child' ?
+      { open:1.62, pier:.48, top:2.72, roofW:3.02, roofD:1.50, base:2.86, rise:.39,
+        off:.10, brick:tint(col.brickL, .92, .012), lian:['一院春光随燕舞','满庭笑语伴花开'], head:'春满人间' } :
+      { open:1.74, pier:.46, top:3.00, roofW:3.34, roofD:1.78, base:3.06, rise:.50,
+        off:0, brick:col.brickL, lian:['春满乾坤福满门','天增岁月人增寿'], head:'万象更新' };
+    const gateW = gp.open + gp.pier * 2;
     // The street face of the gate mass. Everything you are meant to see — couplets, canopy,
     // lanterns, drum stones — belongs in front of this. Hung off `z + something` it all ended
     // up inside the courtyard, invisible from the only side you can stand on.
     const F = z - .36;
-    // jambs and lintel in brick, framing a 1.6 m opening
+    // Separate jambs and a lintel leave a real dark opening between them. Short side returns and
+    // stone feet make each pier read as masonry construction rather than a board pasted on a wall.
     for (const s of [-1, 1])
-      box(x + s * 1.05, 1.45, z, .50, 2.90, .70, col.brickL,
+      box(x + s * (gp.open / 2 + gp.pier / 2), gp.top / 2, z, gp.pier, gp.top, .70, gp.brick,
         { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-    box(x, 2.72, z, 2.60, .34, .70, col.brickL,
+    box(x, gp.top - .17, z, gateW, .34, .70, gp.brick,
       { hard: true, mode: 11, ...BRICK });
+    for (const s of [-1, 1]) {
+      const px = x + s * (gp.open / 2 + gp.pier / 2);
+      box(px, .11, F + .03, gp.pier + .14, .22, .62, col.stoneD,
+        { hard: true, gloss: .22 });
+      box(px, gp.top + .035, z, gp.pier + .12, .07, .82, col.stone,
+        { hard: true, gloss: .20 });
+    }
     // raised stone threshold you have to step over
-    box(x, .085, z, 1.90, .17, .90, col.stoneD, { hard: true, gloss: .22 });
+    box(x, .085, z, gp.open + .24, .17, .90, col.stoneD, { hard: true, gloss: .22 });
     for (const s of [-1, 1]) {
       // 门墩 drum stone, sat on the street side of the threshold
-      cyl(x + s * .74, .30, F + .06, .17, .38, col.stoneD, { gloss: .24 });
-      box(x + s * .74, .085, F + .06, .44, .17, .44, col.stoneD, { hard: true, gloss: .22 });
+      const dx = x + s * (gp.open / 2 - .07);
+      cyl(dx, .30, F + .06, .17, .38, col.stoneD, { gloss: .24 });
+      box(dx, .085, F + .06, .44, .17, .44, col.stoneD, { hard: true, gloss: .22 });
     }
     // The doors sit back in the reveal, not on the face of the wall. Named homes stand open
     // far enough for their resident to pass through; the leaf furniture is placed in the same
     // hinged frame so the studs and handle follow the door instead of floating on the wall.
     for (const s of [-1, 1]) {
-      const a = -s * (named ? .82 : .09), ca = Math.cos(a), sa = Math.sin(a);
-      const hx = x + s * .80, hz = z - .02;
+      const swing = named && named.detail === 'commuter' ? .70 :
+        named && named.detail === 'child' ? .92 : .80;
+      const a = -s * (named ? swing + (s > 0 ? .08 : -.04) : .09);
+      const ca = Math.cos(a), sa = Math.sin(a);
+      const hx = x + s * gp.open / 2, hz = z - .02;
       const at = (lx, lz) => [hx + ca * lx + sa * lz, hz - sa * lx + ca * lz];
-      const [dx, dz] = at(-s * .40, 0);
-      box(dx, 1.18, dz, .78, 2.02, .075, doorCol,
+      const leafW = gp.open / 2 - .025;
+      const [dx, dz] = at(-s * leafW / 2, 0);
+      box(dx, 1.18, dz, leafW, 2.02, .075,
+        s > 0 ? tint(doorCol, .93, .008) : doorCol,
         { hard: true, gloss: .26, ry: a, ...T });
       for (let r = 0; r < 4; r++) for (let c = -1; c <= 1; c++) {
-        const [sx, sz] = at(-s * .40 + c * .22, -.045);
+        const [sx, sz] = at(-s * leafW / 2 + c * leafW * .28, -.045);
         ball(sx, .62 + r * .42, sz, .032, .032, .022,
           col.gold, { gloss: G.metal, ...T });
       }
-      const [kx, kz] = at(-s * .68, -.06);
+      const [kx, kz] = at(-s * (leafW - .12), -.06);
       capsule(kx, 1.02, kz, .055, .16, .055, col.gold,
         { rx: Math.PI / 2, ry: a, gloss: G.metal, ...T });
     }
@@ -398,21 +447,27 @@ const Street = Lazy('Street', () => {
     // through the couplet, which from a couple of metres looked like damage.
     // The pair read as a pair: 上联 on the right as you face the gate, 下联 on the left, and the
     // 横批 across the lintel above them.
-    const LIAN = ['春满乾坤福满门', '天增岁月人增寿'];
     for (const s of [-1, 1]) {
-      box(x + s * 1.05, 1.42, F - .01, .22, 1.46, .012, col.red, { hard: true, gloss: .10 });
-      B.glyphs(x + s * 1.05, 1.42, F - .012, Math.PI, LIAN[s > 0 ? 1 : 0],
-        { size: .17, gap: .022, vertical: true, color: col.goldL, gloss: .18, lift: .008 });
+      const px = x + s * (gp.open / 2 + gp.pier / 2);
+      const paperH = gp.top > 2.9 ? 1.54 : 1.34;
+      box(px, 1.39, F - .01, .21, paperH, .012, col.red, { hard: true, gloss: .10 });
+      B.glyphs(px, 1.39, F - .012, Math.PI, gp.lian[s > 0 ? 1 : 0],
+        { size:.16, gap:.021, vertical:true, color:col.goldL, gloss:.18, lift:.008 });
     }
-    box(x, 2.56, F - .01, 1.70, .26, .012, col.red, { hard: true, gloss: .10 });
-    B.glyphs(x, 2.56, F - .012, Math.PI, '万象更新',
-      { size: .20, gap: .12, color: col.goldL, gloss: .18, lift: .008 });
+    const headY = gp.top - .29;
+    box(x, headY, F - .01, gp.open + .06, .24, .012, col.red,
+      { hard: true, gloss: .10 });
+    B.glyphs(x, headY, F - .012, Math.PI, gp.head,
+      { size:.18, gap:.10, color:col.goldL, gloss:.18, lift:.008 });
     // canopy: a small pitched roof carried on two brackets, overhanging the alley
     for (const s of [-1, 1])
-      box(x + s * 1.00, 2.78, F - .22, .17, .19, .72, col.redD, { hard: true, gloss: G.wood });
-    tileRoof(x, F - .30, 3.10, 1.70, 2.94, .44);
+      box(x + s * (gp.open / 2 + .18), gp.base - .15, F - .18, .15, .18, .66,
+        col.redD, { hard: true, gloss: G.wood });
+    tileRoof(x + gp.off, F - .30, gp.roofW, gp.roofD, gp.base, gp.rise);
     // lanterns hung under the eaves, lit after dark
-    for (const s of [-1, 1]) lantern(x + s * 1.30, 2.34, F - .48, s === 1 && tagIt);
+    for (const s of [-1, 1])
+      lantern(x + gp.off + s * (gp.roofW / 2 - .28), gp.base - .58, F - .46,
+        s === 1 && tagIt);
 
     // A household plaque and one small family-specific clue. The three gates share the same
     // bones, as neighbouring courtyard houses do, but no longer look like cloned scenery.
@@ -476,6 +531,18 @@ const Street = Lazy('Street', () => {
       }
     }
     solid(x - 1.4, x + 1.4, z - .5, z + .55);
+    // The body already cannot cross this masonry envelope, so the third-person camera must obey
+    // the same truth. Without a camera blocker, looking back at the home entrance from mid-alley
+    // placed the 4.8 m orbit behind the opposite gate and *inside* its angled red leaves; two door
+    // panels then consumed two-thirds of the view. Keeping the authored gate intact and shortening
+    // the camera on its street side fixes every rotation, not just that one pair of leaves.
+    // 王家 sits directly opposite 十八号楼. Its neighbouring brick return is part of the same
+    // camera truth even though the body's collider remains the measured 2.8 m gate envelope:
+    // without this shallow funnel, an oblique orbit can clear the gate AABB and park behind the
+    // blank back of that return. Starting the camera-only footprint at the return makes the orbit
+    // guide continuously around the returned mass instead of finding that false pocket.
+    const camHalf = tagIt ? 3.25 : 1.4;
+    blocker(x - camHalf, x + camHalf, z - .5, z + .55, gp.top + .55);
     if (tagIt) {
       thing('大门', x, 3.20, z + .30, '这是一个老四合院的大门。',
         'This is the gate of an old courtyard house.',
@@ -582,15 +649,20 @@ const Street = Lazy('Street', () => {
       return B.shape(mesh, p[0], p[1], p[2], sx, sy, sz, color,
         { ry, ...o, ...T });
     };
-    // Tyre, then a bright rim ring on each face, then the hub. Without the rim the wheel was
-    // a solid black disc; a real spoked wheel is too many primitives to be worth it here.
+    // Open tyre arcs, three real spokes and a hub. Layering smaller cylinders over a tyre did not
+    // make a rim: at player height every parked bicycle was still a solid black disc, and a rank
+    // of them became a wall. Eight overlapping arcs cost little enough for this sparse parked set
+    // and, crucially, leave actual daylight through the wheel.
     for (const fw of (o.front === false ? [-.52] : [-.52, .52])) {
-      put('cyl', fw, .335, 0, .67, .050, .67, col.black, { rz: Math.PI / 2, gloss: .26 });
-      for (const side of [-.028, .028]) {
-        put('cyl', fw, .335, side, .58, .010, .58, col.steel, { rz: Math.PI / 2, gloss: G.metal });
-        put('cyl', fw, .335, side * 1.4, .50, .010, .50, col.charcoal,
-          { rz: Math.PI / 2, gloss: .22 });
+      const wr = .305, wn = 8, seg = 2 * wr * Math.sin(Math.PI / wn) * 1.10;
+      for (let k = 0; k < wn; k++) {
+        const a = k * Math.PI * 2 / wn;
+        put('capsule', fw + Math.cos(a) * wr, .335 + Math.sin(a) * wr, 0,
+          .023, seg, .023, col.black, { rz: a, gloss: .26 });
       }
+      for (let k = 0; k < 3; k++)
+        put('capsule', fw, .335, 0, .008, .54, .008, col.steel,
+          { rz: k * Math.PI / 3, gloss: G.metal });
       put('cyl', fw, .335, 0, .11, .09, .11, col.steel, { rz: Math.PI / 2, gloss: G.metal });
     }
     put('capsule', 0, .50, 0, .05, 1.02, .05, frame, { rz: Math.PI / 2, gloss: .34 });
@@ -893,7 +965,9 @@ const Street = Lazy('Street', () => {
         col.steelD, { gloss: .16 });
       const tail = box(bx - Math.sin(br) * .09, by + .06, bz - Math.cos(br) * .09, .05, .03, .09,
         col.steelD, { hard: true, ry: br, gloss: .16 });
-      birds.push({ parts: [body, head, tail], m0: [body.m, head.m, tail.m],
+      const parts = [body, head, tail];
+      for (const p of parts) p.dynamic = true;
+      birds.push({ parts, m0: [body.m, head.m, tail.m],
                    x: bx, y: by + .06, z: bz, ry: br,
                    // Each bird leaves and lands a little after the one beside it, and takes its own
                    // radius round the roof, or four pigeons fly as one object.
@@ -959,17 +1033,45 @@ const Street = Lazy('Street', () => {
   function wallJunk(x, z, kind, n = 1) {
     const CR = [C('#3d6f8c'), C('#8a4a3c'), C('#4f7a58'), C('#8a7a3c')];
     if (kind === 0) {
-      // A stack of stackable crates, the perforated kind every shop in China gets its stock in.
-      // Two columns, one of them a crate shorter, because a level stack reads as masonry.
-      for (const [ox, h] of [[-.34, 4], [.34, 3]])
-        for (let i = 0; i < h; i++) {
-          const k = jit(x + ox, i * 3.7 + z);
-          box(x + ox, .095 + i * .19, z + (k - .5) * .10, .62, .19, .44,
-            CR[(i + (ox > 0 ? 2 : 0)) % 4], { hard: true, gloss: .28, ry: (k - .5) * .22 });
-          box(x + ox, .185 + i * .19, z + (k - .5) * .10, .54, .015, .36,
-            tint(CR[(i + (ox > 0 ? 2 : 0)) % 4], .78), { hard: true, gloss: .24,
-              ry: (k - .5) * .22 });
+      // Four open returnable crates in an uneven low stack. Seven opaque coloured boxes became
+      // literal toy masonry beside 垃圾分类; thin rails, corner posts and visible contents keep the
+      // same lived-in stock cue while letting the brick wall and air show through every crate.
+      const makeCrate = (cx, base, cz, color, ry, loaded) => {
+        const w = .58, d = .40, h = .19, rail = .035, ca = Math.cos(ry), sa = Math.sin(ry);
+        const at = (ox, oz) => [cx + ca * ox + sa * oz, cz - sa * ox + ca * oz];
+        for (const oz of [-.12, 0, .12]) {
+          const [px, pz] = at(0, oz);
+          box(px, base + .018, pz, .51, .035, .040, color, { hard:true, ry, gloss:.24 });
         }
+        for (const yy of [base + .065, base + .155]) {
+          for (const oz of [-d / 2 + rail / 2, d / 2 - rail / 2]) {
+            const [px, pz] = at(0, oz);
+            box(px, yy, pz, w, rail, rail, color, { hard:true, ry, gloss:.26 });
+          }
+          for (const ox of [-w / 2 + rail / 2, w / 2 - rail / 2]) {
+            const [px, pz] = at(ox, 0);
+            box(px, yy, pz, rail, rail, d, color, { hard:true, ry, gloss:.26 });
+          }
+        }
+        for (const ox of [-w / 2 + rail / 2, w / 2 - rail / 2])
+          for (const oz of [-d / 2 + rail / 2, d / 2 - rail / 2]) {
+            const [px, pz] = at(ox, oz);
+            capsule(px, base + h / 2, pz, .016, h, .016, color, { gloss:.26 });
+          }
+        if (loaded) {
+          for (let q = 0; q < 4; q++) {
+            const [px, pz] = at(-.17 + (q % 2) * .31, -.09 + ((q / 2) | 0) * .18);
+            ball(px, base + .18, pz, .075, .055, .075,
+              q % 2 ? C('#b46b43') : C('#87975b'), { gloss:.12, ry:q * .7 });
+          }
+        }
+      };
+      const crates = [
+        [-.34, .00, -.015, -.07, false], [.31, .00, .025, .06, false],
+        [-.30, .20, .005, .04, true],    [.30, .20, -.020, -.09, true],
+      ];
+      crates.forEach(([ox, base, oz, ry, loaded], i) =>
+        makeCrate(x + ox, base, z + oz, CR[i % CR.length], ry, loaded));
     } else if (kind === 1) {
       // 液化气罐 the bottled-gas cylinder that every hutong kitchen still runs on, its regulator,
       // and a red plastic bucket beside it with a mop standing in it.
@@ -992,10 +1094,27 @@ const Street = Lazy('Street', () => {
           .028, .116, .028, C('#3f6f4a'), { rz: a, gloss: .30 });
       }
       capsule(x, 1.60, z - n * .34, .011, .10, .011, col.steelD, { gloss: G.metal });
-      box(x - .04, .17, z - n * .06, .86, .34, .52, C('#3b6f9c'),
-        { hard: true, gloss: .22, ry: .09, round: .06 });
-      box(x - .04, .35, z - n * .06, .80, .06, .46, C('#33608a'),
-        { hard: true, gloss: .20, ry: .09 });
+      // A compact hinged toolbox, recessed against the wall. The old .86 × .52 m blue chest
+      // breached the legal body edge and read as one bright cuboid in front of 修鞋. A tapered
+      // case, separate lid, hinge, handle, latches and feet keep the same lived-in cue while its
+      // whole envelope stays in the unreachable wall strip at both call sites.
+      const tbx = x - .04, tbz = z - n * .24;
+      taper(tbx, .17, tbz, .70, .28, .32, C('#3b6f9c'), { gloss: .22, ry: .09 });
+      box(tbx, .21, tbz + n * .165, .54, .16, .018, C('#315d84'),
+        { hard:true, gloss:.20, ry:.09 });
+      box(tbx, .35, tbz, .74, .06, .36, C('#33608a'),
+        { hard:true, gloss:.20, ry:.09, round:.035 });
+      capsule(tbx, .34, tbz - n * .185, .014, .64, .014, col.steelD,
+        { rz:Math.PI / 2 + .09, gloss:G.metal });
+      for (const s of [-1, 1]) {
+        capsule(tbx + s * .16, .43, tbz, .012, .16, .012, col.steelD,
+          { rz:s * .20, gloss:G.metal });
+        box(tbx + s * .18, .30, tbz + n * .190, .08, .10, .025, col.steel,
+          { hard:true, gloss:G.metal, ry:.09 });
+        ball(tbx + s * .27, .035, tbz, .035, .035, .035, col.black, { gloss:.20 });
+      }
+      capsule(tbx, .49, tbz, .014, .34, .014, col.steelD,
+        { rz:Math.PI / 2, gloss:G.metal });
       for (let i = 0; i < 5; i++)
         capsule(x + .58, .74, z - n * .18 + (i - 2) * .035, .022, 1.46, .022,
           i % 2 ? C('#b7a172') : C('#a08d63'), { rz: .17 + (i - 2) * .02, gloss: .14 });
@@ -1031,34 +1150,45 @@ const Street = Lazy('Street', () => {
       put('cyl', fw, .21, 0, .26, .12, .26, col.steel, { rz: Math.PI / 2, gloss: G.metal });
       put('cyl', fw, .21, 0, .11, .14, .11, col.steelD, { rz: Math.PI / 2, gloss: G.metal });
     }
-    put('box', -.06, .30, 0, .96, .16, .34, body, { gloss: .34 });          // floor pan
-    put('box', -.40, .58, 0, .46, .58, .32, body, { gloss: .34 });          // body over the wheel
-    put('box', -.36, .84, 0, .52, .12, .30, col.black, { gloss: .26 });     // saddle
-    put('box', -.62, .96, 0, .34, .10, .28, col.black, { gloss: .26 });     // pillion pad
+    // Moulded, overlapping volumes rather than a stack of coloured cartons.  The tyre shoulders,
+    // step-through deck and two separate seat pads now keep their own curved silhouettes in the
+    // exact views down the alley and across the metro mouth.
+    put('ball', -.06, .30, 0, .48, .08, .17, body, { mode: 7, gloss: .34 });
+    put('ball', -.40, .58, 0, .23, .29, .16, body, { mode: 7, gloss: .34 });
+    put('ball', -.36, .84, 0, .26, .06, .15, col.black, { mode: 7, gloss: .26 });
+    put('ball', -.62, .96, 0, .17, .05, .14, col.black, { mode: 7, gloss: .26 });
     put('taper', .40, .62, 0, .34, .62, .30, body, { rx: -.14, gloss: .34 });   // front shroud
     put('capsule', .40, .96, 0, .05, .48, .05, col.steelD, { gloss: .36 });
     put('capsule', .40, 1.02, 0, .035, .58, .035, col.charcoal,
       { rz: Math.PI / 2, gloss: .34 });                                      // bars
     for (const side of [-.30, .30]) {
       put('capsule', .40, 1.14, side, .018, .20, .018, col.steelD, { gloss: G.metal });
-      put('box', .40, 1.24, side, .09, .06, .04, col.charcoal, { gloss: .40 });
+      put('ball', .40, 1.24, side, .045, .030, .020, col.charcoal,
+        { mode: 7, gloss: .40 });
     }
-    put('box', .52, .74, 0, .22, .14, .10, col.frame, { gloss: .44 });       // headlight
+    put('ball', .52, .74, 0, .11, .07, .05, col.frame, { mode: 1, gloss: .44 });
     // The quilt: a padded apron over the bars with sleeves at the ends, in the loudest
     // pattern the market had. Flat and plain it read as a bin bag hung on the handlebars.
     // Sized to the bars and the rider's shins. At 0.74 m square it was a coloured cube with a
     // wheel poking out of the bottom, and the scooter under it could not be seen at all.
     if (quilt) {
-      put('box', .30, .94, 0, .58, .40, .30, quilt, { mode: 7, gloss: G.fabric, round: .05 });
-      put('box', .26, .66, 0, .48, .34, .26, quilt, { mode: 7, gloss: G.fabric, round: .05 });
+      put('ball', .30, .94, 0, .29, .20, .15, quilt, { mode: 7, gloss: G.fabric });
+      put('ball', .26, .66, 0, .24, .17, .13, quilt, { mode: 7, gloss: G.fabric });
       for (const side of [-.27, .27])
-        put('box', .32, .99, side, .14, .22, .20, quilt, { mode: 7, gloss: G.fabric, round: .04 });
+        put('ball', .32, .99, side, .07, .11, .10, quilt, { mode: 7, gloss: G.fabric });
       for (let i = 0; i < 2; i++)
         put('box', .30, .84 + i * .18, 0, .60, .025, .32, col.cream,
           { mode: 7, gloss: G.fabric });
       put('box', .295, .94, 0, .22, .34, .32, col.cream, { mode: 7, gloss: G.fabric });
     }
-    put('box', -.70, .74, 0, .34, .34, .40, col.charcoal, { gloss: .30 });   // top box
+    // A rounded lockable pod with a separate lid, latch and rear reflector.  It remains useful
+    // storage without becoming the dominant square in every distant scooter silhouette.
+    put('ball', -.70, .74, 0, .19, .18, .21, col.charcoal, { mode: 7, gloss: .30 });
+    put('ball', -.70, .925, 0, .18, .035, .20, col.steelD, { mode: 7, gloss: .34 });
+    put('box', -.906, .72, 0, .020, .075, .14, C('#b84235'),
+      { hard: true, mode: 1, gloss: .34 });
+    put('capsule', -.70, .965, 0, .014, .20, .014, col.steel,
+      { rz: Math.PI / 2, gloss: G.metal });
     solid(x - .55, x + .55, z - .55, z + .55);
     shade(x, z, 1.6, 1.0, .30);
   }
@@ -1109,23 +1239,50 @@ const Street = Lazy('Street', () => {
     for (let i = 0; i < n; i++) {
       const x = x0 + i * .78, cz = z + i * dz, cl = kinds[(i * 3 + 1) % kinds.length];
       const tilt = ((i * 7) % 5 - 2) * .04;
-      const O = { mode: 7, gloss: G.fabric, round: .02, ry: tilt, tag };
+      const O = { mode: 7, gloss: G.fabric, ry: tilt, tag };
       // Everything hangs from `y`, not from somewhere below it. Slung 30 cm under the pegs
       // the wash floated, and from underneath the pegs read as confetti stuck to the sky.
-      if (i % 3 === 1) {                                    // trousers, waist up on the line
-        box(x, y - .15, cz, .30, .24, .05, cl, O);
-        for (const t of [-1, 1])
-          box(x + t * .080, y - .52, cz, .135, .52, .05, cl, { ...O, rz: t * .03 });
-      } else if (i % 3 === 2) {                             // a towel or a sheet, plain
-        box(x, y - .38, cz, .42, .74, .05, cl, O);
-      } else {                                              // shirt, sleeves hanging out
-        box(x, y - .32, cz, .34, .50, .05, cl, O);
+      if (i % 3 === 1) {                                    // trousers, soft waist and two legs
+        capsule(x, y - .10, cz, .045, .28, .018, cl,
+          { ...O, rz: Math.PI / 2 + tilt });
         for (const t of [-1, 1]) {
-          box(x + t * .25, y - .24, cz, .19, .15, .05, cl, { ...O, rz: -t * .5 });
-          box(x + t * .32, y - .44, cz, .13, .30, .05, cl, O);
+          ball(x + t * .075, y - .37 - t * .018, cz, .085, .255, .020, cl,
+            { ...O, rz: t * .055 });
+          capsule(x + t * .075, y - .61 - t * .018, cz - .003, .018, .115, .012,
+            C('#d6d0c5'), { ...O, rz: Math.PI / 2 + t * .08 });
         }
-        box(x, y - .06, cz, .26, .05, .05, cl, O);          // shoulders on a hanger
-        capsule(x, y + .01, cz, .012, .14, .012, col.steel, { rz: -.9, gloss: .34 });
+      } else if (i % 3 === 2) {                             // folded towel, scalloped and draped
+        for (let q = -1; q <= 1; q++) {
+          const qx = x + q * .105;
+          ball(qx, y - .36 + (q === 0 ? .018 : -.018) - q * .012, cz + q * .012,
+            .120, .345 - Math.abs(q) * .018, .028, cl,
+            { ...O, ry:tilt + q * .035, rz:q * .045 });
+          capsule(qx, y - .12, cz - .006, .012, .32, .010, C('#dad4c9'),
+            { ...O, rz: Math.PI / 2 + q * .02 });
+        }
+        // Two short shadowed folds turn the broad cloth face and stop it reading as a card.
+        // Unequal lengths and angles carry the drape into the deliberately crooked hem below.
+        capsule(x - .070, y - .40, cz - .031, .010, .205, .007, tint(cl, .66, -.015),
+          { ...O, rz:-.08 });
+        capsule(x + .055, y - .43, cz - .033, .009, .165, .007, tint(cl, .72, -.010),
+          { ...O, rz:.11 });
+        for (const q of [-1, 0, 1])
+          ball(x + q * .105, y - .68 - q * .018 + Math.abs(q) * .012,
+            cz + q * .012, .105, .034, .026, cl, { ...O, rz:q * .05 });
+      } else {                                              // shirt with rounded body and sleeves
+        ball(x, y - .32, cz, .185, .255, .022, cl, O);
+        capsule(x, y - .105, cz, .034, .30, .016, cl,
+          { ...O, rz: Math.PI / 2 + tilt });
+        for (const t of [-1, 1]) {
+          capsule(x + t * .245, y - .28, cz, .046, .27, .018, cl,
+            { ...O, rz: -t * .55 });
+          ball(x + t * .315, y - .395, cz, .052, .065, .020, cl, O);
+        }
+        // short hanger and contrasting collar keep the silhouette legible without a broad slab
+        capsule(x, y + .01, cz, .012, .14, .012, col.steel,
+          { rz: -.9, gloss: .34, tag });
+        capsule(x, y - .105, cz - .022, .010, .105, .010, C('#ddd8ce'),
+          { rz: Math.PI / 2, gloss: G.fabric, tag });
       }
       for (const t of [-1, 1])                              // pegs, gripping the line itself
         box(x + t * .095, y + .015, cz, .032, .065, .04,
@@ -1134,14 +1291,15 @@ const Street = Lazy('Street', () => {
     }
     // The whole line, with the height of the rail it swings from and a phase of its own, so two
     // lines on the same wall do not move as one sheet.
-    wash.push({ props: B.props.slice(first), m0: B.props.slice(first).map(p => p.m),
-                y, phase: wash.length * 1.7 });
+    const props = B.props.slice(first);
+    for (const p of props) p.dynamic = true;
+    wash.push({ props, m0: props.map(p => p.m), y, phase: wash.length * 1.7 });
   }
 
   // ---------------------------------------------------------------- the build
   // 地铁站 a subway entrance: a stair pit in the pavement with balustrades either side, a canopy
-  // over the back of it, the line's roundel on the fascia and a totem by the kerb with the
-  // station name running down it. The steps go down into shadow and that is all they need to do —
+  // over the back of it, the line's roundel on the fascia and a station blade fixed to a rear
+  // canopy column. The steps go down into shadow and that is all they need to do —
   // the station itself is a separate place.
   //
   // Every mouth on this street leads to the same room, so each one carries the name of the station
@@ -1151,63 +1309,126 @@ const Street = Lazy('Street', () => {
   function metroMouth(cx, cz, station) {
     const tag = 'metro' + (++mouths);
     const T = { tag };
-    // The pit. A dark floor with pale tread nosings lying on it, closer together as they run in:
-    // there is no digging a hole in a ground plane, and perspective does the rest.
-    flat(cx, .012, cz + .16, 2.12, 1.72, col.black, { gloss: .08, ...T });
-    for (let i = 0; i < 6; i++)
-      box(cx, .016, cz - .58 + i * .22 - i * i * .012, 1.86, .01, .055,
-        i < 3 ? col.kerb : col.stoneD, { hard: true, ...T, gloss: .14 });
-    // balustrades, the kerb round the opening, and a handrail running down each side
-    for (const s of [-1, 1]) {
-      box(cx + s * 1.16, .48, cz + .16, .16, .96, 1.84, col.stone,
-        { hard: true, gloss: G.matte, ...T });
-      box(cx + s * 1.16, .98, cz + .16, .22, .07, 1.90, col.kerb,
-        { hard: true, gloss: .20, ...T });
-      capsule(cx + s * .88, .70, cz + .06, .028, 1.70, .028, col.steelD,
-        { rx: Math.PI / 2 - .34, gloss: G.metal, ...T });
+    // A real opening, not a dark decal inside a stone bathtub. The well is the only broad plane;
+    // everything round it is a thin edge, a rail or a transparent panel. Eight separate treads
+    // tighten into the shadow so the approach reads as a flight at player height without raising
+    // an opaque stair block above the paving plane.
+    flat(cx, .012, cz + .14, 1.88, 1.74, col.black, { gloss: .06, ...T });
+    for (let i = 0; i < 8; i++) {
+      const z = cz - .65 + i * .205 - i * i * .0045;
+      box(cx, .018, z, 1.72 - i * .025, .012, .145,
+        i < 3 ? col.kerb : col.stoneD, { hard:true, gloss:.14, ...T });
+      box(cx, .029, z - .070, 1.76 - i * .025, .018, .026, col.kerb,
+        { hard:true, gloss:.20, ...T });
     }
-    box(cx, .05, cz - .78, 2.48, .10, .16, col.kerb, { hard: true, gloss: .20, ...T });
-    // the canopy over the back of the flight, on two posts
+
+    // Segmented retaining toes, slim uprights and glass infill keep both sides visibly open. The
+    // rail slopes down into the station; its posts shorten with it, so it cannot read as a pair of
+    // metre-high masonry slabs flanking the mouth.
+    const RZ = [-.59, -.10, .39, .86];
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 4; i++) {
+        const z = cz + RZ[i], h = .76 - i * .075;
+        box(cx + s * .97, .075, z, .11, .15, .40, col.stoneD,
+          { hard:true, gloss:.18, ...T });
+        capsule(cx + s * .97, .16 + h / 2, z, .026, h, .026, col.steelD,
+          { gloss:G.metal, ...T });
+        if (i < 3)
+          box(cx + s * .97, .52 - i * .037, z + .245, .030, .50 - i * .035, .40,
+            col.glassDay, { hard:true, mode:1, alpha:.34, gloss:G.glass, ...T });
+      }
+      capsule(cx + s * .97, .72, cz + .13, .032, 1.78, .032, col.steel,
+        { rx:Math.PI / 2 + .13, gloss:G.metal, ...T });
+    }
+    // Only the corner shoes cross the front line. The 1.76 m centre stays physically and visually
+    // open all the way to the tactile warning strip supplied by street-civic.js.
     for (const s of [-1, 1])
-      box(cx + s * 1.22, 1.30, cz + 1.10, .13, 2.60, .13, col.steelD,
-        { hard: true, gloss: G.metal, ...T });
-    box(cx, 2.62, cz + .52, 2.90, .12, 2.00, col.render, { hard: true, gloss: G.paint, ...T });
-    box(cx, 2.72, cz + .52, 2.70, .10, 1.80, col.renderD, { hard: true, gloss: G.paint, ...T });
-    // the fascia, the roundel and the words, all facing the way you walk up to it
-    box(cx, 2.40, cz - .46, 2.90, .34, .10, col.blueSign, { hard: true, gloss: .26, ...T });
-    // Everything written on this thing faces -z, which is the side you walk up to it from.
-    // At yaw 0 all three of them faced the courtyard wall behind and the fascia was a blank
-    // blue band with a white disc on it.
-    for (const g of B.glyphs(cx + .34, 2.40, cz - .52, Math.PI, '地铁站',
-        { size: .20, gap: .05, color: col.white, mode: 1, tag }))
-      litten(g, .9);
-    cyl(cx - .92, 2.40, cz - .53, .145, .03, col.white,
-      { rz: Math.PI / 2, mode: 1, gloss: .20, ...T });
-    for (const g of B.glyphs(cx - .92, 2.40, cz - .56, Math.PI, '地',
-        { size: .17, gap: 0, color: col.blueSign, mode: 1, tag }))
-      litten(g, .5);
-    // the totem out by the kerb, with the station's own name down it
-    box(cx - 1.90, 1.55, cz - .70, .16, 3.10, .16, col.steelD,
-      { hard: true, gloss: G.metal, ...T });
-    box(cx - 1.90, 2.60, cz - .74, .52, 1.60, .14, col.blueSign,
-      { hard: true, gloss: .26, ...T });
-    for (const g of B.glyphs(cx - 1.90, 2.58, cz - .82, Math.PI, station,
-        { size: .17, gap: .05, vertical: true, color: col.white, mode: 1, tag }))
-      litten(g, .9);
+      box(cx + s * .92, .055, cz - .78, .20, .11, .18, col.kerb,
+        { hard:true, gloss:.20, ...T });
+
+    // A light cantilever canopy: two rear columns, three cross-members, longitudinal ribs and six
+    // translucent polycarbonate leaves. There is no front post in the four-metre approach cone and
+    // no roof slab; the structure and the sky remain legible through each other from below.
+    for (const s of [-1, 1]) {
+      box(cx + s * .97, 1.38, cz + .90, .080, 2.76, .080, col.steelD,
+        { hard:true, gloss:G.metal, ...T });
+      box(cx + s * .97, 2.73, cz + .31, .060, .075, 1.32, col.steelD,
+        { hard:true, gloss:G.metal, rx:-.035, ...T });
+      capsule(cx + s * .97, 2.30, cz + .72, .026, .78, .026, col.steelD,
+        { rx:-.72, gloss:G.metal, ...T });
+    }
+    for (const dz of [-.31, .29, .89])
+      box(cx, 2.75 + (dz + .31) * .035, cz + dz, 2.18, .070, .060, col.steelD,
+        { hard:true, gloss:G.metal, ...T });
+    for (let i = 0; i < 6; i++) {
+      const x = cx - .875 + i * .35;
+      box(x, 2.79, cz + .30, .22, .030, 1.28, col.glassDay,
+        { hard:true, mode:1, alpha:.42, gloss:G.glass, rx:-.035, ...T });
+      box(x - .175, 2.815, cz + .30, .020, .035, 1.31, col.steel,
+        { hard:true, gloss:G.metal, rx:-.035, ...T });
+    }
+
+    // The portal is recessed behind the canopy nose. Doubled jambs and a shadowed inner lintel
+    // make the depth explicit while leaving 1.48 m clear between the supports.
+    for (const s of [-1, 1]) {
+      box(cx + s * .82, 1.12, cz + .79, .085, 2.14, .11, col.steelD,
+        { hard:true, gloss:G.metal, ...T });
+      box(cx + s * .75, 1.10, cz + .91, .055, 2.02, .08, col.charcoal,
+        { hard:true, gloss:.24, ...T });
+    }
+    box(cx, 2.18, cz + .79, 1.72, .10, .11, col.steelD,
+      { hard:true, gloss:G.metal, ...T });
+    box(cx, 2.07, cz + .91, 1.54, .065, .08, col.charcoal,
+      { hard:true, gloss:.24, ...T });
+
+    // A framed three-part fascia hangs from the front cross-member. Its narrow face carries the
+    // universal word and a correctly oriented roundel; the station-specific board and exit plate
+    // are fitted into the open slots by street-civic.js.
+    box(cx - .18, 2.51, cz - .355, 1.22, .26, .035, col.blueSign,
+      { hard:true, gloss:.26, ...T });
+    for (const x of [cx - .79, cx + .43])
+      box(x, 2.51, cz - .335, .035, .30, .080, col.steelD,
+        { hard:true, gloss:G.metal, ...T });
+    for (const g of B.glyphs(cx - .05, 2.51, cz - .382, Math.PI, '地铁站',
+        { size:.165, gap:.045, color:col.white, mode:1, tag }))
+      litten(g, .75);
+    cyl(cx - .73, 2.51, cz - .392, .125, .025, col.white,
+      { rx:Math.PI / 2, mode:1, gloss:.20, ...T });
+    cyl(cx - .73, 2.51, cz - .420, .092, .020, col.blueSign,
+      { rx:Math.PI / 2, mode:1, gloss:.20, ...T });
+    for (const g of B.glyphs(cx - .73, 2.51, cz - .442, Math.PI, '地',
+        { size:.115, gap:0, color:col.white, mode:1, tag }))
+      litten(g, .45);
+
+    // The station blade is fixed to a rear canopy column at both mouths. The old freestanding
+    // 商务区 mast occupied the kerb-side approach and the 杨柳胡同 mast sat on the crossing camera's
+    // first sightline; integrated brackets keep the same station-name cue without another pole.
+    const bladeSide = station === '杨柳胡同' ? 1 : -1;
+    const bladeX = cx + bladeSide * 1.10, bladeZ = cz + .82;
+    for (const y of [1.36, 2.17])
+      box(bladeX - bladeSide * .08, y, bladeZ, .18, .035, .045, col.steelD,
+        { hard:true, gloss:G.metal, ...T });
+    box(bladeX, 1.76, bladeZ - .035, .32, .92, .045, col.blueSign,
+      { hard:true, gloss:.26, ...T });
+    for (const g of B.glyphs(bladeX, 1.76, bladeZ - .065, Math.PI, station,
+        { size:.125, gap:.028, vertical:true, color:col.white, mode:1, tag }))
+      litten(g, .72);
     // Sized to the stair pit, not a metre wider than it on one side.
     //
-    // This was `cx - 2.05, cx + 1.30` — asymmetric, and nothing in the mouth is. The pit is the
-    // `flat` above: 2.12 × 1.72 centred on (cx, cz + .16). At the 商务区 mouth (cx 38.70) the old
+    // This was `cx - 2.05, cx + 1.30` — asymmetric, and nothing in the mouth is. The visible well
+    // is now 1.88 × 1.74 centred on (cx, cz + .14). At the former 商务区 datum (cx 38.70) the old
     // box ran x 36.65..40.00, so it started 0.85 m WEST OF THE KERB at RD1 = 37.5 — a metre of
     // carriageway blocked with no geometry in it — and then took all but the last metre of a 3.4 m
     // footway. Measured with clampMove at the 0.30 body radius, the far pavement had 0.00 m of
     // clear run from z -6 to -4 and again from z -14 to -9; two district agents reported the
     // footway severed and the mall's own label out of reach.
     //
-    // Still tight: a 2.12 m stair in a 3.4 m footway leaves about 0.65 m of clear walking past it,
-    // which is a squeeze rather than a wall. Widening the footway is the Road district's call.
-    solid(cx - 1.16, cx + 1.16, cz - .80, cz + 1.12);
-    shade(cx, cz + .2, 3.4, 2.4, .30);
+    // The ground-contact parts finish at cx±1.025. A 2.06 m collider protects the complete toes
+    // and columns without charging the footway for empty paving. Combined with the kerb-aligned
+    // 商务区 datum and frontage-edge walk zone below, this preserves a measured 2.00 m continuous
+    // building-side path; the former 2.32 m footprint left only 1.65 m in the playable realm.
+    solid(cx - 1.03, cx + 1.03, cz - .80, cz + 1.12);
+    shade(cx, cz + .18, 2.72, 2.30, .26);
     const th = thing('地铁站', cx, 2.92, cz - .60, '坐地铁比走路快。',
       'The subway is faster than walking.',
       '地铁 subway + 站 stop. Down the steps, buy a ticket, and go.',
@@ -1246,14 +1467,17 @@ const Street = Lazy('Street', () => {
       box(x + s * .30, .015, 0, .22, .05, 188, col.paveD, { hard: true, mode: 9, ...PAVE });
     }
     // lane dashes, the double centre line, and a zebra crossing at the alley mouth
-    for (let z = -90; z < 90; z += 4.2)
-      flat((RD0 + RD1) / 2 + 2.6, .008, z, .16, 2.3, col.paintW, { gloss: .10 });
+    for (let z = -90; z < 90; z += 4.2) {
+      if (Math.abs(z + .2) < 3.0) continue;
+      flat(BE0, .008, z, .16, 2.3, col.paintW, { gloss: .10 });
+    }
     for (const o of [-.10, .10])
-      flat((RD0 + RD1) / 2 + o, .008, 0, .12, 186, col.paintY, { gloss: .10 });
-    for (let i = 0; i < 9; i++)
-      flat(RD0 + .8 + i * 1.06, .009, -.2, .62, 4.6, col.paintW, { gloss: .10 });
-    // painted bike lane hugging the near kerb
-    flat(RD0 + 1.5, .006, 0, 2.4, 188, C('#6b5148'), { mode: 10, gloss: .18, ...ROAD });
+      flat(ROAD_C + o, .008, 0, .12, 186, col.paintY, { gloss: .10 });
+    for (let x = KW + .52; x < KE - .20; x += 1.18)
+      flat(x, .009, -.2, .66, 4.6, col.paintW, { gloss: .10 });
+    // Painted west cycle track, exactly the same 2.25 m band the road/cycle controllers publish.
+    flat((BW0 + BW1) / 2, .006, 0, BW1 - BW0, 188, C('#6b5148'),
+      { mode: 10, gloss: .18, ...ROAD });
     // What a road surface is actually made of: cast covers, gully grates at the kerb line, and
     // the darker rectangles where it has been dug up and made good. A six-lane carriageway of
     // unbroken asphalt with paint on it is the one thing a real road never is.
@@ -1275,17 +1499,12 @@ const Street = Lazy('Street', () => {
     }
     for (let i = 0; i < 8; i++) {
       const pz = -44 + i * 13.1 + (i % 4) * 3.1;
-      flat(RD0 + 3.0 + (i % 3) * 2.7, .0055, pz, 1.5 + (i % 3) * .7, 2.2 + (i % 2) * 1.4,
+      flat(RD0 + 3.0 + (i % 3) * 2.7, .010, pz, 1.5 + (i % 3) * .7, 2.2 + (i % 2) * 1.4,
         PATCH, { mode: 10, gloss: .20, mat: 'concrete', matScale: 2.10, matAmt: .14 });
     }
-    // Bollards along the kerb either side of the crossing, which is how a Chinese city stops
-    // scooters riding up onto the footway.
-    for (let i = 0; i < 12; i++) {
-      const bz = (i < 6 ? -3.9 - i * 1.35 : 3.9 + (i - 6) * 1.35);
-      cyl(RD0 - .52, .38, bz, .055, .76, col.steel, { gloss: .46 });
-      cyl(RD0 - .52, .77, bz, .055, .05, C('#c8382a'), { gloss: .40 });
-      capsule(RD0 - .52, .80, bz, .052, .05, .052, col.steel, { gloss: .48 });
-    }
+    // The west footway is the complete 2.00 m branch-street minimum, not a 2.00 m slab with a
+    // bollard row removed from it. Scooter control belongs at the authored crossing/platform
+    // edges in street-road.js, leaving this continuous building-to-kerb strip unobstructed.
     // drain channel down the middle of the alley, plus covers
     flat(0, .006, -1.62, 52, .34, col.paveD, { mode: 9, gloss: .26, ...PAVE });
     for (let x = -24; x < 24; x += 6.5) {
@@ -1297,29 +1516,65 @@ const Street = Lazy('Street', () => {
     // ============================================================ your block, north side
     const nbx = (NB.x0 + NB.x1) / 2, nbz = (NB.z0 + NB.z1) / 2;
     const nbw = NB.x1 - NB.x0, nbd = NB.z1 - NB.z0;
-    // Painted render on a 1980s walk-up. Mode 14 already puts the broad patchiness and the damp
-    // at the bottom of the wall on it; `plaster` supplies the fine tooth of the render itself,
-    // which is what the mode's low-frequency noise has never had. A big scale on purpose — a
-    // render coat has no repeat, and anything under a metre here turned the block into tiling.
-    box(nbx, NBH / 2, nbz, nbw, NBH, nbd, col.render,
-      { hard: true, mode: 14, gloss: G.paint, ...RENDER });
-    // Brick plinth, a string course at first-floor level, and the parapet. The plinth is a
-    // facing on the front wall, not a solid to the building's full depth — given `nbd` it
-    // became a 28 by 15 metre brick slab lying over the alley at waist height.
-    box(nbx, .70, NB.z1 + .04, nbw + .10, 1.40, .34, col.brick,
-      { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-    box(nbx, FL - .10, NB.z1 + .06, nbw + .12, .22, .12, col.band, { hard: true, gloss: G.paint });
-    box(nbx, NBH + .28, nbz, nbw + .22, .56, nbd + .18, col.renderD,
-      { hard: true, gloss: G.paint });
-    box(nbx, NBH + .60, nbz, nbw + .30, .10, nbd + .26, col.tileD,
-      { hard: true, gloss: .2, ...RTILE });
-    // The balconies stand a metre proud of the facade, so the camera has to stop clear of
+    // This is one address, but it is not one extrusion. Three construction phases meet at
+    // narrow movement joints: the older west wing is set back, the stair tower steps forward
+    // above its porch, and the east wing has its own roof line. From the alley those offsets cast
+    // the long vertical shadows a real 28 m frontage needs; a texture cannot do that work.
+    const homeWings = [
+      { x0: NB.x0, x1: -3.25, face: NB.z1 - .24, top: NBH - .65,
+        tone: tint(col.render, .98, .018) },
+      { x0: -3.25, x1: 3.25, face: NB.z1 + .25, top: NBH + 1.00,
+        tone: tint(col.render, 1.025, -.010), upper: true },
+      { x0: 3.25, x1: NB.x1, face: NB.z1 - .36, top: NBH + .15,
+        tone: tint(col.render, .955, -.018) },
+    ];
+    const wingAt = x => x < -3.25 ? homeWings[0] : x > 3.25 ? homeWings[2] : homeWings[1];
+    for (const w of homeWings) {
+      const ww = w.x1 - w.x0, wx = (w.x0 + w.x1) / 2;
+      const bottom = w.upper ? FL : 0;
+      box(wx, bottom + (w.top - bottom) / 2, (NB.z0 + w.face) / 2,
+        ww, w.top - bottom, w.face - NB.z0, w.tone,
+        { hard: true, mode: 14, gloss: G.paint, ...RENDER });
+      // The projected stair wing still needs an honest ground-floor wall behind the vestibule.
+      if (w.upper)
+        box(wx, FL / 2, (NB.z0 + NB.z1) / 2, ww, FL, NB.z1 - NB.z0, col.render,
+          { hard: true, mode: 14, gloss: G.paint, ...RENDER });
+
+      const groundFace = w.upper ? NB.z1 : w.face;
+      box(wx, .70, groundFace + .07, ww + .08, 1.40, .30, col.brick,
+        { hard: true, mode: 11, gloss: G.matte, ...BRICK });
+      box(wx, FL - .10, w.face + .06, ww + .10, .22, .12, col.band,
+        { hard: true, gloss: G.paint });
+
+      // A parapet is a perimeter, not another full-depth storey. Front and back runs plus short
+      // returns keep the roof silhouette legible from the high camera without capping each wing
+      // with another giant box.
+      box(wx, w.top + .27, w.face - .02, ww + .14, .54, .28, col.renderD,
+        { hard: true, gloss: G.paint });
+      box(wx, w.top + .27, NB.z0 + .08, ww + .14, .54, .22, col.renderD,
+        { hard: true, gloss: G.paint });
+      for (const sx of [w.x0 + .08, w.x1 - .08])
+        box(sx, w.top + .27, (NB.z0 + w.face) / 2, .22, .54, w.face - NB.z0,
+          col.renderD, { hard: true, gloss: G.paint });
+      box(wx, w.top + .58, w.face + .02, ww + .20, .08, .34, col.tileD,
+        { hard: true, gloss: .20, ...RTILE });
+    }
+    // Recessed movement joints make the offsets read as deliberate wings rather than intersecting
+    // primitives. They start above the shops, where the original construction would have split.
+    for (const [x, z, h] of [[-3.25, NB.z1 + .27, NBH - .70], [3.25, NB.z1 + .27, NBH + .05]])
+      box(x, FL + (h - FL) / 2, z, .16, h - FL, .16, col.charcoal,
+        { hard: true, gloss: .12 });
+    // The balconies stand almost a metre proud of the facade, so the camera has to stop clear of
     // them too or it ends up parked inside somebody's railing.
-    blocker(NB.x0, NB.x1, NB.z0, NB.z1 + 1.15, NBH);
+    // The apartment is the deepest shell in the street. The scene-level blocker wrapper gives it
+    // the same full-radius contract as every other opaque Street mass, while this explicit marker
+    // documents the original north-block regression and remains harmlessly idempotent.
+    blocker(NB.x0, NB.x1, NB.z0, NB.z1 + 1.15, NBH, { orbit: true });
     solid(NB.x0 - .12, NB.x1 + .12, NB.z0, NB.z1 + .10);
 
-    // window grid. Bays are on a 3.4 m pitch; the ground floor is shops and the stairwell,
-    // so it gets its own treatment further down.
+    // Window grid. Bays stay on the original 3.4 m pitch so flat 202 and its interaction retain
+    // their address, but each bay now has one job all the way up: window, balcony, or stair slot.
+    // That vertical order is what was missing from the old floor-by-floor checkerboard.
     const bays = [];
     for (let bx = NB.x0 + 1.9; bx < NB.x1 - 1.2; bx += 3.42) bays.push(bx);
     // 406. Which bay is yours. Flat 202 is the deck-2 flat off the landing js/home-corridor.js
@@ -1334,7 +1589,8 @@ const Street = Lazy('Street', () => {
     const homeTowerBx = homeTowerBays.length
       ? homeTowerBays.reduce((a, b) => Math.abs(b - DOOR) < Math.abs(a - DOOR) ? b : a)
       : null;
-    for (const bx of bays) {
+    for (let bi = 0; bi < bays.length; bi++) {
+      const bx = bays[bi], wing = wingAt(bx), face = wing.face;
       // Three things decide a bay, and all three are new with the block's real height:
       //
       //   deck   f is the storey above the ground floor, so it stands on deck f + 1. Deck 12 is
@@ -1358,74 +1614,91 @@ const Street = Lazy('Street', () => {
         // Yours only on deck 2. The eleven storeys above are neighbours and keep their hash.
         const wo = (deck === 2 && bx === homeTowerBx && !isDoor)
           ? { warm, mine: true } : { warm };
-        if (isDoor) {           // stairwell: tall narrow slot windows, lit by the 声控灯 behind
-          fwin(bx, y, NB.z1, 1.05, 1.35, { frame: false, warm: .92 });
+        if (isDoor) {           // one aligned stair slot, lit by the 声控灯 behind
+          fwin(DOOR, y, face, 1.02, 1.46, { frame: false, warm: .92 });
+          for (const s of [-1, 1])
+            box(DOOR + s * .66, y, face + .08, .10, 1.72, .18, col.band,
+              { hard: true, gloss: G.paint });
           continue;
         }
-        // roughly a third of the bays are the glazed-in balconies everyone builds
-        if ((bx * 7 + f * 3) % 5 < 2) {
-          box(bx, y - .78, NB.z1 + .52, 3.00, .10, 1.05, col.renderD,
+        // Alternate vertical stacks. The open rail survives at distance; reducing its post count
+        // is cheaper and more truthful than replacing it with the solid teal panel used before.
+        if (bi % 2 === 1) {
+          box(bx, y - .78, face + .43, 2.92, .10, .86, col.renderD,
             { hard: true, gloss: G.paint });
-          if (lod === 0) {
-            // An open railing: a kick plate at the bottom, a handrail on top, balusters
-            // between. A solid infill panel read as a teal board bolted to the facade.
-            box(bx, y - .68, NB.z1 + 1.02, 3.00, .26, .07, col.railD, { hard: true, gloss: .3 });
-            box(bx, y + .18, NB.z1 + 1.02, 3.04, .07, .10, col.rail, { hard: true, gloss: .34 });
-            for (let i = -6; i <= 6; i++)
-              capsule(bx + i * .22, y - .28, NB.z1 + 1.03, .022, .90, .022, col.rail,
-                { gloss: .34 });
-            // The balcony strip light. One emissive ball per occupied balcony, lod 0 only: this
-            // is the whole of the block's own night glow above the shopfronts, and until it
-            // existed your building was the one dark thing on a street of lit ones.
-            if (warm > .55)
-              litten(ball(bx + .95, y + .60, NB.z1 + .60, .05, .05, .05, C('#ffeec4'),
-                { mode: 1, glow: .04 }), .85);
-          } else {
-            // Above lod 0 the balusters collapse into the panel they read as from that distance.
-            box(bx, y - .48, NB.z1 + 1.02, 3.00, .86, .07, col.railD, { hard: true, gloss: .3 });
-            box(bx, y + .18, NB.z1 + 1.02, 3.04, .07, .10, col.rail, { hard: true, gloss: .34 });
-          }
-          fwin(bx - .78, y + .18, NB.z1, 1.28, 1.45, wo);
-          fwin(bx + .78, y + .18, NB.z1, 1.28, 1.45, wo);
+          for (const s of [-1, 1])
+            box(bx + s * 1.41, y - .22, face + .40, .10, 1.42, .80, col.renderD,
+              { hard: true, gloss: G.paint });
+          box(bx, y - .67, face + .86, 2.90, .15, .06, col.railD,
+            { hard: true, gloss: .30 });
+          box(bx, y + .18, face + .87, 2.98, .065, .09, col.rail,
+            { hard: true, gloss: .34 });
+          const railStep = lod ? .60 : .30;
+          for (let rx = -1.20; rx <= 1.201; rx += railStep)
+            capsule(bx + rx, y - .27, face + .88, .021, .90, .021, col.rail,
+              { gloss: .34 });
+          if (lod === 0 && warm > .55)
+            litten(ball(bx + .94, y + .58, face + .50, .05, .05, .05, C('#ffeec4'),
+              { mode: 1, glow: .04 }), .85);
+          fwin(bx - .76, y + .16, face, 1.24, 1.48, wo);
+          fwin(bx + .76, y + .16, face, 1.24, 1.48, wo);
           if (lod === 0 && jit(bx, f * 5.3) > .45) for (let i = 0; i < 3; i++)  // laundry on rail
-            box(bx - .6 + i * .6, y - .58, NB.z1 + 1.06, .44, .70, .05,
+            box(bx - .6 + i * .6, y - .58, face + .91, .44, .70, .05,
               [col.white, col.blue, col.plastic, col.cream][(jit(bx + i * 2.1, f) * 4) | 0],
               { mode: 7, gloss: G.fabric, ry: (jit(bx, f + i) - .5) * .1 });
         } else {
-          fwin(bx, y, NB.z1, 2.05, 1.50, wo);
-          if (lod === 0 && jit(bx * 1.7, f) > .35) acBox(bx + 1.35, y - 1.05, NB.z1);
+          fwin(bx, y, face, 2.05, 1.50, wo);
+          // Paired narrow piers hold the window stack together as a vertical bay.
+          for (const s of [-1, 1])
+            box(bx + s * 1.20, y, face + .06, .10, 1.78, .12, col.band,
+              { hard: true, gloss: G.paint });
+          if (lod === 0 && jit(bx * 1.7, f) > .35) acBox(bx + 1.35, y - 1.05, face);
         }
       }
-      // roof clutter above each bay: water tanks, vents, a solar heater
-      if (rnd() > .4) {
-        cyl(bx + .4, NBH + 1.15, nbz + 4.5, .55, 1.10, col.steel, { gloss: .36 });
-        box(bx + .4, NBH + .62, nbz + 4.5, 1.4, .10, 1.4, col.steelD, { hard: true, gloss: .3 });
-      }
-      if (rnd() > .5) {
-        for (let i = 0; i < 7; i++)
-          cyl(bx - .7 + i * .17, NBH + .95, nbz + 2.2, .07, 1.30, col.steel,
-            { rx: -.55, gloss: .40 });
-        cyl(bx, NBH + 1.45, nbz + 1.5, .30, 1.20, col.white, { rz: Math.PI / 2, gloss: .3 });
-      }
-      if (rnd() > .6) box(bx, NBH + 1.0, nbz + 6.4, .9, .9, .9, col.renderD,
-        { hard: true, gloss: G.paint });
+      // Preserve the shell's established random stream: the former roof lottery consumed three
+      // values per bay. Equipment is organised below, but later districts must not reshuffle.
+      rnd(); rnd(); rnd();
     }
-    // downpipes, and the cable tray that feeds every flat
-    for (const bx of [NB.x0 + .35, -4.2, 4.0, NB.x1 - .35])
-      capsule(bx, NBH / 2, NB.z1 + .11, .085, NBH, .085, col.renderD, { gloss: .26 });
-    for (let f = 1; f < FLOORS; f++)
-      capsule(nbx, f * FL + .34, NB.z1 + .10, .035, nbw - .6, .035, col.black,
-        { rz: Math.PI / 2, gloss: .3 });
+    // Roof plant is clustered into believable service zones rather than scattered above every bay.
+    for (const tx of [-11.25, -9.85]) {
+      cyl(tx, homeWings[0].top + .98, nbz + 3.9, .48, .90, col.steel, { gloss: .36 });
+      box(tx, homeWings[0].top + .23, nbz + 3.9, .55, .46, .55, col.steelD,
+        { hard: true, gloss: .28 });
+      box(tx, homeWings[0].top + .50, nbz + 3.9, 1.15, .08, 1.15, col.steelD,
+        { hard: true, gloss: .30 });
+    }
+    box(DOOR, homeWings[1].top + .92, nbz + 1.8, 3.10, 1.84, 2.60, col.renderD,
+      { hard: true, mode: 14, gloss: G.paint, ...RENDER });
+    box(DOOR, homeWings[1].top + 1.87, nbz + 1.8, 3.28, .08, 2.78, col.tileD,
+      { hard: true, gloss: .20, ...RTILE });
+    for (let i = 0; i < 8; i++)
+      cyl(6.10 + i * .20, homeWings[2].top + .82, nbz + 2.0, .065, 1.28, col.steel,
+        { rx: -.55, gloss: .40 });
+    cyl(6.80, homeWings[2].top + 1.30, nbz + 1.35, .28, 1.15, col.white,
+      { rz: Math.PI / 2, gloss: .30 });
+
+    // Downpipes follow their own wing planes. Only two service bands cross each wing, replacing
+    // the eleven full-width cables that made the frontage read like graph paper.
+    for (const px of [NB.x0 + .35, -4.2, 4.0, NB.x1 - .35]) {
+      const w = wingAt(px);
+      capsule(px, w.top / 2, w.face + .11, .085, w.top, .085, col.renderD, { gloss: .26 });
+    }
+    for (const w of homeWings) for (const y of [FL + .34, FL * 6 + .34])
+      capsule((w.x0 + w.x1) / 2, y, w.face + .10, .035, w.x1 - w.x0 - .35, .035, col.black,
+        { rz: Math.PI / 2, gloss: .30 });
 
     // ---- the stairwell entrance you come out of
     const ez = NB.z1;
-    // A brick surround with a genuinely dark stairwell behind it, so the doorway reads as a
-    // way in rather than a panel stuck on the wall.
-    box(DOOR, 1.32, ez + .03, 3.00, 2.64, .26, col.brickL,
+    // Separate brick jambs and a lintel reveal the wall between them. The former 3 m brick panel
+    // was another rectangle pasted over the block and made the doorway look drawn on.
+    for (const s of [-1, 1])
+      box(DOOR + s * 1.22, 1.30, ez + .03, .56, 2.60, .26, col.brickL,
+        { hard: true, mode: 11, gloss: G.matte, ...BRICK });
+    box(DOOR, 2.50, ez + .03, 3.00, .28, .26, col.brickL,
       { hard: true, mode: 11, gloss: G.matte, ...BRICK });
     box(DOOR, 1.20, ez - .34, 1.98, 2.32, .70, C('#191c20'), { hard: true, gloss: .12 });
     // The flight, in forced perspective. That dark box is 70 cm deep but it is *inside* the
-    // block, which is one opaque volume, so only the last centimetre of it clears the facade —
+    // opaque ground-floor wall, so only the last centimetre of it clears the facade —
     // which is why the way into your own building read as a charcoal rectangle painted on the
     // brick. There is no carving a hole in a box, so the stairs are drawn the way the subway
     // steps are: nosings on a dark ground, each one narrower, higher and further back than the
@@ -1453,43 +1726,24 @@ const Street = Lazy('Street', () => {
     // is ever lit. Deep enough in that it never competes with the porch bulb outside.
     litten(ball(DOOR + .42, 1.94, ez + .09, .050, .055, .050, C('#ffe0aa'),
       { mode: 1, glow: .06, tag: '楼' }), .55);
-    // concrete canopy on two brackets
-    box(DOOR, 2.82, ez + .60, 3.50, .22, 1.32, col.renderD, { hard: true, gloss: G.paint });
-    box(DOOR, 2.97, ez + .60, 3.64, .09, 1.44, col.tileD,
+    // A compact wall hood protects the door without becoming another porch over HOME_OUT.
+    // Its front edge is z=-2.51, 1.16 m behind the arrival point, and it is only as wide as the
+    // stone portal in street-entry.js. Small wall corbels replace the old diagonal porch braces.
+    box(DOOR, 2.82, ez + .22, 2.52, .18, .38, col.renderD, { hard: true, gloss: G.paint });
+    box(DOOR, 2.94, ez + .22, 2.64, .06, .44, col.tileD,
       { hard: true, mode: 13, gloss: .2, ...RTILE });
     for (const s of [-1, 1])
-      box(DOOR + s * 1.52, 2.26, ez + .50, .18, .96, .98, col.renderD,
-        { hard: true, rz: s * .20, gloss: G.paint });
-    // Both leaves of the security door standing open, folded back against the reveal. Nearly
-    // shut they swung out across the pavement and read as two loose black flaps.
-    for (const s of [-1, 1]) {
-      // Folded almost flat to the facade. At 66 degrees each leaf stood out into the
-      // pavement as a black slab with nothing behind it.
-      box(DOOR + s * 1.32, 1.16, ez + .22, .76, 2.16, .06, col.charcoal,
-        { hard: true, gloss: .34, ry: -s * 1.46, tag: '楼' });
-      for (let i = 0; i < 6; i++)
-        capsule(DOOR + s * 1.32, 1.50 + i * .11, ez + .25, .016, .62, .016, col.steelD,
-          { rz: Math.PI / 2, ry: -s * 1.46, gloss: G.metal, tag: '楼' });
-    }
+      box(DOOR + s * .96, 2.63, ez + .16, .12, .34, .22, col.renderD,
+        { hard: true, gloss: G.paint });
+    // street-entry.js supplies the closed glazed leaves. The former folded security leaves have
+    // gone: even against the jambs they projected as loose black slabs in the arrival frame.
     // reveal frame, so the opening reads as a hole in a wall and not a painted rectangle
     for (const s of [-1, 1])
       box(DOOR + s * 1.03, 1.20, ez + .14, .12, 2.36, .22, col.charcoal,
         { hard: true, gloss: .28 });
     box(DOOR, 2.42, ez + .14, 2.18, .12, .22, col.charcoal, { hard: true, gloss: .28 });
-    // unit plate, bare bulb, letterboxes and the notice board beside the door
-    box(DOOR, 2.56, ez + .18, 1.10, .30, .05, col.blueSign, { hard: true, gloss: .3, tag: '楼' });
-    for (let i = 0; i < 4; i++)
-      box(DOOR - .38 + i * .25, 2.56, ez + .21, .16, .18, .02, col.white,
-        { hard: true, mode: 1, tag: '楼' });
-    litten(ball(DOOR, 2.62, ez + .52, .09, .11, .09, C('#ffeec4'),
-      { mode: 1, glow: .3 }), 1.0);
-    lampPools.push(glow(M.trs(DOOR, .03, ez + .9, 0, 4.6, 1, 4.0), C('#ffcf96'), 0));
-    // The bulb over your own front door. This is the one light in the district the player stands
-    // directly under every single night, and until now the brick around it was lit by nothing:
-    // the pool on the paving was there, the bulb was there, and the doorway itself stayed the
-    // same value at midnight as at noon.
-    B.light(DOOR, 2.45, ez + .62, [1.0, .88, .70], .55, 4.6);
-    // bank of letterboxes on one side of the door, notice board on the other
+    // street-entry.js owns the address plate and one sensor lamp, avoiding two signs and two bulbs
+    // stacked on the same lintel. The letterboxes remain flush on the west side of the door.
     box(DOOR - 2.30, 1.35, ez + .16, .82, 1.05, .14, col.steelD, { hard: true, gloss: .34 });
     // Eight identical blank doors read as a ventilation grille. Each one carries its flat number
     // and a slot, and three of them have not been emptied — which is the only thing that says
@@ -1520,35 +1774,14 @@ const Street = Lazy('Street', () => {
           { rz: Math.PI / 2 - .30, gloss: .08, tag: '楼' });                      // a rolled paper
       }
     }
-    box(DOOR + 2.32, 1.45, ez + .16, .95, 1.25, .12, col.redD, { hard: true, gloss: .28 });
-    // The four slips on the notice board used to be blank rectangles of card, which on the one
-    // surface in the district whose entire purpose is writing was a strange thing to leave. Real
-    // hutong boards carry exactly this: the water going off, the rent falling due, somebody's
-    // room to let, and the recycling scheme nobody follows.
-    const SLIPS = [['通知', '停水'], ['通知', '房租'], ['招租', '一间'], ['垃圾分类', '谢谢']];
-    for (let i = 0; i < 4; i++) {
-      // One `rnd()` per slip, exactly as before — the value is kept now so the writing tilts with
-      // the paper it is on instead of hanging square on a crooked notice.
-      const jr = (rnd() - .5) * .06;
-      const nx = DOOR + 2.32 - .2 + (i % 2) * .40, ny = 1.72 - ((i / 2) | 0) * .52;
-      box(nx, ny, ez + .23, .34, .44, .02,
-        [col.cream, col.white, col.paintY, col.cream][i],
-        { hard: true, mode: 1, ry: jr, tag: '通知' });
-      const ink = i === 2 ? col.redD : col.charcoal;
-      B.glyphs(nx, ny + .145, ez + .245, jr, SLIPS[i][0],
-        { size: .075, gap: .012, color: ink, gloss: .08, lift: .006, tag: '通知' });
-      B.glyphs(nx, ny + .020, ez + .245, jr, SLIPS[i][1],
-        { size: .062, gap: .010, color: col.charcoal, gloss: .08, lift: .006, tag: '通知' });
-      // Two ruled lines of body copy nobody is meant to read, which is what the rest of a notice
-      // always is. Glyphs at this size came out as grey mush and cost four quads a line.
-      for (let k = 0; k < 2; k++)
-        box(nx, ny - .105 - k * .055, ez + .243, .24, .012, .004, C('#8d8a83'),
-          { hard: true, ry: jr, gloss: .06, tag: '通知' });
-    }
-    thing('通知', DOOR + 2.32, 2.22, ez + .30, '门口的通知说明天停水。',
+    // The red metre-high cabinet sat just 2.2 m down HOME_OUT's eastward sightline. A single paper
+    // notice now lives flush on the entry's east jamb. Consume its former four jitter draws so
+    // removing the cabinet does not reshuffle any later seeded street detail.
+    for (let i = 0; i < 4; i++) rnd();
+    thing('通知', DOOR + 1.34, 1.48, ez + .44, '门口的通知说明天停水。',
       'The notice by the door says the water is off tomorrow.',
       '通知 is a notice or an announcement — the noun and the verb are the same word.',
-      { focus: [DOOR + 2.32, ez + 1.45], reach: 2.0 });
+      { focus: [DOOR + 1.02, -1.72], reach: 2.0 });
     solid(DOOR - 2.9, DOOR + 2.9, ez - .1, ez + .42);
     // The way in. This used to sit at y 3.05 with a 2.6 m reach — three metres up the facade —
     // so going home meant pressing a wall above your own head. It stands at the door mouth now,
@@ -1557,8 +1790,8 @@ const Street = Lazy('Street', () => {
       'I live in this building, on the second floor.',
       '楼 is a building of more than one storey. Yours is 3号楼, and your flat is 202.',
       { focus: [DOOR, ez + 1.9], reach: 2.2 });
-    // Your own balcony, from the outside. The bay at x 2.50 on the first storey above the shops
-    // is deck 2 — `(bx * 7 + f * 3) % 5` makes it one of the glazed-in ones — and deck 2 is the
+    // Your own balcony, from the outside. The vertical bay at x 2.50 on the first storey above the
+    // shops is deck 2, and deck 2 is the
     // landing `js/home-corridor.js` builds and the flat you live in. Looking up at the washing on
     // your own rail from the alley is the cheapest proof the game can offer that the inside and
     // the outside of this building are the same building.
@@ -1569,39 +1802,48 @@ const Street = Lazy('Street', () => {
 
     // ---- 超市 the corner shop, in the ground floor of the same block
     const SHOPDOOR = SHOP + 1.55;
-    // The white fascia is thinner than it was and the dark lining now sits inside it rather than
-    // on its face. That opens 18 cm between the lining and the glass. Before, the fascia was a
-    // 26 cm slab with the glass stuck on the front of it and the lining stuck on the front of
-    // that, so there was no cavity at all: three display windows with literally nothing behind
-    // them, and from the alley the shop offered the player two blue rectangles and a door.
-    box(SHOP, 1.55, ez + .00, 6.20, 3.10, .14, col.white, { hard: true, gloss: .30 });
-    box(SHOP, 1.35, ez + .02, 5.40, 2.50, .10, col.charcoal, { hard: true, gloss: .30 });
-    // Three display windows stop before the entrance; the old fourth pane made the whole
-    // frontage one unbroken sheet of glass, so there was no visual answer to "where is the door?"
-    for (const gx of [-1.9, -.65, .65])
-      pane(box(SHOP + gx, 1.42, ez + .27, 1.14, 2.30, .04, col.glassDay,
+    const SHOPGREEN = C('#2f6049'), SHOPGREEN_D = C('#1d4233'),
+          SHOPCREAM = C('#f0e8d5');
+    // A recessed dark shop interior, framed by individual piers and a head beam. The former white
+    // 6.2 m rectangle covered the wall like a billboard; these pieces leave the building visible
+    // between storefront and upper wing and give every opening a real return.
+    box(SHOP - .55, 1.42, ez - .10, 5.22, 2.84, .12, col.charcoal,
+      { hard: true, gloss: .22, tag: '超市' });
+    for (const px of [SHOP - 2.92, SHOP + .82, SHOP + 2.34])
+      box(px, 1.45, ez + .12, .28, 2.90, .36, SHOPGREEN_D,
+        { hard: true, gloss: .28, tag: '超市' });
+    box(SHOP - .30, 2.76, ez + .12, 5.52, .36, .36, SHOPGREEN_D,
+      { hard: true, gloss: .28, tag: '超市' });
+    // Three display windows now end at the entrance jamb instead of running 40 cm behind the
+    // door. That small overlap was why the double doors never separated from the glass wall.
+    const shopWindowOffsets = [-2.15, -.95, .25];
+    for (const gx of shopWindowOffsets)
+      pane(box(SHOP + gx, 1.42, ez + .27, 1.05, 2.30, .04, col.glassDay,
         { hard: true, mode: 1, gloss: G.glass, tag: '超市' }), .96);
-    for (const gx of [-2.55, -1.28, 0, .99])
-      box(SHOP + gx, 1.35, ez + .29, .09, 2.42, .07, col.steel, { hard: true, gloss: G.metal });
-    box(SHOP, 2.62, ez + .30, 5.5, .12, .07, col.steel, { hard: true, gloss: G.metal });
+    for (const gx of [-2.72, -1.56, -.36, .82])
+      box(SHOP + gx, 1.35, ez + .29, .075, 2.42, .07, SHOPGREEN,
+        { hard: true, gloss: G.metal });
+    box(SHOP - .95, 2.62, ez + .30, 3.54, .10, .07, SHOPGREEN,
+      { hard: true, gloss: G.metal });
     // A9 · the transom. Every pane in the district was one sheet of glass between two mullions;
     // a real shopfront divides the head off as a fanlight and puts a bar up the middle of it. The
     // display run only — 4.00 m centred on SHOP - .70, which is the stallriser's own span, so the
     // bar stops clear of the door reveal at 8.42 instead of running through it the way the head
     // rail above does. Steel, 7 cm, and no new panes: the glass behind is the glass that was here.
-    box(SHOP - .70, 2.16, ez + .30, 4.00, .07, .07, col.steel, { hard: true, gloss: G.metal });
-    for (const gx of [-1.9, -.65, .65])
-      box(SHOP + gx, 2.37, ez + .30, .06, .38, .07, col.steel, { hard: true, gloss: G.metal });
+    box(SHOP - .95, 2.16, ez + .30, 3.54, .07, .07, SHOPGREEN,
+      { hard: true, gloss: G.metal });
+    for (const gx of shopWindowOffsets)
+      box(SHOP + gx, 2.37, ez + .30, .06, .38, .07, SHOPGREEN,
+        { hard: true, gloss: G.metal });
     // Stallriser, head and two end returns, closing the new cavity. Without them the glass stood
     // 18 cm off the wall with daylight round all four edges of it: from a low camera the paving ran
     // on under the shopfront into a void, and from either side you looked straight along the
     // recess. These four boxes are what every real shopfront has round its window for exactly the
     // same reason.
-    box(SHOP - .70, .135, ez + .17, 4.00, .27, .22, col.charcoal,
+    box(SHOP - .95, .135, ez + .17, 3.54, .27, .22, SHOPGREEN_D,
       { hard: true, gloss: .28 });
-    box(SHOP - .70, 2.66, ez + .17, 4.00, .20, .22, col.white, { hard: true, gloss: .28 });
-    for (const ox of [-2.62, 1.22])
-      box(SHOP + ox, 1.42, ez + .17, .16, 2.30, .22, col.white, { hard: true, gloss: .28 });
+    box(SHOP - .95, 2.66, ez + .17, 3.54, .20, .22, SHOPGREEN_D,
+      { hard: true, gloss: .28 });
     // What is in the cavity: three tiers of shelving with stock on them. This window is the one
     // place in the district where the player can see what a 超市 sells without going in, so the
     // goods are the kinds of thing whose silhouette says what it is from two metres away —
@@ -1609,7 +1851,7 @@ const Street = Lazy('Street', () => {
     const STOCK = [C('#c4452f'), C('#2f6f9c'), C('#d8a92f'), C('#3f7f5c'),
                    C('#b8622f'), C('#8a5a9c')];
     for (let w = 0; w < 3; w++) {
-      const gx = SHOP + [-1.9, -.65, .65][w];
+      const gx = SHOP + shopWindowOffsets[w];
       for (const s of [-1, 1])
         box(gx + s * .53, 1.25, ez + .15, .04, 1.90, .14, col.steelD,
           { hard: true, gloss: .34, tag: '超市' });
@@ -1645,55 +1887,61 @@ const Street = Lazy('Street', () => {
         }
       }
     }
-    signBoard(SHOP, FASCIA, ez + .10, 5.00, FASCIAH, col.red, col.goldL, '幸福超市');
-    // The red-and-white striped awning over the door end. Geometry unchanged — it is now the
-    // profile the other two alley frontages are built to, so `awning()` draws all three.
-    awning(SHOP, 2.92, ez, 9, col.red, col.white);
-    // A1 · the 卷帘门 housing. 2.86 .. 3.10, which lands its top flush with the white surround
-    // and 2 cm under the fascia board's own bottom edge at FASCIA - FASCIAH/2 = 3.12. Its
-    // underside clears the awning by 8 cm: the sheet tilts UP away from the wall (rx -.30 puts
-    // the front edge high), so its rear corner at z ez+.13 is the low point at 2.68.
-    shutterBox(SHOP, 2.98, ez + .00, 6.20, .24);
+    signBoard(SHOP - .15, FASCIA, ez + .02, 5.35, FASCIAH,
+      SHOPGREEN_D, SHOPCREAM, '幸福超市');
+    // A compact glass-and-metal hood marks only the entrance. It projects 76 cm rather than the
+    // old full-frontage 1.39 m awning, keeping the upper home bays open in the HOME_OUT camera.
+    box(SHOPDOOR, 2.91, ez + .37, 1.66, .075, .76, C('#aab9b2'),
+      { hard: true, mode: 18, alpha: .42, gloss: .72, rx: -.10, tag: '超市' });
+    box(SHOPDOOR, 2.86, ez + .73, 1.72, .08, .06, SHOPGREEN_D,
+      { hard: true, gloss: .30, tag: '超市' });
 
-    // A dedicated double glass door. The red surround, gold handles and bright transom are
-    // deliberately stronger than the window mullions, while the dark reveal makes the glass
-    // read as depth instead of another blue rectangle pasted onto the facade.
+    // A dedicated double glass door. Green powder-coated aluminium and cream wayfinding make the
+    // modern convenience store unmistakable beside the noodle shop's timber and oxblood paint.
     box(SHOPDOOR, 1.40, ez + .32, 1.46, 2.60, .18, col.charcoal,
       { hard: true, gloss: .30, tag: '超市' });
-    box(SHOPDOOR, 2.51, ez + .43, 1.28, .28, .07, col.red,
+    box(SHOPDOOR, 2.51, ez + .43, 1.28, .28, .07, SHOPGREEN,
       { hard: true, gloss: .28, tag: '超市' });
     for (const s of [-1, 1]) {
       pane(box(SHOPDOOR + s * .30, 1.35, ez + .43, .54, 1.98, .045, col.glassDay,
         { hard: true, mode: 1, gloss: G.glass, tag: '超市' }), .98);
-      box(SHOPDOOR + s * .59, 1.35, ez + .47, .075, 2.05, .055, col.red,
+      box(SHOPDOOR + s * .59, 1.35, ez + .47, .075, 2.05, .055, SHOPGREEN,
         { hard: true, gloss: .28, tag: '超市' });
       capsule(SHOPDOOR + s * .14, 1.34, ez + .51, .026, .48, .026, col.goldL,
         { gloss: G.metal, tag: '超市' });
     }
-    box(SHOPDOOR, 1.35, ez + .49, .075, 2.04, .055, col.red,
+    box(SHOPDOOR, 1.35, ez + .49, .075, 2.04, .055, SHOPGREEN,
       { hard: true, gloss: .28, tag: '超市' });
-    box(SHOPDOOR, 2.78, ez + .49, 1.20, .36, .07, col.redD,
+    box(SHOPDOOR, 2.78, ez + .49, 1.20, .36, .07, SHOPGREEN_D,
       { hard: true, gloss: .28, tag: '超市' });
     B.glyphs(SHOPDOOR, 2.78, ez + .54, 0, '入口',
-      { size: .25, gap: .12, color: col.goldL, mode: 1, glow: .14, lift: .008, tag: '超市' });
+      { size: .25, gap: .12, color: SHOPCREAM, mode: 1, glow: .14, lift: .008, tag: '超市' });
     litten(ball(SHOPDOOR + .82, 2.69, ez + .58, .065, .075, .055, C('#ffe4a8'),
       { mode: 1, glow: .20, tag: '超市' }), .9);
     // The bulb over the 超市 door. Its own emissive ball is 6 cm across and lights nothing;
     // this is what puts the crates, the water tray and whoever is buying from them into the
     // light the shop is actually spilling onto its own pavement.
     B.light(SHOPDOOR + .60, 2.50, ez + .95, [1.0, .86, .64], .48, 4.2);
-    entryMat(SHOPDOOR, ez + 1.05, '超市');
+    box(SHOPDOOR, .026, ez + .83, 1.34, .035, .62, SHOPGREEN_D,
+      { hard: true, gloss: .14, tag: '超市' });
+    for (let i = -5; i <= 5; i++)
+      box(SHOPDOOR + i * .105, .049, ez + .83, .025, .012, .52, SHOPGREEN,
+        { hard: true, gloss: .18, tag: '超市' });
 
-    // crates of vegetables and a stack of water out front
-    // Kept to the display-window side: the fifth crate used to sit squarely in front of the
-    // implied entrance and taught the player, quite reasonably, that this was not the way in.
+    // A single recessed produce rack replaces loose pavement crates. The same stock and random
+    // calls remain, but the shop now keeps its threshold and pedestrian line clear.
+    box(SHOP - 1.32, .36, ez + .02, 2.74, .64, .28, SHOPGREEN_D,
+      { hard: true, gloss: .28, tag: '超市' });
+    box(SHOP - 1.32, .68, ez + .03, 2.82, .055, .30, col.steel,
+      { hard: true, gloss: .36, tag: '超市' });
     for (let i = 0; i < 3; i++) {
-      const cx = SHOP - 2.6 + i * 1.15, h = .30 + (i % 2) * .16;
-      box(cx, h / 2, ez + .95, 1.00, h, .70, pick([col.plastic, col.blue, col.teal]),
+      const cx = SHOP - 2.15 + i * .82, h = .20 + (i % 2) * .08;
+      box(cx, .48, ez + .12, .72, h, .22, pick([col.plastic, col.blue, col.teal]),
         { hard: true, gloss: .30, tag: '超市' });
       for (let k = 0; k < 6; k++)
-        ball(cx - .3 + (k % 3) * .3, h + .07, ez + .78 + ((k / 3) | 0) * .32,
-          .13, .10, .13, pick([col.green, col.plastic, col.paintY, col.greenL]),
+        ball(cx - .22 + (k % 3) * .22, .62 + ((k / 3) | 0) * .09,
+          ez + .12 + ((k / 3) | 0) * .07, .10, .075, .10,
+          pick([col.green, col.plastic, col.paintY, col.greenL]),
           { gloss: .26, tag: '超市' });
     }
     // The water. This was a single blue cube 1.1 m tall, which taught nothing and — since the
@@ -1702,7 +1950,7 @@ const Street = Lazy('Street', () => {
     // bottles now, at the other end of the frontage where there is nothing behind it, because
     // eight bottles you can count is the whole point: 瓶 is a measure word and a measure word
     // needs something to measure.
-    const WTX = SHOP - 2.35, WTZ = ez + .44;
+    const WTX = SHOP + .05, WTZ = ez + .08;
     box(WTX, .05, WTZ, .84, .10, .28, col.blue, { hard: true, gloss: .34, tag: '瓶' });
     for (let i = 0; i < 4; i++) for (const r of [-.07, .07]) {
       const bx2 = WTX - .315 + i * .21;
@@ -1756,16 +2004,21 @@ const Street = Lazy('Street', () => {
     // walk into this one, so the frontage has to read as an entrance and not a picture of one:
     // a door you can see through at the near end, and the room beyond it lit from inside.
     const RST = -7.0;
-    // The frontage stops at 3.10, which is where 超市's white surround stops, so the fascia band
-    // above sits on one line across both. At 3.24 it stood 14 cm proud of its neighbour for no
-    // reason anybody could name from the alley, and the board over it had to start higher to clear
-    // it — which is where the two boards' 46 cm of disagreement came from in the first place.
-    box(RST, 1.55, ez + .06, 5.00, 3.10, .26, col.render,
-      { hard: true, mode: 14, gloss: .26, ...RENDER });
-    // The tiled stallriser every small Chinese shopfront has. Small wall tile, so the repeat is
-    // the tile: .30 m rather than the render's 2.6, which is the difference between a tiled
-    // plinth and a smear of the same photograph the wall above it is wearing.
-    box(RST, .40, ez + .19, 5.00, .80, .10, col.tileL,
+    const NOODLEWOOD = C('#68452f'), NOODLEWOOD_D = C('#3d2a20'),
+          NOODLEOX = C('#812f25'), NOODLESTONE = C('#514b43');
+    // Old tile and dark timber make a shop assembled from piers, sill and head — not a second
+    // five-metre render rectangle. The warm backing is set behind the glazing, giving the counter
+    // and bowls a room to occupy instead of floating on the wall plane.
+    box(RST - .10, 1.43, ez - .12, 4.72, 2.86, .12, C('#31251f'),
+      { hard: true, gloss: .18, tag: '餐馆' });
+    for (const px of [RST - 2.42, RST + .56, RST + 2.42])
+      box(px, 1.48, ez + .12, .34, 2.96, .36, NOODLEWOOD_D,
+        { hard: true, gloss: G.wood, tag: '餐馆' });
+    box(RST, 2.77, ez + .12, 5.00, .38, .36, NOODLEWOOD_D,
+      { hard: true, gloss: G.wood, tag: '餐馆' });
+    // The tiled stallriser belongs only under the window run; the doorway meets a separate stone
+    // threshold below. That break is small, but it is what makes the door an opening.
+    box(RST - .85, .40, ez + .19, 2.82, .80, .14, col.tileL,
       { hard: true, gloss: .32, ...WTILE });
     // No white backing behind the glass: pane() already gives it the sky by day and a lit room
     // by night, and an emissive white sheet on top of that turned both windows into glare.
@@ -1778,14 +2031,29 @@ const Street = Lazy('Street', () => {
       pane(box(RST + gx, 1.705, ez + .25, 1.28, 1.91, .05, col.glassDay,
         { hard: true, mode: 1, gloss: G.glass, tag: '餐馆' }), .97);
     for (const mx of [-2.22, -.88, .52])
-      box(RST + mx, 1.675, ez + .28, .09, 2.03, .10, col.steel, { hard: true, gloss: G.metal });
+      box(RST + mx, 1.675, ez + .28, .09, 2.03, .10, NOODLEWOOD,
+        { hard: true, gloss: G.wood });
     // A9 · the transom, on the same steel as the mullions and stopping on the outer two of them
     // (RST-2.22 .. RST+.52, so 2.83 m centred on RST-.85). 2.28 divides a 1.91 m sheet into a
     // 1.53 m light and a 35 cm fanlight, and the fanlight gets a bar up the middle of each bay.
     // No new panes: the glass is the glass that was already here, and this is joinery over it.
-    box(RST - .85, 2.28, ez + .28, 2.83, .07, .10, col.steel, { hard: true, gloss: G.metal });
+    box(RST - .85, 2.28, ez + .28, 2.83, .07, .10, NOODLEWOOD,
+      { hard: true, gloss: G.wood });
     for (const gx of [-1.55, -.15])
-      box(RST + gx, 2.485, ez + .28, .06, .35, .10, col.steel, { hard: true, gloss: G.metal });
+      box(RST + gx, 2.485, ez + .28, .06, .35, .10, NOODLEWOOD,
+        { hard: true, gloss: G.wood });
+    // A compact timber counter and bowls sit behind the glass. Their depth and repeated round
+    // silhouettes make this read as a working noodle room before the painted words are legible.
+    box(RST - 1.55, .93, ez + .02, 1.16, .82, .34, NOODLEWOOD,
+      { hard: true, gloss: G.wood, tag: '餐馆' });
+    box(RST - 1.55, 1.36, ez + .05, 1.24, .08, .40, C('#b08b63'),
+      { hard: true, gloss: .22, tag: '餐馆' });
+    for (let i = 0; i < 3; i++) {
+      taper(RST - 1.90 + i * .35, 1.46, ez + .14, .15, .12, .15, col.cream,
+        { rx: Math.PI, gloss: .22, tag: '餐馆' });
+      capsule(RST - 1.90 + i * .35, 1.55, ez + .14, .012, .26, .012, col.steelD,
+        { rz: Math.PI / 2, gloss: G.metal, tag: '餐馆' });
+    }
     // the doorway itself, at the +x end, standing open behind its strip curtain. A deep dark
     // reveal and red jambs separate it from the windows; the warm interior is set farther back
     // so the curtain now reads as something you can walk through instead of an opaque panel.
@@ -1795,30 +2063,37 @@ const Street = Lazy('Street', () => {
     litten(box(RSTDOOR, 1.34, ez + .36, 1.04, 2.02, .04, C('#76543a'),
       { hard: true, mode: 1, glow: .04, tag: '餐馆' }), 1.5);
     for (const s of [-1, 1])
-      box(RSTDOOR + s * .59, 1.42, ez + .43, .11, 2.36, .12, col.red,
+      box(RSTDOOR + s * .59, 1.42, ez + .43, .11, 2.36, .12, NOODLEOX,
         { hard: true, gloss: .24, tag: '餐馆' });
-    for (let i = 0; i < 7; i++)
-      box(RST + 1.13 + i * .14, 1.34, ez + .34, .13, 1.86, .02, col.frame,
-        { hard: true, mode: 1, alpha: .30, gloss: .5, ry: (rnd() - .5) * .06, tag: '餐馆' });
-    box(RSTDOOR, 2.72, ez + .46, 1.26, .38, .08, col.redD,
+    // Seven calls preserve the former strip curtain's RNG footprint. The entrance is now an open,
+    // glazed timber leaf rather than a translucent plastic wall across a professional frontage.
+    for (let i = 0; i < 7; i++) rnd();
+    box(RSTDOOR, 2.72, ez + .46, 1.26, .38, .08, NOODLEOX,
       { hard: true, gloss: .28, tag: '餐馆' });
     B.glyphs(RSTDOOR, 2.72, ez + .51, 0, '入口',
       { size: .25, gap: .12, color: col.goldL, mode: 1, glow: .14, lift: .008, tag: '餐馆' });
-    // One open door leaf folded against the right jamb supplies a silhouette and a handle even
-    // when the transparent curtain itself catches the sky and becomes hard to read.
-    box(RSTDOOR + .70, 1.36, ez + .67, .48, 2.08, .07, col.redD,
-      { hard: true, ry: -.72, gloss: .24, tag: '餐馆' });
+    // One glazed door leaf folded against the right jamb supplies a silhouette and a handle.
+    pane(box(RSTDOOR + .70, 1.36, ez + .67, .48, 2.08, .035, col.glassDay,
+      { hard: true, mode: 1, ry: -.72, gloss: G.glass, tag: '餐馆' }), .98);
+    box(RSTDOOR + .70, 2.38, ez + .67, .52, .08, .06, NOODLEWOOD,
+      { hard: true, ry: -.72, gloss: G.wood, tag: '餐馆' });
+    box(RSTDOOR + .70, .34, ez + .67, .52, .08, .06, NOODLEWOOD,
+      { hard: true, ry: -.72, gloss: G.wood, tag: '餐馆' });
     capsule(RSTDOOR + .57, 1.35, ez + .82, .028, .42, .028, col.goldL,
       { ry: -.72, gloss: G.metal, tag: '餐馆' });
-    entryMat(RSTDOOR, ez + 1.05, '餐馆');
-    // A7 · the awning, and A1 · the housing over it. Same projection as 超市's — the point of the
-    // item is that one frontage in three having an awning made its neighbours read as the poor
-    // relations. Eight slats, 4.90 m, inside the 5.00 m frontage. The awning's low rear corner is
-    // at 2.68 and this shopfront's mullions stop at 2.69, so the sheet passes 2.7 cm over the
-    // window head rather than through it. The housing sits on the frontage's own top at 3.10.
-    awning(RST, 2.92, ez, 7, col.red, col.cream);
-    shutterBox(RST, 2.98, ez + .06, 4.90, .24);
-    signBoard(RST, FASCIA, ez + .10, 4.60, FASCIAH, col.red, col.goldL, '老李面馆');
+    box(RSTDOOR, .035, ez + .78, 1.28, .06, .48, NOODLESTONE,
+      { hard: true, mode: 9, gloss: .16, tag: '餐馆' });
+    box(RSTDOOR, .070, ez + .98, 1.18, .025, .05, col.goldL,
+      { hard: true, gloss: .28, tag: '餐馆' });
+    // A short traditional canvas shade covers the dining window only. Five narrow panels and a
+    // timber front rail give it depth without masking the upper home facade in the close view.
+    for (let i = 0; i < 5; i++)
+      box(RST - .85 + (i - 2) * .55, 2.91, ez + .45, .55, .075, .78,
+        i % 2 ? col.cream : NOODLEOX,
+        { hard: true, rx: -.18, gloss: .22, tag: '餐馆' });
+    box(RST - .85, 2.72, ez + .83, 2.82, .16, .07, NOODLEWOOD_D,
+      { hard: true, gloss: G.wood, tag: '餐馆' });
+    signBoard(RST, FASCIA, ez + .04, 4.60, FASCIAH, NOODLEOX, col.goldL, '老李面馆');
     // 面 painted big on the glass, a red lantern at the door, and the menu case beside it
     glyphs(RST - .85, 1.62, ez + .31, 0, '牛肉面',
       { size: .34, gap: .14, color: col.redD, mode: 1, alpha: .9 });
@@ -1829,21 +2104,18 @@ const Street = Lazy('Street', () => {
     for (let i = 0; i < 5; i++)
       box(RST + 2.42, 1.80 - i * .15, ez + .275, .38, .05, .01, col.charcoal,
         { hard: true, mode: 1, tag: '餐馆' });
-    // two plastic stools and a folding table on the pavement, the summer overflow
-    for (const [sx2, sz2] of [[RST - 2.30, ez + .78], [RST - 1.75, ez + .95]]) {
-      taper(sx2, .21, sz2, .30, .42, .30, col.plastic, { gloss: .30 });
-      box(sx2, .43, sz2, .32, .04, .32, col.plastic, { hard: true, gloss: .30 });
-    }
-    box(RST - 2.05, .62, ez + 1.30, .90, .05, .60, col.frame, { hard: true, gloss: .28 });
-    for (const [ox, oz] of [[-.36, -.22], [.36, -.22], [-.36, .22], [.36, .22]])
-      capsule(RST - 2.05 + ox, .31, ez + 1.30 + oz, .022, .62, .022, col.steelD,
-        { gloss: G.metal });
-    // The extract vent, which is what you smell from the far end of the alley. Dropped from 2.30
-    // to 1.90 to clear the 侧招 band (2.27..2.83): street-retail.js hangs 面馆's box sign on this
-    // same pier, and at 2.30 the two occupied the same 40 cm of wall. Still in the strip the body
-    // can never reach, so nothing about the walk changes.
-    box(RST + 2.90, 1.90, ez + .34, .44, .44, .40, col.steelD, { hard: true, gloss: G.metal });
-    cyl(RST + 2.90, 1.90, ez + .58, .17, .18, col.steel, { rx: Math.PI / 2, gloss: G.metal });
+    // A wall-hugging waiting bench keeps the summer cue without turning the corridor into dining
+    // furniture. It stays entirely inside the shop's existing solid strip.
+    box(RST - 1.72, .46, ez + .30, 1.46, .10, .28, NOODLEWOOD,
+      { hard: true, gloss: G.wood, tag: '餐馆' });
+    for (const s of [-1, 1])
+      capsule(RST - 1.72 + s * .54, .23, ez + .29, .022, .46, .022, col.steelD,
+        { gloss: G.metal, tag: '餐馆' });
+    // Compact extraction on the east pier, below both the fascia and street-retail's blade sign.
+    box(RST + 2.36, 2.08, ez + .26, .34, .34, .26, col.steelD,
+      { hard: true, gloss: G.metal });
+    cyl(RST + 2.36, 2.08, ez + .42, .125, .12, col.steel,
+      { rx: Math.PI / 2, gloss: G.metal });
     solid(RST - 2.6, RST + 3.2, ez - .1, ez + .52);
     shade(RST, ez + .60, 5.6, 1.2, .28);
     thing('餐馆', RST + 1.55, 2.58, ez + .40, '这家面馆的牛肉面很好吃。',
@@ -1859,51 +2131,264 @@ const Street = Lazy('Street', () => {
     // The piers and the lintel are built with the rest of the market entrance further down.
     brickRun(1.6, 3.2, CWZ, CW);
     brickRun(6.0, 12.4, CWZ, CW);
-    brickRun(15.2, 24.0, CWZ, CW);
+    // Stop at the road-zone face. The former x=24.00 end projected 58 cm into the authored
+    // two-metre west footway and reduced its r=.45 camera/body section to 1.43 m at this corner.
+    brickRun(15.2, 23.40, CWZ, CW);
     gateHouse(-12.6, { name:'陈家', number:'12', door:C('#8b3f31'), plaque:col.blueSign,
       detail:'commuter' });
     gateHouse(.2, { name:'王家', number:'14', door:col.red, plaque:col.redD,
       detail:'flowers', tag:true });
     gateHouse(13.8, { name:'豆豆家', number:'16', door:C('#87513c'), plaque:col.teal,
       detail:'child' });
-    // the courtyards themselves: roofs stepping back from the wall, and trees over it
-    // Each courtyard is four ranges round a paved yard: the front range against the street
-    // wall, the main hall at the back, and a side range each way with its ridge turned.
-    for (const [cx, len] of [[-19.5, 12], [-6.5, 11], [7.0, 10], [19.5, 9]]) {
-      flat(cx, .01, CWZ + 5.4, len, 10.0, col.paveD, { mode: 9, gloss: .14, ...PAVE });
-      tileRoof(cx, CWZ + 2.0, len - 1.0, 3.4, 2.60, .95);
-      tileRoof(cx, CWZ + 9.0, len - 1.6, 3.8, 2.95, 1.10);
-      // Bricks, an aerial, a vent and grass on each of them. The front range is skipped on the
-      // two courtyards that keep pigeons: the loft stands on that ridge, and a row of ridge
-      // bricks laid straight through the middle of it is exactly the class of mistake this
-      // scene has made before.
-      if (cx !== -19.5 && cx !== 7.0) roofJunk(cx, CWZ + 2.0, 3.55, len - 1.0, 3.4, .95);
-      roofJunk(cx, CWZ + 9.0, 4.05, len - 1.6, 3.8, 1.10);
-      for (const s of [-1, 1])
-        tileRoof(cx + s * (len / 2 - 1.5), CWZ + 5.5, 3.6, 3.0, 2.50, .85, true);
-      // walls under the ranges, so the roofs are not floating over an empty yard
-      box(cx, 1.30, CWZ + 3.8, len - 1.0, 2.60, .45, col.brick,
-        { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-      box(cx, 1.48, CWZ + 7.6, len - 1.6, 2.95, .45, col.brick,
-        { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-      for (const s of [-1, 1])
-        box(cx + s * (len / 2 - 1.5), 1.25, CWZ + 5.5, 1.4, 2.50, 3.4, col.brick,
-          { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-      // a tree in the middle of the yard, the way there always is
-      tree(cx + (len % 3 > 1 ? 1.1 : -1.1), CWZ + 5.6, .85, false);
-      blocker(cx - len / 2, cx + len / 2, CWZ + .3, CWZ + 11, 4.4);
+    // These are four properties, not one roof kit stamped four times. Every long front and rear
+    // range is split at a real movement joint into an older hall and a later ear room. The
+    // different ridge heights, depths and side-wing offsets remain legible above the street wall;
+    // below them, bay-sized masonry, gable returns and courtyard-facing openings replace the four
+    // 9–12 m blank slabs the live geometry probe found at z 7.75 / 11.55.
+    const yards = [
+      { cx:-19.5, len:12.0, tone:tint(col.brick, .82, -.006), tree:[.55,5.35],
+        front:[[.42,2.46,.78,-.10],[.58,2.70,.92,.08]],
+        rear: [[.62,3.12,1.02,.10],[.38,2.66,.76,-.06]],
+        sides:[[-1,3.20,2.42,.72,-.18],[1,3.78,2.64,.88,.22]] },
+      { cx:-6.5, len:11.0, tone:tint(col.brick, .94, .008), tree:[-1.25,5.75],
+        front:[[.55,2.82,1.02,.06],[.45,2.54,.76,-.08]],
+        rear: [[.36,2.82,.82,-.12],[.64,3.26,1.14,.08]],
+        sides:[[-1,3.72,2.72,.90,.18],[1,3.28,2.46,.70,-.20]] },
+      { cx:7.0, len:10.0, tone:tint(col.brick, .89, -.012), tree:[.75,5.45],
+        front:[[.34,2.48,.70,-.14],[.66,2.76,.94,.10]],
+        rear: [[.53,3.22,1.12,.04],[.47,3.02,.86,-.10]],
+        sides:[[-1,3.10,2.40,.68,-.26],[1,3.88,2.74,.96,.16]] },
+      { cx:19.5, len:9.0, tone:tint(col.brick, .98, .014), tree:[-1.0,5.80],
+        front:[[.61,2.44,.74,.08],[.39,2.72,.88,-.12]],
+        rear: [[.68,2.92,.90,-.08],[.32,3.38,1.18,.14]],
+        sides:[[-1,3.82,2.62,.84,.24],[1,3.06,2.36,.66,-.22]] },
+    ];
+    const splitRange = (cx, total, parts, gap = .18) => {
+      const usable = total - gap * (parts.length - 1), out = [];
+      let left = cx - total / 2;
+      for (const p of parts) {
+        const w = usable * p[0];
+        out.push({ x:left + w / 2, w, base:p[1], rise:p[2], dz:p[3] });
+        left += w + gap;
+      }
+      return out;
+    };
+    const rangeShell = (yard, role, zc, total, span, parts, faceN) => {
+      const segs = splitRange(yard.cx, total, parts);
+      // The cx=7 front range straddles the authored 3.2..6.0 night-market mouth. Keep its roof as a
+      // believable covered passage, but subtract that aperture from both masonry elevations, their
+      // shoes and any internal phase return. Every other courtyard range follows the original path.
+      const passage = role === 'front' && yard.cx === 7.0 ? [3.2, 6.0] : null;
+      const wallPieces = (cx, w) => {
+        if (!passage) return [[cx, w]];
+        const lo = cx - w / 2, hi = cx + w / 2, out = [];
+        if (lo < passage[0]) {
+          const r = Math.min(hi, passage[0]);
+          if (r - lo > .04) out.push([(lo + r) / 2, r - lo]);
+        }
+        if (hi > passage[1]) {
+          const l = Math.max(lo, passage[1]);
+          if (hi - l > .04) out.push([(l + hi) / 2, hi - l]);
+        }
+        return out;
+      };
+      for (let si = 0; si < segs.length; si++) {
+        const q = segs[si], rz = zc + q.dz;
+        tileRoof(q.x, rz, q.w, span, q.base, q.rise);
+        const bays = Math.max(2, Math.ceil(q.w / 2.55));
+        const bw = q.w / bays;
+        // Both long elevations are assembled in address-sized bays. Eight-centimetre recessed
+        // joints and alternating brick values create depth without punching extra colliders into
+        // a courtyard the player never enters.
+        for (let bi = 0; bi < bays; bi++) {
+          const bx = q.x - q.w / 2 + bw * (bi + .5);
+          const bt = tint(yard.tone, .96 + ((bi + si) % 3) * .035,
+            ((bi + si) % 2 ? .006 : -.006));
+          for (const [pc, pw] of wallPieces(bx, bw - .08))
+            for (const n of [-1, 1])
+              box(pc, q.base / 2, rz + n * (span / 2 - .16), pw, q.base, .28, bt,
+                { hard:true, mode:11, gloss:G.matte, ...BRICK });
+          // A short stone shoe under each bay, never a continuous pasted-on plinth.
+          for (const [pc, pw] of wallPieces(bx, bw - .16))
+            box(pc, .17, rz + faceN * (span / 2 + .015), pw, .34, .12, col.stoneD,
+              { hard:true, gloss:.20 });
+        }
+        for (const s of [-1, 1]) {
+          const ex = q.x + s * (q.w / 2 - .14);
+          if (passage && ex > passage[0] && ex < passage[1]) continue;
+          box(ex, q.base / 2, rz, .28, q.base, span - .32, yard.tone,
+            { hard:true, mode:11, gloss:G.matte, ...BRICK });
+        }
+
+        // The courtyard side has a door in the larger phase and a paired timber window in the
+        // ear room. Warmth is explicit rather than random, preserving the scene RNG stream.
+        const fz = rz + faceN * (span / 2 + .025);
+        if (si === 0 && !passage) {
+          box(q.x, 1.02, fz + faceN * .02, .82, 1.94, .075,
+            tint(col.redD, .82 + (yard.cx + 25) * .004), { hard:true, gloss:.20 });
+          for (const s of [-1, 1])
+            box(q.x + s * .47, 1.02, fz + faceN * .04, .08, 2.08, .10, col.trunk,
+              { hard:true, gloss:G.wood });
+          box(q.x, 2.04, fz + faceN * .04, 1.02, .10, .10, col.trunk,
+            { hard:true, gloss:G.wood });
+        } else if (si !== 0) {
+          fwin(q.x, 1.42, fz, Math.min(1.48, q.w - .50), 1.08,
+            { n:faceN, warm:.32 + ((yard.cx + si * 7) % 5 + 5) % 5 * .10 });
+        }
+      }
+      return segs;
+    };
+
+    for (let yi = 0; yi < yards.length; yi++) {
+      const y = yards[yi];
+      flat(y.cx, .01, CWZ + 5.4, y.len, 10.0, col.paveD, { mode:9, gloss:.14, ...PAVE });
+      const front = rangeShell(y, 'front', CWZ + 2.0, y.len - 1.0, 3.20, y.front, 1);
+      const rear = rangeShell(y, 'rear', CWZ + 9.0, y.len - 1.6, 3.65, y.rear, -1);
+
+      // Retain the old six deterministic roof-service clusters, now on actual main phases rather
+      // than laid through a joint. roofJunk uses jit(), never rnd().
+      if (yi === 1 || yi === 3) {
+        const q = front[front[0].w > front[1].w ? 0 : 1];
+        roofJunk(q.x, CWZ + 2.0 + q.dz, q.base + q.rise, q.w, 3.20, q.rise);
+      }
+      {
+        const q = rear[rear[0].w > rear[1].w ? 0 : 1];
+        roofJunk(q.x, CWZ + 9.0 + q.dz, q.base + q.rise, q.w, 3.65, q.rise);
+      }
+
+      // Side ranges keep the four-sided courtyard plan, but one is always an older low service
+      // wing and the other a later family wing. Their unequal lengths and offsets stop the yards
+      // forming a repeated row of cross-gabled boxes.
+      for (const [s, slen, base, rise, dz] of y.sides) {
+        const sx = y.cx + s * (y.len / 2 - 1.48), sz = CWZ + 5.45 + dz;
+        tileRoof(sx, sz, slen, 2.82, base, rise, true);
+        for (const n of [-1, 1])
+          box(sx + n * 1.25, base / 2, sz, .26, base, slen - .30, y.tone,
+            { hard:true, mode:11, gloss:G.matte, ...BRICK });
+        for (const n of [-1, 1])
+          box(sx, base / 2, sz + n * (slen / 2 - .14), 2.50, base, .26, y.tone,
+            { hard:true, mode:11, gloss:G.matte, ...BRICK });
+      }
+
+      // One drainage/service point per household, tucked against its rear range: a basin on a
+      // masonry stand, downpipe, and trapped gully. These sit inside the existing blocker and add
+      // no street obstruction.
+      const svcX = y.cx + (yi % 2 ? -1 : 1) * (y.len * .24), svcZ = CWZ + 7.10;
+      box(svcX, .35, svcZ, .64, .70, .42, tint(y.tone, .82),
+        { hard:true, mode:11, gloss:G.matte, ...BRICK });
+      taper(svcX, .73, svcZ - .03, .50, .16, .42, col.stone,
+        { rx:Math.PI, gloss:.24 });
+      capsule(svcX + .28, 1.18, svcZ + .10, .025, 1.78, .025, col.steelD,
+        { gloss:G.metal });
+      cyl(svcX, .035, svcZ - .44, .16, .035, col.charcoal, { gloss:.18 });
+
+      // Same four tree calls and the same scale as before: positions gain asymmetry without
+      // changing how many random values the tree helper consumes.
+      tree(y.cx + y.tree[0], CWZ + y.tree[1], .85, false);
+      if (y.cx === 7.0) {
+        // The passage is a real connected route, not only a visual hole. Preserve the courtyard's
+        // blocker everywhere except the same 2.8 m aperture cut through its front range.
+        blocker(y.cx - y.len / 2, 3.2, CWZ + .3, CWZ + 11, 4.4);
+        blocker(6.0, y.cx + y.len / 2, CWZ + .3, CWZ + 11, 4.4);
+      } else blocker(y.cx - y.len / 2, y.cx + y.len / 2, CWZ + .3, CWZ + 11, 4.4);
     }
     tree(-17.0, CWZ + 4.2, 1.15, false);
     tree(-4.0, CWZ + 4.6, 1.0, false);
     tree(10.5, CWZ + 4.4, 1.1, false);
-    // a mid-rise behind the courtyards so the district does not end at a roofline
-    for (const [bx, bw, bh] of [[-22, 20, 19], [2, 22, 16], [24, 18, 22]]) {
-      box(bx, bh / 2, CWZ + 26, bw, bh, 16, col.renderD,
-        { hard: true, mode: 14, gloss: G.paint, ...RENDER });
-      for (let f = 0; f < Math.floor(bh / 3); f++)
-        for (let i = 0; i < Math.floor(bw / 3.2); i++)
-          pane(box(bx - bw / 2 + 1.6 + i * 3.2, 2.2 + f * 3.0, CWZ + 18.0,
-            1.7, 1.3, .10, col.glassDay, { hard: true, mode: 1 }), rnd());
+    // Two local mid-rises complete the courtyard skyline.  Each old address was one anonymous
+    // 20–22 m beige cuboid with a window grid pasted on its face; from the sorting bins it filled
+    // nearly the entire sky.  These retain the same parcels and exact 66 random window draws, but
+    // resolve as independent wings around real air gaps, with unequal setbacks, returned façades and
+    // independently stepped roofs.  They remain scenery only: no solid or blocker is introduced.
+    const courtBackdrops = [
+      { bx:-22, bw:20, bh:19, coreX:-23.15,
+        wings:[
+          { x:-17.55, z:CWZ+27.35, w:8.70, d:12.40, h:19.0, away: 1,
+            shell:C('#818d91'), upper:C('#a1aaab'), taper:true },
+        ] },
+      { bx:2, bw:22, bh:16, coreX:1.05,
+        wings:[
+          { x:-4.75, z:CWZ+25.90, w:8.50, d:15.30, h:16.0, away:-1,
+            shell:C('#9a8f80'), upper:C('#b2a899'), taper:true },
+          { x:7.35, z:CWZ+27.40, w:9.30, d:12.30, h:12.8, away: 1,
+            shell:C('#7f8b91'), upper:C('#9aa6aa'), taper:false },
+        ] },
+    ];
+    for (const b of courtBackdrops) {
+      // The narrow recessed stair core is visibly behind the gap rather than bridging it.  Its
+      // vertical glass strip gives scale while preserving at least 2.4 m of open silhouette.
+      const coreH = Math.min(10.8, b.bh * .64), coreZ = CWZ + 30.1;
+      box(b.coreX, coreH / 2, coreZ, 1.75, coreH, 5.20, col.charcoal,
+        { hard:true, mode:14, gloss:.20, ...RENDER });
+      for (let y = 2.0; y < coreH - .5; y += 2.45)
+        pane(box(b.coreX, y, coreZ - 2.64, 1.05, 1.42, .07, col.glassDay,
+          { hard:true, mode:1, gloss:G.glass }), (y * 10 | 0) % 2 ? .80 : 0, true);
+
+      for (const w of b.wings) {
+        const baseH = Math.min(4.75, w.h * .34);
+        const upperH = w.h - baseH, uw = w.w * .84, ud = w.d * .82;
+        const ux = w.x + w.away * .28, uz = w.z + .54;
+        box(w.x, baseH / 2, w.z, w.w, baseH, w.d, w.shell,
+          { hard:true, mode:14, gloss:G.paint, ...RENDER });
+        const upperShape = w.taper ? taper : box;
+        upperShape(ux, baseH + upperH / 2, uz, uw, upperH, ud, w.upper,
+          { hard:true, mode:14, gloss:G.paint, ...RENDER });
+
+        // A perimeter parapet and corner piers articulate each wing without restoring a roof slab.
+        const cap = tint(w.upper, .78, -.01), top = w.h + .10;
+        for (const sx of [-1, 1])
+          box(ux + sx * (uw / 2 - .08), top, uz, .16, .20, ud + .12, cap,
+            { hard:true, gloss:.24 });
+        for (const sz of [-1, 1])
+          box(ux, top, uz + sz * (ud / 2 - .08), uw, .20, .16, cap,
+            { hard:true, gloss:.24 });
+        for (const sx of [-1, 1])
+          box(w.x + sx * (w.w / 2 - .13), baseH / 2, w.z - w.d / 2 - .055,
+            .26, baseH, .13, cap, { hard:true, gloss:.24 });
+
+        // Both side elevations are real façades, not anonymous 12–16 m depth faces.  Recessed
+        // three-bay windows begin on the base and continue up both the gap-facing and outer
+        // returns.  Tapered wings shrink the window line with height, so no pane floats beyond
+        // the sloping upper shell.  Warmth is index-derived and consumes no random draws.
+        for (let y = 2.20, k = 0; y < w.h - .55; y += 3.0, k++) {
+          const upper = y > baseH, frac = upper ? (y - baseH) / upperH : 0;
+          const scale = upper && w.taper ? 1 - .28 * Math.min(1, frac) : 1;
+          const mx = upper ? ux : w.x, mz = upper ? uz : w.z;
+          const mw = (upper ? uw : w.w) * scale, md = (upper ? ud : w.d) * scale;
+          for (const sx of [-1, 1]) {
+            const faceX = mx + sx * (mw / 2 + .055);
+            for (const [j, oz] of [-.27, 0, .27].entries()) {
+              const wz = mz + md * oz;
+              box(faceX, y, wz, .10, 1.34, 1.42, col.glassDark,
+                { hard:true, gloss:.20 });
+              pane(box(faceX + sx * .035, y, wz, .025, 1.20, 1.24,
+                col.glassDay, { hard:true, mode:1, gloss:G.glass }),
+                (k + j + (sx > 0)) % 2 ? .82 : 0, true);
+            }
+          }
+          // The rear elevation is also visible on a long courtyard oblique. Three recessed bays
+          // stop that return becoming the same blank plane from the opposite direction.
+          const backZ = mz + md / 2 + .035;
+          for (const [j, ox] of [-.27, 0, .27].entries())
+            fwin(mx + mw * ox, y, backZ, 1.30, 1.18,
+              { n:1, warm:(k + j) % 2 ? .78 : 0 });
+        }
+      }
+
+      // Preserve the original f-then-i draw order exactly.  A grid point in the deliberate gap
+      // still consumes its old draw but builds nothing; points on a wing gain a recessed fwin.
+      const floors = Math.floor(b.bh / 3), bays = Math.floor(b.bw / 3.2);
+      for (let f = 0; f < floors; f++) for (let i = 0; i < bays; i++) {
+        const warm = rnd(), wx = b.bx - b.bw / 2 + 1.6 + i * 3.2, y = 2.2 + f * 3.0;
+        const w = b.wings.find(q => wx > q.x - q.w / 2 + .45 && wx < q.x + q.w / 2 - .45 && y < q.h - .45);
+        if (!w) continue;
+        const baseH = Math.min(4.75, w.h * .34), upper = y > baseH;
+        const mw = upper ? w.w * .84 : w.w;
+        const mx = upper ? w.x + w.away * .28 : w.x;
+        if (wx < mx - mw / 2 + .42 || wx > mx + mw / 2 - .42) continue;
+        const mz = upper ? w.z + .54 : w.z, md = upper ? w.d * .82 : w.d;
+        fwin(wx, y, mz - md / 2 - .035, 1.62, 1.26, { n:-1, warm });
+      }
     }
 
     // ---- the cat, on the courtyard wall where cats always are
@@ -1924,10 +2409,11 @@ const Street = Lazy('Street', () => {
       { focus: [-8.0, CWZ - 1.9], reach: 2.2, tag: '墙' });
     box(-8.0, 1.30, CWZ - .24, 2.6, 2.30, .05, col.brick,
       { hard: true, mode: 11, gloss: G.matte, ...BRICK, tag: '墙' });
-    // a limewashed panel with a faded painted slogan on it, weathered nearly away
-    box(-8.0, 1.78, CWZ - .27, 2.90, .95, .02, C('#a9a294'), { hard: true, gloss: .08, tag: '墙' });
-    B.glyphs(-8.0, 1.78, CWZ - .29, Math.PI, '注意防火',
-      { size: .40, gap: .22, color: C('#8f6a5c'), gloss: .06, tag: '墙', lift: .008 });
+    // A faded slogan painted directly onto the brick. The former fresh 2.9 m white backing panel
+    // read as a billboard/cuboid in every market view; real courtyard limewash has worn away and
+    // left the masonry visible between the brush strokes.
+    B.glyphs(-8.0, 1.78, CWZ - .273, Math.PI, '注意防火',
+      { size: .40, gap: .22, color: C('#8f6a5c'), gloss: .035, tag: '墙', lift: .006 });
     // The other thing written on every wall in this city, sprayed on by hand through a stencil
     // and never painted out: a drain-clearing man and his phone number. Painted, not lit — as an
     // emissive panel it would come up after dark as an orange sign, which spray paint does not do.
@@ -1944,7 +2430,11 @@ const Street = Lazy('Street', () => {
     // ============================================================ alley furniture
     // Trees go tight against one edge or the other. Planted down the middle they blocked
     // both the walk and every view along the alley.
-    tree(-9.4, -2.10, 1.0, false);
+    // Removed the former x=-9.4 street tree. Its trunk sat only 12 cm from the convenience-store
+    // frontage and its crown covered the shop name from both approaches; moving that same crown
+    // along this already occupied kerb merely transfers the obstruction to another door. Consume
+    // the helper's 64 random draws so every later authored variation remains bit-for-bit stable.
+    for (let i = 0; i < 64; i++) rnd();
     tree(-2.6, SZ - .55, 1.1, true);
     // The tree that stood at x 4.6 is GONE, and it is the only prop in the district deleted rather
     // than moved. At scale .95 its crown filled x 3.4 .. 5.8 and y 2.6 .. 5.0, and 幸福超市's board
@@ -1953,11 +2443,8 @@ const Street = Lazy('Street', () => {
     // nowhere on this stretch to move it to: the 超市 blade is at x 3.05, the 单元门 canopy ends at
     // 1.75, and its trunk has to stand in the 0.90 m unreachable strip. Four alley trees, not five.
     tree(16.4, SZ - .55, 1.05, false);
-    // One more at the east end. Blueprint 4.4 also moved this one to 13.2; that is struck — the
-    // courtyard wall has a GATE gap at 12.4..15.2 and a tree at 13.2 stands in front of somebody's
-    // door. 22.0 fills the run past the 地铁站 instead, with its crown at 20.8..23.2, clear of the
-    // metro canopy which ends at 20.5.
-    tree(22.0, SZ - .55, 1.0, false);
+    // The former x=22 east-end tree stood inside the first four metres of the zebra/crossing
+    // establishing view. Its trunk and crown pinched the metro mouth, so this release stays open.
     tree(-20.0, -2.10, 1.0, false);
 
     // 早餐 breakfast stall: a cart with steamer baskets, a wok, a folding table and stools
@@ -1968,19 +2455,60 @@ const Street = Lazy('Street', () => {
     // you it is a painting. The keeper's own hours have said 5–14 for months; the cart never knew.
     const stallFrom = B.props.length;
     const sx = -8.6, sz = SZ - .95;
-    box(sx, .48, sz, 2.30, .10, 1.05, col.steel, { hard: true, gloss: .40, tag: '早餐' });
-    box(sx, .24, sz, 2.10, .44, .90, col.steelD, { hard: true, gloss: .34, tag: '早餐' });
-    for (const [ox, oz] of [[-1.0, -.42], [1.0, -.42], [-1.0, .42], [1.0, .42]])
-      cyl(sx + ox, .09, sz + oz, .10, .18, col.black, { gloss: .3 });
+    // Eight stainless deck strips on an open ladder chassis. The former full top and lower block
+    // fused into a 2.3 m metal chest; the wheel axles, crossmembers and wall-side paving are now
+    // visible through the cart from every approach.
+    for (let i = 0; i < 8; i++)
+      box(sx, .48, sz - .455 + i * .13, 2.22, .055, .095, col.steel,
+        { hard: true, gloss: .40, tag: '早餐' });
+    for (const oz of [-.43, .43])
+      box(sx, .34, sz + oz, 2.14, .075, .065, col.steelD,
+        { hard: true, gloss: .34, tag: '早餐' });
+    for (const ox of [-1.02, 0, 1.02])
+      box(sx + ox, .34, sz, .065, .075, .86, col.steelD,
+        { hard: true, gloss: .34, tag: '早餐' });
+    for (const [ox, oz] of [[-1.02, -.43], [1.02, -.43], [-1.02, .43], [1.02, .43]])
+      capsule(sx + ox, .38, sz + oz, .022, .25, .022, col.steelD,
+        { gloss: G.metal, tag: '早餐' });
+    // Two real axles and four vertical wheels. The old upright cylinders were black pucks lying on
+    // the paving; these turn around the x axis and expose hubs on both ends of the cart.
+    for (const oz of [-.38, .38]) {
+      capsule(sx, .16, sz + oz, .022, 1.98, .022, col.steelD,
+        { rz: Math.PI / 2, gloss: G.metal, tag: '早餐' });
+      for (const ox of [-1.02, 1.02]) {
+        cyl(sx + ox, .16, sz + oz, .14, .065, col.black,
+          { rz: Math.PI / 2, gloss: .30, tag: '早餐' });
+        cyl(sx + ox, .16, sz + oz, .045, .078, col.steel,
+          { rz: Math.PI / 2, gloss: G.metal, tag: '早餐' });
+      }
+    }
     // Steamer stack: three closed baskets with a fourth standing open on top of them, the buns
     // in that one, and the lid off and leaning against the cart. The five 包子 used to sit in
     // the wok next door, floating in hot oil, which is a 汤圆 and a completely different
     // breakfast — 包子 are steamed, and a stall that fries them is telling the player a lie
     // about the word it is teaching them.
-    for (let i = 0; i < 3; i++)
-      cyl(sx - .62, .60 + i * .13, sz, .34, .13, col.canvas,
+    // Each basket has its own dark upper/lower rim and ten bamboo uprights. Four plain, perfectly
+    // aligned cylinders merged into one beige faceted carton at player height; tiny offsets and
+    // visible joinery make the stack unmistakably round without changing its footprint.
+    const STEAMER_BODY = [C('#bca06c'), C('#c9ad77'), C('#b29461'), C('#c4a873')];
+    const STEAMER_RIM = C('#8f7147'), STEAMER_SLAT = C('#a98554');
+    const steamerBasket = (i, y, h, dx, dz) => {
+      const bx = sx - .62 + dx, bz = sz + dz, rad = .34;
+      cyl(bx, y, bz, rad, h, STEAMER_BODY[i],
         { gloss: G.wood, ry: i * .12, tag: '早餐' });
-    cyl(sx - .62, 1.00, sz, .34, .14, col.canvas, { gloss: G.wood, ry: .34, tag: '早餐' });
+      for (const sy2 of [-1, 1])
+        cyl(bx, y + sy2 * (h / 2 - .012), bz, rad + .012, .024, STEAMER_RIM,
+          { gloss: G.wood, tag: '早餐' });
+      for (let k = 0; k < 10; k++) {
+        const a = k * Math.PI / 5;
+        capsule(bx + Math.cos(a) * (rad - .012), y, bz + Math.sin(a) * (rad - .012),
+          .007, h - .038, .007, STEAMER_SLAT, { gloss: G.wood, tag: '早餐' });
+      }
+    };
+    steamerBasket(0, .60, .13, -.012, .006);
+    steamerBasket(1, .73, .13,  .010, -.006);
+    steamerBasket(2, .86, .13, -.006, .008);
+    steamerBasket(3, 1.00, .14, 0, 0);
     cyl(sx - .62, 1.015, sz, .30, .02, C('#c9b07c'), { gloss: .14, tag: '早餐' });   // bamboo mat
     for (let i = 0; i < 6; i++) {
       const a = i * 1.047, r = i < 5 ? .17 : 0;
@@ -2000,6 +2528,15 @@ const Street = Lazy('Street', () => {
         C('#e8e6e0'), { mode: 1, alpha: .16 - i * .04 });
     // The wok now does what a wok on a Beijing breakfast cart is actually for: 油条, four of them
     // lying across the oil to drain, and the wire skimmer they were lifted out with.
+    // A crossed burner cradle and four short risers keep the wok off the deck; without them it read
+    // as a bowl glued directly to the cart top, with no heat source despite the gas bottle behind it.
+    capsule(sx + .55, .525, sz, .018, .50, .018, col.steelD,
+      { rz: Math.PI / 2, gloss: G.metal, tag: '早餐' });
+    capsule(sx + .55, .525, sz, .018, .50, .018, col.steelD,
+      { rx: Math.PI / 2, gloss: G.metal, tag: '早餐' });
+    for (const [dx, dz] of [[-.21, 0], [.21, 0], [0, -.21], [0, .21]])
+      capsule(sx + .55 + dx, .545, sz + dz, .014, .09, .014, col.steelD,
+        { gloss: G.metal, tag: '早餐' });
     cyl(sx + .55, .56, sz, .34, .14, col.charcoal, { gloss: .44, tag: '早餐' });
     cyl(sx + .55, .605, sz, .30, .02, C('#3b3025'), { gloss: .74, tag: '早餐' });     // the oil
     for (let i = 0; i < 4; i++)
@@ -2009,24 +2546,45 @@ const Street = Lazy('Street', () => {
       { rx: -.30, gloss: G.metal, tag: '早餐' });
     capsule(sx + 1.02, .76, sz - .34, .016, .34, .016, col.trunkL,
       { rz: Math.PI / 2 - .55, gloss: G.wood, tag: '早餐' });
-    // Red awning, pitched forward and set back over the cart. Flat and centred, it simply
-    // roofed the whole stall and hid it from anything above eye level.
-    // Front poles shorter than the back ones, so the canvas falls toward the alley.
+    // Red awning, pitched toward the customer. Front poles are shorter than the back ones; feet,
+    // perimeter tubes and sloping rafters make this a demountable stall frame rather than four
+    // sticks touching a thick striped roof.
     for (const [ox, oz, oy] of [[-1.3, -.80, 2.06], [1.3, -.80, 2.06],
                                 [-1.3, .74, 2.52], [1.3, .74, 2.52]])
-      capsule(sx + ox, oy / 2, sz + oz, .035, oy, .035, col.steelD, { gloss: .34 });
-    // Striped canvas with a hanging valance, rather than one plain sheet: at nearly three
-    // metres square a single red slab reads as a tarpaulin dropped on four poles. Pitched
-    // down toward the customer, not away: sloping back it stood up as a striped hoarding
-    // facing the alley, and the valance hung along the wall behind the cart.
-    for (let i = 0; i < 8; i++)
-      box(sx - 1.25 + i * .36, 2.30, sz - .04, .36, .09, 1.60,
-        i % 2 ? col.cream : col.red, { hard: true, rx: -.29, gloss: .24, tag: '早餐' });
-    box(sx, 1.94, sz - .81, 2.90, .26, .08, col.redD, { hard: true, gloss: .24, tag: '早餐' });
+    {
+      capsule(sx + ox, oy / 2, sz + oz, .035, oy, .035, col.steelD,
+        { gloss: .34, tag: '早餐' });
+      box(sx + ox, .025, sz + oz, .15, .035, .15, col.steelD,
+        { hard: true, gloss: G.metal, tag: '早餐' });
+    }
+    for (const [pz, py] of [[-.80, 2.06], [.74, 2.52]])
+      capsule(sx, py, sz + pz, .026, 2.68, .026, col.steelD,
+        { rz: Math.PI / 2, gloss: G.metal, tag: '早餐' });
+    for (const ox of [-1.30, -.65, 0, .65, 1.30])
+      capsule(sx + ox, 2.29, sz - .03, .020, 1.60, .020, col.steelD,
+        { rx: Math.PI / 2 - .29, gloss: G.metal, tag: '早餐' });
+    // Ten thin, individually tensioned canvas strips with breathing gaps over those rafters. Their
+    // 24 mm edge is cloth scale; the former 9 cm extrusion read as roof tiles from player height.
     for (let i = 0; i < 10; i++)
-      ball(sx - 1.30 + i * .29, 1.81, sz - .81, .145, .075, .05,
-        col.redD, { gloss: .24, tag: '早餐' });
-    signBoard(sx, 1.96, sz - .70, 1.90, .36, col.redD, col.paintY, '早餐包子', -1, .5);
+      box(sx - 1.215 + i * .27, 2.30 + (i % 2) * .003, sz - .04, .235, .024, 1.54,
+        i % 2 ? col.cream : col.red,
+        { hard: true, mode: 7, rx: -.29, gloss: .24, tag: '早餐' });
+    // Eight separate valance tabs on the front tube. The middle four carry 早餐包子 and the gaps
+    // leave the vendor, steam and stock visible instead of replacing them with a fascia board.
+    const cartName = ['', '', '早', '餐', '包', '子', '', ''];
+    for (let i = 0; i < 8; i++) {
+      const vx = sx + 1.19 - i * .34, vc = i % 2 ? col.cream : col.redD;
+      capsule(vx, 2.02, sz - .815, .006, .10, .006, col.steelD,
+        { gloss: G.metal, tag: '早餐' });
+      box(vx, 1.92, sz - .825, .24, .18, .014, vc,
+        { hard: true, mode: 7, gloss: .24, tag: '早餐' });
+      ball(vx, 1.83, sz - .825, .12, .035, .012, vc,
+        { gloss: .24, tag: '早餐' });
+      if (cartName[i])
+        B.glyphs(vx, 1.93, sz - .838, Math.PI, cartName[i],
+          { size: .115, gap: .02, color: i % 2 ? col.redD : col.paintY,
+            gloss: .12, lift: .006, tag: '早餐' });
+    }
     // 豆浆. The stall's own text has always promised soy milk with the buns and there was nothing
     // whatever to pour it out of, so the word had no object to hang on. This is the urn every one
     // of these carts has: a stainless drum on a crate, a tap at the front, a lid with a handle,
@@ -2035,9 +2593,22 @@ const Street = Lazy('Street', () => {
     // on the customer's side it stood half a metre from the man waiting for his buns and filled
     // the whole of the close shot of the stall.
     const UX = sx + 1.47, UZ = sz + .18;
-    // The crate is 62 cm across, not 46: at 46 the stack of cups beside the drum stood 7 cm past the
-    // end of it and floated, and there is no room between drum and crate edge to pull them in.
-    box(UX, .21, UZ, .62, .42, .40, col.plastic, { hard: true, gloss: .28, tag: '豆浆' });
+    // The 62 cm returnable crate is open slatwork: broad enough for the cup sleeve, but never a blue
+    // cuboid under the urn. Four floor boards, two rail courses and corner posts carry the load.
+    for (const oz of [-.15, -.05, .05, .15])
+      box(UX, .025, UZ + oz, .56, .04, .06, col.plastic,
+        { hard: true, gloss: .28, tag: '豆浆' });
+    for (const yy of [.11, .34]) {
+      for (const oz of [-.18, .18])
+        box(UX, yy, UZ + oz, .62, .045, .04, col.plastic,
+          { hard: true, gloss: .28, tag: '豆浆' });
+      for (const ox of [-.29, .29])
+        box(UX + ox, yy, UZ, .04, .045, .40, col.plastic,
+          { hard: true, gloss: .28, tag: '豆浆' });
+    }
+    for (const ox of [-.29, .29]) for (const oz of [-.18, .18])
+      capsule(UX + ox, .21, UZ + oz, .018, .42, .018, col.plastic,
+        { gloss: .28, tag: '豆浆' });
     cyl(UX, .72, UZ, .165, .58, col.steel, { gloss: .52, tag: '豆浆' });
     cyl(UX, .445, UZ, .172, .05, col.steelD, { gloss: .44, tag: '豆浆' });
     taper(UX, 1.035, UZ, .34, .09, .34, col.steel, { gloss: .50, tag: '豆浆' });
@@ -2065,18 +2636,36 @@ const Street = Lazy('Street', () => {
     // stall with a sign saying only 早餐包子 and no prices is a stall nobody has ever bought
     // from; this is also where the numbers and 元 turn up in the wild rather than in a menu.
     const PBX = sx - 1.30, PBZ = sz - .84;
-    box(PBX, 1.20, PBZ, .54, .60, .012, col.canvas, { hard: true, gloss: .10, tag: '早餐' });
-    box(PBX, 1.20, PBZ + .006, .48, .54, .004, C('#dcd2b8'), { hard: true, gloss: .08, tag: '早餐' });
-    for (const [k, row] of [[0, '包子一元'], [1, '油条一元'], [2, '豆浆两元']])
-      B.glyphs(PBX, 1.38 - k * .18, PBZ - .008, Math.PI, row,
-        { size: .095, gap: .012, color: col.charcoal, gloss: .06, lift: .006, tag: '早餐' });
-    for (const t of [-1, 1])
-      capsule(PBX + t * .24, 1.42, PBZ + .03, .008, .09, .008, col.steelD,
-        { rz: Math.PI / 2 - .7, gloss: G.metal, tag: '早餐' });
-    // folding table with two stools tucked under it, and a stack of spares
-    box(sx + 2.4, .55, sz - .35, 1.20, .06, .70, col.canvas, { hard: true, gloss: .24 });
-    for (const [ox, oz] of [[-.5, -.28], [.5, -.28], [-.5, .28], [.5, .28]])
-      capsule(sx + 2.4 + ox, .28, sz - .35 + oz, .035, .54, .035, col.steel, { gloss: .34 });
+    for (const ox of [-.27, .27])
+      capsule(PBX + ox, 1.20, PBZ + .012, .010, .64, .010, col.steelD,
+        { gloss: G.metal, tag: '早餐' });
+    for (const y of [.88, 1.52])
+      box(PBX, y, PBZ + .012, .56, .035, .025, col.steelD,
+        { hard: true, gloss: G.metal, tag: '早餐' });
+    for (const [k, row] of [[0, '包子一元'], [1, '油条一元'], [2, '豆浆两元']]) {
+      const py = 1.39 - k * .19;
+      box(PBX, py, PBZ, .46, .135, .010, k % 2 ? C('#e5dcc4') : C('#dcd2b8'),
+        { hard: true, mode: 7, gloss: .08, tag: '早餐' });
+      B.glyphs(PBX, py, PBZ - .012, Math.PI, row,
+        { size: .084, gap: .010, color: col.charcoal, gloss: .06, lift: .006, tag: '早餐' });
+    }
+    for (const y of [.96, 1.44])
+      capsule(PBX, y, PBZ + .04, .006, .12, .006, col.steelD,
+        { rx: Math.PI / 2, gloss: G.metal, tag: '早餐' });
+    // folding table with two stools tucked under it, and a stack of spares. Five top strips on two
+    // crossrails and braced splayed legs replace the old 1.2 × .7 m canvas slab.
+    const tableX = sx + 2.4, tableZ = sz - .35;
+    for (let i = 0; i < 5; i++)
+      box(tableX, .55, tableZ - .28 + i * .14, 1.16, .045, .10, col.canvas,
+        { hard: true, gloss: .24 });
+    for (const ox of [-.50, .50])
+      box(tableX + ox, .515, tableZ, .045, .06, .66, col.steelD,
+        { hard: true, gloss: G.metal });
+    for (const [ox, oz] of [[-.5, -.25], [.5, -.25], [-.5, .25], [.5, .25]])
+      capsule(tableX + ox, .28, tableZ + oz, .030, .54, .030, col.steel,
+        { rx: oz < 0 ? .12 : -.12, gloss: .34 });
+    capsule(tableX, .19, tableZ, .018, 1.02, .018, col.steelD,
+      { rz: Math.PI / 2, gloss: G.metal });
     // Pushed in under the lip on the customer side, half under and half out, which is where a
     // stool that somebody stood up from ends. These used to sit at sz + .55 and sz + .30 — that
     // is to say between the table and the courtyard wall, one of them a metre west of the table
@@ -2121,7 +2710,10 @@ const Street = Lazy('Street', () => {
     // Everything from the cart to the last baozi, so it can be wheeled away after the morning.
     // The things themselves stay where they are: a word you have walked up to before should not
     // stop existing because the cart has gone, and 早餐 out of hours already refuses politely.
-    stall.push(...B.props.slice(stallFrom).map(p => ({ p, m0: p.m })));
+    stall.push(...B.props.slice(stallFrom).map(p => {
+      if (!p.stateOwner) p.stateOwner = 'base:breakfast-stall';
+      return { p, m0: p.m };
+    }));
 
     // bicycles: a leaning row against the courtyard wall, plus shared bikes by the shop
     bike(-15.0, SZ - .30, .16, col.bikeO, true, false);
@@ -2133,30 +2725,84 @@ const Street = Lazy('Street', () => {
     bike(-21.2, SZ - .28, -.14, C('#7a4630'), true, false);
     bike(-5.0, SZ - .30, .08, col.teal, true, true);
     bike(-3.8, SZ - .30, -.06, col.bikeB, false, false);
-    // 共享单车 in a rack: nose out into the alley, side by side. Turned along the row they
-    // overlapped each other by half a length and read as a heap of scrap.
-    for (let i = 0; i < 7; i++)
-      bike(2.9 + i * .72, -2.10, (rnd() - .5) * .14,
-        i % 2 ? col.bikeY : col.bikeB, true, false);
-    box(5.06, .18, -2.42, 5.6, .10, .12, col.paintY, { hard: true, gloss: .3 });
+    // The old 共享单车 rank is gone from this narrow frontage. Even reduced from seven machines
+    // to four it filled HOME_OUT with sixteen near-black wheel faces, while street-cycles.js now
+    // provides a proper marked kerbside bay on the main road. Preserve all seven old random draws
+    // so the rest of the deterministic street is not re-seeded.
+    const rackLean = Array.from({ length: 7 }, () => (rnd() - .5) * .14);
+    void rackLean;
     thing('自行车', -5.0, 1.35, SZ - .30, '我的自行车在楼下。',
       'My bicycle is downstairs.',
       '自行车 — "self-run vehicle". 骑 qí is the verb for riding one.',
       { focus: [-5.0, SZ - 1.6], reach: 2.2 });
 
-    // 快递 delivery trike, parked with its crates open
-    const kx = 9.6, kz = SZ - .70;
-    box(kx, .60, kz, 1.70, .90, 1.15, col.plastic, { hard: true, gloss: .30, tag: '快递' });
-    box(kx, 1.10, kz, 1.60, .12, 1.05, col.white, { hard: true, gloss: .3, tag: '快递' });
-    for (let i = 0; i < 3; i++)
-      box(kx - .4 + i * .4, 1.28, kz + (rnd() - .5) * .4, .38, .30, .34, col.canvas,
-        { hard: true, gloss: .18, ry: rnd(), tag: '快递' });
-    box(kx - 1.35, .70, kz, .60, .70, .70, col.charcoal, { hard: true, gloss: .3, tag: '快递' });
-    capsule(kx - 1.35, 1.12, kz, .03, .60, .03, col.steel, { rz: Math.PI / 2, gloss: G.metal });
-    for (const [ox, oz] of [[-1.45, 0], [.62, -.56], [.62, .56]])
-      cyl(kx + ox, .27, kz + oz, .54, .10, col.black, { rx: Math.PI / 2, gloss: .26 });
-    solid(kx - 1.8, kx + 1.0, kz - .7, kz + .7);
-    shade(kx, kz, 3.2, 1.7, .32);
+    // 快递 delivery trike. The old version was one waist-high plastic cuboid with three over-size
+    // wheels stuck to it: from the walking line it read as a road barrier, not a vehicle. This is
+    // the open cargo tricycle used by neighbourhood couriers — a visible chassis, fork and saddle
+    // in front, paired rear wheels, and a light welded parcel cage instead of an opaque van body.
+    const kx = 9.6, kz = SZ - .70, KT = { tag: '快递' }, KPAINT = C('#365f68');
+    const parcelPose = Array.from({ length: 3 }, () => [(rnd() - .5) * .34, rnd()]);
+    // Chassis and cargo deck: thin structural members, with air visible beneath and through them.
+    box(kx - .18, .43, kz, 2.30, .10, .12, col.steelD,
+      { hard: true, gloss: G.metal, ...KT });
+    box(kx + .28, .58, kz, 1.30, .10, 1.02, KPAINT,
+      { hard: true, gloss: .30, ...KT });
+    for (const zSide of [-.50, .50]) {
+      capsule(kx + .28, .78, kz + zSide, .026, 1.26, .026, col.steel,
+        { rz: Math.PI / 2, gloss: G.metal, ...KT });
+      capsule(kx + .28, 1.43, kz + zSide, .026, 1.26, .026, col.steel,
+        { rz: Math.PI / 2, gloss: G.metal, ...KT });
+      for (const ox of [-.60, .60])
+        capsule(kx + .28 + ox, 1.10, kz + zSide, .026, .66, .026, col.steel,
+          { gloss: G.metal, ...KT });
+    }
+    for (const ox of [-.32, .28])
+      capsule(kx + ox, 1.10, kz - .50, .020, .66, .020, col.steelD,
+        { gloss: G.metal, ...KT });
+    // Parcel cartons are allowed to be boxes; none is left as a featureless block. Every carton
+    // gets a taped seam and sits at a different angle inside the open cage.
+    for (let i = 0; i < 3; i++) {
+      const px = kx - .10 + i * .36, pz = kz + parcelPose[i][0], pr = parcelPose[i][1];
+      box(px, .84 + (i % 2) * .10, pz, .34 + (i === 1 ? .08 : 0), .38, .32,
+        i === 2 ? C('#b89b74') : col.canvas,
+        { hard: true, gloss: .16, ry: pr, ...KT });
+      box(px, 1.032 + (i % 2) * .10, pz, .09, .012, .33,
+        C('#d8c6a2'), { hard: true, gloss: .12, ry: pr, ...KT });
+    }
+    // Saddle, pedals, head tube, fork and handlebars make the otherwise empty front third read as
+    // something that can actually be ridden rather than another bin parked against the wall.
+    taper(kx - .72, .75, kz, .22, .12, .30, col.charcoal, { gloss: .28, ...KT });
+    capsule(kx - .72, .58, kz, .024, .38, .024, col.steelD,
+      { rz: -.14, gloss: G.metal, ...KT });
+    cyl(kx - .68, .43, kz, .12, .035, col.steel, { gloss: G.metal, ...KT });
+    for (const zSide of [-.075, .075])
+      capsule(kx - 1.23, .61, kz + zSide, .024, .74, .024, col.steelD,
+        { rz: -.34, gloss: G.metal, ...KT });
+    capsule(kx - 1.10, .98, kz, .026, .48, .026, col.steelD,
+      { rz: -.20, gloss: G.metal, ...KT });
+    capsule(kx - 1.05, 1.16, kz, .022, .58, .022, col.steel,
+      { rx: Math.PI / 2, gloss: G.metal, ...KT });
+    ball(kx - 1.29, .91, kz, .075, .065, .075, col.cream,
+      { hard: true, mode: 1, glow: .02, ...KT });
+    // Properly scaled tyres, inset rims and hubs. The rear mudguards sit just above the tyre arc.
+    for (const [ox, oz] of [[-1.45, 0], [.66, -.52], [.66, .52]]) {
+      cyl(kx + ox, .29, kz + oz, .29, .09, col.black,
+        { rx: Math.PI / 2, gloss: .24, ...KT });
+      cyl(kx + ox, .29, kz + oz, .18, .105, col.steel,
+        { rx: Math.PI / 2, gloss: G.metal, ...KT });
+      cyl(kx + ox, .29, kz + oz, .055, .12, col.charcoal,
+        { rx: Math.PI / 2, gloss: .34, ...KT });
+    }
+    for (const oz of [-.52, .52])
+      capsule(kx + .66, .60, kz + oz, .035, .54, .035, KPAINT,
+        { rz: Math.PI / 2, gloss: .30, ...KT });
+    // A small supported fleet plate, not a full cargo-box billboard.
+    box(kx + .28, 1.18, kz - .525, .70, .25, .025, KPAINT,
+      { hard: true, gloss: .30, ...KT });
+    B.glyphs(kx + .28, 1.18, kz - .543, Math.PI, '快递',
+      { size: .145, gap: .035, color: col.white, mode: 1, lift: .006, ...KT });
+    solid(kx - 1.72, kx + .96, kz - .60, kz + .60);
+    shade(kx - .06, kz, 3.0, 1.45, .28);
     thing('快递', kx, 1.75, kz, '快递到了，放在门口。',
       'The delivery came. It is by the door.',
       '快 fast + 递 to hand over. The word for every parcel in China.',
@@ -2181,13 +2827,38 @@ const Street = Lazy('Street', () => {
       '一盆花 — 盆 is the measure word for a potted plant.',
       { focus: [-11.35, SZ - 1.5], reach: 1.9 });
 
-    for (const [bx, bz] of [[-13.4, -2.05], [7.0, SZ - .40], [20.5, -2.05]]) {
-      box(bx, .48, bz, .78, .96, .70, col.tarp, { hard: true, gloss: .30 });
-      box(bx, .99, bz, .82, .10, .74, col.charcoal, { hard: true, gloss: .30 });
-      box(bx, 1.06, bz + .05, .40, .06, .30, col.charcoal, { hard: true, rx: -.4, gloss: .3 });
-      box(bx + .5, .40, bz, .10, .80, .50, col.plastic, { hard: true, gloss: .3 });
-      shade(bx, bz, 1.5, 1.4, .34);
-      solid(bx - .5, bx + .6, bz - .45, bz + .45);
+    // One shared wheeled bin in a measured service bay replaces three chest-and-side-box
+    // assemblies scattered through the walking line. The worst stood directly across 修鞋/打印;
+    // the east one also occupied the newsstand's footprint. This west bay is against plain wall,
+    // clear of the repair pitch, public-toilet post, tree and relocated utility pole.
+    {
+      const bx = -20.80, bz = -2.78;
+      taper(bx, .47, bz, .56, .82, .50, col.tarp, { gloss: .25 });
+      // Recessed service panel, supported lid, hinge and pull: five readable parts rather than a
+      // coloured cuboid with a second coloured cuboid glued to its side.
+      box(bx, .49, bz - .258, .38, .45, .024, tint(col.tarp, .78),
+        { hard: true, gloss: .20 });
+      box(bx, .92, bz + .01, .62, .10, .56, col.charcoal,
+        { hard: true, rx: -.06, gloss: .30 });
+      capsule(bx, .91, bz + .275, .020, .54, .020, col.steelD,
+        { rz: Math.PI / 2, gloss: G.metal });
+      capsule(bx, .76, bz + .285, .018, .40, .018, col.steelD,
+        { rz: Math.PI / 2, gloss: G.metal });
+      box(bx, .50, bz - .274, .22, .10, .018, col.cream,
+        { hard: true, gloss: .16 });
+      // Axle, inset tyres and foot pedal keep the object visibly mobile and wall-serviced.
+      capsule(bx, .16, bz + .20, .024, .62, .024, col.steelD,
+        { rz: Math.PI / 2, gloss: G.metal });
+      for (const ox of [-.27, .27]) {
+        cyl(bx + ox, .16, bz + .20, .105, .07, col.black,
+          { rz: Math.PI / 2, gloss: .24 });
+        cyl(bx + ox, .16, bz + .20, .050, .076, col.steel,
+          { rz: Math.PI / 2, gloss: G.metal });
+      }
+      box(bx, .10, bz - .29, .22, .05, .12, col.steelD,
+        { hard: true, rx: -.16, gloss: G.metal });
+      shade(bx, bz, .86, .80, .25);
+      solid(bx - .31, bx + .31, bz - .28, bz + .28);
     }
     // The 扫帚 leaning against the wall. It was a stick with a beige box on the end, which at any
     // distance is a spade. A hutong broom is a fan of sorghum straw bound to the handle in two
@@ -2211,7 +2882,52 @@ const Street = Lazy('Street', () => {
     // the way this scene goes wrong is a prop dropped through something already standing there.
     wallJunk(-18.0, 3.30, 0, -1);        // crates, west of 陈家's gate
     wallJunk(-16.6, 3.32, 1, -1);        // gas bottle, bucket and mop beside them
-    wallJunk(8.0, 3.20, 0, -1);          // more crates, east of the market piers
+    // Open returnable crates east of the market frame. This is the one kind-0 wallJunk call that
+    // shares the gateway view: its old seven nested cuboids made four bright masonry courses and
+    // pushed their front rim to z 2.93. Five lower slatted crates sit at z >= 3.12, with produce in
+    // the two open tops; no RNG, tag or collider is added.
+    {
+      const jx = 8.0, jz = 3.34;
+      const CR = [C('#3d6f8c'), C('#8a4a3c'), C('#4f7a58'), C('#8a7a3c')];
+      const crate = (cx, base, cz, color, ry) => {
+        const w = .58, d = .38, h = .18, rail = .035, ca = Math.cos(ry), sa = Math.sin(ry);
+        const at = (ox, oz) => [cx + ca * ox + sa * oz, cz - sa * ox + ca * oz];
+        for (const oz of [-.12, 0, .12]) {
+          const [px, pz] = at(0, oz);
+          box(px, base + .018, pz, .52, .035, .04, color,
+            { hard:true, ry, gloss:.24 });
+        }
+        for (const yy of [base + .065, base + .155]) {
+          for (const oz of [-d / 2 + rail / 2, d / 2 - rail / 2]) {
+            const [px, pz] = at(0, oz);
+            box(px, yy, pz, w, rail, rail, color, { hard:true, ry, gloss:.26 });
+          }
+          for (const ox of [-w / 2 + rail / 2, w / 2 - rail / 2]) {
+            const [px, pz] = at(ox, 0);
+            box(px, yy, pz, rail, rail, d, color, { hard:true, ry, gloss:.26 });
+          }
+        }
+        for (const ox of [-w / 2 + rail / 2, w / 2 - rail / 2])
+          for (const oz of [-d / 2 + rail / 2, d / 2 - rail / 2]) {
+            const [px, pz] = at(ox, oz);
+            capsule(px, base + h / 2, pz, rail * .50, h, rail * .50, color,
+              { gloss:.26 });
+          }
+      };
+      for (const [ox, levels] of [[-.31, 3], [.31, 2]]) {
+        let topZ = jz;
+        for (let i = 0; i < levels; i++) {
+          const k = jit(jx + ox, i * 3.7 + 3.20), ry = (k - .5) * .12;
+          topZ = jz + (k - .5) * .035;
+          crate(jx + ox, i * .20, topZ, CR[(i + (ox > 0 ? 2 : 0)) % 4], ry);
+        }
+        for (let i = 0; i < 6; i++) {
+          const a = i * 2.399, r = i ? .06 + (i % 2) * .035 : 0;
+          ball(jx + ox + Math.cos(a) * r, levels * .20 - .015, topZ + Math.sin(a) * r,
+            .045, .040, .045, i % 2 ? C('#c46a35') : C('#a9b85a'), { gloss:.22 });
+        }
+      }
+    }
     wallJunk(11.05, 3.30, 1, -1);        // a second bottle by number 16
     wallJunk(17.75, 3.28, 2, -1);        // hose, tarpaulin and canes by the brick pile
     wallJunk(-15.6, -2.36, 2, 1);        // the same against the block, west of the meters
@@ -2259,10 +2975,10 @@ const Street = Lazy('Street', () => {
     // whole upper third of every view down that way was blank render and sky, where a Beijing
     // alley is a net of cable, brackets and drop loops the entire length of it.
     //
-    // Set at x -12.0, which is the only gap on that side wide enough: the bin stands at -13.4 and
-    // finishes at -12.85, the tree grate at -9.4 starts at -10.15, the steam off the drain cover
-    // at -13.0 is a quarter of a metre clear, and the gas riser at -10.9 is on the wall behind.
-    const px1 = -12.0, pz1 = -2.24;
+    // Relocated to the real walk-up/service joint. At x=-12 the complete 76 cm collider sealed the
+    // print-shop address and put its meter cabinet in the walking band. Here it is tight to the
+    // wall, clear of the rebuilt facades and chess ensemble, while still terminating the cable run.
+    const px1 = -16.85, pz1 = -2.78;
     taper(px1, 3.9, pz1, .32, 8.0, .32, C('#93897c'), { gloss: .22 });
     // A concrete pole, so it takes the two cast bands every one of them has round it, and a
     // painted number. Without them it was a plain grey cone and read as scaffolding.
@@ -2274,12 +2990,17 @@ const Street = Lazy('Street', () => {
       // stub of wire off each insulator, turned back along the run
       capsule(px1 + o, 6.86, pz1 + .06, .014, .22, .014, col.black, { rx: .9, gloss: .2 });
     }
-    // The wires from the first pole land on this one: the same five heights, run back east so
-    // the two spans meet instead of ending a metre and a half apart in the air.
+    // The wires from the first pole land on this one. The east span still finishes at x=-10.6;
+    // each new connector is measured between that endpoint and this deeper service-line pole and
+    // yawed through x/z, so relocating the pole does not leave a cable hanging in mid-air.
     for (let i = 0; i < 5; i++) {
       const y = 7.1 - (i % 2) * .6;
-      capsule(px1 + 1.55, y - .58 - i * .04, pz1 + .04 - i * .05, .019, 3.4, .019, col.black,
-        { rz: Math.PI / 2 - .10, gloss: .2 });
+      const joinX = px0 - 12.0, joinZ = -2.16 - i * .05;
+      const poleZ = pz1 + .04 - i * .05;
+      const dx = joinX - px1, dz = joinZ - poleZ;
+      capsule((px1 + joinX) / 2, y - .40 - i * .02, (poleZ + joinZ) / 2,
+        .019, Math.hypot(dx, dz), .019, col.black,
+        { ry: -Math.atan2(dz, dx), rz: Math.PI / 2, gloss: .2 });
       // and on west toward the dead end, dropping as they go
       if (i < 3) capsule(px1 - 5.2, y - .74 - i * .05, pz1 - .10 - i * .06, .019, 10.4, .019,
         col.black, { rz: Math.PI / 2 + .05, gloss: .2 });
@@ -2313,18 +3034,20 @@ const Street = Lazy('Street', () => {
     // you could not read either sign.
     //
     // West of x -9.5 there is no shopfront on either side, which is where the three of them go:
-    // -24.0..-21.6, -19.6..-16.4 (that one in street-alley.js) and -14.6..-10.7. It also reads
+    // -23.8..-22.2, -19.6..-16.4 (that one in street-alley.js) and -14.35..-12.0. It also reads
     // as a real street — the washing end of a hutong and the trading end of it are not the same
     // fifty metres.
-    capsule(-12.4, 3.08, 1.55, .016, 6.0, .016, col.steel, { rz: Math.PI / 2 + .05, gloss: .3 });
-    washing(-14.6, 3.04, 1.58, 6, -.012, '衣服');
+    capsule(-12.95, 3.08, 2.52, .016, 4.15, .016, col.steel,
+      { rz: Math.PI / 2 + .035, gloss: .3 });
+    washing(-14.35, 3.04, 2.55, 4, -.010, '衣服');
     // a second, shorter line at the west end
-    capsule(-22.7, 2.99, 1.70, .016, 4.2, .016, col.steel, { rz: Math.PI / 2 - .04, gloss: .3 });
-    washing(-24.0, 2.95, 1.66, 4, .01);
-    // Six shirts, two pairs of trousers and a towel strung over the alley, and no word on any of
+    capsule(-22.85, 2.99, 2.66, .016, 3.20, .016, col.steel,
+      { rz: Math.PI / 2 - .03, gloss: .3 });
+    washing(-23.80, 2.95, 2.63, 3, .010);
+    // Seven small mixed garments sit behind the main gate view, and no word is printed on any of
     // them. 衣服 is in the dictionary and was reachable nowhere in the district — the flat teaches
     // it off the wardrobe, so a player who never opened the wardrobe never met it.
-    thing('衣服', -12.60, 2.90, 1.56, '衣服晾在外面，明天就干了。',
+    thing('衣服', -12.80, 2.84, 2.54, '衣服晾在外面，明天就干了。',
       'The washing is out. It will be dry tomorrow.',
       '衣服 covers everything you wear. 一件衣服 — 件 is its measure word.',
       { focus: [-12.60, .40], reach: 2.4 });
@@ -2354,34 +3077,101 @@ const Street = Lazy('Street', () => {
     // brick wall for eleven metres, which is what a side lane actually opens off.
     const MK = 4.60;                                  // x of the market gate
     const MZ = CWZ;                                   // the courtyard wall line
+    // The 2.8 m break in the courtyard wall is the opening; the entrance should frame it, not
+    // bury it in two 1.8 m masonry towers. Four narrow steel posts make a shallow portal with a
+    // front and a back face. Stone shoes take the posts down to the paving, side ties reveal the
+    // frame's 78 cm depth from an oblique view, and knee braces explain how the crossbeams stay up.
+    // Nothing crosses the opening below 3.18 m, leaving a clean player-height view into the lane.
+    const MH = 1.50, MF = MZ - .18, MR = MZ + .61;
     for (const s of [-1, 1]) {
-      // the two piers the gap is between
-      box(MK + s * 2.30, 2.60, MZ + .70, 1.80, 5.20, 2.20, col.brick,
-        { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-      box(MK + s * 2.30, 5.32, MZ + .70, 1.96, .28, 2.36, col.brickD, { hard: true, gloss: G.matte });
+      const px = MK + s * MH;
+      // Two-piece shoes, small enough to read as foundations rather than replacement piers.
+      box(px, .10, MZ + .20, .46, .20, .88, col.stoneD,
+        { hard: true, mode: 12, gloss: .16 });
+      box(px, .25, MZ + .20, .34, .10, .66, col.stone,
+        { hard: true, mode: 12, gloss: .18 });
+      for (const pz of [MF, MR]) {
+        box(px, 1.76, pz, .16, 2.96, .16, col.charcoal,
+          { hard: true, gloss: .28, tag: '夜市' });
+        // Base plate and four visible fixings: the post is bolted down, not balanced on the shoe.
+        box(px, .34, pz, .28, .035, .28, col.steelD, { hard: true, gloss: G.metal });
+        for (const dx of [-.09, .09]) for (const dz of [-.09, .09])
+          ball(px + dx, .37, pz + dz, .018, .010, .018, col.steel, { gloss: G.metal });
+      }
+      box(px, 3.20, (MF + MR) / 2, .16, .12, MR - MF + .16, col.steelD,
+        { hard: true, gloss: G.metal, tag: '夜市' });
+      // Paired knee braces on both elevations. Their open triangles make the load path visible
+      // without putting a solid shoulder back into the gateway.
+      for (const pz of [MF, MR]) {
+        capsule(px - s * .22, 3.04, pz, .030, .54, .030, col.steelD,
+          { rz: s * .78, gloss: G.metal, tag: '夜市' });
+        capsule(px, 2.78, pz + (pz === MF ? .19 : -.19), .025, .42, .025, col.steelD,
+          { rx: pz === MF ? -.62 : .62, gloss: G.metal, tag: '夜市' });
+      }
     }
     blocker(MK - 3.3, MK - 1.3, MZ - .3, MZ + 2.0, 6.0);
     blocker(MK + 1.3, MK + 3.3, MZ - .3, MZ + 2.0, 6.0);
     solid(MK - 3.3, MK - 1.35, MZ - .30, MZ + 1.9);
     solid(MK + 1.35, MK + 3.3, MZ - .30, MZ + 1.9);
-    // the lintel over the gap, and the board on it
-    box(MK, 3.40, MZ + .18, 2.90, .34, .50, col.brickD, { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-    box(MK, 4.10, MZ + .04, 2.70, .96, .12, col.charcoal, { hard: true, gloss: .20, tag: '夜市' });
-    // The two characters, in tube light. `litten` at a high factor is what makes them come on:
-    // by day they are a dull red plate on a dark board and after dark they are the brightest
-    // thing in the alley.
-    for (const g of B.glyphs(MK, 4.14, MZ + .11, 0, '夜市',
-      { size: .56, gap: .16, color: C('#e04a3a'), mode: 1, glow: .10, tag: '夜市', lift: .01 }))
+    // Two slender crossbeams, with short depth ties between them: a real portal frame in plan,
+    // not a lintel slab pasted onto the front elevation.
+    for (const pz of [MF, MR])
+      box(MK, 3.30, pz, MH * 2 + .18, .16, .16, col.charcoal,
+        { hard: true, gloss: .28, tag: '夜市' });
+    for (const sx of [-.92, .92])
+      box(MK + sx, 3.30, (MF + MR) / 2, .10, .12, MR - MF + .16, col.steelD,
+        { hard: true, gloss: G.metal, tag: '夜市' });
+
+    // 夜市 is mounted as two open sign cages. The old 2.7 × .96 m charcoal board hid the frame
+    // and turned the entrance into a billboard; these rails keep the characters legible by day
+    // while the lane, sky and bulb strings remain visible between and around them.
+    for (const s of [-1, 1]) {
+      const gx = MK + s * .42;
+      // Top/bottom rails frame the cage; the slimmer centre rail is the actual mounting carrier
+      // for the character. Without it the ink sat 31 cm from any solid support in an otherwise
+      // honest open frame — readable, but physically floating.
+      for (const [y, h] of [[3.60, .045], [3.96, .030], [4.30, .045]])
+        box(gx, y, MF - .02, .70, h, .055, col.steelD,
+          { hard: true, gloss: G.metal, tag: '夜市' });
+      for (const x of [gx - .33, gx + .33])
+        box(x, 3.95, MF - .02, .045, .74, .055, col.steelD,
+          { hard: true, gloss: G.metal, tag: '夜市' });
+      capsule(gx, 4.43, MF + .18, .018, .30, .018, col.steelD,
+        { rx: Math.PI / 2, gloss: G.metal, tag: '夜市' });
+    }
+    for (const g of B.glyphs(MK, 3.96, MF - .06, Math.PI, '夜市',
+      { size: .48, gap: .18, color: C('#e04a3a'), mode: 1, glow: .10, tag: '夜市', lift: .01 }))
       litten(g, 2.4);
     for (const s of [-1, 1])
-      litten(box(MK + s * 1.16, 4.10, MZ + .12, .05, .74, .04, C('#48c07a'),
-        { hard: true, mode: 1, glow: .06, tag: '夜市' }), 2.0);
-    // The far wall of the lane behind the gap, so the gate is not a hole through to the sky. Lit
-    // rather than emissive and deliberately *not* on the `litten` list: put on it, this panel came
-    // up with the lanterns after dark and the gateway filled with a sheet of white light. What you
-    // should see through there is a dim brick wall with somebody else's bulbs on it.
-    box(MK, 1.70, MZ + 1.85, 2.80, 3.40, .10, C('#3a322c'),
-      { hard: true, mode: 11, gloss: G.matte, ...BRICK, tag: '夜市' });
+      litten(capsule(MK + s * 1.23, 3.95, MF - .065, .022, .64, .022, C('#48c07a'),
+        { gloss: .34, glow: .06, tag: '夜市' }), 2.0);
+
+    // Receding side returns replace the wall that used to close the lane only 1.85 m behind the
+    // threshold. Short brick bays, their capped joints, three cross-wires and progressively
+    // smaller bulbs give a measured six metres of depth while keeping the central 2.56 m open.
+    for (const s of [-1, 1]) {
+      for (let i = 0; i < 5; i++) {
+        const rz = MZ + 1.16 + i * 1.02;
+        box(MK + s * 1.37, 1.20, rz, .18, 2.40, .86,
+          tint(C('#4b443d'), .92 + i * .02),
+          { hard: true, mode: 11, gloss: G.matte, ...BRICK, tag: '夜市' });
+        box(MK + s * 1.37, 2.43, rz, .26, .06, .92, col.tileD,
+          { hard: true, mode: 13, gloss: .16, ...RTILE });
+      }
+    }
+    for (let row = 0; row < 3; row++) {
+      // Below the covered passage eaves, with 2.15 m minimum bulb clearance. At the former 3.08 m
+      // height every lamp sat inside/above the retained courtyard roof and vanished from the lane.
+      const rz = MZ + 1.22 + row * 1.72, yy = 2.45 - row * .07;
+      capsule(MK, yy, rz, .010, 2.58, .010, col.black,
+        { rz: Math.PI / 2, gloss: .18 });
+      for (const ox of [-.84, 0, .84]) {
+        capsule(MK + ox, yy - .08, rz, .006, .15, .006, col.black, { gloss: .18 });
+        litten(ball(MK + ox, yy - .18, rz, .055 - row * .006, .065 - row * .006,
+          .055 - row * .006, C('#f3b45f'),
+          { mode: 1, glow: .05, gloss: .18, tag: '夜市' }), 1.9);
+      }
+    }
     // and the warm spill of the market itself out through the gap. A pool on the ground rather
     // than a panel standing in the opening: the first version was an emissive strip and it read
     // as a lightbox bolted into the gateway, which is not what light coming out of a doorway
@@ -2398,71 +3188,255 @@ const Street = Lazy('Street', () => {
       'place in the neighbourhood that is busier at nine than at noon.',
       { focus: [MK, MZ - 1.40], reach: 2.6 });
 
-    // ---- the west end: a dead end closed by a two-storey brick building, with a small square
-    // in front of it. The building used to overlap the square you stand in, so the camera slid
-    // straight inside it and the whole view became one blank sheet of brickwork.
+    // ---- the west end. A shell builder keeps a pitched house honest without making it a single
+    // opaque cuboid: bay-sized front/back masonry, visible end returns, then a roof. It is local to
+    // this compound so the rest of street.js keeps its authored geometry and RNG stream.
+    const shellHouse = (cx, cz, w, d, h, rise, tone, alongZ = false) => {
+      const nx = Math.max(2, Math.ceil(w / 2.55)), nz = Math.max(2, Math.ceil(d / 2.55));
+      for (const s of [-1, 1]) for (let i = 0; i < nx; i++) {
+        const bw = w / nx, bx = cx - w / 2 + bw * (i + .5);
+        box(bx, h / 2, cz + s * (d / 2 - .15), bw - .07, h, .30,
+          tint(tone, .95 + ((i + (s > 0 ? 1 : 0)) % 3) * .035),
+          { hard:true, mode:11, gloss:G.matte, ...BRICK });
+      }
+      for (const s of [-1, 1]) for (let i = 0; i < nz; i++) {
+        const bd = d / nz, bz = cz - d / 2 + bd * (i + .5);
+        box(cx + s * (w / 2 - .15), h / 2, bz, .30, h, bd - .07,
+          tint(tone, .94 + ((i + (s > 0 ? 2 : 0)) % 3) * .04),
+          { hard:true, mode:11, gloss:G.matte, ...BRICK });
+      }
+      tileRoof(cx, cz, alongZ ? d : w, alongZ ? w : d, h, rise, alongZ);
+    };
+
+    // 李家 is five joined building phases around a narrow rear yard, not a 12 × 23.5 m block.
+    // All four east faces remain exactly on WX, preserving the live door reach and the original
+    // solid/blocker footprint, while the depths, eaves and ridges step away behind them.
     const WX = -33.4;                                  // the building line at the dead end
-    box(WX - 6.0, 4.15, -3.25, 12.0, 8.30, 23.5, col.brick,
-      { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-    tileRoof(WX - 6.0, -3.25, 12.0, 23.5, 8.30, 2.5);
+    const liPhases = [
+      { z:-12.10, d:5.55, w:5.80, h:5.35, r:1.00, c:tint(col.brick,.78,-.010) },
+      { z:-6.57,  d:5.35, w:6.35, h:6.05, r:1.18, c:tint(col.brick,.88, .002) },
+      { z:-.48,   d:6.48, w:5.20, h:7.15, r:1.36, c:tint(col.brick,.98, .008) },
+      { z:4.78,   d:3.82, w:4.55, h:4.72, r:.86,  c:tint(col.brick,.83,-.006) },
+      { z:7.22,   d:1.02, w:4.20, h:4.28, r:.72,  c:tint(col.brick,.76,-.012) },
+    ];
+    for (const p of liPhases)
+      shellHouse(WX - p.w / 2, p.z, p.w, p.d, p.h, p.r, p.c, true);
     blocker(WX - 12.4, WX, -15.2, 8.7, 11.2);
     solid(WX - 12.4, WX, -15.2, 8.8);
-    // Its face onto the square. A dead end you are going to look at every time you walk west
-    // needs something on it: windows, a door, a meter box, a bike against the wall.
-    for (const wz of [-4.8, -1.6, 3.9, 6.4]) for (const wy of [1.60, 4.75]) {
-      box(WX + .04, wy, wz, .08, 1.34, 1.62, col.glassDark, { hard: true, gloss: .20 });
-      pane(box(WX + .08, wy, wz, .03, 1.18, 1.46, col.glassDay,
-        { hard: true, mode: 1, gloss: G.glass }), rnd());
-      box(WX + .12, wy - .74, wz, .24, .08, 1.82, col.stone, { hard: true, gloss: .22 });
-      if (wy > 3.0) box(WX + .30, wy - 1.02, wz + .95, .44, .56, .82, col.white,
-        { hard: true, gloss: .26 });
+
+    // Eight windows, and exactly eight random warmth draws as before. They no longer sit in a
+    // repeated 4 × 2 grid: each construction phase has its own sill, proportion and upper datum.
+    const liWindows = [
+      [-12.25,1.48,1.28,1.16,0],[-12.02,4.08,1.08,1.22,1],
+      [-7.55,1.60,1.48,1.24,0],[-6.35,4.58,1.24,1.30,1],
+      [-2.32,1.66,1.34,1.34,0],[-2.56,5.32,1.52,1.36,1],
+      [4.12,1.48,1.16,1.18,0],[5.22,3.46,1.02,1.08,1],
+    ];
+    for (const [wz, wy, ww, wh, ac] of liWindows) {
+      box(WX + .035, wy, wz, .07, wh + .16, ww + .16, col.glassDark,
+        { hard:true, gloss:.20 });
+      pane(box(WX + .075, wy, wz, .025, wh, ww, col.glassDay,
+        { hard:true, mode:1, gloss:G.glass }), rnd());
+      box(WX + .10, wy, wz, .04, .055, ww, col.frame, { hard:true, gloss:G.paint });
+      box(WX + .10, wy, wz, .04, wh, .055, col.frame, { hard:true, gloss:G.paint });
+      box(WX + .13, wy - wh / 2 - .065, wz, .24, .08, ww + .20, col.stone,
+        { hard:true, gloss:.22 });
+      if (ac) {
+        // Proper condenser: cabinet, louvred face, brackets and a drain line—not a white cube.
+        const az = wz + ww / 2 + .62;
+        box(WX + .28, wy - .86, az, .42, .54, .76, col.white,
+          { hard:true, gloss:.25, round:.035 });
+        for (let k = -2; k <= 2; k++)
+          box(WX + .505, wy - .86 + k * .085, az, .028, .042, .60, col.steelD,
+            { hard:true, gloss:.28 });
+        for (const s of [-1, 1])
+          box(WX + .15, wy - 1.18, az + s * .27, .34, .07, .06, col.steelD,
+            { hard:true, gloss:G.metal });
+        capsule(WX + .13, wy - 1.47, az + .34, .022, .62, .022, col.white,
+          { gloss:.20 });
+      }
     }
-    box(WX + .06, 1.06, 1.20, .12, 2.12, 1.24, col.red, { hard: true, gloss: .26 });
-    box(WX + .13, 1.06, 1.20, .03, 1.90, .05, col.redD, { hard: true });
-    box(WX + .30, .09, 1.20, .56, .18, 1.60, col.stoneD, { hard: true, gloss: .22 });
-    // Li Shifu lives behind the red door. A nameplate, porch light and repair bag tie the
-    // anonymous west-end facade to the mechanic the player sees every day.
+
+    // 李家的 recessed-looking entrance. The frame, returned jambs, transom and bracketed tile hood
+    // project toward the square, leaving the leaf in shadow while ending at x=-33.00—still 80 cm
+    // behind WEST's live clamp and 62 cm behind the outside point at (-32.38,1.20).
+    box(WX + .055, 1.08, 1.20, .07, 2.16, 1.28, C('#34231f'),
+      { hard:true, gloss:.12 });
+    for (const s of [-1, 1])
+      box(WX + .16, 1.23, 1.20 + s * .72, .32, 2.46, .22, col.brickL,
+        { hard:true, mode:11, gloss:G.matte, ...BRICK });
+    box(WX + .16, 2.36, 1.20, .32, .22, 1.66, col.brickL,
+      { hard:true, mode:11, gloss:G.matte, ...BRICK });
+    for (const s of [-1, 1])
+      box(WX + .10, 1.06, 1.20 + s * .31, .07, 2.08, .60,
+        s > 0 ? tint(col.red,.90) : col.red, { hard:true, gloss:.24 });
+    box(WX + .13, 2.13, 1.20, .08, .10, 1.20, col.trunk, { hard:true, gloss:G.wood });
+    for (const s of [-1, 1])
+      box(WX + .18, 2.48, 1.20 + s * .64, .36, .15, .13, col.trunk,
+        { hard:true, gloss:G.wood, rz:-.18 });
+    box(WX + .18, 2.63, 1.20, .44, .12, 1.92, col.tileD,
+      { hard:true, mode:13, gloss:.18, rz:-.10, ...RTILE });
+    capsule(WX + .36, 2.59, 1.20, .050, 1.94, .050, col.tileD,
+      { rx:Math.PI / 2, gloss:.18, ...RTILE });
+    box(WX + .30, .09, 1.20, .56, .18, 1.60, col.stoneD,
+      { hard:true, gloss:.22 });
+    // Li Shifu lives behind the red door. An enamel plate, caged porch light and repair bag tie
+    // the residential entrance to the mechanic the player sees every day.
     box(WX + .15, 1.62, .34, .05, .68, .42, col.blueSign, { hard: true, gloss: .30 });
     B.glyphs(WX + .18, 1.62, .34, Math.PI / 2, '李家',
       { size: .18, gap: .05, vertical: true, color: col.white, mode: 1, lift: .008 });
     litten(ball(WX + .22, 2.36, 1.20, .075, .085, .075, C('#ffe3a6'),
       { mode: 1, glow: .22 }), .9);
+    for (let k = 0; k < 6; k++) {
+      const a = k * Math.PI / 3;
+      capsule(WX + .31 + Math.cos(a) * .09, 2.36 + Math.sin(a) * .09, 1.20,
+        .008, .20, .008, col.steelD, { rz:a, gloss:G.metal });
+    }
     box(WX + .34, .27, 2.12, .44, .38, .68, col.charcoal,
       { gloss: .22, round: .04 });
     capsule(WX + .56, .56, 2.12, .035, .54, .035, col.steel,
       { rz: .65, gloss: G.metal });
-    box(WX + .22, 1.55, -6.7, .34, .72, .52, col.steelD, { hard: true, gloss: .32 });
+    // Meter cabinet assembled from a weather hood, recessed board and three round meters.
+    box(WX + .12, 1.56, -6.70, .18, .92, 1.02, col.steelD,
+      { hard:true, gloss:.30, round:.035 });
+    box(WX + .225, 1.56, -6.70, .045, .72, .82, col.charcoal,
+      { hard:true, gloss:.18 });
+    for (let k = -1; k <= 1; k++) {
+      cyl(WX + .265, 1.67, -6.70 + k * .25, .105, .035, col.glassDay,
+        { rz:Math.PI / 2, gloss:G.glass });
+      capsule(WX + .27, 1.40, -6.70 + k * .25, .012, .10, .012, col.white,
+        { gloss:.20 });
+    }
+    box(WX + .28, 2.08, -6.70, .42, .08, 1.12, col.steel,
+      { hard:true, gloss:G.metal, rz:-.10 });
+    for (const z of [-13.9,-4.2,2.58,7.55])
+      capsule(WX + .15, 2.10, z, .045, 4.10, .045, col.steelD, { gloss:.26 });
     bike(WX + .80, -5.6, .08, col.bikeO, false, false);
 
-    // masses closing the square north and south, so it is the end of a lane and not a shelf
-    // of paving with the empty horizon showing past it
-    box(-29.0, 5.20, -12.6, 10.0, 10.40, 19.2, col.brick,
-      { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-    tileRoof(-29.0, -12.6, 10.0, 19.2, 10.40, 2.6);
+    // The north and south edges are clusters of houses with alleys between their rear ranges—not
+    // two giant closure blocks. Their existing colliders remain byte-for-byte the same.
+    // The walk-up closes the east half; these ranges stop at its west return instead of occupying
+    // the same volume. The old closure and walk-up overlapped for 3.3 m in x.
+    shellHouse(-30.70, -6.05, 6.60, 6.10, 6.70, 1.18, tint(col.brick,.79,-.008));
+    shellHouse(-30.40, -12.85, 6.80, 5.90, 8.15, 1.32, tint(col.brick,.72,-.012));
+    shellHouse(-29.90, -19.40, 7.80, 4.80, 6.25, 1.00, tint(col.brick,.75,-.006));
     blocker(-34.0, -24.0, -22.2, -3.0, 13.0);
     solid(-34.0, -24.0, -22.2, -2.95);
     brickRun(-33.2, -23.6, 7.4, 2.55);
-    box(-29.0, 3.10, 13.5, 10.0, 6.20, 11.0, col.brick,
-      { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-    tileRoof(-29.0, 13.5, 10.0, 11.0, 6.20, 1.9);
+    shellHouse(-31.10, 11.10, 5.60, 6.05, 5.20, .88, tint(col.brick,.90,.004));
+    shellHouse(-26.45, 11.55, 3.90, 6.90, 6.65, 1.16, tint(col.brick,.78,-.008));
+    shellHouse(-29.00, 16.65, 8.80, 4.55, 5.75, .96, tint(col.brick,.84,.002));
     blocker(-34.0, -24.0, 8.0, 19.0, 8.2);
 
-    // ---- the alley's north side west of your own block: another walk-up, plainer than yours.
-    // Without it the alley had open ground along one side for eleven metres.
-    box(-21.9, 5.60, -10.2, 10.8, 11.20, 14.6, col.render,
-      { hard: true, mode: 14, gloss: G.paint, ...RENDER });
-    box(-21.9, .70, -2.98, 10.9, 1.40, .34, col.brick, { hard: true, mode: 11, gloss: G.matte, ...BRICK });
-    box(-21.9, 11.50, -10.2, 11.0, .50, 14.8, col.renderD, { hard: true, gloss: G.paint });
+    // ---- the alley's north-side walk-up: three wings around one stair, each with a setback and
+    // its own parapet. Perimeter walls are built in bays, so no tagged or untagged mega-box remains.
+    const flatWing = (cx, cz, w, d, h, face, tone) => {
+      const nx = Math.max(2, Math.ceil(w / 2.45)), nz = Math.max(2, Math.ceil(d / 2.65));
+      for (const s of [-1, 1]) for (let i = 0; i < nx; i++) {
+        const bw = w / nx, bx = cx - w / 2 + bw * (i + .5);
+        box(bx, h / 2, cz + s * (d / 2 - .15), bw - .07, h, .30,
+          tint(tone, .97 + ((i + (s > 0 ? 1 : 0)) % 3) * .025),
+          { hard:true, mode:14, gloss:G.paint, ...RENDER });
+        box(bx, .66, cz + s * (d / 2 + .015), bw - .12, 1.32, .11, col.brick,
+          { hard:true, mode:11, gloss:G.matte, ...BRICK });
+        box(bx, h + .26, cz + s * (d / 2 - .04), bw - .03, .52, .22, col.renderD,
+          { hard:true, gloss:G.paint });
+      }
+      for (const s of [-1, 1]) for (let i = 0; i < nz; i++) {
+        const bd = d / nz, bz = cz - d / 2 + bd * (i + .5);
+        box(cx + s * (w / 2 - .15), h / 2, bz, .30, h, bd - .07, tone,
+          { hard:true, mode:14, gloss:G.paint, ...RENDER });
+        box(cx + s * (w / 2 - .04), h + .26, bz, .22, .52, bd - .04, col.renderD,
+          { hard:true, gloss:G.paint });
+      }
+      flat(cx, h + .025, cz, w - .42, d - .42, col.charcoal, { gloss:.16 });
+    };
+    const walkWings = [
+      { x:-25.25,z:-8.00,w:4.10,d:9.60,h:10.82,face:-3.20,c:tint(col.render,.94,-.010) },
+      { x:-21.90,z:-7.30,w:2.55,d:8.80,h:12.18,face:-2.90,c:tint(col.render,1.04,.006) },
+      { x:-18.65,z:-8.28,w:3.85,d:9.86,h:11.36,face:-3.35,c:tint(col.render,.98,.012) },
+    ];
+    for (const w of walkWings) flatWing(w.x, w.z, w.w, w.d, w.h, w.face, w.c);
     blocker(-27.3, -16.5, -17.6, -2.90, 11.2);
     solid(-27.3, -16.4, -17.6, -2.85);
     for (let f = 1; f < 4; f++) for (let i = 0; i < 3; i++) {
       const wx = -25.4 + i * 3.5;
-      fwin(wx, f * 2.80 + 1.60, -2.90, 1.95, 1.40);
-      if (rnd() > .45) acBox(wx + 1.30, f * 2.80 + .55, -2.90);
+      const wing = walkWings[i], fy = f * 2.80 + 1.60;
+      fwin(wx, fy, wing.face, i === 1 ? 1.10 : 1.72, i === 1 ? 1.62 : 1.34);
+      if (rnd() > .45) acBox(wx + (i === 2 ? -1.12 : 1.08), fy - 1.02, wing.face);
     }
+    // One projected balcony stack on each family wing, and an aligned slot over the stair. Rail,
+    // kick plate and side returns keep these from reading as slabs bolted to a rendered cube.
+    for (const [bx, by, bz] of [[-25.40,7.25,-3.20],[-18.40,4.45,-3.35],[-18.40,10.02,-3.35]]) {
+      box(bx, by - .72, bz + .42, 1.92, .13, .76, col.renderD,
+        { hard:true, gloss:G.paint });
+      for (const s of [-1, 1])
+        box(bx + s * .91, by - .22, bz + .42, .10, 1.10, .74, col.renderD,
+          { hard:true, gloss:G.paint });
+      capsule(bx, by + .26, bz + .82, .030, 1.84, .030, col.rail,
+        { rz:Math.PI / 2, gloss:.34 });
+      for (let k = -3; k <= 3; k++)
+        capsule(bx + k * .27, by - .20, bz + .82, .018, .88, .018, col.rail,
+          { gloss:.34 });
+    }
+    // A sheltered common entrance makes the central wing a stair, not a third window column.
+    box(-21.90, 1.18, -2.82, 1.18, 2.34, .08, C('#24282b'), { hard:true, gloss:.12 });
+    for (const s of [-1, 1])
+      box(-21.90 + s * .67, 1.24, -2.75, .18, 2.48, .26, col.brickL,
+        { hard:true, mode:11, gloss:G.matte, ...BRICK });
+    box(-21.90, 2.39, -2.75, 1.52, .22, .26, col.brickL,
+      { hard:true, mode:11, gloss:G.matte, ...BRICK });
+    for (const s of [-1, 1])
+      box(-21.90 + s * .35, 1.16, -2.69, .05, 2.14, .58, col.glassDark,
+        { hard:true, mode:1, gloss:G.glass });
+    box(-21.90, 2.67, -2.54, 1.86, .12, .70, col.renderD,
+      { hard:true, gloss:G.paint, rz:-.05 });
+    for (const s of [-1, 1])
+      box(-21.90 + s * .68, 2.46, -2.69, .12, .34, .46, col.renderD,
+        { hard:true, gloss:G.paint });
+    box(-21.18, 1.64, -2.54, .08, .52, .40, col.blueSign,
+      { hard:true, gloss:.30 });
+    B.glyphs(-21.15, 1.64, -2.54, 0, '二单元',
+      { size:.13, gap:.03, vertical:true, color:col.white, mode:1, lift:.006 });
+    // A real stair overrun on the middle wing: four returned walls, an access leaf, coping and
+    // drainage. The former single 4.5 m³ roof box looked like a crate dropped on the building.
+    const HX = -21.90, HZ = -7.15, HY = 12.82;
+    box(HX, HY, HZ - .96, 1.66, 1.28, .18, col.renderD,
+      { hard:true, mode:14, gloss:G.paint, ...RENDER });
+    for (const s of [-1, 1])
+      box(HX + s * .74, HY, HZ, .18, 1.28, 1.92, tint(col.renderD, .96 + s * .025),
+        { hard:true, mode:14, gloss:G.paint, ...RENDER });
+    for (const s of [-1, 1])
+      box(HX + s * .53, HY, HZ + .96, .42, 1.28, .18, col.renderD,
+        { hard:true, mode:14, gloss:G.paint, ...RENDER });
+    box(HX, HY + .50, HZ + .96, .64, .28, .18, col.renderD,
+      { hard:true, mode:14, gloss:G.paint, ...RENDER });
+    box(HX, HY - .11, HZ + 1.065, .64, 1.02, .055, col.charcoal,
+      { hard:true, gloss:.18 });
+    for (let k = -2; k <= 2; k++)
+      box(HX, HY - .20 + k * .14, HZ + 1.10, .48, .035, .02, col.steelD,
+        { hard:true, gloss:.30 });
+    flat(HX, HY + .675, HZ, 1.98, 2.30, col.charcoal, { gloss:.16 });
+    for (const s of [-1, 1])
+      box(HX + s * .90, HY + .73, HZ, .10, .14, 2.28, col.renderD,
+        { hard:true, gloss:G.paint });
+    capsule(HX + .88, HY - .03, HZ - .80, .028, 1.46, .028, col.steelD,
+      { gloss:.30 });
+    // Separate condenser and aerial clusters over the family wings, never one repeated object
+    // above every bay.
+    for (const s of [-1, 1])
+      cyl(-25.55 + s * .58, 11.48, -8.10, .38, .66, col.steel,
+        { gloss:.34 });
+    for (let k = 0; k < 7; k++)
+      cyl(-18.92 + k * .17, 11.92, -8.55, .055, .96, col.steel,
+        { rx:-.55, gloss:.40 });
 
-    tree(-29.2, 3.4, 1.25, false);
-    // mahjong table under it, four stools, and a thermos
+    // The square's scholar tree lives on the far western shoulder now. At (-29.2,3.7) its
+    // whitewashed trunk stood directly across the centered 公厕 approach and made the two entries
+    // read as slits. This position keeps its grate clear of the gate focus, water butt, 李家 door,
+    // chess and mahjong; the slightly younger crown still shades the corner without filling it.
+    tree(-32.0, 3.0, 1.05, false);
+    // mahjong table in the open square, four stools, and a thermos
     box(-29.0, .74, .6, 1.15, .08, 1.15, col.tarp, { hard: true, gloss: .2, mode: 7 });
     for (const [ox, oz] of [[-.48, -.48], [.48, -.48], [-.48, .48], [.48, .48]])
       capsule(-29.0 + ox, .37, .6 + oz, .045, .72, .045, col.trunkL, { gloss: G.wood });
@@ -2514,82 +3488,108 @@ const Street = Lazy('Street', () => {
       { rz: Math.PI / 2, gloss: G.metal });
     cyl(HWX + .19, .055, HWZ - .05, .045, .11, C('#8a7a4a'), { gloss: .58 });
     cyl(HWX + .19, .115, HWZ - .05, .046, .012, col.steelD, { gloss: .40 });
-    solid(-29.7, -28.3, -.1, 1.3);
+    // Keep the table collider but fit it to the table/apron rather than the whole stool circle.
+    // street-west's tightened chess collider leaves a 1.25 m northern body corridor. South of the
+    // table the tree no longer forms the other edge at all: its inflated collider is 1.26 m west
+    // and .91 m south-west of the table's, leaving the whole public-facility apron open.
+    solid(-29.7, -28.3, .15, 1.05);
     shade(-29.0, .6, 2.6, 2.6, .3);
 
     // ============================================================ the road, east end
     // pavement, tactile strip, railings, lamps, and the bus stop
     for (let z = -14; z <= 14; z += 2.4)
       flat(RD0 - 1.4, .007, z, 1.0, 2.0, col.paintY, { gloss: .14 });
-    for (let z = -13; z <= 13; z += 2.6) {
-      if (Math.abs(z) < 3.4) continue;                     // gap at the crossing
-      for (let i = 0; i < 2; i++)
-        capsule(RD0 - .55, .62, z + i * 1.3, .035, 1.20, .035, col.steel, { gloss: .4 });
-      capsule(RD0 - .55, 1.16, z + .65, .04, 2.6, .04, col.steel,
-        { rx: Math.PI / 2, gloss: .4 });
-      capsule(RD0 - .55, .66, z + .65, .03, 2.6, .03, col.steel,
-        { rx: Math.PI / 2, gloss: .4 });
-    }
-    lamp(RD0 - 1.9, -9.0); lamp(RD0 - 1.9, 5.0); lamp(RD1 + 1.9, -3.0); lamp(RD1 + 1.9, 11.0);
+    // The former footway railing consumed the exact 2.00 m branch-street minimum. Protection now
+    // lives in the continuous 1.80 m median/platform; the footway remains a genuine clear route.
+    // The shelter has its own two luminaires and pavement pool. A second full-height lamp at
+    // the stop stood inside BANK_OUT's five-metre orbit and turned the civic pocket into a thicket.
+    // Keep the far-side approach triangle open and hold every fixture in a kerb furnishing band.
+    // At (39.4,-3.0) the first 60 cm footprint stood between the stop line and zebra; merely moving
+    // it to z=4.5 left it mid-footway.  x=RD1+.50 puts both east lamps beside the kerb and preserves
+    // a continuous two-metre-plus building-side route past the office return and the tree pit.
+    // Preserve the lamp/tree rhythm in the protected median. `tree()` supplies a real 1.5 m pit,
+    // cast-iron grate, root footprint, shadow and collider; all three positions are beyond the
+    // south stop line and outside both crossing sight triangles.
+    const medianX = (PL0 + PL1) / 2;
+    lamp(medianX, 5.0); lamp(RD1 + .50, 4.5); lamp(RD1 + .50, 11.0);
     lamp(-8.0, -2.3, 1); lamp(12.0, -2.3, 1);
     // -5.2 → 6.5. This is the same fault as the tree that used to stand at x 4.6 in the alley:
     // at (25.4, -5.2) its crown filled the view of 药店's door and fascia from every position on
     // the footway south of it. 6.5 is opposite the alley mouth, where the west side has no
     // frontage at all and a tree is just a tree.
-    tree(RD0 - 2.1, 6.5, 1.1, false); tree(RD0 - 2.1, 9.4, 1.0, false);
+    tree(medianX, 6.5, 1.1, false); tree(medianX, 9.4, 1.0, false);
     // The tree that stood at (39.6, -8.0) is GONE — the third time this fault has turned up
     // today and the third time there was nowhere to move it to. It stood in the mouth of
     // 新天地步行街 (js/street-lane.js opens the lane at z -12.60 .. -5.80), directly under the
     // gateway arch, and the far pavement's remaining gaps are the 2.48 m between the metro canopy
     // and the bike rank and the 1.4 m between the notice board and a hedge planter. A tree in a
     // street entrance is worse than one tree fewer.
-    tree(RD1 + 2.1, 6.0, 1.15, false);
+    // This tree shares the same kerb furnishing band as the two lamps.  Its former x=39.60 pit
+    // combined with the office return to leave only 1.70 m of usable pavement.
+    tree(RD1 + .50, 6.0, 1.15, false);
 
-    // The shelter is at the KERB now, not the back of the footway. 北京银行 skins the corner
-    // block's east elevation at z -11.40 .. -7.10 (js/street-bank.js) and this shelter is 7.30 m
-    // of glass centred on z -12.0 — at RD0 - 2.6 it stood squarely across the branch's own
-    // frontage. RD0 - 1.35 puts its glass at 26.99, 29 cm inside the kerb face at 27.28, and
-    // leaves a 1.0 m lane between it and the shop windows, which is where a pavement's walking
-    // room actually is: shops at the back, shelter at the kerb, people between.
-    const bsx = RD0 - 1.35, bsz = -12.0;
-    box(bsx, 3.05, bsz, 1.90, .16, 7.40, col.steelD, { hard: true, gloss: .36 });
-    box(bsx - .1, 3.18, bsz, 2.10, .06, 7.60, col.steel, { hard: true, gloss: .44 });
-    for (const oz of [-3.4, 0, 3.4])
-      capsule(bsx + .8, 1.52, bsz + oz, .07, 3.05, .07, col.steelD, { gloss: .36 });
-    box(bsx + .84, 1.70, bsz, .07, 2.40, 7.30, col.glassDay,
-      { hard: true, alpha: .26, gloss: G.glass });
-    box(bsx - .55, .60, bsz + 1.4, .50, .07, 3.10, col.steel, { hard: true, gloss: .4 });
-    for (const oz of [.2, 2.6])
-      box(bsx - .55, .32, bsz + oz, .40, .56, .08, col.steelD, { hard: true, gloss: .36 });
-    // route panel and a backlit advert, both lit at night
-    box(bsx - .3, 1.90, bsz - 2.6, .10, 1.90, 1.05, col.blue, { hard: true, gloss: .34, tag: '公交车站' });
-    litten(box(bsx - .38, 1.90, bsz - 2.6, .03, 1.72, .90, col.white,
+    // The stop is a protected island stop, not furniture in a two-metre footway. The canopy spans
+    // the 27.67..29.47 platform, while every ground-contact part is held inside its WESTERN
+    // 30 cm furnishing strip (27.67..27.97). That leaves a measured 1.50 m clear platform strip
+    // to the bus swept envelope at x29.47 and keeps the west cycle bypass entirely separate.
+    const bsx = 28.40, furnishX = 27.82, bsz = -12.0;
+    // Six-and-a-half metres still shelters the full bench and route panel, while pulling its north
+    // end back from the bank camera. Three separately framed panes keep it transparent and avoid
+    // rebuilding the former advert as one sheet of tinted glass.
+    // Pull the roof south with the occupied bench/panes.  Its old north edge at z=-8.8 was not a
+    // collider, but it still filled BANK_OUT's entire upper-right orbit; z=-10.3 now leaves the
+    // passenger crossing open to sky while the covered furniture remains under 4.9 m of canopy.
+    ball(bsx, 3.05, bsz - .75, .95, .10, 2.35, col.steelD,
+      { mode: 7, gloss: .36 });
+    ball(bsx - .1, 3.18, bsz - .75, 1.05, .055, 2.45, col.steel,
+      { mode: 7, gloss: .44 });
+    // The north bay is deliberately open: it is the 2.3 m passenger route from the shop-side
+    // footway to the island crossing, not a third pane and post squeezed into that turn.
+    for (const oz of [-2.8, 0])
+      capsule(furnishX, 1.52, bsz + oz, .07, 3.05, .07, col.steelD, { gloss: .36 });
+    for (const oz of [-2.10, 0])
+      box(furnishX, 1.70, bsz + oz, .07, 2.40, 1.80, col.glassDay,
+        { hard: true, alpha: .26, gloss: G.glass });
+    // A shallow perch and its supports share the same furnishing strip; a conventional 50 cm
+    // bench would be dishonest on a 1.80 m island because it leaves less than 1.50 m clear.
+    box(furnishX, .60, bsz + .75, .26, .07, 2.10, col.steel,
+      { hard: true, gloss: .4 });
+    for (const oz of [-.1, 1.5])
+      box(furnishX, .32, bsz + oz, .26, .56, .08, col.steelD,
+        { hard: true, gloss: .36 });
+    // Framed route panel and a small ceiling luminaire, both lit at night. The former 2.00×1.20 m
+    // blank advert at the north end sat directly between BANK_OUT and the branch and is removed.
+    box(furnishX, 1.90, bsz - 2.6, .10, 1.90, 1.05, col.blue,
+      { hard: true, gloss: .34, tag: '公交车站' });
+    litten(box(furnishX + .070, 1.90, bsz - 2.6, .03, 1.72, .90, col.white,
       { hard: true, mode: 1, glow: .12, tag: '公交车站' }), .8);
     for (let i = 0; i < 7; i++)
-      box(bsx - .40, 2.55 - i * .19, bsz - 2.6, .02, .09, .62, col.charcoal,
+      box(furnishX + .090, 2.55 - i * .19, bsz - 2.6, .02, .09, .62, col.charcoal,
         { hard: true, mode: 1, tag: '公交车站' });
-    litten(box(bsx + .95, 1.75, bsz + 3.9, .06, 2.00, 1.20, C('#ffe6c0'),
-      { hard: true, mode: 1, glow: .2 }), .9);
+    litten(box(furnishX + .08, 2.92, bsz + 1.55, .26, .035, .10, C('#fff0d0'),
+      { hard: true, mode: 1, glow: .14 }), .52);
     lampPools.push(glow(M.trs(bsx, .03, bsz, 0, 5.0, 1, 9.0), C('#ffd9a4'), 0));
-    // The backlit advert is the only real light source in the shelter, and a bus shelter after
-    // dark is lit by exactly that and nothing else. Cool-warm rather than tungsten: it is a
-    // fluorescent lightbox behind a printed sheet.
-    B.light(bsx + .70, 1.80, bsz + 3.3, [1.0, .93, .82], .45, 4.6);
+    // Cool-warm shelter lighting rather than a blank luminous billboard.
+    B.light(furnishX, 2.55, bsz + 1.55, [1.0, .93, .82], .34, 3.6);
     B.light(bsx - .10, 2.30, bsz - 2.0, [1.0, .94, .86], .30, 3.4);
-    solid(bsx - .7, bsx + .9, bsz - 3.8, bsz + 3.8);
-    // The focus used to be at bsx - 2.0, which is x 22.9 — outside the road zone, whose west edge is
-    // 24.0, and behind the shelter's own collider, which pushes the body out to 26.1. The nearest
-    // spot it was possible to stand was 3.20 m from a focus with a reach of 3.0, so this label had
-    // never once come up. It sits on the pavement side of the shelter now.
-    thing('公交车站', bsx - .4, 3.55, bsz, '公交车站在马路对面。',
+    // Collide only what is physically there. The old one-piece 1.6 × 6.5 m rectangle filled the
+    // empty shelter interior and left the passenger crossing a 25 cm centre-line slot after body
+    // inflation. These three measured solids protect glass, route panel and bench while leaving a
+    // 2.3 m visible turn at the north end.
+    solid(PL0, PL0 + .30, bsz - 3.15, bsz + .95);             // framed back panes
+    solid(PL0, PL0 + .30, bsz - 3.18, bsz - 2.02);           // route panel
+    solid(PL0, PL0 + .30, bsz - .35, bsz + 1.85);            // perch and supports
+    // The teaching focus is on the west footway at the authored passenger crossing; it never
+    // spawns a body into either cycle flow or onto the island furniture.
+    thing('公交车站', bsx, 3.55, bsz, '公交车站在马路对面。',
       'The bus stop is across the road.',
       '公交车 the bus + 站 the stop. 地铁站 is the subway.',
-      { focus: [bsx + 1.55, bsz], reach: 2.4 });
-    thing('马路', RD0 + 4.0, .70, 3.6, '过马路要看红绿灯。',
+      { focus: [24.42, -9.55], reach: 5.0 });
+    thing('马路', ROAD_C, .70, 3.6, '过马路要看红绿灯。',
       'Crossing the road, watch the lights.',
       '马路 mǎlù — "horse road", the everyday word for a street.',
-      { focus: [RD0 + 1.2, 3.4], reach: 3.2, tag: '马路' });
-    flat(RD0 + 4.0, .012, 3.6, 2.0, 2.0, col.asphalt,
+      { focus: [24.42, 3.4], reach: 3.2, tag: '马路' });
+    flat(ROAD_C, .012, 3.6, 2.0, 2.0, col.asphalt,
       { mode: 10, gloss: .22, ...ROAD, tag: '马路' });
 
     // ---- traffic. Nothing moves, but an empty six-lane road in Beijing reads as wrong.
@@ -2621,7 +3621,7 @@ const Street = Lazy('Street', () => {
         CALIP, { hard: true, gloss: .40 });
     }
 
-    // A NIO-shaped electric car: long low nose, one slim daytime-running light drawn right
+    // A low electric crossover: long nose, one slim daytime-running light drawn right
     // across the front, a glasshouse blacked out into the roof, flush handles, the roof lidar
     // pod, and big turbine alloys sitting nearly flush with the flanks. Built length-first —
     // the old one had a 4.3 m hull lying across the road on a 2.8 m wheelbase down it.
@@ -2717,7 +3717,7 @@ const Street = Lazy('Street', () => {
             { round: RS, gloss: .40 });
       }
 
-      // ---- the face. NIO's signature is one hairline of daytime-running light drawn right
+      // ---- the face. A hairline daytime-running light is drawn right
       // across the nose, with the real lamps set low and separate underneath it.
       put('box', 2.44, FBOT + .22, 0, .18, .32, 1.30, TRIM, { hard: true, gloss: .50 });
       put('box', 2.36, FBOT + .06, 0, .34, .12, 1.56, TRIM, { hard: true, gloss: .40 });
@@ -2803,7 +3803,7 @@ const Street = Lazy('Street', () => {
     // keeping the old model and collider underneath it made the live bus drive through a duplicate
     // every time it served the stop. Only build this fallback when live traffic is unavailable.
     if (!StreetFit['traffic']) {
-    const busX = RD0 + 1.9, busZ = -12.4;
+    const busX = 31.07, busZ = -12.4;
     box(busX, 1.62, busZ, 2.62, 2.36, 11.4, C('#2f7ea8'), { gloss: .40, round: .22 });
     box(busX, 2.72, busZ, 2.48, .30, 11.0, C('#e6e2d6'), { hard: true, gloss: .30 });
     box(busX, .34, busZ, 2.56, .40, 11.2, C('#28323a'), { hard: true, gloss: .30 });
@@ -2845,13 +3845,14 @@ const Street = Lazy('Street', () => {
     thing('公交车', busX - 1.40, 1.70, busZ + 3.40, '623路，去杨柳胡同。',
       'Number 623, going to Yangliu Hutong.',
       '公交 public transport + 车 vehicle. 路 after a number means a route: 623路.',
-      { focus: [26.40, busZ + 3.00], reach: 2.8 });
+      { focus: [28.60, busZ + 3.00], reach: 2.8 });
     }
     // The five static cars are GONE, and it is worth recording why rather than just that.
     //
-    // js/street-traffic.js now runs a real fleet — thirteen cars, a 623路 bus that dwells at the
-    // stop and waits for a gap before merging, e-bikes filtering past the queue, all braking on a
-    // shared 45 s signal. Leaving these five in gave the road two fleets, one of them frozen.
+    // js/street-traffic.js now runs one live 623路 bus at the protected stop. Beside it,
+    // street-cycles.js owns one delivery moped in the west track and one bicycle in the east
+    // track, all three obeying the road district's shared 66 s signal; its separate walked bicycle
+    // remains in the hutong. Leaving these five static cars in gave the road a second frozen fleet.
     //
     // But they were also wrong, which nobody had noticed in the years they sat here. The comment
     // that used to be on this line said "northbound lanes east of the centre line, southbound west
@@ -2860,355 +3861,548 @@ const Street = Lazy('Street', () => {
     // faces +z and is correct, so the cars disagreed with the bus in the same scene. One of them,
     // at x 28.9, was parked in the painted bike lane.
     //
-    // Deleting them is a net saving: ~520 props of static fleet out, 449 props of moving fleet in.
-    //
-    // `车` moved with them — js/street-traffic.js builds a parked 汽车 at (38.8, -11.6) carrying
-    // the tag and its own `thing`, so the word survives and now sits on a car that is parked on
-    // purpose rather than one abandoned mid-lane.
-    // The 车 word went with them. It stood at (32.85, -3.60), which was the sand-coloured saloon's
-    // roof — with the car deleted it would have hung over an empty lane, and its focus point was in
-    // the middle of moving traffic. js/street-traffic.js carries it now, on a car that is parked.
-    //
-    // The lesson it was written for is worth keeping and has moved with it: 车 on its own is any
-    // vehicle, and it is the character the player has already met three times over in 自行车,
-    // 电动车 and 公交车 without ever being told what it means alone.
+    // Deleting them remains a net saving: the moving traffic and cycle districts together are
+    // under five hundred props and no parked teaching car occupies a footway or distant view.
+    // The former standalone 车 label went too: its focus was in live traffic, and moving pick boxes
+    // are deliberately forbidden. The character remains visible and taught in the safe, reachable
+    // 自行车, 电动车 and 公交车站 interactions.
 
     // traffic light on its mast, counting down
-    const tlx = RD0 - 1.1, tlz = -3.9, TL = { tag: '红绿灯' };
-    cyl(tlx, .20, tlz, .28, .40, col.stoneD, { gloss: .2, ...TL });
-    taper(tlx, 3.1, tlz, .28, 5.8, .28, col.charcoal, { gloss: .34, ...TL });
-    capsule(tlx, 5.85, tlz + 1.9, .10, 4.0, .10, col.charcoal,
+    // A two-metre footway has no spare signal-pole strip. The shared mast moves to the protected
+    // platform's west 30 cm furnishing band, clear of both cycle flow and the bus swept envelope.
+    // Its former 56 cm base was larger than a real signal post; this measured 24 cm post and its
+    // exact 30 cm collider leave the same 1.50 m platform route as the shelter supports.
+    const tlx = 27.82, tlz = -5.90, tlhz = -.20, TL = { tag: '红绿灯' };
+    cyl(tlx, .16, tlz, .14, .32, col.stoneD, { gloss: .2, ...TL });
+    taper(tlx, 3.1, tlz, .12, 5.8, .12, col.charcoal, { gloss: .34, ...TL });
+    capsule(tlx, 5.85, (tlz + tlhz) / 2, .10, tlhz - tlz + .30, .10, col.charcoal,
       { rx: Math.PI / 2, gloss: .34, ...TL });
-    box(tlx, 5.35, tlz + 3.7, .42, 1.20, .38, col.charcoal, { hard: true, gloss: .34, ...TL });
+    box(tlx, 5.35, tlhz, .42, 1.20, .38, col.charcoal, { hard: true, gloss: .34, ...TL });
     const lights = [[.42, '#c8382a'], [0, '#d8b83a'], [-.42, '#3fa05a']];
     lights.forEach(([oy, hex], i) => {
-      litten(cyl(tlx, 5.35 + oy, tlz + 3.90, .13, .06, C(hex),
+      litten(cyl(tlx, 5.35 + oy, tlhz + .20, .13, .06, C(hex),
         { rx: Math.PI / 2, mode: 1, glow: i === 0 ? .5 : .04, ...TL }), i === 0 ? 1.0 : .1);
     });
-    box(tlx, 4.45, tlz + 3.7, .38, .48, .34, col.charcoal, { hard: true, gloss: .34, ...TL });
-    litten(box(tlx, 4.45, tlz + 3.89, .26, .34, .03, C('#3a1608'),
+    box(tlx, 4.45, tlhz, .38, .48, .34, col.charcoal, { hard: true, gloss: .34, ...TL });
+    litten(box(tlx, 4.45, tlhz + .19, .26, .34, .03, C('#3a1608'),
       { hard: true, mode: 1, glow: .10, ...TL }), .4);
     // The countdown, with a number on it. It was a plain orange rectangle, and the one thing a
     // Chinese pedestrian signal always shows is two big digits. They do not count: the street is
     // the only place the game never calls a per-frame tick on, so nothing here can change with the
     // clock — the red lamp above has been hardcoded on for the same reason. A static 28 at least
     // agrees with the static red; a blank panel agreed with nothing.
-    for (const g of B.glyphs(tlx, 4.45, tlz + 3.91, 0, '28',
+    for (const g of B.glyphs(tlx, 4.45, tlhz + .21, 0, '28',
         { size: .30, gap: .02, color: C('#f06a2c'), mode: 1, glow: .45, lift: .008, ...TL }))
       litten(g, 1.0);
-    solid(tlx - .3, tlx + .3, tlz - .3, tlz + .3);
-    thing('红绿灯', tlx, 5.90, tlz + 3.70, '红灯停，绿灯行。',
+    solid(PL0, PL0 + .30, tlz - .18, tlz + .18);
+    thing('红绿灯', tlx, 5.90, tlhz, '红灯停，绿灯行。',
       'Red light stop, green light go.',
       '红 red + 绿 green + 灯 light. The number counts the seconds down.',
-      { focus: [25.60, tlz + 3.70], reach: 2.6 });
+      { focus: [24.42, tlhz], reach: 2.6 });
 
     // ---- the far side of the road: shopfronts under six storeys of flats.
     //
-    // TWENTY-TWO units, not forty. Counted 2026-08-09 by running the builder: blocks are
-    // 13 + rnd()*8 m long and each carries `round(len / 4.8)` units, and this file said "forty"
-    // in five places while STOREFRONT-UPGRADES.md repeated it. Nothing was built wrong — but D2's
-    // saving is 22 valance strips down to 7, not 40 down to 7, and A11 is 22 reveals.
+    // The hotel parcel is a true hole in the generated row. Long southern parcels are each
+    // composed as two addresses, while the lane flanks, office and post-hotel parcel retain their
+    // own identities; the current deterministic cut resolves to seven visibly separate addresses.
     // The road runs north-south, so the frontage has to face -x and the blocks have to be a
     // row along z. Built as a row along x, only the first one faced the street at all: the
     // rest queued up behind it, the road had no built edge, and a camera swung round behind
     // the player on the far pavement ended up a metre from a blank flank filling the screen.
     const FX = 41.6;                                  // the building line
+    const OFZ = 2.20;                                 // 京华大厦 / 公司 entrance
     // The lane's mouth. js/street-lane.js opens 新天地步行街 through this frontage at
     // z -12.60 .. -5.80 — the 6.80 m 北京新天地's portal used to occupy — so the parade stops
     // short of it and starts again on the other side. A block that would straddle the gap is cut
     // back to it; one that would start inside it is skipped; and a cut that would leave a sliver
     // under 4 m gives the sliver to the gap, because 3 m of six-storey block is not a building.
     const GZ0 = -12.60, GZ1 = -5.80;
-    let fz = -54, nearUnit = 0;
+    // 京华大酒店 owns this whole frontage. Its transparent lobby begins in front of FX and the
+    // old parade's boards showed through it, so this is a true parcel reservation: no mass,
+    // shopfront, blocker or solid from the procedural row is built inside the hotel envelope.
+    const HZ0 = 14.55, HZ1 = 48.65;
+    // Seven authored material/massing families sit on the same seeded address parcels. Nothing in
+    // this table draws from `rnd()`: the parcel lengths, glazing warmth, sign names and shutters
+    // therefore keep their established deal. The difference is architectural, not a reshuffle.
+    const PARADE_STYLE = [
+      { wall:tint(col.render, .94, .030), wall2:tint(col.renderD, 1.02, .018),
+        trim:col.brickD, frame:col.charcoal, setback:.10, step:.24, split:.56,
+        roof:[0, .58], rhythm:0, finish:RENDER },
+      { wall:tint(col.render, 1.01, -.030), wall2:tint(col.band, .91, -.020),
+        trim:col.stoneD, frame:col.steelD, setback:.42, step:-.16, split:.43,
+        roof:[.72, 0], rhythm:1, finish:CONCR },
+      { wall:tint(col.render, .89, -.015), wall2:tint(col.renderD, .88, -.025),
+        trim:col.greenD, frame:col.charcoal, setback:.24, step:.31, split:.61,
+        roof:[.18, .82], rhythm:2, finish:RENDER },
+      { wall:tint(col.brickL, .90, .035), wall2:tint(col.brick, .91, .025),
+        trim:col.brickD, frame:col.charcoal, setback:.34, step:-.18, split:.48,
+        roof:[.62, .10], rhythm:3, finish:BRICK },
+      { wall:tint(col.render, 1.035, .022), wall2:tint(col.renderD, 1.04, .010),
+        trim:col.gold, frame:col.steelD, setback:.13, step:.35, split:.52,
+        roof:[.12, .68], rhythm:1, finish:WTILE },
+      { wall:tint(col.band, .91, -.030), wall2:tint(col.renderD, .90, -.018),
+        trim:col.blue, frame:col.charcoal, setback:.48, step:-.21, split:.58,
+        roof:[.78, 0], rhythm:2, finish:CONCR },
+      { wall:tint(col.render, .96, .010), wall2:tint(col.brickL, .88, .030),
+        trim:col.redD, frame:col.charcoal, setback:.26, step:.20, split:.45,
+        roof:[.08, .72], rhythm:0, finish:RENDER },
+    ];
+    const OFFICE_STYLE = {
+      wall:tint(col.renderD, .84, -.018), wall2:tint(col.render, .87, -.025),
+      trim:col.stone, frame:col.steelD, setback:.40, step:.16, split:.46,
+      roof:[.90, .18], rhythm:4, finish:CONCR,
+    };
+    const NOTCH_X = FX + 1.40;                       // 2.4 m throat, then the lane widens
+    let fz = -54, nearUnit = 0, addressIndex = 0, styleIndex = 0;
+    let officeBayZ0 = OFZ - 1.85;
     while (fz < 52) {
       if (fz >= GZ0 && fz < GZ1) { fz = GZ1; continue; }
+      if (fz >= HZ0 && fz < HZ1) { fz = HZ1; continue; }
       let len = 13 + rnd() * 8;
       if (fz < GZ0 && fz + len > GZ0) {
         len = GZ0 - fz;
-        if (len < 4) { fz = GZ1; continue; }
+        if (len < 4) {
+          // Keep the street-line mouth exact even when the seeded cut leaves a 1–3 m remnant.
+          // Extending a six-storey slab would make the forbidden sliver; this is instead a low,
+          // glazed corner pavilion attached to the preceding address. It occupies only the 1.4 m
+          // throat, then stops at the widened lane boundary z=-13.60.
+          const pz = fz + len / 2, ph = 4.34, pst = PARADE_STYLE[
+            Math.max(0, styleIndex - 1) % PARADE_STYLE.length];
+          box((FX + NOTCH_X) / 2, ph / 2, pz, NOTCH_X - FX, ph, len, pst.wall2,
+            { hard:true, mode:14, gloss:G.paint, ...pst.finish });
+          box(FX - .035, 1.72, pz, .07, 2.84, Math.max(.72, len - .24), col.black,
+            { hard:true, gloss:.12 });
+          pane(box(FX - .075, 1.72, pz, .025, 2.56, Math.max(.58, len - .40), col.glassDay,
+            { hard:true, mode:1, gloss:G.glass }), .82);
+          box(FX - .14, .38, pz, .24, .54, Math.max(.66, len - .32), pst.trim,
+            { hard:true, gloss:G.paint });
+          box(FX - .14, 3.18, pz, .24, .14, Math.max(.66, len - .32), pst.frame,
+            { hard:true, gloss:.30 });
+          // Glazed return faces into the lane; the one-metre dog-leg is a short stone arrival wall,
+          // not a full-depth exposed side of the neighbouring block.
+          box((FX + NOTCH_X) / 2, 1.58, GZ0 - .025,
+            NOTCH_X - FX, 3.16, .05, col.charcoal, { hard:true, gloss:.24 });
+          pane(box((FX + NOTCH_X) / 2, 1.68, GZ0 - .055,
+            NOTCH_X - FX - .18, 2.44, .025, col.glassDay,
+            { hard:true, mode:1, gloss:G.glass }), .80);
+          box(NOTCH_X - .035, 1.62, GZ0 - .50, .07, 3.24, .90, pst.trim,
+            { hard:true, gloss:G.paint });
+          solid(FX - .12, NOTCH_X, fz, GZ0);
+          blocker(FX, NOTCH_X, fz, GZ0, ph);
+          fz = GZ1;
+          continue;
+        }
+      }
+      if (fz < HZ0 && fz + len > HZ0) {
+        len = HZ0 - fz;
+        if (len < 4) { fz = HZ1; continue; }
       }
       const bh = 15.5 + rnd() * 6, dep = 17 + rnd() * 7;
-      const cz = fz + len / 2, cx = FX + dep / 2;
-      box(cx, bh / 2, cz, dep, bh, len, col.render, { hard: true, mode: 14, gloss: G.paint, ...RENDER });
-      box(cx, bh + .30, cz, dep + .22, .60, len + .22, col.renderD, { hard: true, gloss: G.paint });
-      // dark shopfront band at street level, with a canopy over it
-      box(FX + .14, 2.15, cz, .34, 4.30, len, col.charcoal, { hard: true, gloss: .30 });
-      box(FX - .10, 4.50, cz, .55, .28, len + .24, col.renderD, { hard: true, gloss: G.paint });
-      blocker(FX, cx + dep / 2, cz - len / 2, cz + len / 2, bh);
-      solid(FX - .12, cx + dep / 2, cz - len / 2, cz + len / 2);
+      const rawZ0 = fz, rawZ1 = fz + len, cz = fz + len / 2, rear = FX + dep;
+      const southLaneFlank = Math.abs(rawZ1 - GZ0) < .01;
+      const northLaneFlank = Math.abs(rawZ0 - GZ1) < .01;
+      const southHotelFlank = Math.abs(rawZ1 - HZ0) < .01;
+      const laneFlank = southLaneFlank || northLaneFlank;
+      const officeAddress = rawZ0 <= OFZ && rawZ1 >= OFZ;
+      // Long parcels south of the lane each hold two independently dressed addresses. Short lane
+      // flanks remain single corner addresses, keeping the deterministic row within the requested
+      // five-to-seven-building range instead of turning every seeded parcel into one oversized slab.
+      const splitAddresses = rawZ1 < GZ0 - .01;
+      const st = officeAddress ? OFFICE_STYLE : PARADE_STYLE[styleIndex % PARADE_STYLE.length];
+      const wingStyle = splitAddresses
+        ? [PARADE_STYLE[styleIndex % PARADE_STYLE.length],
+           PARADE_STYLE[(styleIndex + 1) % PARADE_STYLE.length]]
+        : [st, st];
+
+      // Ordinary parcels surrender 42 cm at each party wall. With the seeded 50 cm parcel gap,
+      // that makes a legible 1.34 m fire/service slot between addresses. At the lane mouth the
+      // frontage instead meets the exact -12.60/-5.80 datum: the release happens only after the
+      // 1.40 m throat, where the deeper mass steps a further metre away on either side.
+      const visZ0 = rawZ0 + (northLaneFlank ? 0 : .42);
+      const visZ1 = rawZ1 - (southLaneFlank ? 0 : .42);
+      const deepZ0 = northLaneFlank ? GZ1 + 1.00 : visZ0;
+      const deepZ1 = southLaneFlank ? GZ0 - 1.00 : visZ1;
+      const shopCount = Math.max(1, Math.round(len / 4.8));
+      const splitUnits = Math.max(1, Math.min(shopCount - 1,
+        Math.round(shopCount * wingStyle[0].split)));
+      // Building joints land between shop leases, never through a pane or a signboard.
+      const splitZ = rawZ0 + splitUnits * (len / shopCount);
+      const seam = splitAddresses ? 1.10 : .16;
+      const wings = [
+        { z0:visZ0, z1:splitZ - seam / 2, front:FX + wingStyle[0].setback,
+          top:bh + wingStyle[0].roof[0], wall:wingStyle[0].wall, st:wingStyle[0] },
+        { z0:splitZ + seam / 2, z1:visZ1,
+          front:FX + wingStyle[1].setback + (splitAddresses ? 0 : wingStyle[1].step),
+          top:bh + wingStyle[1].roof[1], wall:wingStyle[1].wall2, st:wingStyle[1] },
+      ];
+      const frontAt = z => z < splitZ ? wings[0].front : wings[1].front;
+
+      // Each address is two offset wings, and each wing is front/rear construction rather than a
+      // single giant cuboid. The split lets the two lane-flanking parcels lose their deep metre
+      // without taking a bite from the street opening or leaving a blank full-depth return.
+      for (let wi = 0; wi < wings.length; wi++) {
+        const w = wings[wi], throatRear = Math.min(NOTCH_X, rear);
+        if (throatRear > w.front)
+          box((w.front + throatRear) / 2, w.top / 2, (w.z0 + w.z1) / 2,
+            throatRear - w.front, w.top, w.z1 - w.z0, w.wall,
+            { hard:true, mode:14, gloss:G.paint, ...w.st.finish });
+        const rz0 = northLaneFlank && wi === 0 ? Math.max(w.z0, deepZ0) : w.z0;
+        const rz1 = southLaneFlank && wi === 1 ? Math.min(w.z1, deepZ1) : w.z1;
+        if (rear > throatRear && rz1 > rz0) {
+          const rearW = rear - throatRear, rearD = rz1 - rz0;
+          const rearX = (throatRear + rear) / 2, rearZ = (rz0 + rz1) / 2;
+          box((throatRear + rear) / 2, w.top / 2, (rz0 + rz1) / 2,
+            rearW, w.top, rearD, w.wall,
+            { hard:true, mode:14, gloss:G.paint, ...w.st.finish });
+          // Deep service backs are outside the walking strip but remain visible along the fire
+          // slots and high camera. A returned stair window and full coping make them architecture,
+          // not unarticulated backing boxes.
+          const serviceH = Math.min(5.2, w.top * .36), serviceD = Math.min(2.6, rearD * .55);
+          box(rear + .045, w.top * .58, rearZ, .09, serviceH, serviceD, col.glassDark,
+            { hard:true, gloss:.22 });
+          pane(box(rear + .095, w.top * .58, rearZ, .025, serviceH - .28,
+            serviceD - .24, col.glassDay, { hard:true, mode:1, gloss:G.glass }), .24);
+          const py = w.top + .18;
+          for (const zEdge of [rz0 + .09, rz1 - .09])
+            box(rearX, py, zEdge, rearW + .18, .36, .18, w.st.trim,
+              { hard:true, gloss:G.paint });
+          for (const xEdge of [throatRear + .09, rear - .09])
+            box(xEdge, py, rearZ, .18, .36, Math.max(.18, rearD - .18), w.st.trim,
+              { hard:true, gloss:G.paint });
+        }
+
+        // Perimeter parapets, not another full-depth storey laid over the address. Unequal heights
+        // and the movement joint below make six address silhouettes from the same economical kit.
+        box(w.front - .02, w.top + .30, (w.z0 + w.z1) / 2,
+          .24, .60, w.z1 - w.z0 + .10, w.st.trim, { hard:true, gloss:G.paint });
+        box((w.front + Math.min(rear, w.front + 1.10)) / 2, w.top + .30,
+          wi ? w.z1 - .06 : w.z0 + .06, Math.min(1.10, rear - w.front), .60, .22,
+          w.st.trim, { hard:true, gloss:G.paint });
+      }
+      if (splitAddresses) {
+        // The fire slot remains open at the pavement and is closed only by a gate 1.4 m deep.
+        box(FX + 1.46, 1.28, splitZ, .08, 2.56, seam - .20, col.charcoal,
+          { hard:true, gloss:.24 });
+        for (const oz of [-.30, 0, .30]) capsule(FX + 1.40, 1.28, splitZ + oz,
+          .025, 2.28, .025, col.steelD, { gloss:.34 });
+      } else {
+        box((wings[0].front + wings[1].front) / 2, 2.65, splitZ,
+          Math.abs(wings[1].front - wings[0].front) + .26, 5.30, seam, col.charcoal,
+          { hard:true, gloss:.16 });
+      }
+
+      // Navigation keeps the authored parcel footprint. Only the two lane flanks are split: the
+      // west mouth is still exactly 6.80 m wide through x=43.0, while the deep solid and camera
+      // blocker retreat to z=-13.60/-4.80 with the widened internal lane.
+      if (laneFlank) {
+        blocker(FX, NOTCH_X, rawZ0, rawZ1, bh);
+        solid(FX - .12, NOTCH_X, rawZ0, rawZ1);
+        blocker(NOTCH_X, rear, deepZ0, deepZ1, bh);
+        solid(NOTCH_X, rear, deepZ0, deepZ1);
+      } else {
+        blocker(FX, rear, rawZ0, rawZ1, bh);
+        solid(FX - .12, rear, rawZ0, rawZ1);
+      }
+
+      // A glazed 1.4 m throat return and a windowed side elevation make the widened lane pocket a
+      // real corner, not the exposed end of an opaque procedural box. Everything stays flush with
+      // the parcel boundary; there are no bins, planters or projecting signs in the stopping area.
+      if (laneFlank) {
+        const side = southLaneFlank ? -1 : 1;
+        const throatZ = southLaneFlank ? GZ0 : GZ1;
+        const deepZ = southLaneFlank ? deepZ1 : deepZ0;
+        const laneStyle = southLaneFlank ? wings[1].st : wings[0].st;
+        const throatFront = Math.min(wings[0].front, wings[1].front);
+        const throatW = Math.max(.30, NOTCH_X - throatFront - .10);
+        box(throatFront + throatW / 2, 1.55, throatZ + side * .033,
+          throatW, 3.10, .05, col.charcoal, { hard:true, gloss:.24 });
+        pane(box(throatFront + throatW / 2, 1.67, throatZ + side * .063,
+          throatW - .20, 2.48, .025, col.glassDay,
+          { hard:true, mode:1, gloss:G.glass }), .82);
+        for (const px of [NOTCH_X + 1.15, NOTCH_X + 3.55, NOTCH_X + 5.95]) {
+          if (px + .80 >= rear) continue;
+          box(px, 6.55, deepZ + side * .043, 1.72, 1.78, .07, col.glassDark,
+            { hard:true, gloss:.20 });
+          pane(box(px, 6.55, deepZ + side * .083, 1.54, 1.60, .025, col.glassDay,
+            { hard:true, mode:1, gloss:G.glass }), .42);
+          box(px, 5.58, deepZ + side * .071, 1.94, .10, .10, laneStyle.trim,
+            { hard:true, gloss:G.paint });
+        }
+        // The one-metre dog-leg is faced as an arrival wall with a lit directory panel, rather
+        // than a continuous return capable of hiding the lane module's shifted shopfronts.
+        box(NOTCH_X - .043, 1.62, (throatZ + deepZ) / 2,
+          .07, 3.24, Math.abs(throatZ - deepZ) - .10, laneStyle.trim,
+          { hard:true, gloss:G.paint });
+        litten(box(NOTCH_X - .083, 1.72, (throatZ + deepZ) / 2,
+          .025, 1.54, .48, C('#f2e3c4'), { hard:true, mode:1, glow:.03 }), .45);
+      }
 
       // window grid on the road face
       const bays = Math.max(2, Math.round(len / 3.5));
       const floors = Math.max(2, Math.floor((bh - 5.6) / 2.85));
       for (let f = 0; f < floors; f++) for (let i = 0; i < bays; i++) {
         const wz = cz - len / 2 + (i + .5) * (len / bays), wy = 6.2 + f * 2.85;
-        box(FX - .03, wy, wz, .07, 1.62, 2.16, col.glassDark, { hard: true, gloss: .20 });
-        pane(box(FX - .07, wy, wz, .03, 1.46, 2.00, col.glassDay,
-          { hard: true, mode: 1, gloss: G.glass }), rnd());
-        box(FX - .10, wy - .88, wz, .20, .08, 2.36, col.renderD, { hard: true, gloss: G.paint });
-        if (rnd() > .5) {                            // condenser on its bracket
-          box(FX - .32, wy - 1.18, wz + .92, .44, .58, .84, col.white, { hard: true, gloss: .26 });
+        const warmRoll = rnd(), acRoll = rnd();       // established two draws per upper window
+        const face = frontAt(wz), wing = wz < splitZ ? wings[0] : wings[1], wst = wing.st;
+        const inSeam = wz > wings[0].z1 && wz < wings[1].z0;
+        const ww = wst.rhythm === 1 ? 1.48 : wst.rhythm === 4 ? 2.24 : 1.88;
+        const wh = wst.rhythm === 2 ? 1.78 : 1.58;
+        if (!inSeam && wy + wh / 2 < wing.top - .18) {
+          box(face - .035, wy, wz, .07, wh + .18, ww + .18, col.glassDark,
+            { hard:true, gloss:.20 });
+          pane(box(face - .075, wy, wz, .025, wh, ww, col.glassDay,
+            { hard:true, mode:1, gloss:G.glass }), warmRoll);
+          box(face - .11, wy - wh / 2 - .10, wz, .18, .10, ww + .34, wst.trim,
+            { hard:true, gloss:G.paint });
+          if (wst.rhythm === 1 || wst.rhythm === 4)
+            for (const os of [-1, 1]) box(face - .11, wy, wz + os * (ww / 2 + .10),
+              .18, wh + .28, .08, wst.frame, { hard:true, gloss:.30 });
+          if (wst.rhythm === 2 && f % 2 === 0)
+            box(face - .15, wy + wh / 2 + .11, wz, .22, .10, ww + .40, wst.trim,
+              { hard:true, gloss:G.paint });
+        }
+        if (!inSeam && acRoll > .72 && f < 2 && wst.rhythm !== 4) { // fewer, aligned condensers
+          box(face - .34, wy - 1.18, wz + ww * .43, .42, .55, .72, col.white,
+            { hard:true, gloss:.26 });
           for (let k = -2; k <= 2; k++)
-            box(FX - .53, wy - 1.18, wz + .92 + k * .13, .03, .44, .05, col.steelD,
-              { hard: true, gloss: .30 });
+            box(face - .56, wy - 1.18, wz + ww * .43 + k * .11, .03, .40, .04, col.steelD,
+              { hard:true, gloss:.30 });
         }
       }
 
-      // lit shopfronts and a signboard over each
-      const shops = Math.max(1, Math.round(len / 4.8));
+      // Recessed, framed shopfronts. The glass remains just proud of the opaque procedural shell,
+      // but the piers, stallriser and lintel sit another 11 cm toward the street: a real reveal in
+      // silhouette, without the old continuous charcoal band or full-width canopy.
+      const shops = shopCount;
       for (let i = 0; i < shops; i++) {
         const sw = len / shops, sz2 = cz - len / 2 + (i + .5) * sw;
         // Which unit of the reachable run this is. `nearUnit` counts only the strip of far
-        // pavement a body can stand on (|z| < 11.5) and it used to be incremented forty lines
-        // down, inside the name override. Hoisted here because D4 has to decide before the board
+        // pavement a body can stand on (|z| < 11.5) and it used to be incremented deep inside the
+        // name override. Hoisted here because the fade decision happens before the board
         // colour is drawn; the VALUE is unchanged — nothing between the two sites read it.
         const near = Math.abs(sz2) < 11.5 ? ++nearUnit : 0;
-        // D4 · the parade's two failures. Every real run of forty shopfronts has one board the
-        // sun has taken and one unit with its sign out, and their absence is most of why forty
-        // units read as a repeated texture rather than forty businesses. Both are COLOUR ONLY —
+        // Two ordinary failures keep the leases from reading as a perfect repeated texture: one
+        // board the sun has taken and one unit with its sign out. Both are COLOUR ONLY —
         // same props, same count, and the dark one gives an emissive quad back rather than
         // adding one. Placed on the reachable stretch so they are seen, not inferred.
         const bleached = near === 2, dead = near === 4;
-        pane(box(FX - .08, 1.80, sz2, .06, 2.50, sw - .55, col.glassDay,
-          { hard: true, mode: 1, gloss: G.glass }), dead ? .10 : .95);
-        // A11 · the reveal. Each unit was a lit pane with the block's charcoal band 2 cm behind
-        // it, so from the west footway the parade read as forty light boxes and not forty rooms.
-        // ONE box per unit and no new emissive: a dark panel inset from the glass on every side,
-        // which is what turns a sheet into an opening with something behind it. It has to live in
-        // the 2 cm slot between the glass's back face at FX-.05 and the band's front face at
-        // FX-.03 — anything deeper is behind an opaque face, and every surface in this renderer
-        // is single-sided, so there is no building a box you can see the inside of.
-        box(FX - .041, 1.66, sz2, .012, 2.10, sw - .95, col.black, { hard: true, gloss: .10 });
         let board = pick([col.red, col.blue, col.paintY, col.teal]);
         if (bleached) board = [board[0] * .34 + .52, board[1] * .34 + .50, board[2] * .34 + .46];
-        // Kept as a reference so the two units that get a thing can be tagged after their name is
-        // known. The tag cannot be passed at construction because the name is drawn from the random
-        // stream *after* the board colour is, and swapping those two `pick` calls round would
-        // re-deal every sign and every colour on the parade.
-        // Deeper, with the same lit valance the alley's boards now carry. The parade is read
-        // across a 9.84 m carriageway; a 20 cm panel at that distance is a colour, not a sign.
-        const boardProp = box(FX - .20, 3.72, sz2, .28, .84, sw - .30, board,
-          { hard: true, gloss: .30 });
-        box(FX - .14, 4.19, sz2, .34, .10, sw - .20, board, { hard: true, gloss: .26 });
-        // NO lit valance on the parade, and that is the district's own rule rather than restraint.
-        // js/street-retail.js:12 records what a mode-1 glowing quad costs here: "a glowing glyph
-        // is a light-mask quad and three dozen of them lay a half-transparent copy of the scene
-        // over the top of it. That is a mistake this project has already paid for once." There are
-        // FORTY units on this parade. The eleven named shops — the five off `signBoard`, the four
-        // in the lane and its two anchors — get a lit lip; forty anonymous ones do not, and they
-        // keep the deeper board and the bigger glyphs, which cost nothing but geometry.
-        //
-        // If the valance is ever wanted here, it is one strip for the whole run rather than one
-        // per unit: same read, one quad.
-        let signTag;
-        // The name of the shop, in characters, not a row of blank cream squares — which is what
-        // this was: every business on the far side of the road advertised ■■■. The whole premise
-        // of the game is that the street is covered in writing the player is learning, and the
-        // named shops on the near side were given real signs long ago. This is the other forty.
         let name = pick(SHOPNAMES);
-        // Which unit each of the two taught names lands on cannot be left to the shuffle. The parade
-        // is 106 m long and the strip of far pavement the body can actually stand on is only
-        // z -13.5 to 13.5 of it, and the first 面包房 the seeded stream produced stood at z 45.6 —
-        // a thing whose focus is thirty-two metres outside every walkable zone, which is a thing
-        // that does not exist. It has presumably never once been reachable.
-        //
-        // So: the first unit inside the reachable strip takes whichever name is still owed, and so
-        // does the third and any after it. Everything else on the parade keeps the name the stream
-        // gave it. A unit that has already drawn one of the two by itself is left alone.
-        if (near) {
+        const officeUnit = officeAddress && Math.abs(sz2 - OFZ) < Math.max(2.15, sw * .48);
+        if (near && !officeUnit) {
           const owed = TEACH.filter(w => !taught.has(w));
           if (owed.length && !owed.includes(name) && (near === 1 || near >= 3))
             name = owed[0];
         }
-        const span = sw - .70, gsz = Math.min(.64, span / name.length * .92);
-        // The first pharmacy and the first bakery on the parade get a thing, so their names can be
-        // asked about. The rest stay scenery on purpose.
-        //
-        // Every one of these signs was unreadable in the sense that matters: the glyphs are geometry,
-        // the dictionary is only ever reached through a thing you walk up to, and there was no thing
-        // on any of forty shopfronts. So the street was covered in writing the player could look at
-        // and never ask about — which is a strange state for a game whose whole subject is reading
-        // the street. Two of them is the right number to start with: a learner needs 药店 and 面包房
-        // long before 五金店, and a label on every unit would be a wall of text rather than
-        // a parade of shops.
-        //
-        // Which unit they land on is decided by the seeded RNG that picks the names, so it is stable
-        // between runs — with the one override above, which is what stops a name landing thirty
-        // metres past the end of the pavement.
+        const shutterRoll = rnd();                   // established third per-shop draw
+        if (officeUnit) {
+          officeBayZ0 = sz2 - sw / 2 + .06;
+          continue;                                  // RNG/name slot kept; portal owns this bay
+        }
+
+        const face = frontAt(sz2), wing = sz2 < splitZ ? wings[0] : wings[1], wst = wing.st;
+        const splitEdge = splitAddresses && Math.abs(Math.abs(sz2 - splitZ) - sw / 2) < .02;
+        const splitClear = splitEdge ? .78 : 0;
+        const openingW = sw - .58 - splitClear;
+        box(face - .025, 1.82, sz2, .06, 2.76, openingW, col.black,
+          { hard:true, gloss:.10 });
+        pane(box(face - .065, 1.85, sz2, .025, 2.48, openingW - .18, col.glassDay,
+          { hard:true, mode:1, gloss:G.glass }), dead ? .10 : .95);
+        for (const os of [-1, 1]) box(face - .18, 1.82,
+          sz2 + os * (openingW / 2 + .12), .28, 3.64, .24, wst.frame,
+          { hard:true, gloss:.30 });
+        box(face - .18, .42, sz2, .28, .58, openingW, wst.trim,
+          { hard:true, gloss:G.paint });
+        box(face - .18, 3.12, sz2, .28, .16, openingW, wst.frame,
+          { hard:true, gloss:.30 });
+        const doorZ = sz2 + openingW * .27;
+        box(face - .11, 1.82, doorZ, .12, 2.48, .08, wst.frame, { hard:true, gloss:.34 });
+        capsule(face - .20, 1.52, doorZ - .16, .025, .48, .025, col.steel,
+          { gloss:G.metal });
+        box(face - .24, .061, sz2, .42, .11, openingW - .18, col.stone,
+          { hard:true, gloss:.26 });
+
+        let signTag;
+        const boardProp = box(face - .22, 3.72, sz2, .28, .84, sw - .30 - splitClear, board,
+          { hard:true, gloss:.30 });
+        box(face - .15, 4.18, sz2, .30, .08, sw - .22 - splitClear, wst.trim,
+          { hard:true, gloss:G.paint });
+        const span = sw - .70 - splitClear, gsz = Math.min(.64, span / name.length * .92);
         if (TEACH.includes(name) && !taught.has(name)) {
           taught.add(name);
-          // The board and its characters become pickable, so the cursor can be pointed at the sign
-          // from across the road. Every other unit on the parade stays untagged and unpickable.
           signTag = name;
           boardProp.tag = name;
           const say = ['面包房的面包很新鲜。', 'The bread at the bakery is fresh.',
                        '面包 bread + 房 room, in the sense of a workshop. Not 面 — that is noodles.'];
-          // Standing spot on the far pavement, clear of the shopfront glazing and the road.
-          const th = thing(name, FX - .34, 3.72, sz2, say[0], say[1], say[2],
+          thing(name, face - .28, 3.72, sz2, say[0], say[1], say[2],
             { focus: [FX - 2.30, sz2], reach: 2.4 });
         }
-        // A bleached board keeps dark ink whatever it started as: the pale ground it has faded to
-        // gives cream nothing to read against, and `board === col.paintY` cannot match any more
-        // because bleaching builds a new array rather than one of the palette's own.
-        for (const g of B.glyphs(FX - .36, 3.72, sz2, -Math.PI / 2, name,
+        for (const g of B.glyphs(face - .38, 3.72, sz2, -Math.PI / 2, name,
             { size: gsz, gap: gsz * .16,
               color: (bleached || board === col.paintY) ? col.charcoal : col.cream,
               mode: 1, glow: dead ? 0 : .22, lift: .014, tag: signTag }))
-          // The dead unit's characters are NOT littened, which is the whole of D4's second half:
-          // its sign stays dark through the night curve while its forty neighbours come up.
           { if (!dead) litten(g, .9); }
-        // Roughly one unit in four has the shutter down. A parade where every single door is
-        // open and lit at every hour of the day is a stage set.
-        if (rnd() > .74) {
-          // The shutter itself gets the corrugated-steel sample; the slat battens laid over it
-          // stay plain, because they are the *large* ribs and the material is the small ones.
-          // Both together is what a roller shutter actually has, and it is the one surface on
-          // this parade with a texture you could name from across the road.
-          box(FX - .13, 1.62, sz2, .12, 3.06, sw - .60, col.steel,
-            { hard: true, gloss: .40, ...SHUT });
+        if (shutterRoll > .74) {
+          box(face - .20, 1.66, sz2, .12, 2.92, sw - .66 - splitClear, col.steel,
+            { hard:true, gloss:.40, ...SHUT });
           const slats = Math.max(6, Math.round(3.0 / .19));
           for (let k = 0; k < slats; k++)
-            box(FX - .20, .16 + k * (2.98 / slats), sz2, .02, .05, sw - .62, col.steelD,
-              { hard: true, gloss: .34 });
-          box(FX - .21, 3.20, sz2, .16, .16, sw - .52, col.steelD, { hard: true, gloss: .36 });
+            box(face - .27, .20 + k * (2.82 / slats), sz2, .02, .045,
+              sw - .68 - splitClear, col.steelD,
+              { hard:true, gloss:.34 });
+          box(face - .28, 3.16, sz2, .16, .16, sw - .58 - splitClear, col.steelD,
+            { hard:true, gloss:.36 });
         } else {
-          // Open: a planter either side of the doorway, which is what every one of these has.
-          for (const os of [-1, 1]) {
-            const pz = sz2 + os * (sw / 2 - .55);
-            taper(FX - .62, .21, pz, .40, .42, .40, col.stoneD, { gloss: .22 });
-            ball(FX - .62, .52, pz, .26, .20, .26, col.greenD, { mode: 15, gloss: .12 });
-            ball(FX - .62, .68, pz, .19, .17, .19, col.green, { mode: 15, gloss: .12 });
-          }
+          // Displays stay behind the glass. Repeated pavement planters were the street-level
+          // obstruction in the old parade and left nowhere to stop, turn, or read a sign.
+          box(face - .020, 1.02, sz2 - openingW * .23, .04, .74, openingW * .32,
+            tint(wst.trim, 1.08), { hard:true, gloss:.24 });
+          box(face - .08, 1.46, sz2 - openingW * .23, .04, .08, openingW * .28,
+            col.cream, { hard:true, gloss:.22 });
         }
         lampPools.push(glow(M.trs(FX - 2.2, .03, sz2, 0, 4.6, 1, sw + 2.6), C('#ffb877'), 0));
       }
-      // D2 · one lit valance for the whole block. The comment above records why there is none per
-      // unit — `street-retail.js:12`, forty mode-1 glowing quads laying forty half-transparent
-      // copies of the scene over it — and then says what to do instead: "one strip for the whole
-      // run rather than one per unit: same read, one quad." This is that. The parade gets the
-      // continuous lit line at the foot of its fascia that every Chinese shopping street has, and
-      // the emissive count goes up by the number of BLOCKS (7) and not the number of units (40).
-      // 3.26 is the board's own bottom edge (3.72 - .84/2 = 3.30) less the strip's half-depth;
-      // FX - .37 puts it 3 cm proud of the board face at FX - .34.
-      litten(box(FX - .37, 3.26, cz, .05, .08, len - .40, C('#ffe9c4'),
-        { hard: true, mode: 1, glow: .10 }), 1.1);
-      // What is on top of a Chinese city block: a satellite dish or two, a water tank on legs
-      // and a whip antenna. The parapet was a clean line all the way down the road.
-      for (let k = 0; k < 2; k++) {
-        const rz = cz - len / 2 + (k + .7) * (len / 2.4), rx = FX + 2.2 + k * 3.4;
-        cyl(rx, bh + .90, rz, .06, 1.20, col.steelD, { gloss: .34 });
-        taper(rx, bh + 1.62, rz, .96, .34, .96, col.white,
-          { rx: -.55, gloss: .26 });
-        cyl(rx, bh + 1.72, rz, .05, .40, col.steelD, { rx: -.55, gloss: .34 });
+      // One economical light lip per offset wing. Split parcels stop at the fire slot instead of
+      // bridging two buildings with the old continuous luminous line.
+      for (const w of wings)
+        litten(box(w.front - .31, 3.26, (w.z0 + w.z1) / 2,
+          .04, .07, w.z1 - w.z0 - .18, C('#ffe9c4'),
+          { hard:true, mode:1, glow:.08 }), .9);
+
+      // Roof plant is clustered differently by address. A single tank, stair head or dish gives
+      // the silhouette a use; two identical dishes plus one identical tank on every roof did not.
+      if (addressIndex % 3 === 0) {
+        box(FX + 3.10, bh + .78, cz - 1.1, 2.20, 1.56, 2.35, st.wall2,
+          { hard:true, mode:14, gloss:G.paint, ...st.finish });
+        box(FX + 3.10, bh + 1.59, cz - 1.1, 2.34, .08, 2.49, st.trim,
+          { hard:true, gloss:G.paint });
+      } else if (addressIndex % 3 === 1) {
+        cyl(FX + 4.40, bh + 1.03, cz + .8, .40, 1.46, C('#8d9298'), { gloss:.34 });
+        for (const os of [-1, 1]) for (const oz2 of [-1, 1])
+          cyl(FX + 4.40 + os * .25, bh + .22, cz + .8 + oz2 * .25,
+            .04, .42, col.steelD, { gloss:.34 });
+      } else {
+        cyl(FX + 3.25, bh + .88, cz, .06, 1.16, col.steelD, { gloss:.34 });
+        taper(FX + 3.25, bh + 1.55, cz, .88, .34, .88, col.white,
+          { rx:-.55, gloss:.26 });
+        cyl(FX + 3.25, bh + 1.68, cz, .05, .38, col.steelD, { rx:-.55, gloss:.34 });
       }
-      cyl(FX + 5.6, bh + 1.05, cz + 1.4, .34, 1.50, C('#8d9298'), { gloss: .34 });
-      for (const os of [-1, 1]) for (const oz2 of [-1, 1])
-        cyl(FX + 5.6 + os * .24, bh + .18, cz + 1.4 + oz2 * .24, .04, .40, col.steelD,
-          { gloss: .34 });
-      capsule(FX + 1.4, bh + 2.30, cz - 2.6, .035, 4.40, .035, col.steelD, { gloss: .36 });
+      capsule(FX + 1.45, bh + 2.05, cz - 2.2, .035, 3.80, .035, col.steelD,
+        { gloss:.36 });
+
+      // A recessed service gate marks alternating fire gaps but does not close the pavement edge.
+      if (!southLaneFlank && !southHotelFlank && rawZ1 < 51.5 && addressIndex % 2 === 0) {
+        box(FX + 1.46, 1.25, rawZ1 + .25, .08, 2.50, .42, col.charcoal,
+          { hard:true, gloss:.24 });
+        for (const oz of [-.12, 0, .12]) capsule(FX + 1.40, 1.25, rawZ1 + .25 + oz,
+          .025, 2.24, .025, col.steelD, { gloss:.34 });
+      }
       fz += len + .5;
+      addressIndex += splitAddresses ? 2 : 1;
+      if (!officeAddress) styleIndex += splitAddresses ? 2 : 1;
     }
-    // ---- 公司 the office you work in, four floors up in one of these blocks. Its lobby
-    // entrance is cut into the frontage the procedural row above has already built, so it is
-    // drawn slightly proud of it: a granite surround, two tall glass leaves, and the company's
-    // plate on the wall. This is the one door in the game you have to cross a road to reach.
-    const OFZ = 2.20;
-    // The surround is a frame now — two jambs and a head — where it used to be one solid
-    // 3.6 x 4.1 m block of granite sitting directly behind the leaves. That is why the only door
-    // in the game you have to cross a road to reach showed, through two storeys of glass, a flat
-    // brown rectangle with a glow painted on the outside of it.
-    //
-    // The frame has to be a frame rather than a hole cut in the block because the block is one
-    // opaque volume and there is no cutting a hole in one. The jambs land on the outer edges of
-    // the glazing, the head starts above the mullions, and the granite threshold that was already
-    // there closes the bottom.
-    for (const oz of [-1.62, 1.62])
-      box(FX - .30, 2.05, OFZ + oz, .62, 4.10, .36, col.stone, { hard: true, gloss: .26 });
-    box(FX - .30, 3.43, OFZ, .62, 1.34, 3.60, col.stone, { hard: true, gloss: .26 });
-    box(FX - .58, .07, OFZ, .34, .14, 3.10, col.stone, { hard: true, gloss: .28 });
-    // The back of the lobby, set as far back as it can go and still hide what the procedural
-    // parade has already built on this stretch of frontage — its shopfront glass, its signboard
-    // and, when the seeded shuffle puts one here, its roller shutter. All of those live at
-    // x >= FX - .21, so this wall stands at FX - .32 and buries the lot.
-    box(FX - .27, 1.45, OFZ, .10, 2.90, 3.60, col.stoneD, { hard: true, gloss: .30 });
+    // ---- 京华大厦 / 公司. The procedural office address deliberately leaves this one shop bay
+    // undrawn. A 36 cm glass skin pasted over a random shop is replaced by a stone portal with an
+    // actual shadow line: the doors sit behind the jamb faces and the lift/tenant wall sits another
+    // 40 cm behind them. The masonry begins at x=41.12 and its flush plaques sit only centimetres
+    // proud, leaving more than three metres of clear far pavement to the carriageway.
+    const portalFront = FX - .48, portalGlass = FX - .10, portalBack = FX + .30;
+    // The seeded lease is wider on its south side than the centred entrance. Continue the stone
+    // base to the actual lease line and articulate it with joints, instead of leaving two metres
+    // of unexplained blank render beside the doors.
+    const officeSideZ0 = officeBayZ0, officeSideZ1 = OFZ - 1.25;
+    if (officeSideZ1 > officeSideZ0) {
+      box((portalFront + FX + .10) / 2, 2.15, (officeSideZ0 + officeSideZ1) / 2,
+        FX + .10 - portalFront, 4.30, officeSideZ1 - officeSideZ0, col.stone,
+        { hard:true, gloss:.26, tag:'公司' });
+      for (const k of [1, 2]) {
+        const jz = officeSideZ0 + (officeSideZ1 - officeSideZ0) * k / 3;
+        box(portalFront - .01, 2.15, jz, .04, 3.84, .025, col.stoneD,
+          { hard:true, gloss:.22, tag:'公司' });
+      }
+    }
+    for (const oz of [-1.12, 1.12])
+      box((portalFront + FX + .10) / 2, 2.15, OFZ + oz,
+        FX + .10 - portalFront, 4.30, .26, col.stone, { hard:true, gloss:.26, tag:'公司' });
+    box((portalFront + FX + .10) / 2, 3.87, OFZ,
+      FX + .10 - portalFront, .86, 2.50, col.stone, { hard:true, gloss:.26, tag:'公司' });
+    // Short side reveals and a dark rear wall establish the lobby depth without an awning or
+    // freestanding sign on the walking line.
+    for (const oz of [-1.01, 1.01])
+      box((portalGlass + portalBack) / 2, 1.48, OFZ + oz,
+        portalBack - portalGlass, 2.96, .14, col.stoneD, { hard:true, gloss:.24, tag:'公司' });
+    box(portalBack, 1.48, OFZ, .08, 2.96, 2.14, C('#24282d'),
+      { hard:true, gloss:.18, tag:'公司' });
+    box((portalFront + portalBack) / 2, .045, OFZ,
+      portalBack - portalFront, .09, 2.22, col.stoneD, { hard:true, gloss:.42, tag:'公司' });
+    box((portalGlass + portalBack) / 2, 2.96, OFZ,
+      portalBack - portalGlass, .12, 2.10, col.stoneD, { hard:true, gloss:.24, tag:'公司' });
+    litten(box((portalGlass + portalBack) / 2, 2.86, OFZ,
+      portalBack - portalGlass - .06, .035, 1.86, C('#ffe6bd'),
+      { hard:true, mode:1, glow:.04, tag:'公司' }), 1.15);
+
+    // Symmetrical glazed leaves with a transom and proper centre/edge mullions. The stone frame is
+    // 38 cm proud of these panes, which supplies the entrance shadow while keeping the threshold
+    // behind the pavement edge.
     for (const s of [-1, 1]) {
-      pane(box(FX - .66, 1.42, OFZ + s * .68, .05, 2.60, 1.24, col.glassDay,
-        { hard: true, mode: 1, gloss: G.glass, tag: '公司' }), .98);
-      capsule(FX - .76, 1.20, OFZ + s * .30, .030, .90, .030, col.steel,
-        { gloss: G.metal, tag: '公司' });
+      pane(box(portalGlass, 1.50, OFZ + s * .45, .045, 2.72, .82, col.glassDay,
+        { hard:true, mode:1, gloss:G.glass, tag:'公司' }), .98);
+      capsule(portalGlass - .055, 1.26, OFZ + s * .18, .028, .84, .028, col.steel,
+        { gloss:G.metal, tag:'公司' });
     }
-    // ---- the lobby itself, in the 36 cm between the glass and that back wall. Shallow, but a
-    // floor, a ceiling and a lit cove give it a top and a bottom, and depth in a dark interior
-    // seen through glass comes from those two planes far more than from the distance between them.
-    // The emissive panel this replaces was hung *outside* the glass, which is why it read as a
-    // stain on the window rather than as a room.
-    box(FX - .475, .015, OFZ, .35, .03, 3.30, C('#26282c'),
-      { hard: true, gloss: .70, tag: '公司' });
-    box(FX - .475, 2.70, OFZ, .35, .14, 3.40, col.stoneD, { hard: true, gloss: .24, tag: '公司' });
-    litten(box(FX - .50, 2.56, OFZ, .26, .05, 3.10, C('#ffe8c2'),
-      { hard: true, mode: 1, glow: .05, tag: '公司' }), 1.4);
-    box(FX - .46, .022, OFZ, .30, .012, 1.60, C('#1c1e21'),
-      { hard: true, gloss: .30, tag: '公司' });                          // the entrance mat
-    // The lift, straight in from the door. One lift and not a bank of them: at this depth two
-    // would each be half a metre wide and read as lockers. Every layer steps a couple of
-    // centimetres toward the glass — surround, then doors, then the shut line — because lower x
-    // is nearer the road here, and built the other way round the doors sat inside their own
-    // frame and the frame's face hid them completely.
-    box(FX - .300, 1.35, OFZ - .65, .05, 2.66, 1.28, col.charcoal,
-      { hard: true, gloss: .30, tag: '公司' });
+    for (const oz of [-.90, 0, .90])
+      box(portalGlass - .04, 1.50, OFZ + oz, .08, 2.78, .10, col.steelD,
+        { hard:true, gloss:G.metal, tag:'公司' });
+    box(portalGlass - .04, 2.88, OFZ, .08, .12, 1.90, col.steelD,
+      { hard:true, gloss:G.metal, tag:'公司' });
+    box((portalFront + portalGlass) / 2, .061, OFZ,
+      portalGlass - portalFront, .11, 2.02, col.stone, { hard:true, gloss:.30, tag:'公司' });
+    box(portalFront - .01, .028, OFZ, .30, .035, 1.24, C('#1c1e21'),
+      { hard:true, gloss:.28, tag:'公司' });
+
+    // 京华大厦 is the address; 文化传媒 is a tenant. Separating those two labels fixes the old
+    // vertical company billboard, which made a small fourth-floor firm look like the whole tower.
+    for (const g of B.glyphs(portalFront - .02, 3.88, OFZ, -Math.PI / 2, '京华大厦',
+        { size:.28, gap:.052, color:col.charcoal, mode:1, glow:.035, lift:.012, tag:'公司' }))
+      litten(g, .52);
+    box(portalFront - .03, 1.70, OFZ - 1.48, .08, .68, .48, col.steelD,
+      { hard:true, gloss:.46, tag:'公司' });
+    glyphs(portalFront - .08, 1.84, OFZ - 1.48, -Math.PI / 2, '文化传媒',
+      { size:.105, gap:.012, color:col.cream, mode:1, vertical:true, tag:'公司' });
+    glyphs(portalFront - .08, 1.47, OFZ - 1.48, -Math.PI / 2, '四层',
+      { size:.09, gap:.02, color:col.steel, mode:1, tag:'公司' });
+
+    // Lift, tenant directory and two slim access pedestals sit on the rear plane. Their x order is
+    // now honest: road -> frame -> glass -> furniture -> rear wall.
+    box(portalBack - .055, 1.34, OFZ - .46, .035, 2.64, .88, col.charcoal,
+      { hard:true, gloss:.30, tag:'公司' });
     for (const s of [-1, 1])
-      box(FX - .335, 1.08, OFZ - .65 + s * .27, .04, 2.12, .53, col.steel,
-        { hard: true, gloss: .56, tag: '公司' });
-    box(FX - .355, 1.08, OFZ - .65, .02, 2.12, .02, col.charcoal,
-      { hard: true, gloss: .30, tag: '公司' });
-    litten(box(FX - .345, 2.40, OFZ - .65, .04, .18, .34, C('#f4b95e'),
-      { hard: true, mode: 1, glow: .12, tag: '公司' }), 1.0);
-    // The floor the lift is showing, over its door. It is the same 四层 that is on the plate
-    // outside, which is the only reason to put a number there at all.
-    for (const g of B.glyphs(FX - .370, 2.40, OFZ - .65, -Math.PI / 2, '4',
-        { size: .12, gap: 0, color: C('#2a1c08'), mode: 1, lift: .006, tag: '公司' }))
-      litten(g, .3);
-    box(FX - .350, 1.05, OFZ - .05, .04, .30, .10, col.steelD,
-      { hard: true, gloss: .40, tag: '公司' });                          // the call plate
-    // Two turnstile pedestals, which is what is actually inside the door of every office block in
-    // the city and the one piece of lobby furniture shallow enough to fit here honestly.
-    for (const oz of [.95, 1.55]) {
-      box(FX - .46, .50, OFZ + oz, .30, 1.00, .26, col.charcoal,
-        { hard: true, gloss: .34, tag: '公司' });
-      box(FX - .46, 1.02, OFZ + oz, .32, .05, .28, col.steelD,
-        { hard: true, gloss: .50, tag: '公司' });
-      litten(box(FX - .46, 1.05, OFZ + oz, .12, .02, .14, C('#7fe0a0'),
-        { hard: true, mode: 1, glow: .10, tag: '公司' }), .9);
-    }
-    // The tenant board between the lift and the barriers. Four floors of company names, of which
-    // one is the company the player works for.
-    box(FX - .32, 1.55, OFZ + .42, .04, .74, .40, col.charcoal,
-      { hard: true, gloss: .34, tag: '公司' });
+      box(portalBack - .085, 1.07, OFZ - .46 + s * .18, .025, 2.10, .35, col.steel,
+        { hard:true, gloss:.56, tag:'公司' });
+    box(portalBack - .105, 1.07, OFZ - .46, .018, 2.10, .02, col.charcoal,
+      { hard:true, gloss:.30, tag:'公司' });
+    litten(box(portalBack - .10, 2.38, OFZ - .46, .025, .18, .30, C('#f4b95e'),
+      { hard:true, mode:1, glow:.10, tag:'公司' }), .85);
+    for (const g of B.glyphs(portalBack - .13, 2.38, OFZ - .46, -Math.PI / 2, '4',
+        { size:.12, gap:0, color:C('#2a1c08'), mode:1, lift:.006, tag:'公司' }))
+      litten(g, .25);
+    box(portalBack - .10, 1.46, OFZ + .40, .025, .78, .52, col.charcoal,
+      { hard:true, gloss:.34, tag:'公司' });
     for (const [k, row] of [[0, '四层 文化传媒'], [1, '三层 律师'], [2, '二层 会计']])
-      B.glyphs(FX - .345, 1.76 - k * .21, OFZ + .42, -Math.PI / 2, row,
-        { size: .052, gap: .008, color: col.cream, mode: 1, lift: .006, tag: '公司' });
-    for (const oz of [-1.42, -.06, 1.42])
-      box(FX - .68, 1.42, OFZ + oz, .09, 2.68, .12, col.steel, { hard: true, gloss: G.metal });
-    box(FX - .70, 2.86, OFZ, .14, .22, 3.00, col.steelD, { hard: true, gloss: G.metal });
-    // the company's plate beside the door, and the floor it is on
-    box(FX - .68, 1.72, OFZ - 1.98, .06, .58, .46, col.steelD, { hard: true, gloss: .44 });
-    glyphs(FX - .72, 1.84, OFZ - 1.98, -Math.PI / 2, '文化传媒',
-      { size: .10, gap: .01, color: col.cream, mode: 1, vertical: true, tag: '公司' });
-    glyphs(FX - .72, 1.52, OFZ - 1.98, -Math.PI / 2, '四层',
-      { size: .09, gap: .02, color: col.steel, mode: 1, tag: '公司' });
-    // The sign has to face -x, down the road, and signBoard only ever builds them facing ±z,
-    // so this one is made by hand: a tall panel with the name running down it.
-    box(FX - .82, 5.35, OFZ, .30, 2.80, .90, col.blueSign, { hard: true, gloss: .30 });
-    box(FX - .70, 5.35, OFZ, .18, 2.80, .30, col.steelD, { hard: true, gloss: G.metal });
-    for (const g of B.glyphs(FX - .98, 5.35, OFZ, -Math.PI / 2, '文化传媒',
-        { size: .40, gap: .18, vertical: true, color: col.white, mode: 1, glow: .10 }))
-      litten(g, .85);
+      B.glyphs(portalBack - .13, 1.68 - k * .21, OFZ + .40, -Math.PI / 2, row,
+        { size:.052, gap:.008, color:col.cream, mode:1, lift:.006, tag:'公司' });
+    for (const oz of [.68, .92]) {
+      box(FX + .04, .48, OFZ + oz, .26, .96, .16, col.charcoal,
+        { hard:true, gloss:.34, tag:'公司' });
+      box(FX + .04, .98, OFZ + oz, .28, .045, .18, col.steelD,
+        { hard:true, gloss:.50, tag:'公司' });
+      litten(box(FX + .04, 1.01, OFZ + oz, .10, .018, .09, C('#7fe0a0'),
+        { hard:true, mode:1, glow:.08, tag:'公司' }), .7);
+    }
     solid(FX - .95, FX, OFZ - 1.85, OFZ + 1.85);
-    // Keep the camera out of the vestibule as well as the body. The general far-side blocker only
-    // starts at FX, so before the surround was opened up an orbit that swung round behind the
-    // player at this door put the eye inside a block of granite; now it would put the eye inside
-    // the lobby, looking out through the back of its own walls, which are single-sided. Capped at
-    // 4.2 m so a high camera can still see over the frontage.
+    // Preserve the authored vestibule body/camera contract; it still leaves a 3.15 m clear strip
+    // from the carriageway to its west edge, and the visible portal itself begins another .47 m in.
     blocker(FX - .95, FX, OFZ - 1.85, OFZ + 1.85, 4.2);
     // ---- 北京新天地 and 大超市 are NOT here any more.
     //
@@ -3223,7 +4417,10 @@ const Street = Lazy('Street', () => {
     // row of them rather than leaving a hole. The mouth is the gap the loop leaves at GZ0..GZ1.
 
     // ---- 地铁站 the 商务区 entrance, on the far pavement outside the office tower
-    metroMouth(38.70, -5.20, '商务区');
+    // Kerb-align the entrance: its ground footprint is 37.40..39.60, leaving the official
+    // branch-street 2.00 m clear path to the x=41.60 frontage.  The old x=38.70 centre spent an
+    // avoidable 20 cm of that path while leaving unused paving beside the kerb.
+    metroMouth(38.45, -5.20, '商务区');
     thing('公司', FX - .80, 3.20, OFZ, '我在一家小公司上班，四层。',
       'I work at a small company, on the fourth floor.',
       '公 public + 司 to manage. 上班 is to go to work, 下班 to knock off.',
@@ -3233,7 +4430,7 @@ const Street = Lazy('Street', () => {
     for (const s of [-1, 1])
       box(FX + 1.0, 15.0, 8.0 + s * 5.6, .40, 6.0, .40, col.charcoal, { hard: true, gloss: .3 });
     box(FX + .90, 20.4, 8.0, .50, 5.4, 13.0, col.charcoal, { hard: true, gloss: .3 });
-    litten(box(FX + .60, 20.4, 8.0, .12, 4.7, 12.2, C('#dfe6ea'),
+    litten(box(FX + .59, 20.4, 8.0, .12, 4.7, 12.2, C('#dfe6ea'),
       { hard: true, mode: 1, glow: .1 }), .7);
     // The advert. This was four coloured squares in a row on a blank lightbox — the visual
     // equivalent of the ■■ shop signs that were taken off the parade below it. A billboard eight
@@ -3251,7 +4448,7 @@ const Street = Lazy('Street', () => {
     taper(FX + .46, 21.70, 4.30, .18, .40, 1.10, C('#8d2320'), { gloss: .50 });
     box(FX + .46, 22.15, 4.30, .18, .55, .70, C('#8d2320'), { hard: true, gloss: .50 });
     box(FX + .48, 22.55, 4.30, .20, .30, .82, col.gold, { hard: true, gloss: G.metal });
-    box(FX + .52, 19.70, 4.30, .06, .95, 1.58, col.cream, { hard: true, mode: 1 });
+    box(FX + .54, 19.70, 4.30, .06, .95, 1.58, col.cream, { hard: true, mode: 1 });
     B.glyphs(FX + .48, 19.70, 4.30, -Math.PI / 2, '可乐',
       { size: .58, gap: .10, color: C('#8d2320'), gloss: .10, lift: .02 });
     for (const g of B.glyphs(FX + .48, 21.20, 9.90, -Math.PI / 2, '冰镇可乐',
@@ -3266,7 +4463,7 @@ const Street = Lazy('Street', () => {
       capsule(FX + .74, 23.05, oz, .05, .60, .05, col.steelD, { rz: .6, gloss: .34 });
       taper(FX + .40, 23.20, oz, .34, .30, .34, col.steelD, { rx: 1.9, gloss: .38 });
       litten(box(FX + .28, 23.10, oz, .05, .18, .28, C('#fff2d2'),
-        { hard: true, mode: 1, glow: .10 }), .9);
+        { hard: true, mode: 1, glow: .10, tag:'广告照明' }), .9);
     }
 
     // ---- the corner block that closes the east end of the alley, and plain masses filling
@@ -3316,13 +4513,21 @@ const Street = Lazy('Street', () => {
     // Which is where they go: a hutong gets its station mouth at the mouth of the hutong. Not at
     // x 15 — number 16's gate is at 13.8 and the canopy stood on its threshold.
     metroMouth(19.40, 2.30, '杨柳胡同');
-    for (const [mz, md] of [[-34, 40], [26, 34]]) {
-      box(16.7, 7.0, mz, 13.0, 14.0, md, col.renderD, { hard: true, mode: 14, gloss: G.paint, ...RENDER });
+    // The former anonymous south mass at x 10.5..23.2, z -54..-14 is now the authored
+    // 杨柳消防救援站 (js/street-firestation.js). Keep the 32 random draws its window grid used so
+    // removing that placeholder cannot re-deal the middle-distance skyline or any later street
+    // detail. The north mass remains the structural shell skinned by street-hospital.js.
+    for (let i = 0; i < 32; i++) rnd();
+    for (const [mz, md] of [[26, 34]]) {
+      // street-hospital.js now supplies the complete lower wings, returned elevations and tower.
+      // The old 13 x 14 x 34 m visual placeholder sat coplanar in front of that authored work and
+      // became a blank cuboid from the east cycle track. Keep its physical site contract below,
+      // but do not draw a second building over the finished hospital.
       blocker(10.5, 23.2, mz - md / 2, mz + md / 2, 14.0);
       solid(10.5, 23.2, mz - md / 2, mz + md / 2);
-      for (let f = 0; f < 4; f++) for (let i = 0; i < 8; i++)
-        pane(box(23.1, 3.4 + f * 3.0, mz - md / 2 + 2.4 + i * ((md - 4.8) / 7), .12, 1.5, 2.0,
-          col.glassDay, { hard: true, mode: 1 }), rnd(), true);
+      // The anonymous shell's 32 pasted road panes are superseded by the grouped windows in
+      // street-hospital.js. Consume their stream positions without leaving floating/copanar glass.
+      for (let i = 0; i < 32; i++) rnd();
     }
     // and one continuous stop so the eye can never slip past the far building line
     // Cut at the lane's mouth. js/street-lane.js builds its own side blocks and its own end, so
@@ -3333,22 +4538,231 @@ const Street = Lazy('Street', () => {
 
     // ---- the middle distance. Without this the built district simply stops and the ground
     // runs out to the horizon as a bare plain, which is the one thing that gives the whole
-    // illusion away. These are plain masses: at eighty metres and half-lost in smog, that is
-    // all a city block is.
+    // illusion away.
+    //
+    // Nine seeded parcels sit in the exact view north along the road. They cannot use the old
+    // plain-mass treatment: parcels 16, 18, 19 and 20 overlap into one beige elevation, with #18
+    // alone spanning x 15.97..48.32 at z 57.29..79.01. From the crossing that hid the sky, the
+    // CBD and even the fact that these were separate buildings. Those nine keep their generated
+    // bearings, heights and every rnd() draw, but are narrowed onto two building lines around an
+    // 11 m visual continuation of the carriageway. Setback upper wings, returned glazing and
+    // different cladding make depth readable through the haze. They are distant scenery only:
+    // this loop has never added a solid or camera blocker, and still does not.
+    const MID_CLAD = [[C('#7f898d'), C('#a3a9a7')], [C('#8f887c'), C('#b9afa0')],
+                      [C('#727f89'), C('#a8b3b7')], [C('#8d8274'), C('#b8aa98')]];
+    // Two or three recessed bays per face. A single long glass ribbon on alternate floors left
+    // the transverse player views as blank cartons with stripes; these compact groups make every
+    // exposed return a real elevation while sharing the floor's one deterministic warmth draw.
+    const midBayFaces = [];
+    const midBays = (axis, face, centre, y, span, warm) => {
+      const offsets = span > 10.5 ? [-.29, 0, .29] : [-.25, .25];
+      const width = Math.min(1.46, span * (offsets.length === 3 ? .18 : .27));
+      for (let k = 0; k < offsets.length; k++) {
+        const at = centre + span * offsets[k];
+        const slot = { axis, face, lo:at - width / 2, hi:at + width / 2,
+          y0:y - .68, y1:y + .68 };
+        const covered = midBayFaces.some(q => q.axis === slot.axis &&
+          Math.abs(q.face - slot.face) <= .002 &&
+          Math.min(q.hi, slot.hi) - Math.max(q.lo, slot.lo) > .01 &&
+          Math.min(q.y1, slot.y1) - Math.max(q.y0, slot.y0) > .01);
+        if (covered) continue;
+        midBayFaces.push(slot);
+        const p = axis === 'z'
+          ? box(at, y, face, width, 1.36, .16, col.glassDay,
+              { hard:true, mode:1, gloss:G.glass })
+          : box(face, y, at, .16, 1.36, width, col.glassDay,
+              { hard:true, mode:1, gloss:G.glass });
+        pane(p, (k + (y * 10 | 0)) % 3 ? warm : warm * .38, true);
+      }
+    };
     for (let i = 0; i < 44; i++) {
       const a = -1.15 + i * .052 + rnd() * .02;
       const dist = 52 + rnd() * 105;
       const bx = Math.sin(a) * dist * 1.05 + 46, bz = Math.cos(a) * dist * .6 + 30;
       const bh = 9 + rnd() * rnd() * 34, bw = 16 + rnd() * 26;
       const bd = bw * (.6 + rnd() * .7);
-      box(bx, bh / 2, bz, bw, bh, bd, col.renderD,
-        { hard: true, mode: 14, gloss: .18 });
       const rows = Math.max(2, Math.floor(bh / 3.4));
-      // Window bands sit on the face, which means measuring off the block's own depth. Taken
-      // off its width they were buried inside most blocks and floated free of the rest.
-      for (let r = 1; r < rows; r++)
-        pane(box(bx, r * (bh / rows) + 1.1, bz - bd / 2 + .04, bw * .84, 1.5, .3,
-          col.glassDay, { hard: true, mode: 1 }), rnd() > .5 ? .9 : 0, true);
+      const roadEndParcel = i >= 13 && i <= 22 && i !== 15;
+      // Eighteen well-spaced middle-distance addresses read as a city; forty-four overlapping
+      // shells read as a wall and cost the frame. Preserve every skipped parcel's one warmth draw
+      // per floor so the downstream CBD seed remains byte-stable. i=1 stays as a split proof site.
+      if (!roadEndParcel && i !== 1 && i % 4 !== 0) {
+        for (let r = 1; r < rows; r++) rnd();
+        continue;
+      }
+      if (!roadEndParcel) {
+        // The old generic path emitted every other parcel as one 16–42 m cuboid, then pasted
+        // windows on only its south face. Those enormous blank returns were visible from the
+        // lane, hotel and courtyard even through the distance haze. Broad parcels are now two
+        // independently set-back wings around a real slot; narrower parcels remain one compact
+        // stepped address. No collision is added and the floor loop still consumes exactly one
+        // random warmth draw per row, preserving every downstream seeded detail.
+        const side = bx < 31.5 ? -1 : 1;
+        const count = i === 1 || bw > 26 ? 2 : 1;
+        const [shell, trim] = MID_CLAD[(i * 5 + 1) % MID_CLAD.length];
+        const profiles = [];
+        for (let j = 0; j < count; j++) {
+          const s = count === 1 ? 0 : (j ? 1 : -1);
+          const ww = count === 1
+            ? Math.min(18, Math.max(9.2, bw * .54))
+            : Math.min(12.4, Math.max(7.2, bw * .30));
+          const wd = Math.min(17.0, Math.max(7.4, bd * (.42 + j * .035)));
+          const slot = count === 1 ? 0 : Math.min(9.2, bw * .24);
+          const wx = bx + s * slot;
+          // i=1 is the transverse-view proof parcel. An x-only split projects back into one mass
+          // when the player looks west, so its paired wings also leave a real 1m+ notch along z.
+          const zSplit = count === 1 ? 0 : i === 1 ? s * 5.15 : (j ? .70 : -.55);
+          const wz = bz + zSplit + ((i % 3) - 1) * .26;
+          const wh = bh * (count === 2 && j === (i & 1) ? .82 : 1);
+          const baseH = Math.min(5.8, Math.max(3.8, wh * .27));
+          const uw = ww * (.66 + ((i + j) % 3) * .065);
+          const ud = wd * (.70 + ((i + j + 1) % 3) * .055);
+          const ux = wx + side * ww * (.07 + ((i + j) % 2) * .035);
+          const uz = wz + (j ? .48 : -.38);
+          const upperH = Math.max(.8, wh - baseH);
+          const splitY = upperH > 11 ? baseH + upperH * .58 : null;
+          const lowerTop = splitY || wh;
+
+          box(wx, baseH / 2, wz, ww, baseH, wd, tint(shell, .88, -.006),
+            { hard:true, mode:14, gloss:.18 });
+          box(ux, (baseH + lowerTop) / 2, uz, uw, lowerTop - baseH, ud, shell,
+            { hard:true, mode:14, gloss:.20 });
+          let tx = ux, tz = uz, tw = uw, td = ud;
+          if (splitY) {
+            tw = uw * .72; td = ud * .76;
+            tx = ux + side * uw * .10; tz = uz + (j ? .34 : -.28);
+            box(tx, (splitY + wh) / 2, tz, tw, wh - splitY, td,
+              tint(shell, 1.04, .006), { hard:true, mode:14, gloss:.21 });
+          }
+          box(wx, baseH + .08, wz, ww + .20, .16, wd + .16, trim,
+            { hard:true, gloss:.22 });
+          box(tx, wh + .09, tz, tw + .22, .18, td + .18, trim,
+            { hard:true, gloss:.23 });
+          const groundY=Math.min(2.15,baseH*.52), groundWarm=(i+j)%3?.10:.035;
+          midBays('z',wz-wd/2-.055,wx,groundY,ww,groundWarm);
+          midBays('z',wz+wd/2+.055,wx,groundY,ww,groundWarm*.78);
+          midBays('x',wx-ww/2-.055,wz,groundY,wd,groundWarm*.84);
+          midBays('x',wx+ww/2+.055,wz,groundY,wd,groundWarm*.84);
+          profiles.push({ wx, wz, ww, wd, ux, uz, uw, ud, wh, baseH,
+                          splitY, tx, tz, tw, td });
+        }
+
+        for (let r = 1; r < rows; r++) {
+          const y = r * (bh / rows) + 1.1;
+          const warm = rnd() > .5 ? .9 : 0;
+          for (let j = 0; j < profiles.length; j++) {
+            const q = profiles[j];
+            if (y > q.wh - .45) continue;
+            const upper = y > q.baseH;
+            let px = upper ? q.ux : q.wx, pz = upper ? q.uz : q.wz;
+            let pw = upper ? q.uw : q.ww, pd = upper ? q.ud : q.wd;
+            if (upper && q.splitY && y > q.splitY) {
+              px=q.tx; pz=q.tz; pw=q.tw; pd=q.td;
+            }
+            midBays('z', pz - pd / 2 - .055, px, y, pw, warm);
+            midBays('z', pz + pd / 2 + .055, px, y, pw, warm * .78);
+            midBays('x', px - pw / 2 - .055, pz, y, pd, warm * .84);
+            midBays('x', px + pw / 2 + .055, pz, y, pd, warm * .84);
+          }
+        }
+        continue;
+      }
+
+      // i 13/14/16/17 are the west building line, i 18..22 the east. The generated centre is
+      // retained whenever it already clears the road-end aperture; only the overlapping parcels
+      // are pushed outward. Depth is reduced as well, so one long side wall cannot close the gap
+      // again from a camera a few metres off the centre line.
+      const side = i < 18 ? -1 : 1;
+      const generatedW = Math.min(15, bw * (.36 + (i % 3) * .025));
+      // Parcels 13 and 14 overlapped by six metres in the transverse cycle-track view. Preserve
+      // their generated floors and warmth stream, but resolve them as two addresses with a real
+      // 0.88 m fire slot while keeping the established x26..37 road-end aperture untouched.
+      const aw = i === 13 ? 10.0 : i === 14 ? 8.20 : generatedW;
+      const ax = i === 13 ? 10.82 : i === 14 ? 20.80
+        : side < 0 ? Math.min(bx, 26 - aw / 2) : Math.max(bx, 37 + aw / 2);
+      const ad = Math.min(15, Math.max(7.5, bd * .32));
+      const baseH = Math.min(6.4, Math.max(4.4, bh * .30));
+      const upperH = bh - baseH;
+      const upperW = aw * (.60 + (i % 3) * .07);
+      const upperD = ad * (.70 + ((i + 1) % 3) * .05);
+      const upperX = ax + side * aw * (.08 + (i % 2) * .035);
+      const upperZ = bz + (i % 2 ? .80 : -.60);
+      const [shell, trim] = MID_CLAD[(i * 3) % MID_CLAD.length];
+      const splitY = upperH > 11 ? baseH + upperH * .58 : null;
+      const lowerTop = splitY || bh;
+
+      box(ax, baseH / 2, bz, aw, baseH, ad, tint(shell, .90, -.004),
+        { hard:true, mode:14, gloss:.18 });
+      box(upperX, (baseH + lowerTop) / 2, upperZ,
+        upperW, lowerTop - baseH, upperD, shell,
+        { hard:true, mode:14, gloss:.20 });
+      let topX=upperX, topZ=upperZ, topW=upperW, topD=upperD;
+      if (splitY) {
+        topW=upperW*.70; topD=upperD*.76;
+        topX=upperX+side*upperW*.11; topZ=upperZ+(i%2?.34:-.28);
+        box(topX,(splitY+bh)/2,topZ,topW,bh-splitY,topD,tint(shell,1.04,.006),
+          {hard:true,mode:14,gloss:.21});
+      }
+      box(ax, baseH + .10, bz, aw + .24, .20, ad + .18, trim,
+        { hard:true, gloss:.23 });
+      box(topX, bh + .10, topZ, topW + .28, .20, topD + .24, trim,
+        { hard:true, gloss:.24 });
+      const groundY=Math.min(2.20,baseH*.52), groundWarm=i%3?.10:.035;
+      midBays('z',bz-ad/2-.055,ax,groundY,aw,groundWarm);
+      midBays('z',bz+ad/2+.055,ax,groundY,aw,groundWarm*.78);
+      midBays('x',ax-aw/2-.055,bz,groundY,ad,groundWarm*.84);
+      midBays('x',ax+aw/2+.055,bz,groundY,ad,groundWarm*.84);
+
+      // Exactly one rnd() per authored floor, as before. The same warmth value serves the front
+      // and all four returned bay groups; no extra randomness shifts the CBD anchors below.
+      for (let r = 1; r < rows; r++) {
+        const y = r * (bh / rows) + 1.1;
+        const upper = y > baseH;
+        let px = upper ? upperX : ax, pz = upper ? upperZ : bz;
+        let pw = upper ? upperW : aw, pd = upper ? upperD : ad;
+        if (upper && splitY && y > splitY) {
+          px=topX; pz=topZ; pw=topW; pd=topD;
+        }
+        const warm = rnd() > .5 ? .9 : 0;
+        midBays('z', pz - pd / 2 - .055, px, y, pw, warm);
+        midBays('z', pz + pd / 2 + .055, px, y, pw, warm * .78);
+        midBays('x', px - pw / 2 - .055, pz, y, pd, warm * .84);
+        midBays('x', px + pw / 2 + .055, pz, y, pd, warm * .84);
+      }
+    }
+
+    // A porous service court between the playable road and the spaced middle-distance addresses.
+    // Thinning the old overlapping parcels restored sky and performance, but leaving the world
+    // plane exposed made the transverse cycle-track view look like a black vacant canyon. This is
+    // scenery only: paved court, one narrow service street, planted islands and slim lamps, with
+    // no solid, blocker, interaction or random draw.
+    flat(-4.0,.006,60.0,53.0,39.0,col.paveD,{mode:9,gloss:.10,...PAVE});
+    flat(-4.0,.010,60.0,7.4,39.0,C('#4b5052'),{mode:9,gloss:.08});
+    flat(-9.0,.011,60.0,2.3,39.0,tint(col.pave,.92),{mode:9,gloss:.10,...PAVE});
+    flat( 1.0,.011,60.0,2.3,39.0,tint(col.pave,.92),{mode:9,gloss:.10,...PAVE});
+    for(let z=44;z<=78;z+=6)
+      flat(-4.0,.014,z,.10,2.20,col.cream,{gloss:.16});
+    for(const [x,z,s] of [[-13.0,45.5,.84],[4.8,49.0,.72],[-12.2,58.0,.76],
+                           [5.1,63.0,.82],[-13.4,71.5,.70],[4.4,76.0,.76]]){
+      taper(x,.22,z,s*1.32,.44,s*1.06,C('#858983'),{gloss:.16,mode:9});
+      cyl(x,.92,z,.085,1.52,C('#6a5745'),{gloss:.16});
+      for(const [dx,dz,sc] of [[-.24,-.10,.42],[.20,-.05,.46],[.02,.22,.40]])
+        ball(x+dx,1.78,z+dz,sc,.38,sc,C('#657d58'),{mode:15,gloss:.08});
+    }
+    // These stand on the near service walk, where their light can actually be read from the
+    // cycle track.  The first version put four edge-on 16 cm heads 35--45 m away: their meshes
+    // were technically emissive, but at the authored player camera they were sub-pixel dark
+    // ticks and the whole court still looked unsafe.  A broadside cut-off head, a short curved
+    // arm and a wider pool give the court a real night rhythm without point lights or collision.
+    for(const [x,z] of [[17.2,46.5],[6.4,55.0],[17.2,65.0],[6.4,74.0]]){
+      cyl(x,2.18,z,.042,4.36,C('#646b6e'),{gloss:.36});
+      capsule(x,4.24,z-.18,.034,.42,.034,C('#70787a'),
+        {rx:Math.PI/2,gloss:.40});
+      box(x,4.32,z-.37,.18,.10,.72,C('#737b7d'),{hard:true,gloss:.42});
+      litten(box(x,4.265,z-.37,.14,.038,.58,C('#fff0c2'),
+        {hard:true,mode:1,glow:.08,gloss:.54}),1.15);
+      lampPools.push(glow(M.trs(x,.020,z-.38,0,5.4,1,6.4),C('#ffc878'),0));
+      lampPools.push(glow(M.trs(x,.022,z-.38,0,2.5,1,3.2),C('#ffe0a4'),0));
     }
 
     // ============================================================ people and street life
@@ -3397,7 +4811,7 @@ const Street = Lazy('Street', () => {
     for (const [px, pz, pw, pd] of [[-3.4, -1.75, 1.5, .8], [6.8, 1.9, 1.1, .7],
                                     [-16.2, .4, 1.8, 1.0], [22.4, -1.6, 1.3, .8]]) {
       flat(px, .011, pz, pw, pd, C('#3b4046'), { gloss: .92 });
-      flat(px, .012, pz, pw * .72, pd * .72, C('#2f343a'), { gloss: .95 });
+      flat(px, .015, pz, pw * .72, pd * .72, C('#2f343a'), { gloss: .95 });
     }
 
     // ---- hanging shop banners, the vertical kind on every Chinese shopfront
@@ -3410,15 +4824,29 @@ const Street = Lazy('Street', () => {
         litten(g, .8);
     }
 
-    // ---- 报刊亭: the newsstand kiosk near the mouth of the alley
-    const kx2 = 20.8, kz2 = -2.05;
-    box(kx2, 1.10, kz2, 2.10, 2.20, 1.30, C('#2f6f5e'), { hard: true, gloss: .30 });
-    box(kx2, 2.30, kz2, 2.40, .16, 1.60, col.tileD,
-      { hard: true, mode: 13, gloss: .22, ...RTILE });
-    box(kx2, 2.46, kz2 + .10, 2.30, .18, 1.30, C('#2f6f5e'), { hard: true, gloss: .28 });
-    box(kx2, 1.42, kz2 + .66, 1.62, 1.00, .06, col.charcoal, { hard: true, gloss: .30 });
-    box(kx2, .78, kz2 + .70, 1.70, .16, .30, C('#245a4c'), { hard: true, gloss: .28 });
-    signBoard(kx2, 2.02, kz2 + .62, 1.60, .34, C('#245a4c'), col.paintY, '报刊亭', 1, .7);
+    // ---- 报刊亭: a wall-integrated open news rack near the mouth of the alley.
+    // Even the earlier shallow kiosk still sat inside WILLOW_OUT's normal camera orbit: a 25° turn
+    // put the camera inside its canopy. This is now part of the shopfront — three shelves, slender
+    // jambs and a 12 cm flashing, all behind the legal body edge, with no freestanding collider.
+    const kx2 = 20.55, kz2 = -2.82, NEWS = C('#2f6f5e'), NEWSD = C('#245a4c');
+    for (const ox of [-.72, .72])
+      box(kx2 + ox, 1.23, kz2 + .035, .055, 2.04, .080, NEWS,
+        { hard:true, gloss:.28 });
+    for (const y of [.67, 1.17, 1.67]) {
+      box(kx2, y, kz2 + .055, 1.48, .050, .10, NEWSD,
+        { hard:true, gloss:.28 });
+      for (const ox of [-.66, .66])
+        capsule(kx2 + ox, y - .14, kz2 + .015, .012, .28, .012, col.steelD,
+          { rx:ox * .12, gloss:G.metal });
+    }
+    // Open slatted lower return bay: stock can be seen through it instead of another green box.
+    for (const oz of [-.035, .035])
+      box(kx2, .12, kz2 + oz, 1.38, .045, .032, NEWS, { hard:true, gloss:.26 });
+    for (const x0 of [kx2 - .68, kx2, kx2 + .68])
+      capsule(x0, .35, kz2 + .02, .015, .54, .015, NEWS, { gloss:.26 });
+    box(kx2, 2.22, kz2 - .005, 1.62, .055, .12, col.tileD,
+      { hard:true, mode:13, gloss:.22, rx:-.05, ...RTILE });
+    signBoard(kx2, 2.04, kz2 + .085, 1.38, .27, NEWSD, col.paintY, '报刊亭', 1, .7);
     // The stock. These were six coloured rectangles lying on their sides — landscape, which no
     // magazine has ever been — and blank, on the one prop in the district that exists to sell
     // print. They stand portrait now with a masthead on each, and the covers below the fold are
@@ -3427,17 +4855,17 @@ const Street = Lazy('Street', () => {
     for (let i = 0; i < 6; i++) {
       const mx = kx2 - .58 + (i % 3) * .58, my = 1.06 + ((i / 3) | 0) * .44;
       const mc = [col.plastic, col.paintY, col.blue, col.cream, col.teal, col.redL][i];
-      box(mx, my, kz2 + .80, .30, .40, .04, mc, { hard: true, gloss: .22 });
+      box(mx, my, kz2 + .125, .30, .40, .022, mc, { hard: true, gloss: .22 });
       // A pale band across the top for the masthead to sit on. Ink straight onto a mid-blue or
       // a mid-green cover disappeared; every real cover puts its name on white or on a block.
-      box(mx, my + .145, kz2 + .823, .28, .09, .006, col.cream, { hard: true, gloss: .16 });
-      B.glyphs(mx, my + .145, kz2 + .828, 0, MASTS[i],
+      box(mx, my + .145, kz2 + .140, .28, .09, .006, col.cream, { hard: true, gloss: .16 });
+      B.glyphs(mx, my + .145, kz2 + .146, 0, MASTS[i],
         { size: .066, gap: .008, color: i === 3 ? col.blueSign : col.redD,
           gloss: .10, lift: .005 });
       // Two ruled bands lower down, standing in for the cover lines. Glyphs at that size came out
       // as grey fur and cost eight quads a cover.
       for (let k = 0; k < 2; k++)
-        box(mx - .04, my - .06 - k * .07, kz2 + .823, .19 - k * .05, .022, .006,
+        box(mx - .04, my - .06 - k * .07, kz2 + .140, .19 - k * .05, .022, .006,
           C('#efe9dc'), { hard: true, gloss: .12 });
     }
     // Folded newspapers on the counter, weighted down with a length of pipe, which is how every
@@ -3446,30 +4874,29 @@ const Street = Lazy('Street', () => {
     // camera and invisible. The two papers pegged over the wire above them carry the names.
     for (let i = 0; i < 3; i++) {
       const px3 = kx2 - .52 + i * .52;
-      box(px3, .885, kz2 + .70, .46, .05, .32, C('#d8d2c2'),
+      box(px3, .725, kz2 + .085, .46, .05, .12, C('#d8d2c2'),
         { hard: true, gloss: .10, ry: (i - 1) * .06 });
-      box(px3, .922, kz2 + .70, .44, .03, .30, C('#cfc8b6'),
+      box(px3, .762, kz2 + .090, .44, .03, .10, C('#cfc8b6'),
         { hard: true, gloss: .10, ry: (i - 1) * .06 });
     }
-    capsule(kx2, .95, kz2 + .58, .012, 1.50, .012, col.steelD,
+    capsule(kx2, .80, kz2 + .13, .012, 1.38, .012, col.steelD,
       { rz: Math.PI / 2, gloss: G.metal });
     // Two papers pegged to the front lip of the counter, hanging down its face. Below the counter
     // rather than above it, because everything above is display board and magazine: hung there
     // they were 10 cm behind the covers and the covers hid them completely.
     for (const [ox, name] of [[-.44, '北京日报'], [.46, '晚报']]) {
-      box(kx2 + ox, .42, kz2 + .82, .52, .46, .012, C('#d8d2c2'),
+      box(kx2 + ox, .40, kz2 + .145, .52, .42, .012, C('#d8d2c2'),
         { hard: true, gloss: .08, ry: ox * .1 });
-      B.glyphs(kx2 + ox, .55, kz2 + .828, 0, name,
+      B.glyphs(kx2 + ox, .53, kz2 + .153, 0, name,
         { size: .085, gap: .012, color: col.charcoal, gloss: .06, lift: .005 });
       for (let k = 0; k < 3; k++)
-        box(kx2 + ox, .38 - k * .075, kz2 + .827, .42 - k * .06, .022, .006,
+        box(kx2 + ox, .36 - k * .070, kz2 + .152, .42 - k * .06, .022, .006,
           C('#c2bcaa'), { hard: true, gloss: .06 });
       for (const t of [-1, 1])
-        box(kx2 + ox + t * .18, .65, kz2 + .825, .04, .06, .03, col.plastic,
+        box(kx2 + ox + t * .18, .62, kz2 + .150, .04, .06, .03, col.plastic,
           { hard: true, gloss: .30 });
     }
-    solid(kx2 - 1.2, kx2 + 1.2, kz2 - .75, kz2 + .85);
-    shade(kx2, kz2 + .1, 2.8, 2.0, .40);
+    shade(kx2, kz2 + .02, 1.7, .35, .22);
 
     // ---- satellite dishes and a few aerials on your own block
     for (const [dx, dy] of [[-11.4, 8.2], [-4.6, 14.1], [6.8, 5.4], [9.4, 11.0]]) {
@@ -3485,12 +4912,23 @@ const Street = Lazy('Street', () => {
     // starts it again at the bottom, fading as it goes, so the stall reads as working.
     for (const [sx2, sz2] of [[-13.0, -1.62], [6.5, -1.62]])
       for (let i = 0; i < 3; i++) {
-        const p = ball(sx2 + (i - 1) * .12, .30 + i * .34, sz2, .26 - i * .05, .20, .26 - i * .05,
+        const x = sx2 + (i - 1) * .12, y0 = .30;
+        const r = .26 - i * .05, a0 = .13 - i * .035, phase = i / 3;
+        const u = phase, grow = 1 + u * 1.5;
+        const p = ball(x, y0 + u * 1.05, sz2, r, .20, r,
           C('#e8e6e0'), { mode: 1, alpha: .13 - i * .035 });
+        // Initialise on the tick trajectory and retain one conservative cull envelope around its
+        // full 1.05 m rise. Steam is a translucent loose draw, not a dynamic batch, so its packed
+        // cull centre is intentionally fixed around the complete authored motion.
+        p.m = M.trs(x, y0 + u * 1.05, sz2, 0, r * grow, .20 * grow, r * grow);
+        p.alpha = a0 * (1 - u) * (1 - u) * 1.6;
+        p.fixed = true;
+        p.cx = x; p.cy = y0 + .525; p.cz = sz2;
+        p.r = .595 + .5 * Math.hypot(r * 2.5, .50, r * 2.5);
+        p.stateOwner = 'base:steam';
         // The pair at x -13 are drain covers and steam all day; the pair by the stall belong to
         // the steamers and knock off with them.
-        steam.push({ p, x: sx2 + (i - 1) * .12, y0: .30, z: sz2, stall: sx2 > 0,
-                     r: .26 - i * .05, a0: .13 - i * .035, phase: i / 3 });
+        steam.push({ p, x, y0, z: sz2, stall: sx2 > 0, r, a0, phase });
       }
 
     // ---- 阿姨's stool, by the gate where she sits most of the day. She is drawn by the figure
@@ -3551,16 +4989,34 @@ const Street = Lazy('Street', () => {
         { ry: FKA, rx: -.16, gloss: .34 });
     box(fkx + FKS * .05, .16, fkz + FKC * .05, .30, .32, .24, col.brickD,
       { hard: true, mode: 11, ry: FKA, gloss: G.matte });
-    // A `cyl` stands on its axis, so a wheel leant against a wall needs rx: a quarter turn
-    // puts the disc in the x-y plane, facing the alley. Without it the spare tyres hung on
-    // the wall as flat black bars.
-    cyl(rx0 - 2.15, .35, ez + .34, .34, .05, col.black,
-      { rx: Math.PI / 2 - .12, rz: .10, gloss: .26 });
-    cyl(rx0 - 2.15, .35, ez + .37, .22, .02, col.steel,
-      { rx: Math.PI / 2 - .12, rz: .10, gloss: G.metal });
+    // Open repair wheels: articulated tyre arcs, a separate rim and real spokes. The old pair of
+    // filled cylinders became four black pucks from the square and hid the wall behind them.
+    const repairWheel = (cx, cy, wz, r, tag) => {
+      const tyreN = 16, tyreR = r * .86;
+      for (let i = 0; i < tyreN; i++) {
+        const a = i * Math.PI * 2 / tyreN;
+        capsule(cx + Math.cos(a) * tyreR, cy + Math.sin(a) * tyreR, wz,
+          r * .105, tyreR * .42, r * .055, C('#25282b'),
+          { rz: a, gloss: .28, tag });
+      }
+      const rimN = 12, rimR = r * .58;
+      for (let i = 0; i < rimN; i++) {
+        const a = i * Math.PI * 2 / rimN;
+        capsule(cx + Math.cos(a) * rimR, cy + Math.sin(a) * rimR, wz - .010,
+          .012, rimR * .54, .009, col.steel,
+          { rz: a, gloss: G.metal, tag });
+      }
+      for (let i = 0; i < 6; i++) {
+        const a = i * Math.PI / 3;
+        capsule(cx + Math.cos(a) * rimR * .48, cy + Math.sin(a) * rimR * .48, wz - .014,
+          .009, rimR * .96, .007, col.steelD,
+          { rz: a - Math.PI / 2, gloss: G.metal, tag });
+      }
+      ball(cx, cy, wz - .018, .038, .038, .020, col.steelD, { gloss: G.metal, tag });
+    };
+    repairWheel(rx0 - 2.15, .35, ez + .34, .34, '修车');
     for (const [tx, ty] of [[rx0 - 2.30, 1.42], [rx0 - 2.30, 2.02], [rx0 - 1.86, 1.72]]) {
-      cyl(tx, ty, ez + .22, .30, .06, col.black, { rx: Math.PI / 2, gloss: .24 });
-      cyl(tx, ty, ez + .24, .17, .03, col.charcoal, { rx: Math.PI / 2, gloss: .22 });
+      repairWheel(tx, ty, ez + .22, .30, '修车');
       capsule(tx, ty + .30, ez + .17, .012, .10, .012, col.steelD, { gloss: G.metal });
     }
     // A coiled 内胎 on a nail beside the tyres. There is no torus in the mesh set, so it is a ring
@@ -3598,8 +5054,9 @@ const Street = Lazy('Street', () => {
     // ---- e-scooters, the quilted kind, parked where everyone parks them
     scooter(12.9, -2.05, .12, col.frame, C('#b8425c'), '电动车');
     scooter(14.6, -2.05, -.08, col.charcoal, C('#2f6f8f'), '电动车');
-    scooter(-24.6, SZ - .55, Math.PI * .9, C('#4a6f5a'), null);
-    scooter(24.6, -2.00, .06, col.frame, C('#6b4f8f'));
+    // Two untagged duplicates are deliberately omitted.  The west one sat in the exact 公共厕所
+    // establishing camera; the east one filled the metro2/crossing foreground.  Neither taught a
+    // word, and the retained tagged pair plus the live road moped already establish the family.
     thing('电动车', 13.2, 1.35, -2.05, '楼下停着很多电动车。',
       'A lot of e-scooters are parked downstairs.',
       '电动车 — electric vehicle. The quilt over the bars is a 挡风被.',
@@ -3628,33 +5085,43 @@ const Street = Lazy('Street', () => {
     // One palette, used by both loads. The stack against the wall was three greens and the load on
     // the trike beside it was a fourth green of its own, so the cabbage that had just come off the
     // trike was visibly a different vegetable from the cabbage stacked two metres away.
-    const CABBAGE = [C('#c3cc9a'), C('#b7c48c'), C('#cad3a4')];
-    for (let i = 0; i < 14; i++) {
-      const r = (i / 5) | 0, c = i % 5;
-      ball(-24.60 + c * .30, .14 + r * .24, CWZ - .62 + (r % 2) * .06,
-        .155, .12, .17, CABBAGE[i % 3],
-        { gloss: .18, ry: i * .7, tag: '白菜' });
+    const CABBAGE = [C('#b7c48c'), C('#c7d09d'), C('#aab97d')];
+    const cabbageAt = (cx, cy, cz, i) => {
+      const base = CABBAGE[i % CABBAGE.length];
+      ball(cx, cy, cz, .135, .105, .145, base,
+        { gloss: .14, ry: i * .63, tag: '白菜' });
+      // Overlapping outer leaves and pale ribs break the old smooth egg silhouette. Every offset
+      // is deterministic so this street's authored RNG stream and all downstream parcels stay put.
+      for (let q = 0; q < 6; q++) {
+        const a = q * Math.PI / 3 + i * .31;
+        ball(cx + Math.cos(a) * .070, cy + Math.sin(a) * .032,
+          cz - .052 + Math.sin(a) * .020, .078, .070, .050,
+          CABBAGE[(i + q + 1) % CABBAGE.length],
+          { gloss: .12, ry: a, rz: Math.sin(a) * .22, tag: '白菜' });
+      }
+      for (const a of [-.62, 0, .62])
+        capsule(cx + Math.sin(a) * .030, cy + Math.cos(a) * .015, cz - .108,
+          .008, .115, .006, C('#e1e3b9'),
+          { rz: a, gloss: .12, tag: '白菜' });
+    };
+    const cabbageRows = [4, 3, 2];
+    let cabbageIndex = 0;
+    for (let r = 0; r < cabbageRows.length; r++) {
+      const count = cabbageRows[r];
+      for (let c = 0; c < count; c++) {
+        cabbageAt(-24.55 + r * .14 + c * .31, .135 + r * .225,
+          CWZ - .62 + (r % 2) * .045, cabbageIndex++);
+      }
     }
     thing('白菜', -24.00, .70, CWZ - .62, '冬天大家都买很多白菜。',
       'Everyone buys a lot of cabbage for the winter.',
       '白 white + 菜 vegetable. 大白菜 is the Beijing winter staple.',
       { focus: [-24.00, CWZ - 2.0], reach: 2.0 });
-    // the trike it came on
-    // The stack and its trike move west with the repair pitch — 大白菜 against a courtyard wall
-    // for the winter is the residential half's image, not the shopping end's.
-    const tx0 = -22.00, tz0 = CWZ - .95;
-    box(tx0, .52, tz0, 1.60, .12, 1.00, col.trunkL, { hard: true, gloss: G.wood });
-    for (const t of [-1, 1])
-      box(tx0, .68, tz0 + t * .48, 1.60, .34, .06, col.trunkL, { hard: true, gloss: G.wood });
-    box(tx0 - .95, .60, tz0, .34, .60, .34, col.charcoal, { hard: true, gloss: .30 });
-    capsule(tx0 - .98, .98, tz0, .028, .52, .028, col.steel, { rz: Math.PI / 2, gloss: G.metal });
-    for (const [ox, oz] of [[-1.05, 0], [.55, -.48], [.55, .48]])
-      cyl(tx0 + ox, .30, tz0 + oz, .58, .09, col.black, { rx: Math.PI / 2, gloss: .26 });
-    for (let i = 0; i < 8; i++)
-      ball(tx0 - .55 + (i % 4) * .38, .74 + ((i / 4) | 0) * .22, tz0 + ((i % 2) ? .18 : -.18),
-        .16, .13, .18, CABBAGE[(i + 1) % 3], { gloss: .18, ry: i, tag: '白菜' });
-    solid(tx0 - 1.3, tx0 + .9, tz0 - .6, tz0 + .6);
-    shade(tx0, tz0, 3.0, 1.6, .30);
+    // The former second cabbage flatbed is deliberately gone. Its 1.60 m slab deck, 1.16 m tyres
+    // and 2.20 × 1.20 m collider sat physically through the sorting-bin bay at x -22 and hid the
+    // entire north wall. This street already has a framed courier trike here and a live delivery
+    // trike on the road; another parked vehicle added duplication, not life. The winter cabbage
+    // stack above retains the scene, word, focus point and interaction without blocking the route.
 
     // ---- services on the face of the block: meters, the gas riser, a hose reel, a hydrant
     // The cabinet that used to sit at -6.6 is gone: the noodle shop's frontage is there now.
@@ -3663,7 +5130,7 @@ const Street = Lazy('Street', () => {
     // through shutter, and a 6.2 m capsule inside a housing is invisible from every angle there
     // is. -16.28 is the block's west corner, 6 cm clear of the wallJunk in front of it; -2.30 is
     // the pier between the noodle shop and the 单元门, which is where a riser goes anyway.
-    for (const [mx, kind] of [[-2.30, 1], [11.4, 0], [15.6, 1], [-16.28, 1]]) {
+    for (const [mx, kind] of [[-3.45, 1], [11.4, 0], [15.6, 1], [-16.28, 1]]) {
       if (kind === 0) {                                   // electricity meters, doors open
         box(mx, 1.42, ez + .20, 1.00, .78, .18, col.steelD, { hard: true, gloss: .34 });
         box(mx, 1.42, ez + .30, .90, .68, .03, col.charcoal, { hard: true, gloss: .30 });
@@ -3704,16 +5171,56 @@ const Street = Lazy('Street', () => {
     for (const s of [-1, 1])
       capsule(-21.2 + s * 2.80, 1.95, CWZ - .24, .012, .70, .012, col.steelD, { gloss: .3 });
 
-    // ---- 快递 the day's parcels, stacked by the stairwell where the courier leaves them
-    for (const [px2, py2, pw2, ph2, pd2, pr] of [
-        [-3.62, .17, .52, .34, .40, .10], [-3.58, .49, .46, .30, .36, -.22],
-        [-3.20, .15, .38, .30, .32, .40], [-3.70, .76, .34, .24, .30, .18],
-        [-3.16, .43, .34, .26, .28, -.35]]) {
-      box(px2, py2, ez + .52, pw2, ph2, pd2, col.canvas,
-        { hard: true, gloss: .16, ry: pr, tag: '快递' });
-      box(px2, py2 + ph2 / 2 + .002, ez + .52, pw2 * .30, .01, pd2 + .01, C('#b8a88c'),
-        { hard: true, ry: pr, tag: '快递' });
+    // ---- 快递. Five loose cartons made a little beige wall beside HOME_OUT. A low open courier
+    // cage keeps deliveries off the paving; soft mailers, tied sacks and flat envelopes provide
+    // the same lived-in cue without stacking cuboids in the first view out of the building.
+    const PKX = -3.42, PKZ = ez + .52, PKTAG = { tag: '快递' };
+    for (let i = 0; i < 6; i++)
+      box(PKX, .095, PKZ - .25 + i * .10, 1.06, .035, .060, col.steelD,
+        { hard: true, gloss: G.metal, ...PKTAG });
+    for (const ox of [-.52, .52]) for (const oz of [-.27, .27])
+      capsule(PKX + ox, .43, PKZ + oz, .018, .70, .018, col.steelD,
+        { gloss: G.metal, ...PKTAG });
+    for (const y of [.26, .58]) {
+      for (const oz of [-.27, .27])
+        capsule(PKX, y, PKZ + oz, .016, 1.04, .016, col.steel,
+          { rz: Math.PI / 2, gloss: G.metal, ...PKTAG });
+      for (const ox of [-.52, .52])
+        capsule(PKX + ox, y, PKZ, .016, .54, .016, col.steel,
+          { rx: Math.PI / 2, gloss: G.metal, ...PKTAG });
     }
+    for (const ox of [-.42, .42]) {
+      ball(PKX + ox, .055, PKZ + .31, .075, .075, .045, col.black,
+        { gloss: .20, ...PKTAG });
+      capsule(PKX + ox, .09, PKZ + .25, .012, .12, .012, col.steelD,
+        { rx: Math.PI / 2, gloss: G.metal, ...PKTAG });
+    }
+    // Soft poly mailers sag rather than hold a carton profile. Seams, address sleeves and tied
+    // necks make each item legible as a different delivery.
+    const MAIL = [C('#c8bda5'), C('#9eaaad'), C('#b6a98f')];
+    for (const [i, ox, oy, oz, rx, rz] of [[0,-.27,.29,-.08,.25,-.18],
+                                           [1, .18,.25, .08,.22, .24],
+                                           [2, .02,.48,-.04,.18,-.10]]) {
+      ball(PKX + ox, oy, PKZ + oz, rx, .16, rz < 0 ? .18 : .16, MAIL[i],
+        { mode: 7, gloss: .10, rz, ...PKTAG });
+      capsule(PKX + ox, oy + .13, PKZ + oz, .009, rx * 1.45, .009, C('#7f7462'),
+        { rz: Math.PI / 2 + rz, gloss: .10, ...PKTAG });
+      box(PKX + ox, oy + .03, PKZ + oz - .17, .16, .09, .006, C('#e2ded1'),
+        { hard: true, ry: rz, gloss: .08, ...PKTAG });
+    }
+    // Two flat document envelopes lean in the back of the cage, and one tied mailing tube lies
+    // across the floor. Their thin profiles cannot merge into another parcel wall.
+    for (const [ox, y, r] of [[-.24,.46,-.16],[.28,.40,.20]]) {
+      box(PKX + ox, y, PKZ + .20, .36, .025, .27, C('#b99d70'),
+        { hard: true, ry: r, rz: -.22, gloss: .10, ...PKTAG });
+      capsule(PKX + ox, y + .015, PKZ + .20, .008, .30, .008, C('#d4c8ae'),
+        { rz: Math.PI / 2 + r, gloss: .10, ...PKTAG });
+    }
+    capsule(PKX, .18, PKZ - .11, .055, .62, .055, C('#a98e63'),
+      { rz: Math.PI / 2, gloss: .12, ...PKTAG });
+    for (const ox of [-.28, .28])
+      capsule(PKX + ox, .18, PKZ - .11, .008, .20, .008, C('#d4c8ae'),
+        { rx: Math.PI / 2, gloss: .10, ...PKTAG });
     shade(-3.4, ez + .55, 1.6, 1.2, .30);
 
     // ---- a birdcage hung in one of the trees, and dates on another
@@ -3742,7 +5249,7 @@ const Street = Lazy('Street', () => {
       // Relaid slabs, and they are relaid: the same paving material at a slightly different
       // repeat, which is exactly what a patch of newer slabs next to older ones looks like.
       flat(ax, .008, az, aw, ad, col.paveD, { mode: 9, gloss: .15, ...PAVE });
-      flat(ax, .009, az, aw - .30, ad - .24, C('#867f70'),
+      flat(ax, .012, az, aw - .30, ad - .24, C('#867f70'),
         { mode: 9, gloss: .17, mat: 'paving', matScale: 1.05, matAmt: .28 });
     }
     for (const [cx2, cz2] of [[-6.4, -.5], [3.4, 1.4], [-13.0, 1.0], [11.2, 1.3]])
@@ -3768,7 +5275,11 @@ const Street = Lazy('Street', () => {
     // pick code would correctly report that thing as out of reach — which is a strange answer to
     // give about a plate the player is standing directly under.
     capsule(-19.4, 1.30, -2.32, .035, 2.60, .035, col.steelD, { gloss: .34 });
-    box(-19.4, 2.34, -2.32, .78, .40, .05, col.blueSign, { hard: true, gloss: .34 });
+    box(-19.4, 2.34, -2.32, .78, .40, .05, col.blueSign,
+      { hard:true, gloss:.34, round:.055 });
+    for (const s of [-1, 1])
+      capsule(-19.4 + s * .37, 2.34, -2.31, .018, .34, .018, col.steel,
+        { gloss:G.metal });
     B.glyphs(-19.4, 2.34, -2.28, 0, '公厕',
       { size: .28, gap: .08, color: col.white, mode: 1, lift: .008 });
     box(-19.4, 2.02, -2.32, .78, .26, .05, col.white, { hard: true, gloss: .30 });
@@ -3777,16 +5288,38 @@ const Street = Lazy('Street', () => {
     for (const t of [-1, 1])
       box(-19.58, 2.02 + t * .05, -2.285, .16, .07, .02, col.blueSign,
         { hard: true, rz: -t * .72 });
-    // The 公厕 itself: a low grey-brick block with a tiled pitch, tucked against the boundary wall
+    // The 公厕 itself: a low grey-brick facility with a tiled pitch, tucked against the boundary wall
     // on the far side of the dead-end square. That is where these are — never on the alley itself,
     // always round a corner in whatever widening the lane happens to have — and the square was the
     // only piece of ground in the district with room for one. It carries the verb that is already
     // in the game for the Bund's toilets, so the hutong finally has somewhere to go that is not
     // your own flat.
     const PTX = -27.20, PTZ = 6.15, PT = { tag: '公共厕所' };
-    box(PTX, 1.45, PTZ, 4.00, 2.90, 2.00, col.brick,
-      { hard: true, mode: 11, gloss: G.matte, ...BRICK, ...PT });
+    // A real shell around two rooms: rear wall in three construction bays, two returned gables,
+    // front corner piers and a plumbing spine. The old 23.2 m³ tagged monolith is gone; the door
+    // openings are now actual voids with a back wall to look into.
+    for (let i = 0; i < 3; i++)
+      box(PTX - 1.30 + i * 1.30, 1.45, PTZ + .86, 1.22, 2.90, .28,
+        tint(col.brick, .91 + i * .045, i === 1 ? .006 : -.004),
+        { hard:true, mode:11, gloss:G.matte, ...BRICK, ...PT });
+    for (const s of [-1, 1]) {
+      box(PTX + s * 1.86, 1.45, PTZ, .28, 2.90, 1.72, col.brickD,
+        { hard:true, mode:11, gloss:G.matte, ...BRICK, ...PT });
+      box(PTX + s * 1.72, 1.45, PTZ - .91, .56, 2.90, .26, col.brick,
+        { hard:true, mode:11, gloss:G.matte, ...BRICK, ...PT });
+    }
+    box(PTX, 1.45, PTZ + .04, .28, 2.90, 1.58, col.brickD,
+      { hard:true, mode:11, gloss:G.matte, ...BRICK, ...PT });
+    // The lower splash course is also bayed; no decorative strip bridges both doorways.
+    for (const x of [PTX - 1.70, PTX, PTX + 1.70])
+      box(x, .34, PTZ + .87, x === PTX ? 1.18 : .98, .68, .08, col.brickD,
+        { hard:true, mode:11, gloss:G.matte, ...BRICK, ...PT });
     tileRoof(PTX, PTZ, 4.30, 2.30, 2.90, .55);
+    for (const x of [PTX - 1.38, PTX + 1.34]) {
+      cyl(x, 3.48, PTZ + .18, .075, .74, col.steelD, { gloss:.30, ...PT });
+      taper(x, 3.86, PTZ + .18, .24, .16, .18, col.steel,
+        { rx:Math.PI, gloss:G.metal, ...PT });
+    }
     for (const [ox, ch, pc] of [[-1.00, '男', C('#7fb8e0')], [1.00, '女', C('#e08fa8')]]) {
       // The doorway is a jamb-jamb-lintel frame standing proud of the wall face at PTZ - 1.00, with
       // the dark of the room set just inside the face. Built the intuitive way — one brick surround
@@ -3798,12 +5331,21 @@ const Street = Lazy('Street', () => {
           { hard: true, mode: 11, gloss: G.matte, ...BRICK, ...PT });
       box(PTX + ox, 2.28, PTZ - 1.07, 1.40, .20, .16, col.brickL,
         { hard: true, mode: 11, gloss: G.matte, ...BRICK, ...PT });
-      box(PTX + ox, 1.02, PTZ - .96, .88, 2.00, .12, C('#191c20'),
-        { hard: true, gloss: .12, ...PT });
-      // A concrete threshold you step over, and two floor strips receding behind it, narrower and
-      // darker as they go. There are only 14 cm between the front of the jambs and the front of that
-      // dark box, so the depth cue has to be the step and the taper rather than any real distance —
-      // the same trick, and the same constraint, as the subway steps down the road.
+      // With the monolithic body removed, the doorway can carry real depth. Pale tiled returns
+      // lead to a privacy screen 1.56 m inside; a black panel on the facade was just another slab.
+      for (const t of [-1, 1])
+        box(PTX + ox + t * .46, 1.03, PTZ - .18, .08, 2.02, 1.58, col.cream,
+          { hard:true, mode:14, gloss:.14, ...RENDER, ...PT });
+      flat(PTX + ox, .018, PTZ - .18, .78, 1.58, col.stoneD,
+        { gloss:.18, ...PT });
+      box(PTX + ox, 1.02, PTZ + .60, .88, 2.00, .12, C('#353a3c'),
+        { hard:true, gloss:.12, ...PT });
+      for (let k = 0; k < 4; k++)
+        box(PTX + ox - .30 + k * .20, 1.15, PTZ + .525, .035, 1.42, .02, col.stone,
+          { hard:true, gloss:.16, ...PT });
+      // A concrete threshold you step over, and two floor strips leading into the tiled return.
+      // The strips narrow toward the privacy screen, reinforcing the real 1.56 m room depth without
+      // putting another opaque facade slab across either opening.
       box(PTX + ox, .045, PTZ - 1.13, .96, .09, .10, col.stoneD,
         { hard: true, gloss: .20, ...PT });
       box(PTX + ox, .095, PTZ - 1.055, .78, .010, .045, col.kerb,
@@ -3819,13 +5361,13 @@ const Street = Lazy('Street', () => {
         { ry: -hs * 1.02, gloss: G.metal, ...PT });
       box(PTX + ox, 2.44, PTZ - 1.10, .42, .42, .05, col.white,
         { hard: true, gloss: .30, ...PT });
-      B.glyphs(PTX + ox, 2.44, PTZ - 1.14, 0, ch,
+      B.glyphs(PTX + ox, 2.44, PTZ - 1.14, Math.PI, ch,
         { size: .28, gap: 0, color: pc, mode: 1, lift: .008, ...PT });
     }
     // The sign over the middle, lit like the rest of the district's signage.
     box(PTX, 2.44, PTZ - 1.06, 1.50, .44, .10, col.blueSign,
       { hard: true, gloss: .28, ...PT });
-    for (const g of B.glyphs(PTX, 2.44, PTZ - 1.13, 0, '公共厕所',
+    for (const g of B.glyphs(PTX, 2.44, PTZ - 1.13, Math.PI, '公共厕所',
         { size: .28, gap: .06, color: col.white, mode: 1, lift: .008, ...PT }))
       litten(g, .9);
     // A bare bulb under the eaves at the east end. Hung over the middle it was inside the eaves
@@ -3848,8 +5390,18 @@ const Street = Lazy('Street', () => {
     capsule(PTX - 1.72, .70, PTZ - 1.16, .020, 1.36, .020, col.trunkL, { rz: .16, gloss: G.wood });
     capsule(PTX - 1.84, .06, PTZ - 1.16, .085, .16, .085, C('#8d8a83'), { gloss: .14 });
     cyl(PTX - 1.55, .14, PTZ - 1.30, .135, .28, C('#c8382a'), { gloss: .32 });
-    box(PTX + 1.78, .44, PTZ - 1.26, .44, .88, .40, col.tarp, { hard: true, gloss: .30 });
-    box(PTX + 1.78, .91, PTZ - 1.26, .48, .08, .44, col.charcoal, { hard: true, gloss: .30 });
+    // Cleaning bin with a tapered body, hinged lid, pedal and wheels—not another waist-high box.
+    taper(PTX + 1.78, .43, PTZ - 1.26, .52, .82, .44, col.tarp,
+      { gloss:.28, ...PT });
+    box(PTX + 1.78, .88, PTZ - 1.24, .52, .07, .48, col.charcoal,
+      { hard:true, gloss:.30, rz:-.06, round:.035, ...PT });
+    capsule(PTX + 1.78, .94, PTZ - 1.06, .018, .30, .018, col.steelD,
+      { rz:Math.PI / 2, gloss:G.metal, ...PT });
+    box(PTX + 1.78, .08, PTZ - 1.51, .20, .05, .16, col.steelD,
+      { hard:true, gloss:G.metal, rz:.08, ...PT });
+    for (const s of [-1, 1])
+      ball(PTX + 1.78 + s * .19, .055, PTZ - 1.15, .055, .055, .045, col.black,
+        { gloss:.22, ...PT });
     solid(PTX - 2.10, PTX + 2.10, PTZ - 1.18, PTZ + 1.10);
     blocker(PTX - 2.10, PTX + 2.10, PTZ - 1.18, PTZ + 1.10, 3.60);
     shade(PTX, PTZ - .3, 4.8, 3.0, .30);
@@ -3883,18 +5435,87 @@ const Street = Lazy('Street', () => {
       const th = 44 + rnd() * rnd() * 130, tw = 14 + rnd() * 20;
       const [shell, band] = CLAD[(i * 7) % CLAD.length];
       towers.push([tx, tz, tw, th]);
-      box(tx, th / 2, tz, tw, th, tw * .8, shell,
-        { hard: true, mode: 14, gloss: .2 });
-      if (rnd() > .5) box(tx, th + 3, tz, tw * .55, 6, tw * .45, shell,
-        { hard: true, gloss: .2 });
-      // window grid, dense enough to read as a tower at this distance
+      // Three joined setbacks, not one extrusion. Their offsets and proportions are keyed to the
+      // index, so the random stream (and therefore every established skyline anchor) is unchanged.
+      // At street distance this reads as podium / shoulder / crown while still costing only two
+      // more masses than the former featureless tower box.
+      const bh = Math.min(15, th * .18), mh = th * (.48 + (i % 3) * .035), uh = th - bh - mh;
+      const ox = ((i % 3) - 1) * tw * .065, oz = (i % 2 ? 1 : -1) * tw * .045;
+      const mw = tw * (.92 - (i % 4) * .035), md = tw * (.72 + (i % 3) * .035);
+      const ux = tx + ox * 1.55, uz = tz + oz * 1.65;
+      const uw = mw * (.72 + (i % 2) * .08), ud = md * (.72 + ((i + 1) % 3) * .05);
+      // Tower 12 lands directly behind the northbound carriageway. Even with three setbacks its
+      // 20.8 m-wide shoulder still projected as one blank wall at player height. Keep the seeded
+      // parcel, height and all later random draws, but open that shoulder into two genuinely
+      // separate wings: the taller one holds the west edge while a shorter wing sits farther back
+      // to the east. Their 11 m sky notch continues the road aperture instead of capping it.
+      const roadEndSplit = i === 12;
+      const roadEndProfiles = roadEndSplit ? [
+        { x:tx-tw*.30, z:tz,        w:tw*.50, d:tw*.76, y0:0,     y1:bh,
+          c:tint(shell,.94,-.006), side: 1 },
+        { x:tx+tw*.68, z:tz+tw*.18,w:tw*.42, d:tw*.60, y0:0,     y1:bh,
+          c:tint(shell,.88, .004), side:-1 },
+        { x:tx+ox-tw*.21, z:tz+oz, w:mw*.52, d:md*.83, y0:bh,    y1:bh+mh,
+          c:shell,                  side: 1 },
+        { x:tx+tw*.69, z:tz+tw*.22,w:mw*.38, d:md*.67, y0:bh,    y1:bh+mh*.70,
+          c:tint(shell,.90,-.006), side:-1 },
+        { x:ux-tw*.21, z:uz-.45,   w:uw*.62, d:ud*.78, y0:bh+mh,y1:th,
+          c:tint(shell,1.04,.006), side: 1 },
+        { x:tx+tw*.715,z:tz+tw*.245,w:uw*.44,d:ud*.58,y0:bh+mh*.70,
+          y1:bh+mh*.70+uh*.58, c:tint(shell,.98,.003), side:-1 },
+      ] : null;
+      if (roadEndSplit) {
+        for (const p of roadEndProfiles) {
+          box(p.x, (p.y0 + p.y1) / 2, p.z, p.w, p.y1 - p.y0, p.d, p.c,
+            { hard:true, mode:14, gloss:.22 });
+          // A thin roof edge makes each setback legible through haze without bridging the notch.
+          box(p.x, p.y1 + .10, p.z, p.w + .20, .20, p.d + .18, band,
+            { hard:true, gloss:.25 });
+        }
+      } else {
+        box(tx, bh / 2, tz, tw * 1.10, bh, tw * .88, tint(shell,.94,-.006),
+          { hard:true, mode:14, gloss:.20 });
+        box(tx + ox, bh + mh / 2, tz + oz, mw, mh, md, shell,
+          { hard:true, mode:14, gloss:.22 });
+        box(ux, bh + mh + uh / 2, uz, uw, uh, ud, tint(shell,1.04,.006),
+          { hard:true, mode:14, gloss:.24 });
+      }
+      const hasCrown = rnd() > .5;
+      if (hasCrown) {
+        const crownProfiles = roadEndSplit
+          ? [roadEndProfiles[4], roadEndProfiles[5]]
+          : [{x:ux,z:uz,w:uw,d:ud,y1:th,c:shell}];
+        for (const p of crownProfiles) {
+          box(p.x, p.y1 + 1.25, p.z, p.w * .72, 2.50, p.d * .70, band,
+            { hard:true, gloss:.26 });
+          for(const sx of [-1,1])
+            box(p.x + sx * p.w * .30, p.y1 + 3.20, p.z, .22, 3.90, p.d * .52, p.c,
+              { hard:true, gloss:.24 });
+        }
+      }
+      // A profile query keeps ribbons attached to the setback they belong to. The old grid drew
+      // only the south face and left every side a blank slab; alternate rows now return around the
+      // west face, while using exactly the same one rnd() call per authored floor as before.
+      const profilesAt = roadEndSplit
+        ? y => roadEndProfiles.filter(p => y > p.y0 && y < p.y1)
+        : y => [y < bh ? {x:tx,z:tz,w:tw*1.10,d:tw*.88,side:-1}
+          : y < bh + mh ? {x:tx+ox,z:tz+oz,w:mw,d:md,side:-1}
+          : {x:ux,z:uz,w:uw,d:ud,side:-1}];
       const rows = Math.min(26, Math.floor(th / 4.4));
       for (let r = 1; r < rows; r++) {
-        pane(box(tx, r * (th / rows) + 1.4, tz - tw * .41, tw * .82, 2.2, .3,
-          col.glassDay, { hard: true, mode: 1 }), rnd() > .45 ? .9 : 0, true);
-        // the pale spandrel between floors, which is what gives a tower its banding
-        box(tx, r * (th / rows) + 3.0, tz - tw * .40, tw * .84, 1.5, .26,
-          band, { hard: true, gloss: .24 });
+        const y=r*(th/rows)+1.35,warm=rnd()>.45?.9:0;
+        for (const p of profilesAt(y)) {
+          pane(box(p.x,y,p.z-p.d/2-.08,p.w*(roadEndSplit?.68:.76),2.05,.18,col.glassDay,
+            {hard:true,mode:1}),warm,true);
+          if((r+i)%2===0)
+            pane(box(p.x+p.side*(p.w/2+.08),y,p.z,.18,2.05,p.d*.64,col.glassDay,
+              {hard:true,mode:1}),warm*.82,true);
+          // A narrow expressed floor edge every second row gives scale without restoring the old
+          // 1.5 m opaque band; on the split parcel it stops at each wing's inner return.
+          if(r%2===0)
+            box(p.x,y+1.18,p.z-p.d/2-.07,p.w*(roadEndSplit?.76:.80),.18,.16,band,
+              {hard:true,gloss:.24});
+        }
       }
     }
     // one tapered landmark, so the skyline has a shape you recognise
@@ -3903,6 +5524,18 @@ const Street = Lazy('Street', () => {
       const f = i / 7, w = 30 - f * 11 + f * f * 7;
       box(zx, 14 + i * 28, zz, w, 28, w * .9, col.blue,
         { hard: true, mode: 14, gloss: .3 });
+      // Two room bands return around both elevations visible from the playable south-west. Their
+      // changing width follows the taper instead of pasting one window grid across seven tiers.
+      for (const wy of [7 + i * 28, 21 + i * 28]) {
+        box(zx, wy, zz - w * .45 - .05, w * .72, 2.38, .10, col.glassDark,
+          { hard:true, gloss:.22 });
+        pane(box(zx, wy, zz - w * .45 - .105, w * .68, 2.08, .025, col.glassDay,
+          { hard:true, mode:1, gloss:G.glass }), (i + (wy > 14 + i * 28 ? 1 : 0)) % 3 ? .18 : 0, true);
+        box(zx - w * .50 - .05, wy, zz, .10, 2.38, w * .62, col.glassDark,
+          { hard:true, gloss:.22 });
+        pane(box(zx - w * .50 - .105, wy, zz, .025, 2.08, w * .58, col.glassDay,
+          { hard:true, mode:1, gloss:G.glass }), (i + (wy > 14 + i * 28 ? 2 : 0)) % 4 ? .16 : 0, true);
+      }
     }
     // The name, up in the crown. This is the one building on the skyline the eye goes to and it was
     // anonymous, which for a district whose whole subject is reading what is written on it is a
@@ -3912,11 +5545,32 @@ const Street = Lazy('Street', () => {
     // each about 44 degrees off, and a run on one face only was legible from half the district. No
     // backing panel: the characters are mounted straight onto the shell, which is how these are done
     // and which also stops a corner-mounted slab from floating clear of the building.
-    for (const [gx, gz, gy] of [[zx, zz - 12.2, Math.PI], [zx - 13.4, zz, -Math.PI / 2]])
+    // The word spans tiers 5 and 6. Their shared crown width is 25.714 m; using the base's former
+    // 13.4/12.2 offsets left the glyph planes 0.89/0.98 m out in empty air once the tower tapered.
+    // Start each run `lift - 2 cm` inside the actual crown face, so glyphs()'s outward lift puts
+    // the ink exactly 2 cm proud of masonry on both elevations.
+    const crownF = 5 / 7, crownW = 30 - crownF * 11 + crownF * crownF * 7;
+    const crownSignInset = .35 - .02;
+    for (const [gx, gz, gy] of [
+      [zx, zz - crownW * .45 + crownSignInset, Math.PI],
+      [zx - crownW * .50 + crownSignInset, zz, -Math.PI / 2],
+    ])
       for (const g of B.glyphs(gx, 172, gz, gy, '国贸中心',
           { size: 5.6, gap: 1.1, vertical: true, color: C('#e8eef2'),
             mode: 1, glow: .10, lift: .35 })) litten(g, .95);
-    litten(box(zx, 200, zz, 6, 8, 6, C('#ff6a4a'), { hard: true, mode: 1, glow: .4 }), 1.0);
+    litten(box(zx, 200, zz, 6, 8, 6, C('#ff6a4a'),
+      { hard: true, mode: 1, glow: .4, tag:'国贸中心' }), 1.0);
+    for (const sx of [-1, 1]) for (const sz of [-1, 1])
+      box(zx + sx * 3.09, 200, zz + sz * 3.09, .18, 7.70, .18, col.steelD,
+        { hard:true, gloss:G.metal, tag:'国贸中心' });
+    for (const s of [-1, 1]) {
+      box(zx, 200, zz + s * 3.05, .22, 6.80, .10, col.steelD,
+        { hard:true, gloss:G.metal, tag:'国贸中心' });
+      box(zx + s * 3.05, 200, zz, .10, 6.80, .22, col.steelD,
+        { hard:true, gloss:G.metal, tag:'国贸中心' });
+    }
+    box(zx, 204.08, zz, 6.42, .18, 6.42, col.steel,
+      { hard:true, gloss:G.metal, tag:'国贸中心' });
   }
 
   build();
@@ -3944,7 +5598,7 @@ const Street = Lazy('Street', () => {
   // The street's mirror of the flat's `A`. Everything a district needs to build with, plus the
   // coordinate contract, so no district measures off a neighbour.
   //
-  //   x  -27.0 .. 25.5   the alley           x 27.5 .. 37.5  the carriageway
+  //   x  -27.0 .. 25.5   the alley           x 25.42 .. 37.42 the carriageway
   //   x  -32.2 .. -25.0  the west courtyard  x 41.0          far pavement edge
   //   z  -2.35 .. 3.35   the walkable band   northbound lanes are EAST of (RD0+RD1)/2
   //
@@ -3952,7 +5606,7 @@ const Street = Lazy('Street', () => {
   // collision is exactly the kind of thing the district contract exists to stop happening again.
   const S = {
     // the builders, straight off the shell's own scene
-    box, cyl, ball, taper, flat, glyphs, solid, blocker, glow, thing,
+    box, cyl, ball, taper, modelOr:B.modelOr, flat, glyphs, solid, blocker, glow, thing,
     // `shade` wrapped rather than passed straight through: build.js's pushes its quad and returns
     // nothing, so a district that wants a MOVING prop to carry a contact shadow has no handle on
     // it. By day the shadow map covers the traffic; at night `fakeShadows` turns on and a fleet
@@ -3963,7 +5617,8 @@ const Street = Lazy('Street', () => {
     get props() { return B.props; }, get things() { return B.things; },
     C, G, col,
     // the coordinate contract
-    AX0, AX1, AZ, SZ, NB, DOOR, RD0, RD1, SW1, SHOPX: SHOP,
+    AX0, AX1, AZ, SZ, NB, DOOR, RD0, RD1, KW, KE, BW0, BW1, PL0, PL1,
+    MS0, MS1, MN0, MN1, BE0, BE1, ROAD_C, SW1, SHOPX: SHOP,
     // The shopfront datum, so a district never picks a sign height by eye. See the block comment
     // where these are declared for the clear bands they come out of.
     FASCIA, FASCIAH, BLADE, BLADEH,
@@ -3972,18 +5627,14 @@ const Street = Lazy('Street', () => {
     // MEASURED off the paint rather than derived from the centre line, because the derived ones
     // were wrong and two districts built against them.
     //
-    // `mid ± 2.6` gave south 29.90 and north 35.10. The road district then measured the shell:
-    // 9.84 m clear between kerb faces, laid out as a 支路 — a bike lane each side and one motor
-    // lane each way. 29.90 is *inside the west bike lane*, and 35.10 is a lane LINE, not a centre.
-    // A car driven down either is a car in a bike lane, which is exactly what the five static cars
-    // this street shipped with were doing.
-    //
-    //   27.80–30.20  西侧非机动车道      30.20–32.50  南行 (travelling +z)
-    //   32.50–35.10  北行 (travelling -z) 35.10–37.42  东侧非机动车道
-    road: { z0: -13.5, z1: 13.5, mid: (RD0 + RD1) / 2,
-            north: 33.80, south: 31.35, bikeW: 29.00, bikeE: 36.26,
+    //   25.42–27.67  西侧非机动车道      27.67–29.47  protected median/platform
+    //   29.47–32.67  南行 (travelling +z) 32.67–35.17  北行 (travelling -z)
+    //   35.17–37.42  东侧非机动车道
+    road: { z0: -13.5, z1: 13.5, mid: ROAD_C,
+            north: 33.92, south: 31.07, bikeW: 26.545, bikeE: 36.295,
             // kept so anything written against the old names still runs, pointing at the real lanes
-            get lanes() { return { bikeW: 29.00, south: 31.35, north: 33.80, bikeE: 36.26 }; } },
+            get lanes() { return { bikeW: 26.545, south: 31.07,
+              north: 33.92, bikeE: 36.295 }; } },
   };
 
   buildDistricts();
@@ -4038,7 +5689,7 @@ const Street = Lazy('Street', () => {
       if (!flying) {
         // Back on the board, in the matrices they were built with. Only written on the frame the
         // flight ends, not every frame: a perched bird costs nothing.
-        if (b.wasFlying) { b.parts.forEach((p, i) => { p.m = b.m0[i]; }); b.wasFlying = false; }
+        if (b.wasFlying) { b.parts.forEach((p, i) => moveDynamic(p, b.m0[i])); b.wasFlying = false; }
         continue;
       }
       b.wasFlying = true;
@@ -4054,7 +5705,7 @@ const Street = Lazy('Street', () => {
       const face = ang + Math.PI / 2;
       const bank = M.mul(M.rotY(face - b.ry), M.rotZ(-ease * .35));
       const pivot = M.mul(M.trans(cx, cy, cz), M.mul(bank, M.trans(-b.x, -b.y, -b.z)));
-      b.parts.forEach((p, i) => { p.m = M.mul(pivot, b.m0[i]); });
+      b.parts.forEach((p, i) => moveDynamic(p, M.mul(pivot, b.m0[i])));
     }
 
     // ---- 蒸汽. Each puff climbs a metre over four seconds and fades out as it goes, then starts
@@ -4090,7 +5741,7 @@ const Street = Lazy('Street', () => {
         const m0 = w.m0[i], m = M.mul(R, m0), dy = m0[13] - w.y;
         m[12] = m0[12] - dy * sa;
         m[13] = w.y + dy * ca;
-        p.m = m;
+        moveDynamic(p, m);
       });
     }
   }
@@ -4169,26 +5820,74 @@ const Street = Lazy('Street', () => {
     zones: [
       { id: 'alley', x0: AX0, x1: AX1, z0: -AZ, z1: SZ, light: [DOOR, 2.6, NB.z1 + .6] },
       { id: 'west',  x0: -32.2, x1: -25.0, z0: -3.1, z1: 6.4, light: [-29, 3.0, .6] },
-      { id: 'road',  x0: 24.0, x1: SW1 - 1.2, z0: -13.5, z1: 13.5, light: [RD0 - 1.9, 6.2, 5.0] },
-      // Hospital-side pavement only. It overlaps the road zone by 70 cm at the south end so the
-      // two are genuinely connected after clampMove spends the 30 cm body radius on each edge.
+      // The former `road` rectangle extended from x24.0 to x39.8, making both live motor lanes
+      // legal public realm at every z.  In particular, a player could ignore a red signal and
+      // cross at z=2.70, just north of the zebra.  Author the right-of-way as its real components:
+      // the west footway, the controlled zebra, the protected island/platform and the short
+      // shelter-to-platform crossing over the west cycle track. Bounds describe the actual
+      // surfaces, not radius-padded wishful space: clampMove spends its .45 m envelope inside
+      // each one. The motor lanes therefore exist visually and for traffic, but never become
+      // public walkable area outside these two authored crossings.
+      { id: 'road', x0: 23.42, x1: KW, z0: -13.5, z1: 13.5,
+        light: [24.42, 6.2, 5.0] },
+      { id: 'road-zebra', x0: 23.42, x1: 41.48, z0: -2.50, z1: 2.10,
+        light: [ROAD_C, 5.2, -.20] },
+      { id: 'road-platform', x0: PL0, x1: PL1, z0: -14.80, z1: 3.00,
+        light: [(PL0 + PL1) / 2, 4.6, -8.5] },
+      { id: 'road-bus-crossing', x0: 23.42, x1: PL1, z0: -11.20, z1: -7.90,
+        light: [26.4, 4.2, -9.55] },
+      // Hospital-side pavement only. It overlaps the road zone by 1.25 m at the south end. That
+      // keeps a 35 cm shared centre band under the strict 0.45 m control-envelope audit; the old
+      // one-metre overlap technically joined, but left a seam only ten centimetres wide.
       // Stopping at the west kerb preserves the controlled crossing: this is not a second road.
-      { id: 'hospital-road', x0: 23.2, x1: RD0 - .1, z0: 12.8, z1: 42.8,
-        light: [25.3, 5.0, 24.0] },
+      // A narrow throat crosses the last 1.25 m of the base road room without making the new west
+      // cycle lane public. Beyond the live road end, the hospital keeps a 2.22 m building-side
+      // patient footway; the protected cycle track remains an independent transport surface.
+      // Their r=.45 centre cores overlap the throat by 45 cm without exposing the cycle route.
+      { id: 'hospital-throat', x0: 23.2, x1: KW, z0: 12.25, z1: 14.75,
+        light: [24.3, 5.0, 13.4] },
+      { id: 'hospital-road', x0: 23.2, x1: KW, z0: 13.40, z1: 42.8,
+        light: [24.3, 5.0, 24.0] },
+      // The fire-station apron mirrors the hospital spine on the south side. It overlaps the
+      // road zone by 70 cm at z -13.5..-12.8, but stops west of the kerb: a connected public
+      // frontage and never an uncontrolled route across the carriageway.
+      ...(S.FIRE_ZONE ? [S.FIRE_ZONE] : []),
       // street-hotel.js extends the east pavement north of the hypermarket. Kept in that module's
       // coordinate contract so the arrival court and its walkable boundary cannot drift apart.
       ...(S.HOTEL_ZONE ? [S.HOTEL_ZONE] : []),
-      // js/street-lane.js's 步行街, published the same way. It overlaps the road zone at
-      // x 39.30..39.80 so the two are genuinely connected after clampMove takes the body radius.
+      // js/street-lane.js publishes a road-width throat and a wider internal room. Their overlap
+      // creates the deliberate spatial release without widening the hole through the parade.
+      ...(S.LANE_THROAT_ZONE ? [S.LANE_THROAT_ZONE] : []),
       ...(S.LANE_ZONE ? [S.LANE_ZONE] : []),
+      // Continue only the EAST pavement along the complete generated parade. This makes every
+      // distant shop focus reachable without extending the broad `road` room into an uncontrolled
+      // crossing: after the 30 cm body inset its west edge is x=38.10, safely east of kerb x=37.50.
+      // The east edge follows the real x=41.48 collision face; the collider itself supplies the
+      // body setback instead of wasting 23 cm of otherwise continuous public pavement.
+      { id:'far-east-pavement', x0:KE, x1:41.48, z0:-58.0, z1:71.0,
+        light:[39.8, 5.0, 0] },
+      // A 30 cm overlap with the alley is not enough once clampMove insets both zones by the body
+      // radius. The covered night-market passage starts at z 2.10, giving a 1.25 m transition
+      // overlap and retaining 35 cm at the strict 0.45 m audit envelope.
+      // Its 2.80 m structural width leaves 2.20 m of real body-centre clearance and ends beyond
+      // the last receding return.
+      { id:'night-market-passage', x0:3.2, x1:6.0, z0:2.10, z1:10.20,
+        light:[4.60, 3.0, 5.2] },
     ],
     roomAt(x, z, prev) {
       const zs = this.zones;
-      const hotelZone=zs.find(q=>q.id==='hotel-forecourt');
-      if(hotelZone&&x>=hotelZone.x0&&x<=hotelZone.x1&&z>=hotelZone.z0&&z<=hotelZone.z1)
-        return hotelZone;
-      if (z > 12.8 && x > 23.0 && x < RD0) return zs[3];
-      if (x > 24.6) return zs[2];
+      // Check every authored extension before the broad road rectangle. Previously `x > 24.6`
+      // swallowed the lane even though clampMove could enter it, so lighting/camera context never
+      // followed the player past the gateway.
+      for (const id of ['night-market-passage', 'road-zebra', 'road-platform',
+        'road-bus-crossing', 'hospital-throat', 'fire-station-front', 'hotel-forecourt',
+        'lane', 'lane-throat', 'far-east-pavement']) {
+        const zone=zs.find(q=>q.id===id);
+        if(zone&&x>=zone.x0&&x<=zone.x1&&z>=zone.z0&&z<=zone.z1) return zone;
+      }
+      if (z > 12.8 && x > 23.0 && x < RD0)
+        return zs.find(q=>q.id==='hospital-road') || zs[0];
+      if (x > 24.6) return zs.find(q=>q.id==='road') || zs[0];
       if (x < -26.2) return zs[1];
       return zs[0];
     },

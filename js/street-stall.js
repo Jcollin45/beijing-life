@@ -54,6 +54,7 @@ StreetFit['stall'] = S => {
   const TOP = 0.53;                        // the cart's working surface
   const WALL = 3.64;                       // the courtyard wall's face along this stretch
   const TX = -10.44, TB = 2.70;            // the 三轮车 and its bed, backed in west of the cart
+  const FRONTZ = TB + .64;                  // front tyre stays 5.5 cm clear of the wall face
   const BEDY = 0.655;                      // the top of that bed
 
   // ---------------------------------------------------------------- the palette
@@ -99,17 +100,38 @@ StreetFit['stall'] = S => {
     market:  [],   // 14:00–19:00, the fruit and veg
     night:   [],   // 19:00–04:45, the pitch's own furniture left against the wall
   };
+  // A timed pitch owns more than its meshes.  Keeping the contact shadow or interaction alive
+  // after the table has gone is a visible/semantic ghost: the pavement stays dark and the player
+  // can still inspect fruit that is no longer there.  Capture each thing created inside `put` and
+  // explicitly register the two broad contact shadows with the same group as their furniture.
+  const TG_ = Object.fromEntries(Object.keys(G_).map(k => [k, []]));
+  const SG_ = Object.fromEntries(Object.keys(G_).map(k => [k, []]));
   function put(k, fn) {
-    const a = P.length; fn();
+    const a = P.length, ta = S.things.length; fn();
     for (let i = a; i < P.length; i++) G_[k].push(P[i]);
+    for (let i = ta; i < S.things.length; i++) TG_[k].push(S.things[i]);
   }
 
   // Steam is animated per frame, so it is collected separately as well as being in `trade`.
   const puffs = [];
   function plume(x, y0, z, n, r, a0, spread) {
     for (let i = 0; i < n; i++) {
+      const phase = i / n + spread * 0.37;
+      // Start on the same phase-spaced trajectory the first tick will use. Building every puff at
+      // one transform made each plume two or three exactly coplanar balls until the clock's first
+      // update. Keep one conservative fixed cull sphere around the complete 82 cm rise as well:
+      // these translucent particles remain loose draws, so the dynamic-batch cull refresher does
+      // not own them, but their whole authored motion fits inside this envelope.
+      const u = phase % 1, grow = 1 + u * 1.7;
       const p = ball(x, y0, z, r, r * 0.72, r, STEAM, { mode: 1, alpha: a0 });
-      puffs.push({ p, x, y0, z, r, a0, phase: i / n + spread * 0.37 });
+      p.m = M.trs(x + Math.sin(phase * 6) * 0.06 * u, y0 + u * 0.82, z,
+                  0, r * grow, 0.20 * grow, r * grow);
+      p.alpha = a0 * (1 - u) * (1 - u) * 1.7;
+      p.stateOwner = 'stall:steam';
+      p.fixed = true;
+      p.cx = x; p.cy = y0 + 0.41; p.cz = z;
+      p.r = 0.47 + 0.5 * Math.hypot(r * 2.7, 0.54, r * 2.7);
+      puffs.push({ p, x, y0, z, r, a0, phase });
     }
   }
 
@@ -127,6 +149,42 @@ StreetFit['stall'] = S => {
     rows.forEach((r, i) => glyphs(x, y + (rows.length - 1) * step / 2 - i * step, z - 0.013,
       Math.PI, r, { size, gap: size * 0.14, color: i === 0 ? REDINK : INK,
                     gloss: 0.06, lift: 0.004 }));
+  }
+
+  // A returnable produce crate is an open frame, not a coloured cuboid. `y` is its underside;
+  // all offsets are transformed together so stacked/turned crates remain coherent assemblies.
+  // The helper is used by every phase below, which also prevents the morning and afternoon
+  // pitches from looking as though they own copied blocks in different colours.
+  function openCrate(x, y, z, w, d, h, color, tag, ry = 0) {
+    const rail = Math.min(0.048, w * 0.105, d * 0.105), tagged = tag ? { tag } : {};
+    const ca = Math.cos(ry), sa = Math.sin(ry);
+    const at = (lx, lz) => [x + ca * lx + sa * lz, z - sa * lx + ca * lz];
+    // Three floor slats, with real gaps visible between them from above.
+    for (const oz of [-d * .27, 0, d * .27]) {
+      const [px, pz] = at(0, oz);
+      box(px, y + rail * .55, pz, w - rail * 1.4, rail, rail * 1.35, color,
+        { hard: true, ry, gloss: .20, ...tagged });
+    }
+    // Two courses on every side and four corner uprights. There is deliberately no hidden box
+    // inside: the produce or bowls are what fill it.
+    for (const yy of [y + h * .36, y + h - rail * .65]) {
+      for (const oz of [-d / 2 + rail / 2, d / 2 - rail / 2]) {
+        const [px, pz] = at(0, oz);
+        box(px, yy, pz, w, rail, rail, color,
+          { hard: true, ry, gloss: .22, ...tagged });
+      }
+      for (const ox of [-w / 2 + rail / 2, w / 2 - rail / 2]) {
+        const [px, pz] = at(ox, 0);
+        box(px, yy, pz, rail, rail, d, color,
+          { hard: true, ry, gloss: .22, ...tagged });
+      }
+    }
+    for (const ox of [-w / 2 + rail / 2, w / 2 - rail / 2])
+      for (const oz of [-d / 2 + rail / 2, d / 2 - rail / 2]) {
+        const [px, pz] = at(ox, oz);
+        cap(px, y + h / 2, pz, rail * .52, h, rail * .52, color,
+          { gloss: .22, ...tagged });
+      }
   }
 
   // ================================================================ 1. the food on the cart
@@ -163,7 +221,10 @@ StreetFit['stall'] = S => {
     // dripping. The rack is at y .70 — nine centimetres clear of the oil disc, so no two faces
     // share a plane. The pan is at x -8.05.
     const WX = -8.05, WZ = sz;
-    box(WX, 0.700, WZ, 0.66, 0.014, 0.34, col.steel, { hard: true, gloss: G.metal });
+    // Open rack perimeter plus nine cross-wires: the draining shelf shows air and oil beneath it.
+    for (const oz of [-.16, .16])
+      cap(WX, .700, WZ + oz, .008, .64, .008, col.steel,
+        { rz: Math.PI / 2, gloss: G.metal });
     for (let i = 0; i < 9; i++)
       cap(WX - 0.30 + i * 0.075, 0.708, WZ, 0.008, 0.32, 0.008, col.steel,
         { rx: Math.PI / 2, gloss: G.metal });
@@ -190,7 +251,12 @@ StreetFit['stall'] = S => {
     // 26 cm deep — its front edge lands at z 1.67 and the body stops at 1.50, so it costs nothing
     // to walk past and the cart's own collider does not have to grow.
     const SHZ = 1.80;
-    box(sx, 0.565, SHZ, 2.10, 0.040, 0.26, col.steel, { hard: true, gloss: 0.44 });
+    for (const oz of [-.085, 0, .085])
+      box(sx, 0.565, SHZ + oz, 2.10, 0.040, .065, col.steel,
+        { hard: true, gloss: 0.44 });
+    for (const ox of [-.92, 0, .92])
+      box(sx + ox, .535, SHZ, .035, .06, .25, col.steelD,
+        { hard: true, gloss: G.metal });
     for (const ox of [-0.85, 0.85])
       cap(sx + ox, 0.510, SHZ + 0.06, 0.014, 0.11, 0.014, col.steelD, { rz: 0.5, gloss: G.metal });
     // 包子 in rows on a bamboo tray, which is the picture the word needs: six of them lined up and
@@ -232,8 +298,17 @@ StreetFit['stall'] = S => {
     // wall so the working end faces the alley, which is how you park one and still leave the hutong
     // walkable. The bed is 86 cm wide: the flowerpot at x -11.10 ends at -10.93 and the cart's west
     // awning pole starts at -9.94, so there is 99 cm between them and this is 92.
-    box(TX, BEDY - 0.035, TB, 0.86, 0.070, 1.26, TRIKE, { hard: true, gloss: 0.30, tag: '早餐' });
-    box(TX, BEDY - 0.115, TB, 0.90, 0.090, 1.30, TRIKED, { hard: true, gloss: 0.26 });
+    // Five deck boards on a visible ladder frame. The old full bed and full under-bed block merged
+    // into a 1.3 m teal chest; these gaps, rails and crossmembers keep the vehicle legible as a cart.
+    for (let i = 0; i < 5; i++)
+      box(TX - .344 + i * .172, BEDY - .025, TB, .125, .050, 1.20, TRIKE,
+        { hard: true, gloss: .30, tag: '早餐' });
+    for (const ox of [-.36, .36])
+      box(TX + ox, BEDY - .105, TB, .065, .11, 1.28, TRIKED,
+        { hard: true, gloss: .26, tag: '早餐' });
+    for (const oz of [-.54, 0, .54])
+      box(TX, BEDY - .105, TB + oz, .84, .07, .065, TRIKED,
+        { hard: true, gloss: .26, tag: '早餐' });
     // Sideboards front and both sides — the back is open, which is the end you work off.
     for (const t of [-1, 1])
       box(TX + t * 0.44, BEDY + 0.075, TB, 0.030, 0.150, 1.26, TRIKED, { hard: true, gloss: 0.28 });
@@ -251,14 +326,16 @@ StreetFit['stall'] = S => {
         { rz: Math.PI / 2, gloss: G.metal });
       cap(TX + t * 0.40, 0.43, TB - 0.30, 0.028, 0.42, 0.028, TRIKED, { gloss: 0.30 });
     }
-    cyl(TX, 0.245, TB + 0.86, 0.245, 0.048, col.black, { rz: Math.PI / 2, gloss: 0.30 });
-    cyl(TX, 0.245, TB + 0.86, 0.070, 0.054, col.steel, { rz: Math.PI / 2, gloss: G.metal });
+    cyl(TX, 0.245, FRONTZ, 0.245, 0.048, col.black, { rz: Math.PI / 2, gloss: 0.30 });
+    cyl(TX, 0.245, FRONTZ, 0.070, 0.054, col.steel, { rz: Math.PI / 2, gloss: G.metal });
     for (const t of [-1, 1])
-      cap(TX + t * 0.055, 0.46, TB + 0.86, 0.018, 0.46, 0.018, TRIKED, { rx: -0.16, gloss: 0.30 });
-    cap(TX, 0.60, TB + 0.72, 0.030, 0.62, 0.030, TRIKED, { rx: 0.62, gloss: 0.30 });
-    cap(TX, 0.92, TB + 0.78, 0.026, 0.56, 0.026, col.steelD, { rz: Math.PI / 2, gloss: G.metal });
+      cap(TX + t * 0.055, 0.46, FRONTZ, 0.018, 0.46, 0.018, TRIKED,
+        { rx: -0.16, gloss: 0.30 });
+    cap(TX, 0.60, FRONTZ - .14, 0.030, 0.62, 0.030, TRIKED, { rx: 0.62, gloss: 0.30 });
+    cap(TX, 0.92, FRONTZ - .08, 0.026, 0.56, 0.026, col.steelD,
+      { rz: Math.PI / 2, gloss: G.metal });
     for (const t of [-1, 1])
-      cap(TX + t * 0.26, 0.92, TB + 0.78, 0.020, 0.13, 0.020, SADDLE,
+      cap(TX + t * 0.26, 0.92, FRONTZ - .08, 0.020, 0.13, 0.020, SADDLE,
         { rz: Math.PI / 2, gloss: 0.24 });
     ball(TX, 0.86, TB + 0.50, 0.075, 0.055, 0.135, SADDLE, { gloss: 0.24 });
     cyl(TX, 0.30, TB + 0.44, 0.105, 0.024, col.steelD, { rz: Math.PI / 2, gloss: G.metal });
@@ -320,8 +397,9 @@ StreetFit['stall'] = S => {
 
     // The trike blocks the pavement while it is here and stops blocking it when it goes — the
     // collider is toggled with the group, which is the thing street.js's own cart forgets to do.
-    stallTrikeSolid = solid(TX - 0.46, TX + 0.46, 2.02, 3.40);
-    shade(TX, TB - 0.05, 1.10, 1.90, 0.30);
+    stallTrikeSolid = solid(TX - 0.46, TX + 0.46, 2.02, FRONTZ + .25);
+    const trikeShade = shade(TX, TB - 0.05, 1.10, 1.90, 0.30);
+    if (trikeShade) SG_.trade.push(trikeShade);
     // Two plumes: one off the griddle, one off the 粥.
     plume(GX, BEDY + 0.18, GZ, 3, 0.16, 0.13, 1);
     plume(TX + 0.22, BEDY + 0.42, TB + 0.50, 2, 0.11, 0.10, 2);
@@ -434,9 +512,16 @@ StreetFit['stall'] = S => {
     }
     let seed = 20260804;
     const rr = () => (seed = (seed * 1103515245 + 12345) & 0x7fffffff) / 0x7fffffff;
+    const modules = new Set();
     for (let i = 0; i < 34; i++) {
       const mx = (Math.floor(rr() * 9) - 4) * 0.024, my = (Math.floor(rr() * 9) - 4) * 0.024;
       if (Math.abs(mx) > 0.055 && Math.abs(my) > 0.055) continue;   // keep clear of the finders
+      // The fixed stream can choose one module more than once. Consume both draws above exactly
+      // as before, but submit each square once: identical coplanar boxes only waste an instance
+      // and can flicker at grazing angles; they do not make a QR pattern denser.
+      const key = `${mx.toFixed(3)},${my.toFixed(3)}`;
+      if (modules.has(key)) continue;
+      modules.add(key);
       box(QX + mx, 1.27 + my, QZ - 0.026, 0.022, 0.022, 0.004, QRDARK,
         { hard: true, gloss: 0.05, tag: '扫码' });
     }
@@ -465,9 +550,16 @@ StreetFit['stall'] = S => {
       taper(ox, 0.17, oz, 0.32, 0.34, 0.32, col.plastic, { gloss: 0.30, ry: r });
       box(ox, 0.35, oz, 0.34, 0.04, 0.34, col.plastic, { hard: true, ry: r, gloss: 0.30 });
     }
-    box(-4.72, 0.50, 2.55, 0.62, 0.05, 0.62, col.canvas, { hard: true, gloss: 0.24 });
+    // Four narrow boards on folding legs, not one square top. The gaps are visible from every
+    // player-height oblique and stop this rush-hour extra reading as a paving slab on stilts.
+    for (let i = 0; i < 4; i++)
+      box(-4.72, 0.50, 2.55 - .225 + i * .15, 0.58, 0.045, 0.115, col.canvas,
+        { hard: true, gloss: 0.24 });
     for (const [ox, oz] of [[-0.22, -0.22], [0.22, -0.22], [-0.22, 0.22], [0.22, 0.22]])
       cap(-4.72 + ox, 0.25, 2.55 + oz, 0.028, 0.48, 0.028, col.steel, { gloss: 0.34 });
+    for (const s of [-1, 1])
+      cap(-4.72 + s * .22, .25, 2.55, .014, .55, .014, col.steelD,
+        { rx: Math.PI / 2, gloss: G.metal });
     // A bowl of 粥 half drunk on it, chopsticks across the rim.
     cyl(-4.72, 0.535, 2.55, 0.085, 0.060, col.white, { gloss: 0.30 });
     cyl(-4.72, 0.560, 2.55, 0.072, 0.010, C('#d8cba2'), { gloss: 0.26 });
@@ -480,7 +572,7 @@ StreetFit['stall'] = S => {
     cap(-9.62, 0.36, 1.72, 0.010, 0.22, 0.010, C('#6b5a3e'), { rz: 0.3, gloss: 0.14 });
     ball(-10.02, 0.14, 1.90, 0.115, 0.140, 0.090, C('#6e7a86'), { ry: 0.5, gloss: 0.18 });
     // A crate of clean bowls under the serving shelf, being got through.
-    box(-7.95, 0.13, 1.68, 0.34, 0.26, 0.26, CRATEB, { hard: true, gloss: 0.26 });
+    openCrate(-7.95, 0.005, 1.68, 0.34, 0.26, 0.25, CRATEB);
     for (let i = 0; i < 4; i++)
       cyl(-7.95, 0.27 + i * 0.026, 1.68, 0.085, 0.030, col.white, { gloss: 0.28, ry: i * 0.4 });
   });
@@ -509,17 +601,20 @@ StreetFit['stall'] = S => {
     // was placed east of the urn crate at x -6.82 and west of the shell's spare stools at -5.88,
     // which is the only stretch of this pavement that is empty at ten in the morning.
     for (let i = 0; i < 3; i++)
-      box(-6.45, 0.145 + i * 0.28, 2.90, 0.60, 0.28, 0.44, i === 1 ? CRATEB : CRATE,
-        { hard: true, gloss: 0.22, ry: (i - 1) * 0.10 });
+      openCrate(-6.45, .005 + i * .28, 2.90, .60, .44, .27,
+        i === 1 ? CRATEB : CRATE, null, (i - 1) * .10);
     // The wok, scrubbed and turned over on top of them.
     cyl(-6.45, 0.905, 2.90, 0.34, 0.14, col.charcoal, { rx: Math.PI, gloss: 0.44 });
     // The spare folding table, collapsed and leaning on the wall. East of x -11.20, where the wall
     // face is at 3.64: in front of 陈家's gatehouse it is at 3.45 and this would be inside it.
-    box(-10.60, 0.62, WALL - 0.13, 0.70, 1.20, 0.06, col.canvas,
-      { hard: true, rx: 0.22, gloss: 0.22 });
+    for (let i = 0; i < 5; i++)
+      box(-10.60, .15 + i * .235, WALL - .13, .66, .17, .045, col.canvas,
+        { hard: true, rx: .22, gloss: .22 });
     for (const t of [-1, 1])
       cap(-10.60 + t * 0.24, 0.60, WALL - 0.20, 0.024, 1.16, 0.024, col.steel,
         { rx: 0.22, gloss: 0.34 });
+    cap(-10.60, .62, WALL - .205, .014, .54, .014, col.steelD,
+      { rz: Math.PI / 2, rx: .22, gloss: G.metal });
     // Two bin bags tied off and stood by the wall for the 环卫 round.
     for (const [bx, bs] of [[-5.55, 1.0], [-5.20, 0.86]]) {
       ball(bx, 0.26 * bs, 3.20, 0.20 * bs, 0.26 * bs, 0.19 * bs, BAGBLK, { gloss: 0.34 });
@@ -558,7 +653,9 @@ StreetFit['stall'] = S => {
     ball(-7.55, 0.018, 2.05, 0.075, 0.012, 0.100, C('#d6cfba'), { ry: 0.3, gloss: 0.08 });
     cap(-10.15, 0.014, 1.95, 0.007, 0.16, 0.007, BAMBOOD, { rz: Math.PI / 2, ry: 0.9, gloss: 0.12 });
     ball(-6.70, 0.030, 2.55, 0.130, 0.030, 0.110, BAGWHT, { ry: 2.0, alpha: 0.9, gloss: 0.22 });
-    box(-9.80, 0.022, 2.90, 0.22, 0.030, 0.16, CRATE, { hard: true, ry: 0.5, gloss: 0.18 });
+    for (let i = 0; i < 3; i++)
+      box(-9.86 + i * .06, .018 + i * .003, 2.90 + i * .025, .19, .018, .035, CRATE,
+        { hard: true, ry: .42 + i * .08, gloss: .18 });
     // A scorch of ash where the burner stood.
     flat(-7.95, 0.024, 2.60, 0.55, 0.45, C('#4a463f'), { gloss: 0.14, alpha: 0.8 });
   });
@@ -571,17 +668,26 @@ StreetFit['stall'] = S => {
     // buckets of cut flowers on the east end of it and the word is covered either way.
     const MZ = 2.72;
     for (const mx of [-9.60, -7.35]) {
-      box(mx, 0.735, MZ, 2.10, 0.055, 0.94, CRATE, { hard: true, gloss: G.wood, tag: '水果' });
-      box(mx, 0.700, MZ, 2.14, 0.030, 0.98, C('#6f5636'), { hard: true, gloss: 0.18 });
-      for (const [ox, oz] of [[-0.92, -0.38], [0.92, -0.38], [-0.92, 0.38], [0.92, 0.38]])
-        cap(mx + ox, 0.355, MZ + oz, 0.036, 0.710, 0.036, col.steelD, { gloss: 0.32 });
-      // The green plastic grass mat over the boards, which every one of these has. Knocked well
-      // off the pure green it started at: two 2 m slabs of #3f6b3c were the brightest thing in a
-      // district stallBuilt out of grey brick and they read as billiard baize, not as a market.
-      flat(mx, 0.766, MZ, 2.04, 0.90, C('#4e6446'), { gloss: 0.18 });
+      // Six narrow deck boards over two A-frame trestles. The former paired 2.1 × .94 m boxes and
+      // full green mat merged into one chest; from player height this construction stays open all
+      // the way through to the wall.
+      for (let i = 0; i < 6; i++)
+        box(mx, .735, MZ - .375 + i * .15, 2.02, .045, .115,
+          i % 2 ? CRATE : C('#765a38'), { hard: true, gloss: G.wood, tag: '水果' });
+      for (const ox of [-.84, .84]) {
+        cap(mx + ox, .36, MZ - .26, .030, .72, .030, col.steelD,
+          { rx: -.18, gloss: .32, tag: '水果' });
+        cap(mx + ox, .36, MZ + .26, .030, .72, .030, col.steelD,
+          { rx: .18, gloss: .32, tag: '水果' });
+        cap(mx + ox, .68, MZ, .022, .72, .022, col.steelD,
+          { rx: Math.PI / 2, gloss: G.metal, tag: '水果' });
+      }
+      cap(mx, .27, MZ, .024, 1.72, .024, col.steelD,
+        { rz: Math.PI / 2, gloss: G.metal, tag: '水果' });
     }
-    // Six crates, angled up on the boards so a customer looks into them rather than at their rims.
-    // Each is its own word and each has its price stuck in the front of it. The 0.38 m gap between
+    // Six open slatted crates on the boards, shallow enough that a customer looks into the produce
+    // rather than at a box wall. Each is its own word and each has its price stuck in the front.
+    // The 0.38 m gap between
     // the middle two is where the parasol pole goes — measured, not left to chance.
     const CROPS = [
       [-10.25, APPLE,   'ball', 15, '苹果',   '苹果五元一斤', CRATE],
@@ -592,8 +698,7 @@ StreetFit['stall'] = S => {
       [-6.60,  AUBER,   'oval',  8, '茄子',   '茄子三元',     CRATEG],
     ];
     for (const [cx, cc, kind, n, tag, price, crateCol] of CROPS) {
-      box(cx, 0.855, MZ, 0.62, 0.160, 0.72, crateCol, { hard: true, rx: -0.16, gloss: 0.22, tag });
-      box(cx, 0.845, MZ, 0.56, 0.130, 0.66, C('#5c4a30'), { hard: true, rx: -0.16, gloss: 0.16, tag });
+      openCrate(cx, .765, MZ, .62, .66, .18, crateCol, tag);
       // Mounded, in two layers, and filling the crate corner to corner. At nine pieces on one
       // level in a 62 cm box every crate read as an empty tray with a few marbles rolling in it —
       // the whole look of a fruit pitch is that nothing is visible underneath the fruit.
@@ -601,7 +706,7 @@ StreetFit['stall'] = S => {
         const a = i * 2.399, tier = i < n * 0.60 ? 0 : 1;
         const r = i ? (tier ? 0.050 + (i % 3) * 0.042 : 0.095 + (i % 4) * 0.048) : 0;
         const px = cx + Math.cos(a) * r, pz = MZ + Math.sin(a) * r * 0.92;
-        const py = 0.955 - (pz - MZ) * 0.16 + tier * 0.085;
+        const py = 0.955 + tier * 0.085;
         if (kind === 'ball') ball(px, py, pz, 0.068, 0.064, 0.068, cc, { gloss: 0.30, ry: a, tag });
         else if (kind === 'cap')
           cap(px, py, pz, 0.046, 0.240, 0.046, cc, { rz: Math.PI / 2, ry: a, gloss: 0.24, tag });
@@ -617,9 +722,10 @@ StreetFit['stall'] = S => {
     // off its neighbour in y — they all overlap near the hub and a dozen faces at one height is
     // exactly the coplanar case this scene keeps breaking on.
     //
-    // Its span is 2.2 m rather than the 2.8 m one of these really has: the courtyard wall's face
-    // is at z 3.64 and anything wider comes out through it.
-    const UX2 = -8.475, UZ2 = 2.45, UY = 2.34;
+    // Its 2.04 m span is pushed 25 cm toward the wall and raised above the player's head. That
+    // keeps the real shade while pulling the front rim out of the customer route and out of the
+    // close shot. Twelve radial ribs beneath it turn the cloth pieces into a supported canopy.
+    const UX2 = -8.475, UZ2 = 2.70, UY = 2.56;
     cap(UX2, UY / 2, UZ2, 0.030, UY, 0.030, col.steelD, { gloss: 0.34 });
     // Two sign traps, both of which turned this into a propeller before they were measured:
     //   `M.rotY(θ)` sends local +x to (cos θ, 0, −sin θ), so a panel offset to (cos a, sin a)
@@ -628,12 +734,15 @@ StreetFit['stall'] = S => {
     //   frame *before* the spin: positive rz lifts the outer end, which is a bowl. It wants −rz.
     for (let i = 0; i < 12; i++) {
       const a = i * Math.PI / 6;
-      box(UX2 + Math.cos(a) * 0.56, UY - 0.22 + (i % 2) * 0.004, UZ2 + Math.sin(a) * 0.56,
-        1.26, 0.042, 0.62, i % 2 ? PARASOL : PARASOLB,
+      box(UX2 + Math.cos(a) * 0.50, UY - 0.20 + (i % 2) * 0.004, UZ2 + Math.sin(a) * 0.50,
+        1.12, 0.036, 0.54, i % 2 ? PARASOL : PARASOLB,
         { hard: true, ry: -a, rz: -0.21, gloss: 0.22 });
+      cap(UX2 + Math.cos(a) * .50, UY - .25, UZ2 + Math.sin(a) * .50,
+        .008, 1.00, .008, col.steelD,
+        { rz: Math.PI / 2, ry: -a, gloss: G.metal });
       // The scalloped rim, on the circle the dropped panel ends actually reach.
-      ball(UX2 + Math.cos(a) * 1.14, UY - 0.35, UZ2 + Math.sin(a) * 1.14,
-        0.17, 0.030, 0.17, i % 2 ? PARASOL : PARASOLB, { gloss: 0.20 });
+      ball(UX2 + Math.cos(a) * 1.02, UY - 0.32, UZ2 + Math.sin(a) * 1.02,
+        0.14, 0.026, 0.14, i % 2 ? PARASOL : PARASOLB, { gloss: 0.20 });
     }
     // The hub and the finial over the top of the panels.
     taper(UX2, UY - 0.02, UZ2, 0.34, 0.18, 0.34, PARASOL, { gloss: 0.24 });
@@ -682,14 +791,22 @@ StreetFit['stall'] = S => {
     cyl(-9.60, 0.145, 3.36, 0.055, 0.290, C('#3f5f6a'), { gloss: 0.36 });
     cyl(-9.60, 0.305, 3.36, 0.048, 0.040, col.steelD, { gloss: G.metal });
 
-    // The banner along the front of the trestles, which is how the pitch says what it is.
-    box(-8.50, 0.40, MZ - 0.50, 4.30, 0.30, 0.010, PARASOL,
-      { hard: true, gloss: 0.20, tag: '蔬菜' });
-    glyphs(-8.50, 0.40, MZ - 0.512, Math.PI, '新鲜水果蔬菜',
-      { size: 0.180, gap: 0.055, color: col.paintY, gloss: 0.10, lift: 0.006, tag: '蔬菜' });
+    // Six removable apron flags instead of one 4.3 m skirt. The vocabulary stays in reading
+    // order, while four metres of low red wall become six small beats with daylight between.
+    cap(-8.50, .58, MZ - .43, .008, 4.08, .008, col.steelD,
+      { rz: Math.PI / 2, gloss: G.metal, tag: '蔬菜' });
+    [...'新鲜水果蔬菜'].forEach((ch, i) => {
+      const px = -8.50 - (i - 2.5) * .67, py = .40 - (i % 2) * .015;
+      cap(px, .54, MZ - .43, .006, .10, .006, col.steelD, { gloss: G.metal, tag: '蔬菜' });
+      box(px, py, MZ - .44, .46, .26, .010, i % 2 ? PARASOL : C('#9f342d'),
+        { hard: true, mode: 7, gloss: .20, tag: '蔬菜' });
+      glyphs(px, py, MZ - .452, Math.PI, ch,
+        { size: .145, gap: .025, color: col.paintY, gloss: .10, lift: .006, tag: '蔬菜' });
+    });
 
     stallMarketSolid = solid(-10.75, -5.30, 2.18, 3.24);
-    shade(-8.40, MZ, 5.00, 1.60, 0.30);
+    const marketShade = shade(-8.40, MZ, 5.00, 1.60, 0.30);
+    if (marketShade) SG_.market.push(marketShade);
 
     // Both kept on a short reach and pulled right up to the trestle. `reachThing` picks whichever
     // thing is closest *relative to its own reach*, and 早餐's focus sits at (-8.60, 0.50) with a
@@ -712,18 +829,31 @@ StreetFit['stall'] = S => {
     // with a little of its own furniture on it reads as a pitch between shifts; a completely bare
     // one reads as a bug.
     for (let i = 0; i < 2; i++)
-      box(-10.55, 0.145 + i * 0.28, WALL - 0.26, 0.60, 0.28, 0.42, i ? CRATEB : CRATE,
-        { hard: true, gloss: 0.22, ry: (i - 0.5) * 0.12 });
-    box(-10.55, 0.44, WALL - 0.26, 0.64, 0.02, 0.46, col.tarp, { hard: true, gloss: 0.24 });
-    cap(-10.25, 0.30, WALL - 0.30, 0.007, 0.62, 0.007, col.steelD,
+      openCrate(-11.30, .005 + i * .28, WALL - .26, .60, .42, .27,
+        i ? CRATEB : CRATE, null, (i - .5) * .12);
+    // The tied cover is folded into three strips on the top crate, not a rigid rectangular lid.
+    for (let i = 0; i < 3; i++)
+      box(-11.30, .575 + i * .007, WALL - .38 + i * .12, .58, .014, .10, col.tarp,
+        { hard: true, gloss: .24, ry: -.05 + i * .05 });
+    cap(-11.00, 0.30, WALL - 0.30, 0.007, 0.62, 0.007, col.steelD,
       { rz: Math.PI / 2 - 0.4, gloss: G.metal });
     cyl(-8.475, 0.012, 2.45, 0.115, 0.024, col.steelD, { gloss: 0.40 });
   });
 
   // ---------------------------------------------------------------- snapshot
   // Every prop's built matrix, taken once, so hiding and showing is a copy rather than a rebuild.
-  for (const k in G_) G_[k] = G_[k].map(p => ({ p, m0: p.m }));
+  for (const k in G_) G_[k] = G_[k].map(p => {
+    // Steam already owns a deliberately broad manual cull envelope for its continuous rise.
+    // Everything else in these groups only alternates between this matrix and STALL_HIDDEN, so
+    // Build.finish remains the owner of its ordinary visible-state cull sphere.
+    if (!p.stateOwner) p.stateOwner = `stall:${k}`;
+    return { p, m0: p.m };
+  });
+  for (const k in TG_) TG_[k] = TG_[k].map(th => ({ th, reach0:th.reach }));
+  for (const k in SG_) SG_[k] = SG_[k].map(s => ({ s, a0:s.a }));
   stallBuilt = G_;
+  stallThings = TG_;
+  stallShadows = SG_;
   stallPuffs = puffs;
 };
 
@@ -732,7 +862,8 @@ StreetFit['stall'] = S => {
 // Classic scripts share one global lexical environment: a bare `let built` here and a bare
 // `let built` in anybody else's file is a SyntaxError that takes the whole page down before a
 // line of it runs. Everything at this level is prefixed for that reason and no other.
-let stallBuilt = null, stallPuffs = null, stallTrikeSolid = null, stallMarketSolid = null;
+let stallBuilt = null, stallThings = null, stallShadows = null, stallPuffs = null,
+    stallTrikeSolid = null, stallMarketSolid = null;
 let stallShown = null;                            // which groups are up right now
 let stallCartSolid = null, stallCartLooked = false;
 
@@ -776,6 +907,8 @@ StreetFit['stall'].tick = (t, body, mins) => {
       if (stallShown[k] === on[k]) continue;
       stallShown[k] = on[k];
       for (const s of stallBuilt[k]) s.p.m = on[k] ? s.m0 : STALL_HIDDEN;
+      for (const s of (stallThings && stallThings[k]) || []) s.th.reach = on[k] ? s.reach0 : -1;
+      for (const s of (stallShadows && stallShadows[k]) || []) s.s.a = on[k] ? s.a0 : 0;
     }
     // Colliders follow their own group. street.js's cart leaves its collider on the pavement all
     // day — an invisible 2.6 m box you walk into at three in the morning — so it is opened here
@@ -858,7 +991,7 @@ StreetFit['stall'].cast = [
     // diorama. With these three windows the line is one at half five, four at half seven, three
     // by nine and back to one by ten.
     hours: [6.2, 8.7], temper: 'patient',
-    spots: [{ h0:6.2, h1:8.7, at:[-10.02, 1.48], face:0.88, act:'wait' }] },
+    spots: [{ h0:6.2, h1:8.7, at:[-10.25, 1.46], face:0.88, act:'wait' }] },
   { hz: '扫码的',
     // At the head of it, paying. `buy` is the game's own pose for working a screen with the head
     // down and the near hand up — which is exactly what scanning a code taped to a pole looks like,

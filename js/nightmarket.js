@@ -48,7 +48,7 @@ const NightMarket = Lazy('NightMarket', () => {
   const G = { matte: .05, wood: .20, paint: .16, metal: .58, glass: .80, fabric: .04 };
 
   const B = Build.scene({ fabricGloss: G.fabric });
-  const { box, cyl, ball, capsule, taper, flat, glyphs,
+  const { box, cyl, ball, capsule, taper, flat, glyphs, modelOr,
           solid, blocker, shade, glow, thing, transform } = B;
 
   // ---------------------------------------------------------------- dimensions
@@ -365,8 +365,10 @@ const NightMarket = Lazy('NightMarket', () => {
       { focus: [cx, cz - side * 1.24], reach: 1.7 });
   }
 
-  // A folding table with four plastic stools round it. Half the market is people eating standing
-  // up; the other half is sitting at one of these with a beer, and that is where the evening goes.
+  // A folding table with four wood-frame stools and cheap red/blue seat caps round it. The exact
+  // hard cap remains native as the sitting support; if the shared model is unavailable, the old
+  // procedural frame is restored in full. Half the market is people eating standing up; the
+  // other half is sitting at one of these with a beer, and that is where the evening goes.
   function table(cx, cz, ry) {
     const T = { tag: '桌子' };
     box(cx, .70, cz, .90, .04, .90, col.plasticY, { hard: true, ry, gloss: .30, ...T });
@@ -375,11 +377,19 @@ const NightMarket = Lazy('NightMarket', () => {
     for (let i = 0; i < 4; i++) {
       const a = ry + i * Math.PI / 2;
       const sx = cx + Math.sin(a) * .80, sz = cz + Math.cos(a) * .80;
-      box(sx, .42, sz, .32, .04, .32, i % 2 ? col.plastic : col.plasticB,
+      const cc = i % 2 ? col.plastic : col.plasticB;
+      const nativeStool = () => {
+        box(sx, .42, sz, .32, .04, .32, cc,
+          { hard: true, ry: a, gloss: .30, ...T });
+        for (const ox of [-1, 1]) for (const oz of [-1, 1])
+          cyl(sx + ox * .12, .21, sz + oz * .12, .014, .42, cc,
+            { gloss: .26, ...T });
+        return null;
+      };
+      const rendered = modelOr('chinese_stool', sx, 0, sz, .63435827,
+        { ry: a, gloss: .22, ...T }, nativeStool);
+      if (rendered) box(sx, .42, sz, .32, .04, .32, cc,
         { hard: true, ry: a, gloss: .30, ...T });
-      for (const ox of [-1, 1]) for (const oz of [-1, 1])
-        cyl(sx + ox * .12, .21, sz + oz * .12, .014, .42, i % 2 ? col.plastic : col.plasticB,
-          { gloss: .26, ...T });
     }
     // what is on it: two bowls, a beer, a pile of used skewers in a glass
     cyl(cx - .18, .76, cz + .12, .085, .07, col.white, { gloss: .28, ...T });

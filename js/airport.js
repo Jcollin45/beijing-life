@@ -201,19 +201,19 @@ const Airport = Lazy('Airport', () => {
     // days it moves. There is exactly one alternate per flight and it never changes, because every
     // gate a flight can be called to needs its own baked announcement, and a table of seven
     // alternates is fourteen clips where "any gate to any gate" would be ninety-eight.
-    { no:'CA1502', to:'上海', py:'Shànghǎi',  en:'Shanghai',  dep: 8 * 60 + 20, late: 0,
+    { no:'YH1502', to:'上海', py:'Shànghǎi',  en:'Shanghai',  dep: 8 * 60 + 20, late: 0,
       price: 480,  gate:'B12', gate2:'B14', hours:'两小时',   hoursEn:'two hours', hrs: 2 },
-    { no:'MU5138', to:'广州', py:'Guǎngzhōu', en:'Guangzhou', dep:10 * 60 + 35, late: 0,
+    { no:'YX5138', to:'广州', py:'Guǎngzhōu', en:'Guangzhou', dep:10 * 60 + 35, late: 0,
       price: 690,  gate:'B14', gate2:'B12', hours:'三小时',   hoursEn:'three hours' , hrs: 3 },
-    { no:'CZ3908', to:'成都', py:'Chéngdū',   en:'Chengdu',   dep:13 * 60 +  5, late: 0,
+    { no:'QL3908', to:'成都', py:'Chéngdū',   en:'Chengdu',   dep:13 * 60 +  5, late: 0,
       price: 820,  gate:'B12', gate2:'B15', hours:'三小时',   hoursEn:'three hours' , hrs: 3 },
-    { no:'HU7802', to:'海口', py:'Hǎikǒu',    en:'Haikou',    dep:15 * 60 + 40, late:65,
+    { no:'HL7802', to:'海口', py:'Hǎikǒu',    en:'Haikou',    dep:15 * 60 + 40, late:65,
       price:1100,  gate:'B15', gate2:'B14', hours:'四小时',   hoursEn:'four hours' , hrs: 4 },
-    { no:'CA981',  to:'纽约', py:'Niǔyuē',    en:'New York',  dep:17 * 60 + 55, late: 0,
+    { no:'YH981',  to:'纽约', py:'Niǔyuē',    en:'New York',  dep:17 * 60 + 55, late: 0,
       price:5800,  gate:'B01', gate2:'B03', hours:'十四小时', hoursEn:'fourteen hours' , hrs: 14 },
-    { no:'MU219',  to:'东京', py:'Dōngjīng',  en:'Tokyo',     dep:19 * 60 + 30, late: 0,
+    { no:'YX219',  to:'东京', py:'Dōngjīng',  en:'Tokyo',     dep:19 * 60 + 30, late: 0,
       price:2200,  gate:'B03', gate2:'B01', hours:'三小时',   hoursEn:'three hours' , hrs: 3 },
-    { no:'CZ345',  to:'曼谷', py:'Màngǔ',     en:'Bangkok',   dep:21 * 60 + 15, late: 0,
+    { no:'QL345',  to:'曼谷', py:'Màngǔ',     en:'Bangkok',   dep:21 * 60 + 15, late: 0,
       price:1900,  gate:'B05', gate2:'B12', hours:'五小时',   hoursEn:'five hours' , hrs: 5 },
   ];
   // The windows either side of a departure, in minutes. Check-in opens three hours out and
@@ -240,16 +240,16 @@ const Airport = Lazy('Airport', () => {
   //
   // Flight numbers and gates carry Latin letters, and the bake strips every Latin letter before
   // reading — `speakable()` in .bake-voices.py, because a Mandarin phonemiser has no dependable
-  // rule for them. So CA1502 cannot be said as CA1502. It is said the way a Chinese terminal
-  // actually says it: the airline by its two-character short name, 国航, and the digits one at a
+  // rule for them. So YH1502 cannot be said as YH1502. It is said the way a Chinese terminal
+  // actually says it: the airline by its two-character short name, 燕河, and the digits one at a
   // time. That is not a workaround, it is the more idiomatic reading of the two — and it teaches
-  // four real words (国航 东航 南航 海航) that the board's Latin codes never could.
+  // four fictional carrier names (燕河 云岫 青鹭 海岚) that the board's Latin codes never could.
   //
   // The digits are spelled as characters rather than left as 1502 for the same class of reason: a
   // bare numeral is ambiguous between 一千五百零二 and 一五零二, and a flight number is always the
   // second. Gate B12 loses its letter and becomes 十二号登机口, which is what is said out loud in
   // any case; the letter lives on the board, where it can be read.
-  const AIRLINE = { CA:'国航', MU:'东航', CZ:'南航', HU:'海航' };
+  const AIRLINE = { YH:'燕河', YX:'云岫', QL:'青鹭', HL:'海岚' };
   const CN = '零一二三四五六七八九';
   // 0-99 in characters. Enough for a gate number and for the hour and minute of a departure.
   function cnNum(n) {
@@ -264,7 +264,7 @@ const Airport = Lazy('Airport', () => {
     const w = ((Math.round(m) % 1440) + 1440) % 1440;
     return cnNum(Math.floor(w / 60)) + '点' + cnNum(w % 60) + '分';
   };
-  // How a flight is named out loud: 前往上海的国航一五零二次航班.
+  // How a flight is named out loud: 前往上海的燕河一五零二次航班.
   const spoken = f => `前往${f.to}的${AIRLINE[f.no.replace(/\d/g, '')] || ''}`
     + `${cnDigits(f.no)}次航班`;
   // Read off whichever gate it is given, so the same composer serves the scheduled gate and the
@@ -370,7 +370,7 @@ const Airport = Lazy('Airport', () => {
     '机场内提供免费无线网络，请连接机场网络使用。',
     '登机时请出示登机牌和身份证件，谢谢配合。',
     '飞机上禁止使用打火机和火柴，请勿携带。',
-    '祝您旅途顺利，感谢您选择首都国际机场。'];
+    '祝您旅途顺利，感谢您选择京华国际机场。'];
   HALL.forEach((t, i) => { NOTICES[`hall:${i}`] = t; });
   // Voice-only variants for a moved flight. Appended after every existing line on purpose: the
   // voice bake derives a tiny tempo variation from array order, so inserting these inside the
@@ -947,7 +947,7 @@ const Airport = Lazy('Airport', () => {
   // lift on col.inlay was enough to start the security channel glowing and to put a haze back on
   // the partition behind it that looked exactly like the AO artifact but was mine.
   const M_INLAY = { mat: 'concrete', matScale: 2.20, matAmt: .15 };
-  const M_WALL  = { mat: 'plaster',  matScale: 2.60, matAmt: .24 };
+  const M_WALL  = { mat: 'plaster',  matScale: .62, matAmt: .12 };
   const M_SOFF  = { mat: 'concrete', matScale: 2.00, matAmt: .24 };
   const M_STONE = { mat: 'concrete', matScale: 1.60, matAmt: .20 };  // counters and piers
   const M_METAL = { mat: 'concrete', matScale: .50,  matAmt: .18 };  // fascias, barriers, plant
@@ -1273,7 +1273,7 @@ const Airport = Lazy('Airport', () => {
     // skin has already curved in to 0.87 from centre: paint the titles at the cheatline's z of
     // 1.62 and they float three quarters of a metre off the side of the aircraft, which at this
     // range shears them sideways off the fuselage as the camera moves.
-    for (const g of glyphs(PX + 6.40, PY + 1.28, PZ + .92, 0, '中国国际航空',
+    for (const g of glyphs(PX + 6.40, PY + 1.28, PZ + .92, 0, '燕河航空',
       { size: .60, gap: .16, color: col.blue, mode: 1, tag: '飞机' })) litten(g, .4);
     for (const g of glyphs(PX - 9.40, PY - .88, PZ + 1.30, 0, 'B-2589',
       { size: .32, gap: -.10, color: col.charcoal, mode: 1, tag: '飞机' })) litten(g, .2);
@@ -1471,7 +1471,7 @@ const Airport = Lazy('Airport', () => {
     // never go outside to change. It is also where you arrive, so nothing stands near it.
     const dz = RZ - .18;
     box(DX, 1.45, dz - .10, 3.40, 2.90, .34, col.wallD,
-      { hard: true, gloss: G.paint, ...M_WALL, matScale: 2.20 });
+      { hard: true, gloss: G.paint, ...M_WALL });
     box(DX, 1.34, dz, 2.70, 2.68, .10, col.charcoal, { tag: '地铁站', hard: true, gloss: .24 });
     litten(box(DX, 1.34, dz - .04, 2.40, 2.36, .04, C('#8b9aa5'),
       { tag: '地铁站', hard: true, mode: 1, glow: .10 }), .3);
@@ -1539,7 +1539,7 @@ const Airport = Lazy('Airport', () => {
     // to be able to stand behind it: a ticket window with nobody in it is a shelf.
     const TX = -14.20, TZ = RZ - .30, TC = TZ - .94;
     box(TX, 1.60, TZ + .18, 4.20, 3.20, .30, col.wallD,
-      { hard: true, gloss: G.paint, ...M_WALL, matScale: 2.20 });
+      { hard: true, gloss: G.paint, ...M_WALL });
     for (let i = 0; i < 3; i++)
       box(TX, 1.10 + i * .60, TZ + .10, 3.40, .06, .34, col.slab,
         { hard: true, gloss: .20 });
@@ -1619,7 +1619,7 @@ const Airport = Lazy('Airport', () => {
       { tag: '值机柜台', hard: true, gloss: .22, ...M_METAL });
     // the back wall of the bank: cupboards, a tag rail and the staff door at the end
     box(CKX, 1.30, RZ - .30, CKW + .4, 2.60, .40, col.wallD,
-      { hard: true, gloss: G.paint, ...M_WALL, matScale: 2.20 });
+      { hard: true, gloss: G.paint, ...M_WALL });
     for (let i = 0; i < 5; i++) {
       const dx = -12.0 + i * 2.80;
       // Position 5 is the oversize-baggage position. Its conveyor occupies the footprint where a
@@ -1774,7 +1774,7 @@ const Airport = Lazy('Airport', () => {
       box(OX, 1.08, CKZ - 1.32 + i * .23, 1.58, .02, .10, col.steelD,
         { tag: '行李托运', hard: true, gloss: .30 });
     box(OX, 1.90, CKZ + .70, 2.10, 1.80, .60, col.wallD,
-      { tag: '行李托运', hard: true, gloss: G.paint, ...M_WALL, matScale: 2.20 });
+      { tag: '行李托运', hard: true, gloss: G.paint, ...M_WALL });
     box(OX, 1.20, CKZ + .42, 1.60, .90, .10, col.black,
       { tag: '行李托运', hard: true, mode: 1, alpha: .85 });
     for (const g of glyphs(OX, 2.52, CKZ + .38, Math.PI, '行李托运',
@@ -1936,7 +1936,7 @@ const Airport = Lazy('Airport', () => {
     // each piece where it stands instead of turning the fitting. Square to the wall it is.
     const SHX = -RX, SHZ = -6.30;
     box(SHX + .25, 1.50, SHZ, .50, 3.00, 4.20, col.wallD,
-      { hard: true, gloss: G.paint, ...M_WALL, matScale: 2.20 });
+      { hard: true, gloss: G.paint, ...M_WALL });
     box(SHX + 1.10, .52, SHZ, 1.00, 1.04, 3.60, col.desk,
       { tag: '便利店', gloss: .26, ...M_STONE });
     box(SHX + 1.10, 1.08, SHZ, 1.12, .09, 3.72, col.deskD,
@@ -2339,7 +2339,7 @@ const Airport = Lazy('Airport', () => {
     // the international language of paying too much at an airport.
     const DFX = 11.20, DFZ = RZ - .60;
     box(DFX, 1.55, DFZ + .30, 5.60, 3.10, .40, col.wallD,
-      { hard: true, gloss: G.paint, ...M_WALL, matScale: 2.20 });
+      { hard: true, gloss: G.paint, ...M_WALL });
     box(DFX, .52, DFZ - .50, 5.20, 1.04, .90, col.desk,
       { tag: '免税店', gloss: .26, ...M_STONE });
     box(DFX, 1.08, DFZ - .50, 5.30, .09, 1.02, col.deskD,
@@ -2412,7 +2412,7 @@ const Airport = Lazy('Airport', () => {
     // people who have discovered what a coffee costs on this side of security.
     const CFX = 16.60, CFZ = RZ - .70;
     box(CFX, 1.55, CFZ + .40, 4.20, 3.10, .40, col.wallD,
-      { hard: true, gloss: G.paint, ...M_WALL, matScale: 2.20 });
+      { hard: true, gloss: G.paint, ...M_WALL });
     box(CFX, .52, CFZ - .40, 3.80, 1.04, .90, col.oak,
       { tag: '咖啡', mode: 6, gloss: .28, ...M_WOOD });
     box(CFX, 1.08, CFZ - .40, 3.90, .09, 1.02, C('#3a2f26'),
@@ -2705,7 +2705,12 @@ const Airport = Lazy('Airport', () => {
     // ================================================================ the landside hall
     // Grey seating, not the airside blue. See the note on `seatRun`.
     const LSEAT = C('#59616b');
-    for (const [sz, ry] of [[-3.60, 0], [-4.90, Math.PI], [-6.60, 0]])
+    // Leave a genuine cross-route between the second and third banks.  At -6.60 their collider
+    // faces were only .98 m apart: the normal .30 m body could squeeze through, but the .45 m
+    // comfort envelope had just .08 m of tolerance and the whole south-west concourse became a
+    // separate island.  Twenty centimetres buys .28 m of tolerance without removing a seat or
+    // moving any interaction, counter or circulation landmark.
+    for (const [sz, ry] of [[-3.60, 0], [-4.90, Math.PI], [-6.80, 0]])
       for (const sx of [-16.60, -12.10, -7.60, -3.10]) seatRun(sx, sz, ry, 5, LSEAT);
     // Three of the sixty landside seats taken, and one of them with a case at her feet, because
     // the people in this half of the hall are the ones who have not checked their bags yet.
@@ -2736,7 +2741,7 @@ const Airport = Lazy('Airport', () => {
 
     // 机场 the terminal's own name, over the check-in bank
     box(CKX, 5.30, RZ - .12, 9.00, .90, .12, col.blueSign, { hard: true, gloss: .24 });
-    for (const g of glyphs(CKX, 5.30, RZ - .19, Math.PI, '首都国际机场',
+    for (const g of glyphs(CKX, 5.30, RZ - .19, Math.PI, '京华国际机场',
       { size: .42, gap: .16, color: col.white, mode: 1 })) litten(g, .9);
     thing('机场', CKX, 4.40, RZ - 1.20, '机场很大，人很多。',
       'The airport is huge and full of people.',
@@ -2893,7 +2898,7 @@ const Airport = Lazy('Airport', () => {
   // desk are the same fact.
   // ---------------------------------------------------------------- 延误 · 取消 today's board
   //
-  // Until now exactly one flight was ever late — HU7802, every day, by the same sixty-five minutes,
+  // Until now exactly one flight was ever late — HL7802, every day, by the same sixty-five minutes,
   // because `late` was a constant in the table above. A departure board that says the same thing
   // every morning is a poster, and the hall's whole claim on the player's attention is that it is
   // telling them something they do not already know.
@@ -2930,12 +2935,12 @@ const Airport = Lazy('Airport', () => {
       const late = hash(day * 131 + i * 17) < 0.13 + 0.60 * d;
       // Rounded to five minutes, because a board never says forty-three.
       f.late = late ? Math.round((15 + hash(day * 7 + i * 29) * (30 + 130 * d)) / 5) * 5 : 0;
-      // 海航七八零二 is the one flight with a delay announcement baked for it, and that clip says
+      // 海岚七八零二 is the one flight with a delay announcement baked for it, and that clip says
       // 预计起飞时间十六点四十五分 out loud — which is only true at exactly sixty-five minutes.
       // So when this one is picked it is always picked for that, and the loudspeaker keeps its
       // one apology. Everything else that runs late says so on the board and nowhere else, which
       // is also true to life: most delays are never announced at all.
-      if (f.no === 'HU7802' && f.late) f.late = 65;
+      if (f.no === 'HL7802' && f.late) f.late = 65;
       // And whether it moves gate. About one flight in six on a normal day, more when the board is
       // already in trouble, because a gate change is nearly always somebody else's delay arriving
       // in the stand yours was supposed to use.
@@ -3116,8 +3121,8 @@ const Airport = Lazy('Airport', () => {
   //
   // That is the second design here and the first one was wrong in a way worth recording. It tested
   // for the threshold being *crossed* inside a one-minute window, which is how the platform's
-  // countdown works — and it meant a call that lost a collision was lost for the day. MU219's
-  // check-in opened at 16:30, the same minute HU7802's gate closed, the gap rule quite correctly
+  // countdown works — and it meant a call that lost a collision was lost for the day. YX219's
+  // check-in opened at 16:30, the same minute HL7802's gate closed, the gap rule quite correctly
   // let the more urgent one go first, and the check-in call for a Tokyo flight then never happened
   // at all. A window instead of a moment fixes it without a queue: the call stays due until it is
   // either said or no longer true, so a collision delays it by three minutes rather than deleting
@@ -3182,7 +3187,7 @@ const Airport = Lazy('Airport', () => {
           // might have said — boarding, final call, the desk opening — is now a lie.
           if (f.cancelled !== (kind === 'cancel')) continue;
           // Two ways of saying a flight is late, and which one is right depends on whether the
-          // terminal knows the new time yet. 海航七八零二 is the only flight with a clip that names
+          // terminal knows the new time yet. 海岚七八零二 is the only flight with a clip that names
           // one — 预计起飞时间十六点四十五分 — so it gets that when it is exactly that late, and
           // every other delayed flight gets 起飞时间待定, which is what a real terminal says when
           // the answer is genuinely not known.

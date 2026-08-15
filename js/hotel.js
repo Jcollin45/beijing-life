@@ -5,7 +5,10 @@
 // metadata a future workplace chapter will attach to.  It deliberately does not know about a
 // particular restaurant, guestroom or spa fixture.
 
-const HOTEL_OUT = { x: 39.18, z: 28.40, yaw: -Math.PI / 2 };
+// The street-side arrival stands in the middle of the clear forecourt, not in the hotel taxi
+// envelope. It faces along the pavement so the third-person orbit opens over the pedestrian spine
+// instead of in a moving lane. Keep this one coordinate authoritative for both exterior seams.
+const HOTEL_OUT = { x: 39.18, z: 28.40, yaw: 0 };
 
 const HOTEL_DEPARTMENTS = Object.freeze([
   { key:'front-office', hz:'前厅部', en:'front office', floors:['hotel'] },
@@ -865,8 +868,8 @@ const HotelCore = (() => {
         // on four discs while preserving the same clear threshold and footprint.
         box(5.2,.40,-22.2,3.86,.34,1.54,col.dark,{gloss:.18,tag:'出租车'});
         box(5.2,.68,-22.2,3.70,.64,1.58,col.lacquer,{gloss:.42,tag:'出租车'});
-        ball(6.42,.89,-22.2,.76,.29,.76,col.lacquer,{mode:7,gloss:.44,tag:'出租车'});
-        ball(3.98,.87,-22.2,.62,.25,.74,col.lacquer,{mode:7,gloss:.44,tag:'出租车'});
+        ball(6.42,.89,-22.2,.76,.29,.76,col.lacquer,{gloss:.44,tag:'出租车'});
+        ball(3.98,.87,-22.2,.62,.25,.74,col.lacquer,{gloss:.44,tag:'出租车'});
         // A rounded glasshouse and painted roof cap establish one continuous sedan silhouette;
         // raked pillars below carve it into front/rear panes rather than a dark roof-box.
         ball(5.03,1.22,-22.2,1.02,.48,.70,col.glassD,{mode:7,gloss:.72,tag:'出租车'});

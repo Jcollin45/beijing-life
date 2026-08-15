@@ -31,7 +31,7 @@ BankFit['safe'] = A => {
     const z = SZ0 + .38 + colI*((SZ1-SZ0-.76)/6);
     const y = .31 + row*.48;
     box(SX+.19,y+.20,z,.045,.39,.46,row%2?col.steelD:col.steel,
-      {hard:true,mode:6,gloss:.34,tag:'保险箱'});
+      {hard:true,gloss:.34,tag:'保险箱'});
     box(SX+.218,y+.20,z-.225,.018,.39,.025,col.brass,
       {hard:true,gloss:.56,tag:'保险箱'});
     cyl(SX+.235,y+.28,z-.14,.022,.012,col.brass,{gloss:.62,rz:Math.PI/2,tag:'保险箱'});

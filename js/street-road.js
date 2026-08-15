@@ -7,46 +7,37 @@
 // which lane is which, where you may cross, when you may cross, and how long you have.
 //
 // ---------------------------------------------------------------------------------------------
-// THE "SIX-LANE" VERDICT  (STREET.md problem 3, street.js:2299)
+// THE ROAD-SPACE VERDICT  (STREET.md problem 3, street.js:2299)
 //
 // The comment is wrong; the road is right. Measured off the shell:
 //
-//     27.28 – 27.58   west kerb                      37.42 – 37.72   east kerb
-//     27.58 – 27.80   gutter, gully grates            9.84 m clear between the kerb faces
-//     27.80 – 30.20   西侧非机动车道   2.40 m         painted by the shell (street.js:1098)
-//     30.20 – 32.50   南行机动车道     2.30 m         the double yellow at 32.50 is the shell's
-//     32.50 – 35.10   北行机动车道     2.60 m         the dashed line at 35.10 is the shell's
-//     35.10 – 37.42   东侧非机动车道   2.32 m         surfaced here, to match the west side
+//     23.42 – 25.42   west clear footway  2.00 m      no shelter or furnishing consumes it
+//     25.42 – 27.67   西侧非机动车道     2.25 m      behind the protected boarding island
+//     27.67 – 29.47   separator/platform  1.80 m      .90 m r=.45 centre band before furniture
+//     29.47 – 32.67   南行/公交           3.20 m      2.82 m swept 623 envelope + .19 m/side
+//     32.67 – 35.17   北行机动车道        2.50 m      2.04 m car envelope + .23 m/side
+//     35.17 – 37.42   东侧非机动车道      2.25 m
+//     37.42 – 41.48   east footway         4.06 m      exactly 2.00 m past 商务区 metro
 //
 // That is 双向两车道 plus a 非机动车道 each side: a 朝阳区 支路, the kind of road a 胡同 actually
-// comes out onto. Six lanes needs about 24 m of carriageway; at RD0 = 27.5 that puts the far kerb
-// at 51.5 — eleven metres past SW1 = 41.0 and ten past the far building line FX = 41.6. Widening
-// would mean rebuilding the whole eastern half of the district, and it would turn the hutong into
-// the highway the Urbanist role exists to prevent. Three motor lanes is no better: 7.22 m of motor
-// carriageway is 2.4 m a lane, and 2.4 m is not a lane.
-//
-// The strongest evidence is the shell's own five parked cars. Against the lane centres derived
-// above (29.00 / 31.35 / 33.80 / 36.26) they sit at 33.8, 36.2, 33.9, 31.3, 28.9 — three of them
-// on a lane centre to within 5 cm, and the other two parked in the bike lanes, which in 北京 is
-// exactly where cars are parked. The road was always a two-lane road. Only the comment said six.
-//
-// So nothing is widened. The lanes are marked honestly for two, and the ticket to the Mech is a
-// comment change plus the two wrong numbers in the S contract (see SIGNAL.lanes below).
+// comes out onto. The former 9.84 m asphalt-only accounting could not fit two cycle tracks, the
+// emitted 623 envelope, an opposing lane and any independent platform. This uses the complete
+// public right-of-way instead: the west cycle track runs behind a real island, while the east edge
+// stays fixed so the 商务区 metro never becomes an obstacle in a painted route.
 //
 // ---------------------------------------------------------------------------------------------
 // THE CROSSING
 //
-// Two-stage, the Chinese way — but staged where a 10 m road has room for it. A refuge astride the
-// centre line is impossible here: with cars 2.04 m wide in a 2.30 m lane there is 41 cm of air at
-// the centre line, and an island needs a metre. On a 支路 with a 非机动车道 the 二次过街 island
+// Two-stage, the Chinese way. A centre-line refuge would consume one of the two motor paths, so on
+// this 支路 with a 非机动车道 the 二次过街 island
 // goes on the 机非隔离带 instead — you cross the bike lane, wait on the island behind the 隔离栏,
 // and cross the carriageway on the pedestrian green. That is what is built here, and it costs no
 // motor lane a single centimetre.
 //
-// The island is 0.90 m wide and raised only at its two ends; the crossing runs through it at road
+// The island is 1.80 m wide and raised only at its two ends; the crossing runs through it at road
 // level, because this engine walks a body at y = 0 and a 15 cm kerb across a pedestrian route is a
-// body wading through concrete. Nothing on the island carries a collider — a solid on a 90 cm
-// island is a sealed island.
+// body wading through concrete. Its west 0.30 m is the shelter furnishing strip and the remaining
+// 1.50 m is continuous platform clear width.
 //
 // ---------------------------------------------------------------------------------------------
 // THE LIGHTS, AND THE INTERFACE THE TRAFFIC AGENT READS
@@ -56,6 +47,7 @@
 //     StreetFit.road.signal.secs(t)    -> seconds left in the aspect now showing
 //     StreetFit.road.signal.stopLine   -> { north: -4.00, south: 3.60 }   z of each stop bar
 //     StreetFit.road.signal.lanes      -> the four lane centres above
+//     StreetFit.road.signal.emergency  -> deterministic fire-priority interlock and clock state
 //     StreetFit.road.signal.now        -> the same, cached, rewritten every tick
 //
 // All of it is pure and set at file load, so it can be read from another district's builder
@@ -81,24 +73,28 @@
   try { Glyphs.need('0123456789'); } catch (_) {}
 
   // ---------------------------------------------------------------- the road, measured
-  const RD0 = 27.5, RD1 = 37.5, MID = (RD0 + RD1) / 2;   // 32.50, the shell's double yellow
-  const KW = 27.58, KE = 37.42;                          // kerb faces, road side
-  const BW0 = 27.80, BW1 = 30.20;                        // 西侧非机动车道
-  const MS0 = 30.20, MS1 = 32.50;                        // 南行机动车道
-  const MN0 = 32.50, MN1 = 35.10;                        // 北行机动车道
-  const BE0 = 35.10, BE1 = 37.42;                        // 东侧非机动车道
+  const RD0 = 25.42, RD1 = 37.42;                        // continuous public road-space edges
+  const KW = RD0, KE = RD1;                              // kerb faces, road side
+  const BW0 = 25.42, BW1 = 27.67;                        // 西侧非机动车道
+  const ISX0 = 27.67, ISX1 = 29.47;                      // 1.80 m island / protected separator
+  const MS0 = 29.47, MS1 = 32.67;                        // 南行公交/机动车道
+  const MN0 = 32.67, MN1 = 35.17;                        // 北行机动车道
+  const BE0 = 35.17, BE1 = 37.42;                        // 东侧非机动车道
+  const MID = MS1;                                       // 双黄线 between the motor lanes
   const CZ0 = -2.50, CZ1 = 2.10;                         // the shell's zebra, in z
-  const ISX0 = 29.30, ISX1 = 30.20;                      // 安全岛, the refuge
   const ISZ0 = -3.60, ISZ1 = 3.00;
   const ISD0 = -2.72, ISD1 = 2.16;                       // the flush deck the crossing runs over
-  const RAILX = 30.14;                                   // 机非隔离栏 — clear of a car in MS by 13 cm
+  const BPZ0 = -14.80, BPZ1 = ISZ0;                      // 公交 boarding platform, joined to refuge
+  const BCZ0 = -11.20, BCZ1 = -7.90;                    // broad crossing from shelter to platform
+  const RAILX = 29.46;                                   // rail face retains .15 m from straight 623
   const SLN = -4.00, SLS = 3.60;                         // 停止线, north- and south-side bars
 
   // The decal stack, in millimetres above the ground plane. The shell's own road markings are at
-  // 8–9 mm, its bike-lane surface at 6 and its asphalt at 4, so nothing new is ever laid on a plane
-  // something else already occupies and every new layer clears the one under it by at least ten:
+  // 8–9 mm, its west bike-lane surface at 6 and its asphalt at 4.  This district's east surface is
+  // relaid at 12 mm: the former 6 mm copy sat only 2 mm above 188 m of asphalt, below far-view depth
+  // precision.  Nothing new is ever laid on a plane something else already occupies:
   //
-  //     6.0   east bike-lane surface   (the shell's west one is at exactly this, on other x)
+  //    12.0   east bike-lane surface   (the shell's west one is at 6.0, on disjoint x)
   //    14.0   the ghost of an older centre line        14.5   the made-good trench
   //    15.5   the trench's seams                       16.5   YP — lane lines, stop bars, the island
   //    20.5   tyre polish across the zebra             22.0   the east 机非线, over the old dashes
@@ -124,24 +120,67 @@
   const CYCLE = 66, G_END = 30, A_END = 33, W0 = 35, W1 = 55, F1 = 62;
   const wrap = t => ((t % CYCLE) + CYCLE) % CYCLE;
 
+  // Fire priority is a scheduled interval on the same clock every street controller receives. It
+  // is deliberately not a wall-clock timeout: a paused scene, a deterministic replay and the Node
+  // mobility gate all observe the same start/end instants. The token prevents an old dispatch from
+  // cancelling a newer one.
+  const emergencyState = {
+    active: false, source: null, start: Infinity, until: -Infinity, token: 0,
+  };
+  const EMERGENCY = {
+    controls: ['bikeW', 'south', 'north', 'bikeE'],
+    state: emergencyState,
+    activate(source, at, duration) {
+      if (typeof source !== 'string' || !source || !Number.isFinite(at) ||
+          !Number.isFinite(duration) || duration <= 0) return 0;
+      emergencyState.source = source;
+      emergencyState.start = at;
+      emergencyState.until = at + duration;
+      emergencyState.token++;
+      emergencyState.active = this.active(SIGNAL.now.t);
+      return emergencyState.token;
+    },
+    cancel(token) {
+      if (!Number.isInteger(token) || token !== emergencyState.token ||
+          emergencyState.until <= emergencyState.start) return false;
+      emergencyState.source = null;
+      emergencyState.start = Infinity;
+      emergencyState.until = -Infinity;
+      emergencyState.active = false;
+      return true;
+    },
+    active(t) {
+      return Number.isFinite(t) && t >= emergencyState.start && t < emergencyState.until;
+    },
+    remaining(t) {
+      return this.active(t) ? Math.max(0, emergencyState.until - t) : 0;
+    },
+  };
+
   const SIGNAL = {
     cycle: CYCLE,
     // What the motor traffic on this road is being shown.
-    phase(t) { const u = wrap(t); return u < G_END ? 'green' : u < A_END ? 'amber' : 'red'; },
+    phase(t) {
+      if (EMERGENCY.active(t)) return 'red';
+      const u = wrap(t); return u < G_END ? 'green' : u < A_END ? 'amber' : 'red';
+    },
     // May a car cross the stop line. Amber is deliberately false: whether a car already past the
     // bar keeps going is the traffic agent's decision, not the light's.
-    go(t) { return wrap(t) < G_END; },
+    go(t) { return !EMERGENCY.active(t) && wrap(t) < G_END; },
     // Seconds left in the aspect now showing, 1..n, the way a Chinese vehicle countdown reads.
     secs(t) {
+      if (EMERGENCY.active(t)) return Math.max(1, Math.ceil(EMERGENCY.remaining(t)));
       const u = wrap(t);
       return Math.max(1, Math.ceil(u < G_END ? G_END - u : u < A_END ? A_END - u : CYCLE - u));
     },
     // What the pedestrian is being shown.
     ped(t) {
+      if (EMERGENCY.active(t)) return 'stop';
       const u = wrap(t);
       return u < W0 ? 'stop' : u < W1 ? 'walk' : u < F1 ? 'flash' : 'stop';
     },
     pedSecs(t) {
+      if (EMERGENCY.active(t)) return Math.max(1, Math.ceil(EMERGENCY.remaining(t)));
       const u = wrap(t);
       if (u >= W0 && u < F1) return Math.max(1, Math.ceil(F1 - u));
       return Math.max(1, Math.ceil(u < W0 ? W0 - u : CYCLE - u + W0));
@@ -149,25 +188,45 @@
     // Where a car has to stop. The west lane runs +z and meets the north-side bar; the east lane
     // runs -z and meets the south-side bar. The names are geographic sides, not travel directions.
     stopLine: { north: SLN, south: SLS },
-    crossing: { z0: CZ0, z1: CZ1, blocked: true },
+    crossing: {
+      z0: CZ0, z1: CZ1, blocked: true,
+      stages: {
+        cycle: { x0: KW, x1: ISX0, blocked: true },
+        carriageway: { x0: ISX1, x1: KE, blocked: true },
+      },
+    },
     // The lane centres this district has marked the road for.
     //
-    // TICKET, Mech: `S.road.south` is 29.90, which is inside the shell's own painted bike lane,
-    // and `S.road.north` is 35.10, which is a lane *line*, not a lane centre. A car driven down
-    // either of them is a car in a bike lane. They should become the four numbers below.
-    lanes: { bikeW: 29.00, south: 31.35, north: 33.80, bikeE: 36.26 },
+    // Centres are derived from the published edges. Keeping one source of truth matters here: the
+    // old literal south centre put a lane-width bus exactly on both paint lines, while its mirrors
+    // extended another quarter-metre into the cycle track and opposing lane.
+    lanes: { bikeW: (BW0 + BW1) / 2, south: (MS0 + MS1) / 2,
+             north: (MN0 + MN1) / 2, bikeE: (BE0 + BE1) / 2 },
     laneEdges: { bikeW: [BW0, BW1], south: [MS0, MS1], north: [MN0, MN1], bikeE: [BE0, BE1] },
-    // The refuge sits in the east 0.90 m of the west bike lane, so a bicycle passing z -3.60..3.00
-    // has 27.80–29.30 to ride in and has to deflect. That is what the island is for and what the
-    // cycles district should steer around; no motor lane is touched.
-    island: { x0: ISX0, x1: ISX1, z0: ISZ0, z1: ISZ1, bikeSqueeze: [BW0, ISX0] },
+    // The refuge is an independent strip. Cycles keep their complete protected track beside it;
+    // there is no zero-width r=.45 island and no 1.50 m bicycle pinch to steer through.
+    island: { x0: ISX0, x1: ISX1, z0: ISZ0, z1: ISZ1, bikeSqueeze: [BW0, BW1] },
+    // The bus remains in its motor lane beside this platform. Passengers cross only the cycle
+    // track from the shelter; they no longer step onto a zebra hidden beneath an eleven-metre bus.
+    busPlatform: { x0: ISX0, x1: ISX1, z0: BPZ0, z1: BPZ1,
+                   furnishing: [ISX0, ISX0 + .30], clear: [ISX0 + .30, ISX1],
+                   cycleCrossing: { z0: BCZ0, z1: BCZ1 } },
+    // North of the base road the public patient route ends at the cycle-track kerb. Emergency
+    // vehicles cross the protected track only on this one marked, priority-controlled table.
+    hospitalAccess: {
+      footway: [23.20, BW0], cycle: [BW0, BW1],
+      ambulanceCrossing: { z: 35.55, width: 3.88, controls: ['bikeW'] },
+    },
+    loadingBay: null,
     kerbs: { west: KW, east: KE },
-    now: { t: 0, phase: 'green', secs: 30, ped: 'stop', pedSecs: 35, mayCross: false },
+    emergency: EMERGENCY,
+    now: { t: 0, phase: 'green', secs: 30, ped: 'stop', pedSecs: 35, mayCross: false,
+           emergency: false, emergencySource: null },
   };
 
   // ---------------------------------------------------------------- what the tick drives
   const heads = [];          // every signal head, this file's and the shell's
-  const crossingGates = [];  // invisible kerb-line gates, opened only for the walk phase
+  const crossingGates = [];  // invisible stage-boundary gates, opened only for walk/clearance
   let built = false;
 
   // Lamp colours, held as literals rather than rebuilt per frame — and never looked up by an index
@@ -183,7 +242,7 @@
     // The shell's props as they stood before this district added any of its own, so the search for
     // the existing signal mast at the bottom cannot pick up one of my own lamps by mistake.
     const P0 = S.props.slice();
-    const { box, cyl, flat, taper, glyphs, solid, thing, cap, C } = S;
+    const { box, cyl, ball, flat, taper, glyphs, solid, thing, cap, C } = S;
 
     const PAINT = C('#cdc7b4'), PAINTW = C('#ded8c6');
     const BIKE = C('#6b5148'), TRENCH = C('#2f312c'), SEAM = C('#252723');
@@ -202,32 +261,36 @@
     // drawn as thirty pieces is thirty draw calls for a hundred metres of paint. Every one of them
     // is broken at the crossing, because that is where road markings stop.
 
-    // The east 非机动车道, surfaced to match the west one the shell already lays. Without it the
-    // dashed line at 35.10 has nothing on either side of it and reads as a motorway lane divider.
-    flat((BE0 + BE1) / 2, .006, 0, BE1 - BE0, 188, BIKE, { mode: 10, gloss: .18, ...ROADMAT });
+    // The east 非机动车道, surfaced to match the west one the shell lays against the moved kerb.
+    flat((BE0 + BE1) / 2, .012, 0, BE1 - BE0, 188, BIKE, { mode: 10, gloss: .18, ...ROADMAT });
 
-    // 机非分界线 west — the solid line between the bike lane and the carriageway.
-    // Broken at BOTH crossings now — road markings stop where a crossing starts, and there are
-    // two of them on this road.
-    for (const [z0, z1] of [[-90, -11.00], [-8.40, ISZ0], [ISZ1, 90]])
+    // The 1.80 m protected separator is part of the continuous road-space section. At the stop it
+    // becomes the boarding platform; at the zebra it becomes the refuge. Between those places the
+    // subdued paving makes the cycle/motor separation explicit without a forest of blocky props.
+    flat((ISX0 + ISX1) / 2, .012, 0, ISX1 - ISX0, 188, CONCD,
+      { mode: 9, gloss: .16, ...CONMAT });
+
+    // 机非分界线 west — the cycle-side edge of the protected separator. It hands over to the
+    // flush platform/refuge where passengers cross, but remains visually continuous elsewhere.
+    for (const [z0, z1] of [[-90, BPZ0], [ISZ1, 90]])
       flat(BW1, YP, (z0 + z1) / 2, .15, z1 - z0, PAINT, { gloss: .10 });
-    // 机非分界线 east — the shell's dashes at 35.10, re-lined solid. A road that has been marked
+    // 机非分界线 east — the shell's former dashes, re-lined solid. A road that has been marked
     // over its old lines is what every road in this city is, and the ghost of the dashes under
     // 22 cm of new paint is why it is drawn that wide. Broken at the crossing and at the three
     // manhole covers on x 35.30, which the line would otherwise slice through.
-    for (const [z0, z1] of [[-90, -28.6], [-27.6, -11.00], [-8.40, ISZ0], [ISZ1, 33.4], [34.4, 90]])
+    for (const [z0, z1] of [[-90, -28.6], [-27.6, ISZ0], [ISZ1, 33.4], [34.4, 90]])
       flat(BE0, .0220, (z0 + z1) / 2, .22, z1 - z0, PAINT, { gloss: .10 });
     // 边缘线 — the outer edge of the east bike lane, against the kerb.
-    for (const [z0, z1] of [[-90, -11.00], [-8.40, ISZ0], [ISZ1, 90]])
+    for (const [z0, z1] of [[-90, ISZ0], [ISZ1, 90]])
       flat(KE - .22, YP, (z0 + z1) / 2, .12, z1 - z0, PAINT, { gloss: .09 });
 
     // 停止线. Both run from the centre line out to the kerb, over the bike lane too — bikes hold
     // at the same bar.
-    flat((MN0 + KE) / 2 + .05, YP, SLS, KE - MN0 - .1, .42, PAINTW, { gloss: .10 });
+    flat((MN0 + KE) / 2, YP, SLS, KE - MN0 - .10, .42, PAINTW, { gloss: .10 });
     // The west-lane bar is in two pieces because the guard rail stands between them, which is
     // what a stop line does when a 隔离栏 crosses it.
-    flat((BW0 + 30.04) / 2, YP, SLN, 30.04 - BW0, .42, PAINTW, { gloss: .10 });
-    flat((30.24 + MS1) / 2, YP, SLN, MS1 - 30.24 - .05, .42, PAINTW, { gloss: .10 });
+    flat((BW0 + BW1) / 2, YP, SLN, BW1 - BW0 - .10, .42, PAINTW, { gloss: .10 });
+    flat((MS0 + MS1) / 2, YP, SLN, MS1 - MS0 - .10, .42, PAINTW, { gloss: .10 });
 
     // 导向箭头 — a straight-ahead arrow in each motor lane, back from its stop bar. There is no
     // dashed centre line on this road to draw, because a two-lane road at a signalised crossing
@@ -256,7 +319,7 @@
     // and the lane markings drawn back over the top of it, because it was re-lined afterwards.
     flat((MN0 + KE) / 2, YT, 9.05, KE - MN0, 1.34, TRENCH, { mode: 10, gloss: .17, ...ROADMAT });
     for (const zz of [8.38, 9.72])
-      flat((MN0 + KE) / 2, .0155, zz, KE - MN0, .07, SEAM, { gloss: .08 });
+      flat((MN0 + KE) / 2, .018, zz, KE - MN0, .07, SEAM, { gloss: .08 });
 
     // 道钉 — cats-eyes down the centre line, between the two yellows. One mesh, one mode, one
     // size: the whole run batches into a single draw call.
@@ -266,29 +329,48 @@
         { hard: true, gloss: .62, mode: 1, glow: .06 });
     }
 
-    // ---------------------------------------------------------- 安全岛, the refuge
-    box(29.75, .066, (ISZ0 + ISD0) / 2, .90, .13, ISD0 - ISZ0, CONC,
+    // ---------------------------------------------------------- 公交站台 + 安全岛
+    // A 1.80 m flush boarding island connects the shelter to the refuge. Cycles keep a distinct
+    // 2.25 m bypass behind it; the west 0.30 m carries slim shelter furniture and the remaining
+    // 1.50 m stays clear. Keeping the deck flush preserves the walkable crossing contract.
+    const ISXC = (ISX0 + ISX1) / 2, ISW = ISX1 - ISX0;
+    flat(ISXC, YP, (BPZ0 + BPZ1) / 2, ISW, BPZ1 - BPZ0, CONCD,
+      { mode: 9, gloss: .18, ...CONMAT });
+    // Continuous tactile edge at the bus side, with a darker worn centre so the platform reads as
+    // civic paving rather than one new rectangular block laid on the road.
+    flat(ISX1 - .10, .0295, (BPZ0 + BPZ1) / 2, .16, BPZ1 - BPZ0 - .18, TACT,
+      { mode: 9, gloss: .20 });
+    flat(ISX0 + .48, .0245, (BPZ0 + BPZ1) / 2, .36, BPZ1 - BPZ0 - .34, CONC,
+      { mode: 10, gloss: .12, ...CONMAT });
+    // Low cycle-side kerb, interrupted only where passengers cross from the shelter.
+    for (const [z0, z1] of [[BPZ0, BCZ0], [BCZ1, BPZ1]])
+      box(ISX0 + .05, .026, (z0 + z1) / 2, .10, .05, z1 - z0, CONC,
+        { hard: true, gloss: .18 });
+
+    // The existing refuge is the north end of the same protected strip.
+    box(ISXC, .066, (ISZ0 + ISD0) / 2, ISW, .13, ISD0 - ISZ0, CONC,
       { hard: true, mode: 9, gloss: .16, ...CONMAT });
-    box(29.75, .066, (ISD1 + ISZ1) / 2, .90, .13, ISZ1 - ISD1, CONC,
+    box(ISXC, .066, (ISD1 + ISZ1) / 2, ISW, .13, ISZ1 - ISD1, CONC,
       { hard: true, mode: 9, gloss: .16, ...CONMAT });
     // the deck the crossing runs over, flush, and the tactile block laid on it
-    flat(29.75, YP, (ISD0 + ISD1) / 2, .90, ISD1 - ISD0, CONCD,
+    flat(ISXC, YP, (ISD0 + ISD1) / 2, ISW, ISD1 - ISD0, CONCD,
       { mode: 9, gloss: .18, ...CONMAT });
-    flat(29.75, .0295, (CZ0 + CZ1) / 2, .78, CZ1 - CZ0 - .30, TACT, { mode: 9, gloss: .20 });
+    flat(ISXC, .0295, (CZ0 + CZ1) / 2, ISW - .12, CZ1 - CZ0 - .30, TACT,
+      { mode: 9, gloss: .20 });
     for (let z = CZ0 + .45; z < CZ1 - .25; z += .40)
-      box(29.75, .0385, z, .70, .012, .09, TACTD, { hard: true, gloss: .22 });
+      box(ISXC, .0385, z, ISW - .20, .012, .09, TACTD, { hard: true, gloss: .22 });
     // A low kerb line each side of the deck: high enough to read as an island, low enough that
     // walking over it is walking over it.
     for (const x of [ISX0 + .05, ISX1 - .05])
       box(x, .026, (ISD0 + ISD1) / 2, .10, .05, ISD1 - ISD0, CONC, { hard: true, gloss: .18 });
     // Hazard boards on the two noses, each facing the traffic that meets it.
     for (const [zz, out] of [[ISZ0 - .03, -.035], [ISZ1 + .03, .035]]) {
-      box(29.75, .40, zz, .74, .46, .05, C('#e0bb2c'),
+      box(ISXC, .40, zz, ISW - .16, .46, .05, C('#e0bb2c'),
         { hard: true, gloss: .26, mode: 1, tag: '人行横道' });
       for (let i = -1; i <= 1; i++)
-        box(29.75 + i * .24, .40, zz + out, .12, .46, .012, SIGNK,
+        box(ISXC + i * .42, .40, zz + out, .16, .46, .012, SIGNK,
           { hard: true, gloss: .20, mode: 1, rz: .38 });
-      cyl(29.75, .70, zz, .045, .62, RAIL, { gloss: .40 });
+      cyl(ISXC, .70, zz, .045, .62, RAIL, { gloss: .40 });
     }
 
     // ---------------------------------------------------------- 机非隔离栏, the guard rail
@@ -296,73 +378,62 @@
     // The fence between the carriageway and the bike lane that every Chinese arterial has, and what
     // makes the crossing read as the way through rather than as a place you happen to walk across.
     //
-    // NO COLLIDER, and that is a measured decision rather than laziness. It first shipped with one
-    // — two solids, a 6.00 m clear gap at the island, verified walkable end to end. Then the other
-    // districts landed and a bus from js/street-traffic.js came to rest with a static solid at
-    // x 30.03–32.58, z -6.98–4.22, which is 11 m of vehicle standing on the zebra. With the rail
-    // solid as well, the two together sealed the whole east half of the road: `clampMove` at
-    // r = 0.30 stopped a body walking east at x 29.73 and one walking west at 32.88, and the island
-    // lost two thirds of its standable width. The bus is the anomaly and it is ticketed, but a
-    // barrier that turns somebody else's misparked vehicle into a sealed district is not a barrier
-    // worth having — and every railing js/street.js builds itself (the pavement rail at RD0-.55,
-    // the bollards) is scenery with no collider, so this is the shell's own convention.
-    // The west-kerb 公交站 is a real bay, so its rail has the matching opening. The former run to
-    // z=-13.40 passed through the bus body for its entire dwell and made both read as toy scenery.
-    for (const [z0, z1] of [[-6.10, ISZ0], [ISZ1, 13.40]]) {
-      const n = Math.max(2, Math.round((z1 - z0) / 1.9));
+    // NO COLLIDER, and that is a measured decision rather than laziness. A solid rail plus the
+    // moving vehicle colliders can seal a 90 cm refuge or platform even though the visible route is
+    // open; `clampMove` spends another 30 cm on the player's body radius. Every railing the shell
+    // builds itself (the pavement rail and bollards included) follows the same scenery-only rule.
+    // The bus-side rail opens along the complete boarding face and resumes beyond the bus's nose.
+    // The cycle side deliberately remains open: a second rail there made the 90 cm platform read
+    // as a cage and left no generous place for a passenger to turn after crossing from the shelter.
+    function railRun(x, z0, z1) {
+      const n = Math.max(2, Math.round((z1 - z0) / 2.8));
       for (let i = 0; i <= n; i++) {
         const pz = z0 + (z1 - z0) * (i / n);
-        cap(RAILX, .53, pz, .055, 1.02, .055, RAILD, { gloss: .42 });
-        cyl(RAILX, 1.06, pz, .048, .05, RAIL, { gloss: .44 });
+        cap(x, .53, pz, .055, 1.02, .055, RAILD, { gloss: .42 });
+        cyl(x, 1.06, pz, .048, .05, RAIL, { gloss: .44 });
       }
-      for (const y of [.99, .30])
-        cap(RAILX, y, (z0 + z1) / 2, .035, z1 - z0, .035, RAIL, { rx: Math.PI / 2, gloss: .42 });
-      for (let z = z0 + .36; z < z1 - .1; z += .36)
-        cap(RAILX, .655, z, .022, .66, .022, RAIL, { gloss: .40 });
+      for (const y of [.96, .32])
+        cap(x, y, (z0 + z1) / 2, .035, z1 - z0, .035, RAIL, { rx: Math.PI / 2, gloss: .42 });
     }
+    for (const [z0, z1] of [[-6.10, ISZ0], [ISZ1, 13.40]]) railRun(RAILX, z0, z1);
 
     // ---------------------------------------------------------- 缘石坡道, the dropped kerbs
     // A ramp cut through the shell's continuous kerb at each end of the crossing, and the yellow
     // warning block a Chinese footway lays at the top of one.
-    ramp(27.94, -.135);
-    ramp(37.06, .135);
-    tactile(26.98, -0.20, .52, CZ1 - CZ0 + .20);
-    tactile(38.06, -0.20, .52, CZ1 - CZ0 + .20);
+    ramp(KW + .36, -.135);
+    ramp(KE - .36, .135);
+    tactile(KW - .60, -0.20, .52, CZ1 - CZ0 + .20);
+    tactile(KE + .64, -0.20, .52, CZ1 - CZ0 + .20);
 
-    // ---------------------------------------------------------- 人行横道 二, uncontrolled
-    //
-    // This road had ONE gap in 9.84 m of barrier, at z -2.50 .. 2.10, and everything the west
-    // footway is now for is south of it: 北京银行 at z -11.40 .. -7.10, 药店 at -6.90 .. -3.60,
-    // the 公交车站 at -12.0. Coming off the bus and crossing to the office meant walking ten
-    // metres north to a gap and ten back. This is the second gap, on the bank's own centre line
-    // at z -9.25.
-    //
-    // No signal, and that is the design, not a shortcut. An uncontrolled 人行横道 between two
-    // junctions is the commonest crossing in this city; js/street-traffic.js is not told about
-    // it, exactly as a driver is not told about it, and the shell's one signalised crossing keeps
-    // being the one that stops the traffic. Paint, two dropped kerbs and two tactile blocks —
-    // it adds no collider and no phase, so it cannot trap a body or a car.
-    const XZ0 = -11.00, XZ1 = -8.40, XZC = (XZ0 + XZ1) / 2, XD = XZ1 - XZ0;
-    // 45 cm bars on a 1.05 m pitch, which is what the shell's own zebra is laid on. Started clear
-    // of the kerb faces so no bar half-disappears under a kerb.
-    for (let x = KW + .58; x < KE - .45; x += 1.05)
-      flat(x, YP, XZC, .45, XD, PAINTW, { gloss: .10 });
-    // 缘石坡道 both sides, the same 1.30 m ramp and the same tilt the first crossing uses.
-    for (const [cx, tilt] of [[27.94, -.135], [37.06, .135]]) {
-      box(cx, .085, XZC, 1.30, .055, XD, CONC,
-        { hard: true, rz: tilt, mode: 9, gloss: .18, ...CONMAT });
-      for (const s of [-1, 1])
-        box(cx, .105, XZC + s * (XD / 2 + .11), 1.30, .16, .20, CONC,
-          { hard: true, rz: tilt * .55, mode: 9, gloss: .18 });
-    }
-    tactile(26.98, XZC, .52, XD + .20);
-    tactile(38.06, XZC, .52, XD + .20);
+    // ---------------------------------------------------------- 站台过街, uncontrolled cycle crossing
+    // The former second zebra crossed the complete 9.84 m road directly beneath the dwelling bus.
+    // Its eastern half was unusable and visually promised a crossing that traffic never observed.
+    // Passengers now cross only the west cycle track from the shelter to the protected platform;
+    // the signalised zebra remains the sole route across motor traffic.
+    const BCZC = (BCZ0 + BCZ1) / 2, BCD = BCZ1 - BCZ0;
+    for (let x = KW + .40; x < ISX0 - .18; x += .67)
+      flat(x, YP, BCZC, .34, BCD, PAINTW, { gloss: .10 });
+    // One dropped kerb at the footway. The platform deck is already flush at the other end.
+    box(KW + .36, .085, BCZC, 1.30, .055, BCD, CONC,
+      { hard: true, rz: -.135, mode: 9, gloss: .18, ...CONMAT });
+    for (const s of [-1, 1])
+      box(KW + .36, .105, BCZC + s * (BCD / 2 + .11), 1.30, .16, .20, CONC,
+        { hard: true, rz: -.074, mode: 9, gloss: .18 });
+    tactile(KW - .60, BCZC, .52, BCD + .20);
+    flat(ISX0 + .18, .0315, BCZC, .24, BCD - .18, TACT, { mode: 9, gloss: .20 });
 
-    // The lamps used to be advice only: the player could walk straight into live traffic on red.
-    // A thin collider at each kerb makes the crossing enforce the same phase it displays. The tick
-    // keeps both open for anybody already on the zebra so a light change never traps them mid-road.
-    crossingGates.push(solid(KW + .08, KW + .18, CZ0 - .10, CZ1 + .10));
-    crossingGates.push(solid(KE - .18, KE - .08, CZ0 - .10, CZ1 + .10));
+    // Four thin boundary gates make this an actual two-stage crossing. A person in the west cycle
+    // stage may clear to the footway or refuge after the signal changes; a person in the carriageway
+    // stage may clear to the refuge or east footway. A body waiting on the refuge is in neither
+    // stage, so it cannot use "already crossing" to step into live motor traffic.
+    const gate = (stage, side, x0, x1) => {
+      const solidGate = solid(x0, x1, CZ0 - .10, CZ1 + .10);
+      crossingGates.push({ stage, side, solid: solidGate });
+    };
+    gate('cycle', 'west', KW + .08, KW + .18);
+    gate('cycle', 'refuge', ISX0 - .18, ISX0 - .08);
+    gate('carriageway', 'refuge', ISX1 + .08, ISX1 + .18);
+    gate('carriageway', 'east', KE - .18, KE - .08);
 
     function ramp(cx, tilt) {
       box(cx, .085, (CZ0 + CZ1) / 2, 1.30, .055, CZ1 - CZ0, CONC,
@@ -377,40 +448,13 @@
         box(cx, .0245, z, w - .10, .014, .10, TACTD, { hard: true, gloss: .22 });
     }
 
-    // ---------------------------------------------------------- 装卸货泊位, the loading bay
+    // ---------------------------------------------------------- loading, deliberately absent
     //
-    // B9 of STOREFRONT-UPGRADES.md asks for it "on the west kerb by 银行". The west kerb beside the
-    // branch cannot take it, and the numbers say so rather than taste:
-    //
-    //   -17.60 .. -6.40   the 公交 bay. js/street-traffic.js:681 stops the bus on STOP_U = -12.0,
-    //                     and :590 hangs the hull on the centre — an 11.2 m bus (:394) therefore
-    //                     rests across the whole of the branch's kerb, z -11.40 .. -7.10.
-    //   -11.00 ..  -8.40  人行横道 二, above. No markings cross a crossing.
-    //    -4.00            SLN, the northbound stop bar. Nothing is bayed up to a stop line.
-    //
-    // Which leaves 2.30 m between the bus's nose and the stop bar and 2.10 m between the crossing
-    // and the bus's flank: there is no 6 m of free west kerb anywhere south of the bay. So the bay
-    // goes at the first clear kerb north of it — 1.20 m off the bus's tail — where a 运钞车 for the
-    // branch or a delivery for the corner block would actually stand. It is 5.60 m beyond the road
-    // zone's own z0 of -13.50, so no body ever stands on it; it is read from the footway, which at
-    // z -13.20 is between 5.6 and 11.6 m away.
-    //
-    // Paint only, as the ticket says: no collider, no kerb, nothing that could catch a wheel. The
-    // bay carries no characters because `glyphs` cannot lie down — js/build.js:136 applies
-    // rotX(PI/2) after rotY(yaw), so every glyph quad this engine makes is vertical, and painting
-    // 装卸货 as stroke quads is thirty-odd quads on a road that is fill-rate bound.
-    {
-      const LZ0 = -24.80, LZ1 = -18.80, LZC = (LZ0 + LZ1) / 2, LL = LZ1 - LZ0;
-      const LX0 = 27.92, LX1 = 30.00, LXC = (LX0 + LX1) / 2, LW = LX1 - LX0;
-      for (const x of [LX0, LX1]) flat(x, YP, LZC, .12, LL, PAINTW, { gloss: .10 });
-      for (const z of [LZ0, LZ1]) flat(LXC, YP, z, LW + .12, .12, PAINTW, { gloss: .10 });
-      // The amber band down the kerb side is what separates a 装卸货泊位 from an ordinary bay: it
-      // is the edge you may not park across. STUDA is this file's own amber, not a new colour.
-      flat(LX0 + .40, YP, LZC, .40, LL - .40, STUDA, { gloss: .12 });
-      // And the polish, so 12 m² of new paint does not read as a decal laid on old asphalt — the
-      // same trick and the same colour as the two tyre bands across the zebra above.
-      flat(LXC + .30, .0205, LZC + .60, 1.50, 3.20, SCUFF, { mode: 10, gloss: .26, ...ROADMAT });
-    }
+    // The former white rectangle at x 27.92..30.00 was painted directly over the live west cycle
+    // track. Moving it into the 623 lane would only exchange that contradiction for one in which a
+    // bus drove through every occupied loading space. There is no independently tapered service
+    // pocket in this cross-section, so the truthful contract is `SIGNAL.loadingBay === null` and no
+    // bay paint. Loading belongs in a later off-street/service-pocket ticket with its own route.
 
     // ---------------------------------------------------------- 人行灯, the pedestrian signals
     //
@@ -422,9 +466,9 @@
     // green while you walk, exactly as the LED units on every Beijing crossing do it. Sign TEXT is
     // never given a glow — the field behind it is what emits, or the bloom turns a junction into a
     // half-transparent copy of itself.
-    pedPole(29.75, 2.72, 2.62, -Math.PI / 2, 2.28);      // on the 安全岛 — stage one
+    pedPole(27.82, 2.72, 2.62, -Math.PI / 2, 2.28);      // refuge furnishing edge — stage one
     pedPole(37.92, 2.95, 2.90, -Math.PI / 2, 2.46);      // far kerb — stage two, the hero
-    pedPole(26.72, 3.30, 2.90, Math.PI / 2, 2.40);       // near kerb, for the way back
+    pedPole(27.82, 3.30, 2.90, Math.PI / 2, 2.40);       // median edge, for the way back
 
     function pedPole(x, z, h, yaw, hy) {
       cyl(x, .10, z, .17, .20, POLED, { gloss: .28, ...CONMAT });
@@ -475,29 +519,17 @@
     // with nothing written on it teaches nobody anything.
     // Set back from the crossing on the approach side of each direction, which is where a warning
     // sign goes and also keeps them off the two signal poles.
-    crossSign(26.66, 3.06, -4.60, Math.PI);     // west kerb, read by southbound traffic
+    // The west plate shares the shell's signal mast. A second full-height pole only 76 cm away
+    // made two black bars across PHARMACY_OUT; the short bracket keeps the warning in its proper
+    // approach position without turning the branch threshold into a pole corral.
+    crossSign(28.20, 3.06, -4.60, Math.PI, { mount: [27.82, -5.90] });
     crossSign(37.98, 3.10, 3.40, 0);            // east kerb, read by northbound traffic
 
-    // B10. 人行横道 二 had paint, two dropped kerbs and two tactile blocks and nothing that said
-    // what it was. It gets the same plate each side and NOTHING ELSE — no head, no countdown, no
-    // phase, no gate. It is uncontrolled by design; a signal head there would be a promise the
-    // traffic district was never told to keep.
-    //
-    // Neither plate is on the 26.66 / 37.98 pair the first crossing uses, and both moves are
-    // forced by geometry the brief did not carry:
-    //   * west — the shell's shelter (js/street.js:2441, bsx = RD0-1.35 = 26.15) fills
-    //     x 25.00..27.10, z -15.70..-8.30 and glazes at 26.99, so 26.66 buries the plate in it and
-    //     stands the pole in the bench. Out on the kerb stone at 27.40 there is 41 cm between that
-    //     glass and the 27.58 kerb face; the plate's 66 cm overhangs the channel by 15 cm at
-    //     2.73 m, which is clear of everything — the bus rests at x >= 28.09. Set back 2.10 m from
-    //     XZ0, exactly as the first crossing's west plate is set back from CZ0.
-    //   * east — 商务区's metro mouth is at (38.70, -5.20) and the shell's collider round it runs
-    //     x 36.65..40.00, z -6.10..-3.90, so the matching 2.10 m set-back would put the pole on the
-    //     stair. 3.20 m back, at z -7.60, clears the mouth by 1.50 m.
-    crossSign(27.40, 3.06, -13.10, Math.PI);    // west kerb, southbound, 2.10 m back from XZ0
-    crossSign(37.98, 3.10, -7.60, 0);           // east kerb, northbound, 3.20 m back from XZ1
+    // The short shelter-to-platform crossing deliberately gets no motor-traffic warning plates:
+    // it never enters a motor lane. Its tactile landing, interrupted rail and compact zebra make
+    // the passenger route explicit without falsely advertising a second road crossing.
 
-    function crossSign(x, y, z, yaw) {
+    function crossSign(x, y, z, yaw, support = null) {
       const c = Math.cos(yaw), s = Math.sin(yaw);
       const at = (out, up, side) => [x + s * out + c * side, y + up, z + c * out - s * side];
       const put = (out, up, side, sx, sy, sz, colr, o = {}) => {
@@ -517,14 +549,26 @@
       const p = at(.020, -.475, 0);
       glyphs(p[0], p[1], p[2], yaw, '人行横道',
         { size: .150, gap: .028, color: SIGNK, gloss: .10, lift: .008, tag: '人行横道' });
-      // Behind the plate, not through it, and tall enough to actually reach the sign it carries.
+      // Behind the plate, not through it. The near-side plate is bracketed to the existing signal
+      // mast; the far-side plate retains its own post because no other support exists there.
       const bz = z - c * .07, bx = x - s * .07;
-      cyl(bx, (y + .26) / 2, bz, .055, y + .26, POLE, { gloss: .42 });
-      cyl(bx, .07, bz, .13, .14, POLED, { gloss: .28 });
+      if (support && support.mount) {
+        const [mx, mz] = support.mount, dx = bx - mx, dz = bz - mz;
+        cap((bx + mx) / 2, y - .21, (bz + mz) / 2, .032, Math.hypot(dx, dz), .032, POLE,
+          { ry: -Math.atan2(dz, dx), rz: Math.PI / 2, gloss: .42 });
+        cap(bx, y - .08, bz, .030, .28, .030, POLE, { gloss: .42 });
+      } else {
+        cyl(bx, (y + .26) / 2, bz, .055, y + .26, POLE, { gloss: .42 });
+        cyl(bx, .07, bz, .13, .14, POLED, { gloss: .28 });
+      }
     }
 
     // ---------------------------------------------------------- 限速 and the 电子警察
-    speedSign(26.60, -7.90, Math.PI);
+    // Beyond the junction rather than in the bank/pharmacy establishing pocket. At -7.90 the pole
+    // and two plates sat directly in BANK_OUT's foreground beside the legacy advert and bin; the
+    // first north-side move also stranded its label beyond the authored walk zone. This repeat is
+    // on accessible south pavement and remains legible to +z traffic leaving the signals.
+    speedSign(27.82, 7.85, Math.PI);
     gantry(38.30, 6.40);
 
     function speedSign(x, z, yaw) {
@@ -553,7 +597,7 @@
       cap(x - 2.30, 5.94, z, .085, 4.90, .085, POLE,
         { rz: Math.PI / 2, gloss: .38, tag: '红绿灯' });
       cap(x - .70, 5.35, z, .05, 1.66, .05, POLE, { rz: 1.00, gloss: .36, tag: '红绿灯' });
-      vehHead(33.80, 5.32, z, 0, true);                  // over the east, -z lane
+      vehHead(SIGNAL.lanes.north, 5.32, z, 0, true);     // over the east, -z lane
       vehHead(x - .30, 3.05, z - .05, 0, false);         // the kerbside repeater
       // 电子警察 — the enforcement camera, its sunshade and the infra-red bank beside it
       const cx = 35.35;
@@ -569,10 +613,10 @@
       // A second 红绿灯 label on this side of the road. `pick` sends the player to whichever
       // thing wearing the tag is nearest where the ray landed, so two are better than one here:
       // the shell's own focus is on the far pavement, twelve metres away.
-      thing('红绿灯', 33.80, 6.05, z, '绿灯亮了，可以走了。',
+      thing('红绿灯', SIGNAL.lanes.north, 6.05, z, '绿灯亮了，可以走了。',
         'The green light is on, you can go.',
         '红绿灯 hóng-lǜ-dēng, red-green-light. The number under it counts the seconds down.',
-        // Clear of the cycle rack another district parks at z 1.9–4.7 in this bike lane.
+        // Clear of the kerb furnishing band and the crossing approach.
         { focus: [36.30, z + .20], reach: 3.0, tag: '红绿灯' });
     }
 
@@ -605,10 +649,11 @@
 
     // ---------------------------------------------------------- 公交站, what the shelter lacked
     //
-    // The shell builds the shelter, the roof, the glass, the bench and a blank white route board
-    // with seven grey bars on it. A route board with no route on it is the one thing a bus stop
-    // cannot be, so: the writing, the bin, the queue rail and the people.
-    const bsx = RD0 - 2.6, bsz = -12.0, BX = bsx - .43;      // 2 cm proud of the shell's bars
+    // The shell builds the shelter, roof, glass, bench and route board. Use its real kerb-side
+    // datum (RD0-1.35): the previous RD0-2.60 annotations floated 1.25 m away from their panel.
+    // The only added furniture now sits inside the shelter's existing footprint, never in the
+    // bank/pharmacy turning pocket.
+    const bsz = -12.0, BX = 27.82;
     glyphs(BX, 2.66, bsz - 2.86, -Math.PI / 2, '623路',
       { size: .135, gap: .022, color: C('#1f2a33'), gloss: .10, lift: .006, tag: '公交车站' });
     glyphs(BX, 2.66, bsz - 2.24, -Math.PI / 2, '杨柳胡同东口',
@@ -620,52 +665,30 @@
     box(BX + .01, 1.44, bsz - 2.60, .02, .05, .80, C('#b04430'),
       { hard: true, gloss: .20, tag: '公交车站' });
 
-    // 垃圾桶 — the two-bin Chinese street set, recyclables and everything else. Set clear of the
-    // shelter's own collider so the footway keeps a walkable lane either side of it.
-    binPair(25.90, -6.60);
+    // 垃圾桶 — the 56 cm pair cannot honestly fit the shelter's 30 cm furnishing strip. It stands
+    // on the protected median immediately beyond the platform nose, wholly outside the footway,
+    // cycle track, passenger clear strip and motor sweep.
+    binPair(28.10, -15.55);
     function binPair(x, z) {
-      box(x, .34, z, .70, .68, 1.10, C('#3f5d48'), { hard: true, gloss: .30, tag: '垃圾桶' });
-      box(x, .70, z, .74, .06, 1.14, C('#2f4738'), { hard: true, gloss: .34, tag: '垃圾桶' });
       for (const [oz, colr, lbl] of
            [[-.27, C('#2f6f9c'), '可回收物'], [.27, C('#5a6168'), '其他垃圾']]) {
-        box(x - .30, .48, z + oz, .16, .26, .34, colr, { hard: true, gloss: .36, tag: '垃圾桶' });
-        box(x - .37, .48, z + oz, .05, .18, .26, C('#15181b'), { hard: true, gloss: .20 });
-        glyphs(x - .395, .16, z + oz, -Math.PI / 2, lbl,
-          { size: .062, gap: .012, color: C('#e9e5da'), gloss: .10, lift: .006, tag: '垃圾桶' });
+        const bz = z + oz;
+        taper(x, .34, bz, .40, .62, .40, colr, { gloss: .32, tag: '垃圾桶' });
+        ball(x, .66, bz, .22, .075, .22, C('#38423f'),
+          { mode: 7, gloss: .32, tag: '垃圾桶' });
+        box(x - .205, .51, bz, .025, .12, .22, colr,
+          { hard: true, gloss: .34, tag: '垃圾桶' });
+        box(x - .222, .58, bz, .018, .070, .15, C('#15181b'), { hard: true, gloss: .20 });
+        glyphs(x - .235, .28, bz, -Math.PI / 2, lbl,
+          { size: .050, gap: .009, color: C('#e9e5da'), gloss: .10, lift: .006, tag: '垃圾桶' });
+        cyl(x, .035, bz, .22, .07, C('#3a3f44'), { gloss: .24 });
       }
-      cyl(x, .04, z, .40, .08, C('#3a3f44'), { gloss: .24 });
-      solid(x - .36, x + .36, z - .58, z + .58);
+      solid(x - .28, x + .28, z - .60, z + .60);
     }
 
-    // 排队栏杆 — the guide rail people queue behind. No collider on it: the footway here is
-    // three metres wide and a rail with a solid on it is how a pavement gets sealed.
-    for (let i = 0; i <= 5; i++) {
-      const pz = -10.90 + i * .62;
-      cap(26.42, .49, pz, .032, .94, .032, RAILD, { gloss: .42 });
-      cyl(26.42, .98, pz, .030, .04, RAIL, { gloss: .44 });
-    }
-    for (const y of [.92, .40])
-      cap(26.42, y, -9.35, .024, 3.10, .024, RAIL, { rx: Math.PI / 2, gloss: .42 });
-
-    // The queue itself. Blocks, not figures: js/figure.js is not on the district toolkit, and at
-    // ten metres down a fog-limited street a coat, a head and two sleeves read as somebody waiting,
-    // which is all this has to do. Every colour is a literal — a prop whose colour comes back
-    // undefined puts the boot overlay up, and that bug has cost this project hours before.
-    const QUEUE = [
-      [26.10, -10.60, .06, C('#2f3a4a'), C('#d6ab86'), C('#241f1c')],
-      [26.16, -9.74, -.22, C('#7a4038'), C('#c9a07c'), C('#3a2f2a')],
-      [26.04, -8.96, .34, C('#4c5b46'), C('#e0b894'), C('#1e1c1a')],
-    ];
-    for (const [x, z, ry, coat, skin, hair] of QUEUE) {
-      cyl(x, .40, z, .155, .80, C('#2b2f36'), { ry, gloss: .16 });
-      box(x, 1.06, z, .40, .60, .26, coat, { ry, gloss: .10, round: .10 });
-      box(x, 1.42, z, .22, .14, .20, skin, { ry, gloss: .10, round: .08 });
-      box(x, 1.56, z, .24, .12, .23, hair, { ry, gloss: .08, round: .08 });
-      for (const sd of [-.24, .24])
-        cap(x + Math.cos(ry) * sd, 1.02, z - Math.sin(ry) * sd, .055, .52, .055, coat,
-          { ry, gloss: .10 });
-      S.shade(x, z, .92, .92, .30);
-    }
+    // The live Street cast already supplies 乘客 here from 06:00–22:00, with a complete rig,
+    // schedule, shadow and avoidance state.  The former capsule mannequin duplicated her at the
+    // stop and could never blink, move, hold a bag correctly or leave after service ended.
 
     // ---------------------------------------------------------- 下水道, two more covers
     // The shell's covers are all round and all on the motor lanes. A square gully in the new east
@@ -677,20 +700,19 @@
     cyl(36.10, .019, 4.80, .27, .014, C('#413d38'), { hard: true, gloss: .26 });
 
     // ---------------------------------------------------------- the words
-    thing('人行横道', 27.05, 2.35, 2.30, '过马路要走人行横道。',
+    thing('人行横道', 28.57, 2.35, 2.30, '过马路要走人行横道。',
       'To cross the road, use the pedestrian crossing.',
       '人行横道 rénxíng-héngdào, the marked crossing. Everyone calls it 斑马线, the zebra line.',
       { focus: [26.10, 1.60], reach: 2.6, tag: '人行横道' });
-    thing('限速', 26.60, 2.34, 7.90, '这条路限速三十。',
+    thing('限速', 27.82, 2.34, 7.85, '这条路限速三十。',
       'The speed limit on this road is thirty.',
       '限 to limit + 速 speed. The red ring means it is an order, not a suggestion.',
-      // On the road side of the kerb: the near footway north of z = 5 is taken up by another
-      // district's colliders, and a word you cannot walk up to is not a word.
-      { focus: [27.90, 7.90], reach: 2.6, tag: '限速' });
-    thing('垃圾桶', 25.90, .80, -6.60, '垃圾桶就在公交站旁边。',
+      // Read from the open shop-side strip beyond the crossing, never from the cycle track.
+      { focus: [25.12, 7.85], reach: 2.6, tag: '限速' });
+    thing('垃圾桶', 28.10, .80, -15.55, '垃圾桶就在公交站旁边。',
       'The bin is right beside the bus stop.',
       '垃圾 rubbish + 桶 a bucket. The blue half takes 可回收物, the recyclables.',
-      { focus: [26.95, -6.60], reach: 2.4, tag: '垃圾桶' });
+      { focus: [28.65, -14.20], reach: 2.4, tag: '垃圾桶' });
 
     // ---------------------------------------------------------- adopt the shell's own signal
     //
@@ -717,9 +739,9 @@
 
     // Enough light at the crossing for the signals to read after dark, from three sources rather
     // than from a hundred small emissive quads, which is what smears a junction into a haze.
-    S.light(29.75, 2.60, 2.72, [1.00, .74, .60], .30, 5.0);
+    S.light(28.57, 2.60, 2.72, [1.00, .74, .60], .30, 5.0);
     S.light(37.90, 2.80, 2.95, [1.00, .80, .64], .34, 5.6);
-    S.light(33.80, 5.10, 6.40, [.86, 1.00, .90], .26, 6.0);
+    S.light(SIGNAL.lanes.north, 5.10, 6.40, [.86, 1.00, .90], .26, 6.0);
 
     // What this district cost, for the perf canary. Read it as StreetFit.road.propCount.
     StreetFit['road'].propCount = S.props.length - P0.length;
@@ -732,30 +754,42 @@
   function tick(t, body) {
     if (!built) return;                       // the builder has not run; there is nothing to drive
     const u = wrap(t);
-    const ph = u < G_END ? 0 : u < A_END ? 1 : 2;             // green / amber / red
-    const pw = u < W0 ? 0 : u < W1 ? 1 : u < F1 ? 2 : 0;      // stop / walk / flashing
+    const priority = EMERGENCY.active(t);
+    const ph = priority ? 2 : u < G_END ? 0 : u < A_END ? 1 : 2; // green / amber / red
+    const pw = priority ? 0 : u < W0 ? 0 : u < W1 ? 1 : u < F1 ? 2 : 0;
     // A flashing green flashes. It is most of what makes a Chinese crossing read as one rather
     // than as a green that happens to be about to end.
     const walking = pw === 1 || (pw === 2 && (t * 2) % 1 < .55);
 
-    const vSecs = Math.max(1, Math.ceil(ph === 0 ? G_END - u : ph === 1 ? A_END - u : CYCLE - u));
-    const pSecs = (u >= W0 && u < F1) ? Math.max(1, Math.ceil(F1 - u))
-                                      : Math.max(1, Math.ceil(u < W0 ? W0 - u : CYCLE - u + W0));
+    const vSecs = priority ? Math.max(1, Math.ceil(EMERGENCY.remaining(t)))
+      : Math.max(1, Math.ceil(ph === 0 ? G_END - u : ph === 1 ? A_END - u : CYCLE - u));
+    const pSecs = priority ? vSecs : (u >= W0 && u < F1) ? Math.max(1, Math.ceil(F1 - u))
+      : Math.max(1, Math.ceil(u < W0 ? W0 - u : CYCLE - u + W0));
     const now = SIGNAL.now;
     now.t = t;
     now.phase = ph === 0 ? 'green' : ph === 1 ? 'amber' : 'red';
     now.secs = vSecs;
     now.ped = pw === 0 ? 'stop' : pw === 1 ? 'walk' : 'flash';
     now.pedSecs = pSecs;
-    now.mayCross = pw === 1;
+    now.mayCross = !priority && pw === 1;
+    now.emergency = priority;
+    now.emergencySource = priority ? emergencyState.source : null;
+    emergencyState.active = priority;
 
-    // Flashing green is time to finish, not time to step off the kerb. A body already between the
-    // two gates gets an unconditional exit path until it reaches either pavement.
-    const alreadyCrossing = !!body && body.x > KW + .18 && body.x < KE - .18
-      && body.z > CZ0 - .45 && body.z < CZ1 + .45;
-    const openCrossing = now.mayCross || alreadyCrossing;
-    for (const gate of crossingGates) gate.open = openCrossing;
-    SIGNAL.crossing.blocked = !openCrossing;
+    // Flashing green is time to finish, not time to start. Clearance applies only to the stage a
+    // body physically occupies; the refuge itself is never treated as a committed carriageway.
+    const onZebra = !!body && Number.isFinite(body.x) && Number.isFinite(body.z) &&
+      body.z > CZ0 - .45 && body.z < CZ1 + .45;
+    const clearingCycle = onZebra && body.x > KW + .18 && body.x < ISX0 - .18;
+    const clearingCarriageway = onZebra && body.x > ISX1 + .18 && body.x < KE - .18;
+    const stageOpen = {
+      cycle: now.mayCross || clearingCycle,
+      carriageway: now.mayCross || clearingCarriageway,
+    };
+    for (const gate of crossingGates) gate.solid.open = stageOpen[gate.stage];
+    SIGNAL.crossing.stages.cycle.blocked = !stageOpen.cycle;
+    SIGNAL.crossing.stages.carriageway.blocked = !stageOpen.carriageway;
+    SIGNAL.crossing.blocked = !stageOpen.cycle || !stageOpen.carriageway;
 
     for (const h of heads) {
       if (h.red) {

@@ -559,18 +559,22 @@ MallFit['运动店'] = A => {
   // nobody walks past without putting a hand in. Four posts and three rails a side, not eight
   // spokes round a disc: the radial version read as a birdcage with fruit in it.
   const ballBin = (a, b) => {
-    A.put(a, b, .74, .74, .045, .028, K.rubber, { hard:true, gloss:.24, tag:'篮球' });
-    for (const sa of [-1, 1]) for (const sb of [-1, 1])
-      A.cap(a + sa * .35, b + sb * .35, .310, .028, .560, .028, K.steelD, { gloss:.46 });
-    for (const yy of [.150, .330, .530]) for (const sa of [-1, 1]) {
-      A.put(a + sa * .35, b, .022, .700, .022, yy, K.steelD, { hard:true, gloss:.46 });
-      A.put(a, b + sa * .35, .700, .022, .022, yy, K.steelD, { hard:true, gloss:.46 });
-    }
-    for (const p of [[0, 0, .16], [.16, .11, .15], [-.14, .12, .15], [.06, -.17, .15],
-                     [-.07, -.07, .37], [.11, .04, .38]])
-      A.ball(a + p[0], b + p[1], p[2] + .12, .115, .115, .115,
-        [K.orange, K.white, K.volt, K.blue, K.red, K.orange][(p[0] * 29 + 5 | 0) % 6],
-        { mode:7, gloss:.20, tag:'篮球' });
+    // The generated asset owns only the visible fixture and stock. The authored stop below stays
+    // outside the seam, so swapping meshes cannot change the aisle's collision or reachability.
+    A.modelOr('sports_shop_wire_ball_bin', a, b, 0, 1, { tag:'篮球', gloss:.34 }, () => {
+      A.put(a, b, .74, .74, .045, .028, K.rubber, { hard:true, gloss:.24, tag:'篮球' });
+      for (const sa of [-1, 1]) for (const sb of [-1, 1])
+        A.cap(a + sa * .35, b + sb * .35, .310, .028, .560, .028, K.steelD, { gloss:.46 });
+      for (const yy of [.150, .330, .530]) for (const sa of [-1, 1]) {
+        A.put(a + sa * .35, b, .022, .700, .022, yy, K.steelD, { hard:true, gloss:.46 });
+        A.put(a, b + sa * .35, .700, .022, .022, yy, K.steelD, { hard:true, gloss:.46 });
+      }
+      for (const p of [[0, 0, .16], [.16, .11, .15], [-.14, .12, .15], [.06, -.17, .15],
+                       [-.07, -.07, .37], [.11, .04, .38]])
+        A.ball(a + p[0], b + p[1], p[2] + .12, .115, .115, .115,
+          [K.orange, K.white, K.volt, K.blue, K.red, K.orange][(p[0] * 29 + 5 | 0) % 6],
+          { mode:7, gloss:.20, tag:'篮球' });
+    });
     A.stop(a - .40, a + .40, b - .40, b + .40);
   };
   ballBin(1.55, -1.45);
@@ -665,6 +669,25 @@ MallFit['运动店'] = A => {
   const SERVICE_VERBS = { '穿线':'stringing', '印号码':'printing' };
   const SERVICE_SECS = { stringing:2.8, printing:2.5 };
   let serviceKey = '', serviceAt = 0, doingEl = null, dz = null;
+  // These are services on property, not stand-alone goods. The generic mall till already keeps
+  // paid rackets and tracksuits in `__game.state().bought`; consult that owner list before a
+  // service can expose a price. Cache it by game minute because the walk-up getter is read at
+  // display rate, while every checkout advances the clock by five minutes and invalidates it.
+  let serviceMinutes = NaN, ownedAt = -Infinity, owned = [];
+  const ownsMallItem = hz => {
+    const at = Number.isFinite(serviceMinutes) ? Math.floor(serviceMinutes) : null;
+    if (at === null || at !== ownedAt) {
+      ownedAt = at; owned = [];
+      const g = window.__game;
+      if (g && typeof g.state === 'function') {
+        try {
+          const bought = g.state().bought;
+          if (Array.isArray(bought)) owned = bought;
+        } catch (_) {}
+      }
+    }
+    return owned.includes(hz);
+  };
 
   function finishSportService(key) {
     if (key === 'stringing') {
@@ -728,7 +751,8 @@ MallFit['运动店'] = A => {
   // the right phase when they come back rather than catching up. `far` is 12: the belt slats are
   // 1.2 cm of black on a dark deck and at any greater distance the movement is not resolvable, and
   // MallFitTick already refuses to run this at all unless the player is on this deck.
-  A.motion('treadmill', (time, state) => {
+  A.motion('treadmill', (time, state, P, minutes) => {
+    if (Number.isFinite(minutes)) serviceMinutes = minutes;
     const PITCH = 7 * .17, roll = (time * .95) % PITCH;
     if(treadmillPower.active) {
       for (const s of beltSlats) {
@@ -982,12 +1006,22 @@ MallFit['运动店'] = A => {
     Object.defineProperty(USE_AT.mall, hz, { configurable:true, enumerable:true, get });
   };
   serviceVerb('球拍', () => {
+    if (!ownsMallItem('球拍'))
+      return { zh:'先买球拍', py:'xiān mǎi qiúpāi', secs:1.4, mins:1, gain:{},
+        pose:{ type:'talk' }, en:'bring a racket you own before booking a restring',
+        block:'我还没有自己的球拍可以穿线。',
+        blockTr:'I do not own a racket to restring yet.' };
     const next = STRING_LOOKS[(sportService.stringings + 1) % STRING_LOOKS.length];
     return { zh:'穿线', py:'chuān xiàn', en:`restring the racket in ${next.name} — ¥120`,
       secs:SERVICE_SECS.stringing, mins:24, pay:-120, gain:{ mood:7 }, pose:{ type:'reach' },
       done:`换成${next.name}了。`, doneTr:`Restrung in ${next.name}; the racket grid is ready.` };
   });
   serviceVerb('运动服', () => {
+    if (!ownsMallItem('运动服'))
+      return { zh:'先买运动服', py:'xiān mǎi yùndòngfú', secs:1.4, mins:1, gain:{},
+        pose:{ type:'talk' }, en:'bring a tracksuit you own before adding a number',
+        block:'我还没有自己的运动服可以印号码。',
+        blockTr:'I do not own a tracksuit to print a number on yet.' };
     const next = PRINT_LOOKS[(sportService.prints + 1) % PRINT_LOOKS.length];
     return { zh:'印号码', py:'yìn hàomǎ', en:`print ${next.number} on the ${next.name} jersey — ¥30`,
       secs:SERVICE_SECS.printing, mins:20, pay:-30, gain:{ mood:6 }, pose:{ type:'reach' },

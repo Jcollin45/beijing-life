@@ -81,6 +81,47 @@ const homeCastCAP = 7;
 // comment and fails if the two drift, so a re-measurement there cannot leave this stale.
 const homeCastDRAWS = 57;
 const homeCastDRAWBUDGET = homeCastCAP * homeCastDRAWS;   // 399
+// The same ceiling, for the rest of the city. Once a resident's day can name another building
+// (CITY-LIFE.md 3.2) the tower's cap stops being the only one that can be broken: an itinerary
+// that sends nine people to the park at noon costs the park nine bodies, and nothing in js/data.js
+// would have said so. `.citycast.js` walks all 24 hours of a weekday and a weekend for every place
+// and fails on the first hour a room is over its number.
+//
+// Each figure is the same 57 draws budgeted above, so a cap is a draw budget written as people:
+// the default 10 is 570 draws. `.homecastcheck.js` still owns 'home', so that entry is the same
+// number rather than a second copy of it.
+//
+// **These numbers are NOT derived from a frame measurement, and should not be read as if they
+// were.** They are the founding roster's own measured peak per room plus headroom, and the
+// headroom is uneven because the peaks are: mall and zoo sit at 22 of 24 (+9%), street 15 of 18
+// (+20%), airport 11 of 14 (+27%), diner 9 of 12 (+33%), park 5 of 8 (+60%), and every room on the
+// default has a peak of 3 or less. So a cap here says "no more than a little above what this room
+// already holds", which is a real bound on a wave-2 itinerary lane and is not a statement about
+// what 16.7 ms can afford.
+//
+// Deriving them properly needs the marginal frame cost of one more body, per room, on the hardware
+// path — and that measurement could not be taken: `.fpscheck.js` refused to certify its own run
+// with `NOT QUIET — 1-minute load average 23.65 on 8 cores`. Until it is taken, raising one of
+// these is a judgement call, not an arithmetic one, and 'home' is the only entry with an owner's
+// number behind it.
+const cityCastCAP = {
+  '*': 10,
+  home: homeCastCAP,
+  street: 18,        // the hutong: nine districts of stalls, chess players and passers-by
+  // The mall counts *authored* presence, which is a ceiling rather than a live crowd: 22 of these
+  // rows are ordinary shoppers and js/game.js's own `mallCrowdProfileAt` threshold culls most of
+  // them at 03:00 and thins them all day. This number therefore governs what may be written into
+  // the building, not what is standing in it — the live crowd is the mall's own budget.
+  mall: 24,
+  zoo: 24,           // sixteen animals are figures too — the animal rig is skinned like the human
+  airport: 14,
+  diner: 12,
+  park: 8,
+  nightmarket: 8,
+  bund: 8,
+  chengdu: 8,
+  campus: 8,
+};
 const NPCS = [
   // ---- 门卫室, the night half. 刘师傅 below has the day; this is who is behind the glass at 03:00.
   { hz: '保安', name: '老陈', py: 'Lǎo Chén', place: 'home', deck: 0, uniform: '保安',
@@ -128,13 +169,23 @@ const NPCS = [
   // the same amount of information, so these two are on the clock: he takes the morning, she
   // takes the afternoon, and between eleven and two the bench is genuinely empty. 长椅 at
   // js/home-lobby.js:1266 is the seat both of them are sitting on.
+  //
+  // The eleven-to-two gap is now where they *went* rather than a hole in the day: he walks over to
+  // the park bench, she joins the 广场舞 in the square, and 李大妈 — who owns both of those park
+  // positions the rest of the day — is on 王阿姨's stool in the hutong at the same hour. Three
+  // people, one chain of vacated seats, every coordinate an already-authored spot rather than a
+  // new guess at a standable one. `place` on a spot is CITY-LIFE.md 3.2; omitted it still means
+  // `n.place`, which is why every other row in this file is untouched.
   { hz: '大爷', name: '张大爷', py: 'Zhāng dàye', place: 'home', deck: 0, livesOn: 11,
-    hours: [9, 11], temper: 'frail',
+    hours: [9, 14], temper: 'frail',
     look: { skin:'#c8a184', hair:'#cfccc4', hairStyle:'short', top:'#e6e2d4', pants:'#39414c',
             shoe:'#43474d', sleeve:'short', beard:'goatee', beardColor:'#d6d3cb',
             tall:0.90, wide:0.98, headScale:0.98, stoop:0.19, age:0.92, faceSeed:204 },
     seatY: 0.36,
-    spots: [ { h0:9, h1:11, at:[-3.15, 3.50], face:0, act:'sit' } ],
+    spots: [ { h0:9,  h1:11, at:[-3.15, 3.50], face:0, act:'sit' },
+             // 李大妈's own 11–17 bench, which she vacates for the hutong at exactly eleven and
+             // takes back at two. Her seat, her facing (js/data.js:711) — a proven sit position.
+             { h0:11, h1:14, place:'park', at:[-1.20, -6.42], face:0, act:'sit' } ],
     lines: [
       ["吃了吗？这么早出门。", "Have you eaten? Out early today."],
       ["我在这楼住了三十年喽。", "I have lived in this block thirty years."],
@@ -143,12 +194,15 @@ const NPCS = [
       ["电梯慢，我不着急。", "The lift is slow. I am in no hurry."],
     ] },
   { hz: '大妈', name: '刘大妈', py: 'Liú dàmā', place: 'home', deck: 0, livesOn: 10,
-    hours: [14, 17], temper: 'steady',
+    hours: [11, 17], temper: 'steady',
     look: { skin:'#dcb08b', hair:'#7a7269', hairStyle:'perm', top:'#c8b6a4', pants:'#3b4250',
             shoe:'#4a4f57', sleeve:'short', collar:'polo', vest:'#8a4a4e',
             tall:0.92, wide:1.12, headScale:0.99, stoop:0.13, age:0.80, faceSeed:205 },
     seatY: 0.36,
-    spots: [ { h0:14, h1:17, at:[-2.05, 3.50], face:0, act:'sit' } ],
+    spots: [ // 晚上七点楼下跳舞，来啊 is already one of her lines; this is her doing it at noon in
+             // the park instead, on 李大妈's own dance mark while 李大妈 is out of the park.
+             { h0:11, h1:14, place:'park', at:[-4.6, -3.0], face:Math.PI * 1.02, act:'dance' },
+             { h0:14, h1:17, at:[-2.05, 3.50], face:0, act:'sit' } ],
     lines: [
       ["回来啦？今天这么早。", "Back already? Early today."],
       ["我孙子今年上小学了。", "My grandson started primary school this year."],
@@ -549,13 +603,21 @@ const NPCS = [
     look: { skin:'#dfa87c', hair:'#3a332d', hairStyle:'short', top:'#cfc7b4', pants:'#39414d',
             shoe:'#4a4842', jacket:'#4e5647', collar:'shirt',
             tall:1.05, wide:1.06, headScale:1.01, age:0.28, faceSeed:113 },
-    patrol: [[-6.0, -1.55], [8.0, -1.85], [19.5, -1.65], [8.0, -1.85]], speed: 1.05,
+    // The rebuilt frontage now leaves one continuous south-half line at z=-.85. The old zigzag
+    // still grazed three radius-expanded corners at the .55 m adversarial comfort envelope, even
+    // though the .45 m release route passed. A straight retraced patrol is both more natural and
+    // keeps the complete large-body envelope off every shop and threshold collider.
+    patrol: [[-6.0,-.85],[19.50,-.85]], speed: 1.05,
     temper: 'brisk' },
   { hz: '行人二',
     look: { skin:'#eabf95', hair:'#2c2624', hairStyle:'long', top:'#8a6f4e', pants:'#4a5364',
             shoe:'#cfc9bb', sleeve:'short', bag:'tote', bagColor:'#9c8a6a',
             tall:0.92, wide:0.98, headScale:1.0, age:0.20, faceSeed:127 },
-    patrol: [[20.0, 1.40], [6.0, 1.75], [-9.5, 1.50], [6.0, 1.75]], speed: 0.88,
+    // A clear north-half route, with one natural centreward dog-leg past the supermarket owner.
+    // It also starts beyond the metro shell and the breakfast-stall footprint instead of spawning
+    // inside either. Mirroring the waypoints makes the loop retrace rather than cut a bad chord.
+    patrol: [[-10.55,.70],[5.90,.70],[6.25,-.35],[7.75,-.35],[8.10,.90],[21.30,.90],
+             [8.10,.90],[7.75,-.35],[6.25,-.35],[5.90,.70]], speed: 0.88,
     act: 'carry', held: null,              // the tote is already part of her wardrobe rig
     temper: 'steady' },
 
@@ -699,8 +761,12 @@ const NPCS = [
             shoe:'#e8e2d6', sleeve:'short', collar:'polo', hat:'visor', hatColor:'#e4dcc4',
             tall:0.92, wide:1.11, headScale:0.99, stoop:0.04, age:0.66, faceSeed:79 },
     hours: [6, 21], temper: 'genial',
-    spots: [ { h0:6, h1:11, at:[-4.6, -3.0], face:Math.PI * 1.02, act:'dance' },
-             { h0:11, h1:17, at:[-1.20, -6.42], face:0, act:'sit' },
+    spots: [ { h0:6,  h1:11, at:[-4.6, -3.0], face:Math.PI * 1.02, act:'dance' },
+             // Eleven to two she is not in the park at all. 王阿姨 leaves her stool by the gate
+             // for her own 11–14 errand up the alley (js/data.js:356), so this is that stool, its
+             // facing and its measured seat — not a new coordinate anybody has to trust.
+             { h0:11, h1:14, place:'street', at:[1.9, 1.55], face:-2.2, act:'sit' },
+             { h0:14, h1:17, at:[-1.20, -6.42], face:0, act:'sit' },
              { h0:17, h1:21, at:[-4.6, -3.0], face:Math.PI * 1.02, act:'dance' } ],
     seatY: 0.48,
     lines: [
@@ -1034,8 +1100,24 @@ const NPCS = [
   // The east-side keeper is deliberately ambient rather than a second conversation target. One
   // named keeper is enough for dialogue; this one is here to make the animal care visible, with a
   // different uniform silhouette and an elephant-to-tiger service round.
+  //
+  // The name is gone on purpose, and it is a bug fix rather than a trim. `Talk.scriptKeyFor`
+  // resolves in the order [scriptKey, place:name, place:hz, name, hz] (js/talk.js:1779), so
+  // `name:'李师傅'` matched SCRIPTS['李师傅'] — the bicycle mender on the street, whose row is at
+  // the top of this file. This keeper was answering the elephant enclosure with 自行车坏了吗？
+  // and 外国人也骑自行车吗？, and a bake run had already recorded him saying both: six clips under
+  // 饲养员|李师傅| in audio/voice/manifest.json are the mender's script in the keeper's voice.
+  // He also shared the mender's progress record, so mending a bike retired the keeper's questions.
+  // Ambient was always the intent for this row, and an unnamed row cannot collide: with no `name`
+  // the key search falls through zoo:饲养员 and 饲养员, neither of which is a script, and he goes
+  // quiet. The six clips are now orphaned, which is the right state for six wrong readings.
+  //
+  // `storyKey` is the same escape hatch on the relationship side (js/story.js:95) and 陈师傅 above
+  // already uses it. Without it the story ledger would key him on 饲养员 and merge him with the
+  // other four keepers, which is the collision again one layer down.
   {
-    hz:'饲养员', name:'李师傅', py:'Lǐ shīfu', npcId:'zoo-keeper-li', place:'zoo',
+    hz:'饲养员', storyKey:'zoo:李师傅', storyName:'饲养员 · 动物园',
+    npcId:'zoo-keeper-li', place:'zoo',
     look:{ skin:'#b98258',hair:'#24201d',hairStyle:'short',top:'#516a4c',pants:'#313e34',
            shoe:'#353a32',sleeve:'long',collar:'polo',vest:'#7b8756',badge:'#e1d29b',
            hat:'cap',hatColor:'#344b38',tall:1.04,wide:1.08,age:.28,faceSeed:451 },
@@ -1620,7 +1702,7 @@ const NPCS = [
     look: { skin:'#dcae83', hair:'#1f1b19', hairStyle:'ponytail', top:'#e2e0d6', pants:'#39414d',
             shoe:'#cfc9bc', apron:'#3f6f8c', sleeve:'short', collar:'polo', badge:true,
             tall:0.89, wide:0.91, headScale:1.02, youth:0.35, faceSeed:59 },
-    spots: [ { h0:7, h1:22, at:[2.40, 1.95], face:Math.PI * 1.02, act:'vend' } ],
+    spots: [ { h0:7, h1:22, at:[1.10, 1.95], face:Math.PI * 1.02, act:'vend' } ],
     hours: [7, 22], temper: 'shy',
     lines: [
       ['您好，要袋子吗？', 'Hello — do you want a bag?'],
@@ -1786,7 +1868,7 @@ const USE = {
   // which is the one thing js/lazy.js exists to stop. `.roomgate.js` asserts the two still agree.
   '门':     { zh:'出门', py:'chūmén', en:'step outside', secs:2.4, mins:5,
               gain:{ mood:5 }, pose:{ type:'stand' }, go:'street',
-              at: { x: 0.1, z: -1.35, yaw: Math.PI * 0.5 },
+              at: { x: 0.1, z: -0.2, yaw: Math.PI * 0.5 },
               done:'外面是胡同。', doneTr:'Outside is the hutong.' },
   // Blueprint-driven campus floors use ordinary stair/lift landing things with explicit `.exit`
   // destinations.  The words supply the action; the picked landing supplies the actual floor.
@@ -1877,6 +1959,20 @@ const USE = {
   '医院':   { zh:'进医院', py:'jìn yīyuàn', en:'go into the hospital', secs:2.4, mins:4,
               gain:{ mood:2 }, pose:{ type:'stand' }, go:'hospital',
               done:'进门先看楼层索引。', doneTr:'Inside — check the floor directory first.' },
+  '消防站': { zh:'进消防站', py:'jìn xiāofángzhàn', en:'go into the fire station', secs:2.4, mins:4,
+              gain:{ mood:4 }, pose:{ type:'stand' }, go:'firestation',
+              done:'车库和值班室都有人。', doneTr:'The appliance hall and watch room are both staffed.' },
+  '消防车': { zh:'看看消防车', py:'kànkan xiāofángchē', en:'inspect the fire engine', secs:2.0, mins:3,
+              gain:{ mood:4 }, pose:{ type:'stand' },
+              done:'车身两侧的器材舱、水带卷盘和云梯都看得清楚。',
+              doneTr:'Equipment lockers, hose reels, and the roof ladder are visible from here.' },
+  '消火栓': { zh:'看消火栓', py:'kàn xiāohuǒshuān', en:'inspect the hydrant', secs:1.5, mins:2,
+              gain:{}, pose:{ type:'stand' },
+              done:'接口前没有堆东西。', doneTr:'Nothing blocks the connection.' },
+  '消防宣传栏': { zh:'看消防宣传', py:'kàn xiāofáng xuānchuán', en:'read the fire-safety notices', secs:2.2, mins:4,
+              gain:{ mood:2 }, pose:{ type:'stand' },
+              done:'先断电、再灭火；楼道里不能堆杂物。',
+              doneTr:'Cut the power before firefighting, and keep corridors free of stored items.' },
   // The staffed counters keep ordinary branch hours, but the authored hall also contains the
   // signed 24-hour self-service bank.  The door therefore stays available; `USE_AT.bank` gates
   // only the people-dependent services while the ATMs remain honest after five o'clock.
@@ -1981,6 +2077,22 @@ const USE = {
               gain:{ mood:8 }, pose:{ type:'talk' }, talk:true },
   '导购员': { zh:'问一问', py:'wèn yi wèn', en:'ask the sales assistant', secs:2.6, mins:6,
               gain:{ mood:7 }, pose:{ type:'talk' }, talk:true },
+  // Named mall roles keep their exact headword: those names also key their authored speech clips,
+  // so replacing them with a broad alias such as 店员 would make the people learnable but silent.
+  '体验师': { zh:'问一问', py:'wèn yi wèn', en:'ask the product demonstrator', secs:2.6, mins:6,
+              gain:{ mood:7 }, pose:{ type:'talk' }, talk:true },
+  '送货员': { zh:'说话', py:'shuōhuà', en:'talk to the delivery worker', secs:2.6, mins:8,
+              gain:{ mood:7 }, pose:{ type:'talk' }, talk:true },
+  '面包师': { zh:'说话', py:'shuōhuà', en:'talk to the baker', secs:2.6, mins:8,
+              gain:{ mood:8 }, pose:{ type:'talk' }, talk:true },
+  '领养专员': { zh:'问一问', py:'wèn yi wèn', en:'ask the adoption specialist', secs:2.8, mins:10,
+              gain:{ mood:10 }, pose:{ type:'talk' }, talk:true },
+  '美容师': { zh:'问一问', py:'wèn yi wèn', en:'ask the groomer', secs:2.6, mins:8,
+              gain:{ mood:8 }, pose:{ type:'talk' }, talk:true },
+  '领班':   { zh:'说话', py:'shuōhuà', en:'talk to the host', secs:2.6, mins:8,
+              gain:{ mood:8 }, pose:{ type:'talk' }, talk:true },
+  '作者':   { zh:'说话', py:'shuōhuà', en:'talk to the author', secs:2.8, mins:10,
+              gain:{ mood:10 }, pose:{ type:'talk' }, talk:true },
   '保安':   { zh:'问路', py:'wèn lù', en:'ask the security guard', secs:2.5, mins:5,
               gain:{ mood:4 }, pose:{ type:'talk' }, talk:true },
   // 高师傅 at the arcade's racing bank, and whoever fixes anything anywhere else. Without this row
@@ -2066,6 +2178,10 @@ const USE = {
               gain:{ mood:14, rest:4 }, pose:{ type:'stand' },
               done:'水面很静，风一吹就皱了。',
               doneTr:'The water is still until the wind creases it.' },
+  '鸭子':   { zh:'喂鸭子', py:'wèi yāzi', en:'feed the duck', secs:2.8, mins:8,
+              gain:{ mood:10 }, pose:{ type:'crouch' },
+              done:'撒了一点吃的，鸭子朝岸边游过来了。',
+              doneTr:'You scatter a little feed, and the duck paddles towards the bank.' },
   '桥':     { zh:'过桥', py:'guò qiáo', en:'cross the bridge', secs:2.8, mins:8,
               gain:{ mood:10 }, pose:{ type:'stand' },
               done:'桥中间是看湖最好的地方。',
@@ -2379,7 +2495,7 @@ const USE = {
               doneTr:'Twenty kuai, scanned his code, and the photo arrives on your phone.' },
   // A night in a hotel is the bed at home with a bill attached: the restoring is `gain`, and
   // how long you are asleep for is worked out from the clock in `useLabel`.
-  '和平饭店': { zh:'住一晚', py:'zhù yì wǎn', en:'take a room for the night', secs:5.6, mins:0,
+  '沪岚饭店': { zh:'住一晚', py:'zhù yì wǎn', en:'take a room for the night', secs:5.6, mins:0,
               hotel:true, gain:{ rest:115, clean:70, mood:20 },
               pose:{ type:'lie', seatY:.60 } },
   '民航售票处': { zh:'确认回程', py:'quèrèn huíchéng', en:'reconfirm the return', secs:2.8,
@@ -2430,7 +2546,7 @@ const USE = {
               done:'一甩头就换了张脸，看了四回也没看明白。',
               doneTr:'A flick of the head and it is a different face. Four times, and you still ' +
                      'cannot see how it is done.' },
-  // The same mechanism as 和平饭店 — `hotel:true`, and game.js works out how long you sleep from
+  // The same mechanism as 沪岚饭店 — `hotel:true`, and game.js works out how long you sleep from
   // the clock — but its own price and its own room, which is the difference between a second
   // city and the first one relabelled.
   '客栈':   { zh:'住一晚', py:'zhù yì wǎn', en:'take a room for the night', secs:5.6, mins:0,
@@ -2534,6 +2650,21 @@ const USE_AT = {
     '门卫': { zh:'进门卫室', py:'jìn ménwèishì', en:'enter the security room', secs:1.8, mins:2,
               gain:{}, pose:{type:'stand'}, done:'进门卫室了。', doneTr:'Inside the security room.' },
   },
+  // The circulation desk already teaches both 借书 and 还书. Keep the transaction as flavour:
+  // it costs a few minutes and changes mood, but creates no loan inventory or save-state obligation.
+  library: {
+    '借书处': { zh:'借书', py:'jiè shū', en:'borrow and return books at the circulation desk', secs:2.6, mins:8,
+              gain:{ mood:8 }, pose:{ type:'reach' },
+              done:'登记了，两本，两个星期。上次的还回去了，日期正好。',
+              doneTr:'Signed for: two books, two weeks. The last pair went back, and just in time.' },
+  },
+  // The concourse cash machine belongs to the same account as the branch and mall machines.
+  // Keep this local: the metro's 售票机 still follows the ordinary ticket-machine action, while
+  // 取款机 opens the live balance/withdrawal panel instead of becoming a vocabulary-only prop.
+  metro: {
+    '取款机': { zh:'插卡办理', py:'chā kǎ bànlǐ', en:'use the cash machine', secs:1.5, mins:2,
+                gain:{}, pose:{ type:'press' }, bankATM:true },
+  },
   // ---- 大堂 the lobby of the block, three metres under the flat. These words only exist down
   // here, so they go in the room rather than in USE: 门 and 镜子 already mean the right thing
   // everywhere and are deliberately left alone, because the lobby's front door is the same verb
@@ -2561,6 +2692,11 @@ const USE_AT = {
               gain:{}, pose:{ type:'press' },
               need:'门禁卡', noHave:'没带门禁卡，进不去。', noHaveTr:'No entry card — you cannot get in.',
               done:'滴。门开了。', doneTr:'Beep. The door unlocks.' },
+    // The lobby resolver deliberately does not fall through to global USE. Keep this local so the
+    // tethered dog is usable without making every decorative 狗 in the game inherit a pet action.
+    '狗': { zh:'摸狗', py:'mō gǒu', en:'pet the dog', secs:2.4, mins:5,
+              gain:{ mood:14 }, pose:{ type:'crouch' },
+              done:'狗摇了摇尾巴。', doneTr:'The dog wags its tail.' },
     // A porter is not a greeting. He knows the two things a 门卫 is actually for: which lift is
     // out, and what was delivered while you were at work. `ask` is read by `useLabel`, which picks
     // whichever line is true right now rather than cycling them.
@@ -2640,6 +2776,64 @@ const USE_AT = {
     '消防栓': { zh:'看消防栓', py:'kàn xiāofángshuān', en:'look at the fire hydrant', secs:1.6, mins:2,
               gain:{}, pose:{ type:'stand' },
               done:'玻璃后面是水带和阀门。', doneTr:'Behind the glass, a hose and a valve.' },
+  },
+  firestation: {
+    '消防车': { zh:'看看消防车', py:'kànkan xiāofángchē', en:'inspect the fire engine', secs:2.2, mins:4,
+              gain:{ mood:5 }, pose:{ type:'stand' },
+              done:'水泵、水带、云梯和救援工具都在车上。',
+              doneTr:'Pump, hose, ladder and rescue tools are all carried on the appliance.' },
+    '车库': { zh:'看看车库', py:'kànkan chēkù', en:'look through the appliance hall', secs:2.0, mins:3,
+              gain:{ mood:3 }, pose:{ type:'stand' },
+              done:'三条出车线一直通到门外。', doneTr:'All three turnout lanes run straight to the doors.' },
+    '车库门': { zh:'看车库门', py:'kàn chēkùmén', en:'inspect the appliance-bay door', secs:1.6, mins:2,
+              gain:{}, pose:{ type:'stand' },
+              done:'分节门沿着两侧轨道升到梁下。', doneTr:'The sectional door rises on tracks beneath the lintel.' },
+    '装备架': { zh:'看装备', py:'kàn zhuāngbèi', en:'inspect the turnout rack', secs:2.0, mins:3,
+              gain:{ mood:3 }, pose:{ type:'stand' },
+              done:'防护服、头盔和靴子按车组排好了。',
+              doneTr:'Protective clothing, helmets and boots are arranged by crew.' },
+    '空气呼吸器': { zh:'看呼吸器', py:'kàn hūxīqì', en:'inspect the breathing apparatus', secs:2.0, mins:3,
+              gain:{}, pose:{ type:'stand' },
+              done:'气瓶已经充满，面罩也检查过了。',
+              doneTr:'The cylinders are charged and the masks have been checked.' },
+    '水带': { zh:'看水带', py:'kàn shuǐdài', en:'inspect the fire hose', secs:1.8, mins:2,
+              gain:{}, pose:{ type:'stand' },
+              done:'洗过的水带卷好以后才能重新上车。',
+              doneTr:'Washed hose is rolled before it goes back on the appliance.' },
+    '值班室': { zh:'问值班员', py:'wèn zhíbānyuán', en:'ask the watch room', secs:2.2, mins:4,
+              gain:{ mood:4 }, pose:{ type:'talk' },
+              done:'接警台二十四小时有人值班。', doneTr:'The watch desk is staffed around the clock.' },
+    '训练室': { zh:'看训练安排', py:'kàn xùnliàn ānpái', en:'read the training board', secs:2.0, mins:4,
+              gain:{ mood:3 }, pose:{ type:'stand' },
+              done:'上午练器材，下午练救援。', doneTr:'Equipment drill in the morning, rescue drill in the afternoon.' },
+    '洗消间': { zh:'看洗消间', py:'kàn xǐxiāojiān', en:'inspect the decontamination room', secs:1.8, mins:3,
+              gain:{}, pose:{ type:'stand' },
+              done:'脏装备从这里清洗，不带进生活区。',
+              doneTr:'Dirty equipment is cleaned here and never carried into the living area.' },
+    '消防栓': { zh:'看消防栓', py:'kàn xiāofángshuān', en:'inspect the hydrant connection', secs:1.6, mins:2,
+              gain:{}, pose:{ type:'stand' },
+              done:'接口、水带和阀门都没有被挡住。',
+              doneTr:'Connection, hose and valve are all unobstructed.' },
+    '灭火器': { zh:'看压力表', py:'kàn yālìbiǎo', en:'check the extinguisher gauge', secs:1.6, mins:2,
+              gain:{}, pose:{ type:'stand' },
+              done:'指针在绿色区域，铅封也完好。', doneTr:'The needle is in the green and the seal is intact.' },
+    '工作台': { zh:'看检修工具', py:'kàn jiǎnxiū gōngjù', en:'inspect the maintenance tools', secs:1.8, mins:3,
+              gain:{ mood:2 }, pose:{ type:'stand' },
+              done:'台钳、扳手和量具都回到了标记位置。',
+              doneTr:'Vice, spanners, and gauges are back in their marked positions.' },
+    '清洗消毒': { zh:'看洗消设备', py:'kàn xǐxiāo shèbèi', en:'inspect the decontamination sink', secs:1.8, mins:3,
+              gain:{}, pose:{ type:'stand' },
+              done:'冲淋、洗眼器和地漏都保持畅通。',
+              doneTr:'Shower, eyewash, and floor drain are all kept clear.' },
+    '调度值班室': { zh:'看出勤状态', py:'kàn chūqín zhuàngtài', en:'check response status', secs:2.0, mins:3,
+              gain:{ mood:3 }, pose:{ type:'stand' },
+              done:'两辆车待命，无线电频道正常。', doneTr:'Two appliances are ready and the radio channel is clear.' },
+    '报警器': { zh:'检查报警器', py:'jiǎnchá bàojǐngqì', en:'inspect the alarm point', secs:1.5, mins:2,
+              gain:{}, pose:{ type:'stand' },
+              done:'测试灯正常，非紧急情况不要按。', doneTr:'The test lamp is normal; do not press except in an emergency.' },
+    '访客登记': { zh:'登记', py:'dēngjì', en:'sign the visitor register', secs:2.2, mins:3,
+              gain:{ mood:2 }, pose:{ type:'write' },
+              done:'姓名和来访时间写好了。', doneTr:'Name and arrival time recorded.' },
   },
   mall: {
     '喷泉': { zh:'看喷泉', py:'kàn pēnquán', en:'watch the fountain', secs:2.8, mins:8,
@@ -2906,7 +3100,14 @@ const USE_AT = {
               gain:{}, pose:{ type:'lift' },
               done:'拎着篮子，方便拿东西。', doneTr:'A basket makes it easier to carry things.' },
   },
-  // ---- 北京银行.  Every fixture in the authored branch resolves here before the global table,
+  // The same trolley is useful in the actual hypermarket, not only in the shopping centre. Keep
+  // this room-local so another future 购物车 fixture does not silently inherit supermarket behaviour.
+  market: {
+    '购物车': { zh:'推购物车', py:'tuī gòuwùchē', en:'wheel a shopping cart', secs:2.2, mins:4,
+              gain:{ mood:3 }, pose:{ type:'stand' },
+              done:'推着车逛，轻松多了。', doneTr:'Shopping is easier with a cart.' },
+  },
+  // ---- 青禾银行.  Every fixture in the authored branch resolves here before the global table,
   // which is especially important for 柜台: globally that word belongs to the chemist and opens
   // the symptom picker.  These rows only describe the physical action.  game.js supplies the
   // live queue/account status and commits money only after the player confirms an amount.
@@ -2967,6 +3168,12 @@ const USE_AT = {
               doneTr:'Too hot to speak, and your clothes will smell of it tomorrow.' },
   },
   diner: {
+    // The hot bowl on the pass is the shortest physical route into the same ordering flow as the
+    // waitress. `orderUp` deliberately leaves the menu, price, kitchen timer, service and table
+    // state with game.js; this fixture only opens that existing decision instead of inventing a
+    // second instant-meal path beside it.
+    '牛肉面': { zh:'点一碗', py:'diǎn yì wǎn', en:'order a bowl of beef noodles', secs:1.2, mins:1,
+              orderUp:true, gain:{}, pose:{ type:'reach' } },
     '鱼缸': { zh:'看鱼', py:'kàn yú', en:'watch the fish', secs:2.6, mins:5,
               gain:{ mood:10, rest:3 }, pose:{ type:'stand' },
               done:'看了一会儿，安静多了。', doneTr:'A minute watching them, and everything feels quieter.' },
@@ -3009,7 +3216,7 @@ const USE_AT = {
     '驾驶舱': { zh:'参观驾驶舱', py:'cānguān jiàshǐcāng', en:'visit the flight deck', secs:1.0, mins:2,
               cockpitView:true, pose:{ type:'reach' }, done:'驾驶舱仪表都亮着。', doneTr:'The flight-deck instruments are alive.' },
   },
-  // ---- 北京市仁和医院.  The four floors are separate scenes for performance, but the actions
+  // ---- 北京市澄安医院.  The four floors are separate scenes for performance, but the actions
   // form one care loop: 挂号 → 分诊 → 医生 → 检查 → 治疗/输液 → 出院.  game.js supplies the
   // case-specific price, department and state; these rows supply the verbs and physical poses.
   hospital: {
@@ -3076,6 +3283,12 @@ const USE_AT = {
     '康复训练': { zh:'做康复训练', py:'zuò kāngfù xùnliàn', en:'do rehabilitation exercises', secs:5.0, mins:45,
               gain:{ rest:-8, mood:22 }, hospitalRehab:true, pose:{ type:'walk' },
               done:'扶着平行杠走完了两趟。', doneTr:'Two careful lengths between the parallel bars.' },
+    '训练台阶': { zh:'练习上下台阶', py:'liànxí shàngxià táijiē', en:'practise on the training steps', secs:3.2, mins:16,
+              gain:{ rest:-3, mood:7 }, hospitalRehab:true, pose:{ type:'walk' },
+              done:'慢慢上下了几趟，脚步比刚才稳。', doneTr:'A few careful trips; the steps feel steadier now.' },
+    '康复自行车': { zh:'骑康复自行车', py:'qí kāngfù zìxíngchē', en:'ride the rehabilitation bicycle', secs:3.6, mins:20,
+              gain:{ rest:-4, mood:9 }, pose:{ type:'stand' },
+              done:'低阻力蹬了一会儿，腿没有那么紧了。', doneTr:'A short low-resistance ride loosens your legs.' },
     '出院处': { zh:'办理出院', py:'bànlǐ chūyuàn', en:'complete discharge', secs:2.8, mins:15,
               gain:{ mood:18 }, hospitalDischarge:true, pose:{ type:'reach' } },
     '刷手池': { zh:'外科刷手', py:'wàikē shuāshǒu', en:'do a surgical scrub', secs:3.0, mins:8,
@@ -3392,7 +3605,7 @@ const HOME_DOOR_USE = {
           // Resolving the day to an answer is one lookup and it lives here, beside the table, so a
           // caller never has to know that the key is a DOORS row's hz.  Returns null on a day with
           // no door state, which is the caller's cue to fall back to the `done` line below.
-          answer: day => {
+          knockReply: day => {
             const d = (typeof Disrupt !== 'undefined' && Disrupt.floorLife)
               ? Disrupt.floorLife(day).door : null;
             return (d && HOME_DOOR_USE.neighbour.heard[d.hz]) || null;
@@ -3410,14 +3623,6 @@ const HOME_DOOR_USE = {
             '搬东西': { zh:'门开着，箱子堆到门口，“借过借过。”',
                         en:'The door is already open, boxes to the threshold. "Coming through, coming through."',
                         mood:2, open:true },
-          },
-          // Resolving the day to an answer is one lookup and it lives here, beside the table, so a
-          // caller never has to know that the key is a DOORS row's hz.  Returns null on a day with
-          // no door state, which is the caller's cue to fall back to the `done` line below.
-          answer: day => {
-            const d = (typeof Disrupt !== 'undefined' && Disrupt.floorLife)
-              ? Disrupt.floorLife(day).door : null;
-            return (d && HOME_DOOR_USE.neighbour.heard[d.hz]) || null;
           },
           done:'敲了敲门，里面没有人应。', doneTr:'You knock; nobody answers.' },
 };
