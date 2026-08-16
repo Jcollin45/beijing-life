@@ -17635,7 +17635,84 @@ function tickUse(dt) {
 }
 
 // ---------------------------------------------------------------- loop
+// ---- the frame cap, which exists because a phone gets hot.
+//
+// `requestAnimationFrame` offers a frame every time the display can take one, and the game has
+// always drawn every one it was offered. On a 60 Hz monitor that is the right answer and there is
+// nothing to decide. On a phone it is not: a current handset runs its panel at 120 Hz, so the game
+// renders the street twice as many times a second as it needs to — the same picture, at double the
+// cost, on the one device in the house with no fan and a battery.
+//
+// And the quality ladder cannot see this. It judges frame *time* against 17.8 ms (js/perf.js), so
+// 120 fps at 8.3 ms a frame reads as enormous headroom and it climbs to the top tier and stays
+// there: full shadows, bloom, ambient occlusion, longest view distance, 120 times a second. The
+// ladder is not wrong — the frames really are that short — it is answering "can this machine go
+// faster", and on a phone the question is "should it". It cannot come down until the chip is hot
+// enough to throttle, by which point the player is holding a warm phone and watching the picture
+// get worse, which is the complaint in both halves.
+//
+// So: on a touch device, draw at most 60 times a second and give the other half of every 120 Hz
+// pair straight back. Half the GPU work, half the heat, and no visible difference — 60 fps is the
+// project's own standing target (STATE.md constraint 1), not a compromise against it.
+//
+// Skipping is done by returning before ANY time is accounted: `t0`, `frameNow`, `rigFrame` and
+// `Perf.tick` are all untouched, so the next frame that does draw sees a ~16.7 ms delta and moves
+// the world by exactly the wall time that passed. The ladder therefore measures the frame rate the
+// player is getting rather than the one the panel could have delivered, `floorMs` learns 16.7 as
+// it does everywhere else, and every threshold in js/perf.js means what it was tuned to mean.
+//
+// Not applied to a mouse-and-keyboard machine. A 144 Hz desktop display is plugged into the wall,
+// its owner chose it, and capping it there would be taking away something they paid for.
+// THE RULE, and the reason it is not simply "draw if 16.7 ms have passed": a frame is only given
+// back if waiting for the NEXT one still lands inside the 60 Hz budget. Skipping is not free —
+// once a frame is dropped the following one is whatever the panel offers next, so a naive
+// half-rate cap on a 90 Hz phone produces 45 fps, below the project's own floor, in the name of
+// saving heat. Asking "would one more native interval still fit in 16.7 ms" gets every panel right
+// without knowing which panel it is:
+//
+//   120 Hz  native 8.3   8.3 + 8.3 = 16.7  fits  -> skip     60 fps, half the work
+//   144 Hz  native 6.9   6.9 + 6.9 = 13.9  fits  -> skip     72 fps, half the work
+//    90 Hz  native 11.1  11.1 + 11.1 = 22.2 does not -> draw  90 fps, uncapped
+//    60 Hz  native 16.7  16.7 + 16.7 = 33.3 does not -> draw  60 fps, uncapped
+//
+// The last two are the important ones. A display that cannot be halved without going under 60 is
+// left alone, and so is a phone already struggling at 40 fps — its native interval is 25 ms and
+// nothing is ever given back, so the cap cannot make a slow device slower.
+const FRAME_CAP_MS = 1000 / 60;
+// Vsync does not deliver exact multiples, and 8.33 + 8.33 measures as 16.68 about as often as
+// 16.66. Without the slack a 120 Hz panel draws two frames in a row every time it rounds up.
+const FRAME_CAP_SLACK = 1.0;
+// The interval between OFFERED frames — including the ones given back, which is why it is tracked
+// separately from `t0`. Smoothed, because one long frame is not a display mode. Zero until the
+// second frame, and zero never skips, so the loop starts drawing everything.
+let frameNativeMs = 0, frameCapLast = -1e9, frameCapOffered = -1e9;
+// Off for a mouse-and-keyboard machine. A 144 Hz desktop display is plugged into the wall and its
+// owner chose it; a phone has no fan and a battery. It also means every harness — all of which run
+// headless on this desktop and report a fine pointer — sees the loop it has always seen, so a cap
+// that exists only on touch hardware cannot silently halve `.fpscheck.js`. `setFrameCap` is the
+// explicit switch for anything that wants to say otherwise.
+let frameCapOn = typeof matchMedia === 'function' && matchMedia('(any-pointer:coarse)').matches;
+function setFrameCap(on) { frameCapOn = !!on; frameNativeMs = 0; frameCapLast = -1e9; }
 function frame(now) {
+  // Give back the half of a 120 Hz pair nobody asked for. Before every clock in the loop, so a
+  // skipped frame costs nothing and is invisible to everything downstream: `t0`, `frameNow`,
+  // `rigFrame` and `Perf.tick` never see it, the next drawn frame carries the full ~16.7 ms of
+  // wall time, and the ladder in js/perf.js measures the rate the player is getting rather than
+  // the one the panel could have delivered.
+  if (frameCapOn && Number.isFinite(now) && now >= 0 && now <= MAX_FRAME_TIMESTAMP) {
+    const offered = now - frameCapOffered;
+    // A backwards sample, the first frame, or a return from the background: re-base rather than
+    // lock the loop out, and do not let a ten-minute gap into the interval average.
+    if (offered > 0 && offered < 200) frameNativeMs = frameNativeMs ? frameNativeMs * 0.8 + offered * 0.2 : offered;
+    else { frameCapLast = -1e9; frameNativeMs = 0; }
+    frameCapOffered = now;
+    if (now < frameCapLast) frameCapLast = -1e9;
+    const since = now - frameCapLast;
+    if (frameNativeMs > 0 && since + frameNativeMs <= FRAME_CAP_MS + FRAME_CAP_SLACK) {
+      requestAnimationFrame(frame); return;
+    }
+    frameCapLast = now;
+  }
   // Acceptance harnesses can freeze rendering after a room has been built, then step its real
   // controllers directly. Keep the rAF chain alive so releasing the hold resumes normally.
   if (frameHold) {

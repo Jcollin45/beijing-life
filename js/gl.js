@@ -73,6 +73,20 @@ const R = (() => {
   let cssW = 0, cssH = 0, cssObs = null;
   const cssSizeOut = [0, 0];
   let maxTargetSize = 4096, renderPixelBudget = 3200000;
+  // Anybody who wants to read the finished frame back. See the `preserveDrawingBuffer` note in
+  // `init`: without that flag the drawing buffer is only readable inside the frame that drew it,
+  // so a caller registers here and is handed the canvas at the one instant it is valid.
+  //
+  // A list rather than a single slot, and drained by swapping it out before the callbacks run: a
+  // callback that asks for another shot is queueing the *next* frame, not extending this one into
+  // a loop. Failures are contained — one caller throwing must not cost the others their frame,
+  // and must not take the frame down either, since this runs inside `present`.
+  let captureQ = [];
+  function drainCapture(){
+    if (!captureQ.length) return;
+    const q = captureQ; captureQ = [];
+    for (const fn of q) { try { fn(); } catch (_) { /* a reader's problem, not the frame's */ } }
+  }
   function targetPixelBudget() {
     const coarse = typeof matchMedia === 'function' && matchMedia('(any-pointer:coarse)').matches;
     const memory = typeof navigator !== 'undefined' ? Number(navigator.deviceMemory) : 0;
@@ -3421,10 +3435,26 @@ const R = (() => {
     get framePacketStats(){ return framePacketState(); },
     init(canvas){
       // high-performance asks a dual-GPU laptop for the discrete part rather than the integrated
-      // one it defaults to; preserveDrawingBuffer keeps the frame readable after the swap, which is
-      // what a screenshot needs. Neither costs anything on a machine with one GPU.
+      // one it defaults to. Free on a machine with one GPU.
+      //
+      // `preserveDrawingBuffer` used to be true here, "what a screenshot needs" — the mall's demo
+      // handset (js/mall-digital.js) photographs the game by calling `toDataURL` on `#cv` from a
+      // button handler, long after the frame it wants has been presented.
+      //
+      // It is not free, and where it is not free is exactly the machine complaining. Every mobile
+      // GPU is a tile-based deferred renderer: it renders a tile at a time into on-chip memory and
+      // writes the result out once. Promising that the drawing buffer survives the swap takes away
+      // the driver's right to discard it, so instead of resolving each tile and forgetting it, the
+      // whole buffer is kept and copied every frame. That is a full-resolution read plus a
+      // full-resolution write of memory bandwidth per frame, for a feature used a handful of times
+      // in one shop, and memory bandwidth is what a phone turns into heat.
+      //
+      // So the flag is off and the capture is scheduled instead: `requestCapture(fn)` runs `fn`
+      // at the end of the next `present()`, while the frame is still in the buffer and before the
+      // compositor has had it. Same picture, same `toDataURL`, no per-frame cost. Desktop loses
+      // nothing either — the drivers there were paying a smaller version of the same tax.
       gl=canvas.getContext('webgl2',{antialias:true,alpha:false,
-        powerPreference:'high-performance',preserveDrawingBuffer:true});
+        powerPreference:'high-performance',preserveDrawingBuffer:false});
       if(!gl){
         document.body.innerHTML='<p style="padding:40px;font:16px sans-serif;color:#fff">This browser has no WebGL2.</p>';
         throw new Error('no webgl2');
@@ -4259,7 +4289,9 @@ const R = (() => {
       // Even with the post chain disabled, the ordinary colour stream has ended and its diagnostic
       // ownership must be consumed. Otherwise Basic quality would leak one pending packet a frame.
       finishFramePacket();
-      if (!postOn) return false;
+      // Basic quality draws straight to the default framebuffer and has nothing to composite, but
+      // the frame it drew is finished and readable, which is all a capture wants.
+      if (!postOn) { drainCapture(); return false; }
       // Down from multisampled to textures the shader can read: the picture, and the map of what
       // in it is a light. One blit each, and each one has to say which attachment it is reading.
       gl.bindFramebuffer(gl.READ_FRAMEBUFFER, msFbo);
@@ -4348,8 +4380,17 @@ const R = (() => {
       boundArm = null;                          // post used unit 4 for AO; force next ARM bind
       gl.enable(gl.DEPTH_TEST); gl.enable(gl.CULL_FACE); gl.enable(gl.BLEND);
       gl.useProgram(prog);
+      // Last, so a reader gets the composited picture — bloom, AO, vignette and all — rather than
+      // the raw scene target, which is what it would have got had this run before the final draw.
+      drainCapture();
       return true;
     },
+    // Read the finished frame back. `fn` runs at the end of the next `present()`, with the game
+    // exactly as it is about to appear on screen, and is the ONLY point at which `#cv` can be
+    // read: see the `preserveDrawingBuffer` note in `init`. Outside it the buffer is undefined and
+    // `toDataURL` returns a blank or a stale picture, which is worse than an error because it
+    // looks like it worked.
+    requestCapture(fn){ if (typeof fn === 'function') captureQ.push(fn); },
     // On or off, and how strong. The ladder turns it off on the two tiers that exist for machines
     // already short of frames.
     setPost(on, amount, vignette){

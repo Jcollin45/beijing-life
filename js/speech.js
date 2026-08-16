@@ -34,6 +34,10 @@ const Speech = (() => {
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
   let ctx = null, mix = null, hall = null, wetG = null, meter = null, roomNow = '';
   let scratch = null;
+  // The player's volume, 0 to 1, applied at `master`. Held here as well as on the node so that a
+  // setting restored from localStorage before anybody has spoken is not lost — `setup` runs on the
+  // first line of dialogue, which is long after the settings panel has been read.
+  let master = null, vol = 1;
   let on = true, token = 0, lastErr = '', lastSaid = '', lastWho = '', lastMode = 'none';
   let loadError = '';                   // why nobody can speak, if nobody can
   const built = new WeakMap();          // a voice is worked out once per person, then kept
@@ -185,7 +189,16 @@ const Speech = (() => {
   function setup() {
     if (ctx || !AudioCtor) return ctx;
     ctx = new AudioCtor();
-    const built = buildBus(ctx, ctx.destination, roomNow || 'street');
+    // The player's own volume, and it sits AFTER the soft clipper inside `buildBus` rather than on
+    // `bus` in front of it. Turning the game up by raising a level that then goes through a
+    // limiter does not make it louder, it makes it flatter — the clipper simply takes back
+    // whatever was added. Scaling the finished mix is the only place a volume control can honestly
+    // live. The offline render at :445 deliberately does not get one: it is a measurement, and a
+    // measurement that moves with a settings slider is not one.
+    master = ctx.createGain();
+    master.gain.value = vol;
+    master.connect(ctx.destination);
+    const built = buildBus(ctx, master, roomNow || 'street');
     mix = built.bus; hall = built.room; wetG = built.wet;
     // A meter on the bus everything passes through. "No sound is coming out" and "no sound is being
     // made" are different faults with different fixes, and without something here there is no way
@@ -247,13 +260,29 @@ const Speech = (() => {
 
   function unlock() {
     if (!setup()) return;
-    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+    if (ctx.state !== 'running') void ctx.resume().catch(() => {});
   }
   function pause(p) {
     if (!ctx) return;
     if (p && ctx.state === 'running') void ctx.suspend().catch(() => {});
-    if (!p && ctx.state === 'suspended') void ctx.resume().catch(() => {});
+    if (!p && ctx.state !== 'running') void ctx.resume().catch(() => {});
   }
+  // Whether this context is actually able to make a sound right now. Every play path in this file
+  // tests `state === 'suspended'` and calls `resume()` without waiting for it, which is right on a
+  // desktop and is half the "sound doesn't work sometimes" on a phone: iOS reports an interrupted
+  // context — one that lost the output to a phone call, a lock screen or another app — as
+  // `interrupted`, not `suspended`, so the test misses it entirely and the line is scheduled into
+  // a context that is not running. Nobody hears it and nothing reports an error.
+  const awake = () => !!ctx && ctx.state === 'running';
+  // The player's own level, 0 to 1. Applied immediately if there is a graph, remembered if not.
+  // Not to be confused with `level()` below, which is the meter — this is the knob, that is the
+  // needle.
+  function setVolume(v) {
+    const n = Number(v);
+    vol = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    if (master) master.gain.value = vol;
+  }
+  const volume = () => vol;
   function setEnabled(v) {
     on = !!v;
     if (!on) stop();
@@ -510,6 +539,6 @@ const Speech = (() => {
 
   return { unlock, pause, setEnabled, enabled, setRoom, npc, voiceOf, archetypeOf, roleOf,
            stop, status, hasClip, fetchClip, ready, stationClip, noticeClip, airClip, captainClip,
-           level, render, trouble, ROLE };
+           level, render, trouble, ROLE, awake, setVolume, volume };
 })();
 if (typeof module !== 'undefined') module.exports = Speech;

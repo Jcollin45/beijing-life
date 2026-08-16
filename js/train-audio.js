@@ -4,6 +4,12 @@
 const TrainAudio = (() => {
   const AudioCtor = window.AudioContext || window.webkitAudioContext;
   let ctx = null, output = null, paIn = null, generation = 0;
+  // The player's volume, 0 to 1, applied at `master` — after the compressor, not before it. In
+  // front of a compressor a volume control fights the thing it is turning up: raise the input and
+  // the ratio takes most of it straight back, so the mix gets denser instead of louder. Kept in a
+  // variable as well as on the node because `setup()` does not run until the first sound, which is
+  // long after the settings panel has been read.
+  let master = null, vol = 1;
   let meter = null, scratch = null;
   let activeVoice = null;
   let motionBed = null, motionSpeed = 0;
@@ -21,7 +27,10 @@ const TrainAudio = (() => {
     output = ctx.createGain();
     output.gain.value = .78;
     output.connect(compressor);
-    compressor.connect(ctx.destination);
+    master = ctx.createGain();
+    master.gain.value = vol;
+    compressor.connect(master);
+    master.connect(ctx.destination);
     // A meter on the bus, so that "is anything actually coming out of this" is a question with an
     // answer. Every check in this project until now has proved that an announcement was *scheduled*
     // without throwing, which is not the same claim at all — the harnesses run headless with
@@ -274,9 +283,42 @@ const TrainAudio = (() => {
     return buf;
   }
 
+  // A place for a tenant with its own sounds to plug into, instead of opening a second
+  // AudioContext of its own.
+  //
+  // A context is not a free object. Safari on iOS has a hard ceiling on how many a page may have
+  // open, each one needs its own gesture to unlock, and each one is separately liable to be left
+  // interrupted after a phone call — so a shop that opens its own is a shop whose demo goes silent
+  // independently of the rest of the game, at a moment nothing reports. The electronics shop was
+  // doing exactly that (js/mall-digital.js), and creating it lazily on the first press, which is
+  // after the gesture that would have unlocked it.
+  //
+  // Connected to `output`, i.e. in front of the compressor and under the player's volume. That is
+  // also the relationship the shop wants and previously only asserted in a comment: a demo handset
+  // is quieter than the building it is standing in, and now it is so by construction.
+  function guestBus(gain) {
+    if (!setup()) return null;
+    const g = ctx.createGain();
+    const n = Number(gain);
+    g.gain.value = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : .5;
+    g.connect(output);
+    return { ctx, node: g };
+  }
+  // Whether this context can make a sound right now. `state === 'suspended'`, which every play
+  // path in this file tests, is not the same question: iOS reports a context that lost its output
+  // to a call, the lock screen or another app as `interrupted`, and an interrupted context passes
+  // the suspended test, accepts every node you schedule on it, and plays none of them.
+  const awake = () => !!ctx && ctx.state === 'running';
+  // The player's own level, 0 to 1. Applied now if the graph exists, remembered if it does not.
+  function setVolume(v) {
+    const n = Number(v);
+    vol = Number.isFinite(n) ? Math.max(0, Math.min(1, n)) : 1;
+    if (master) master.gain.value = vol;
+  }
+  const volume = () => vol;
   function unlock() {
     if (!setup()) return;
-    if (ctx.state === 'suspended') void ctx.resume().catch(() => {});
+    if (ctx.state !== 'running') void ctx.resume().catch(() => {});
     // Nothing to preload any more: the announcement is synthesised at the moment it is needed, so
     // there is no fetch to lose and no file: URL problem to work around. All this has to do now is
     // `setup` has already built the room, which is the one part slow enough to be worth having
@@ -2208,7 +2250,7 @@ const TrainAudio = (() => {
   function pause(on) {
     if (!ctx) return;
     if (on && ctx.state === 'running') void ctx.suspend().catch(() => {});
-    if (!on && ctx.state === 'suspended') void ctx.resume().catch(() => {});
+    if (!on && ctx.state !== 'running') void ctx.resume().catch(() => {});
     // Suspending the context is the whole of it now. The announcement is scheduled oscillators, so
     // it freezes and thaws with the clock the same way the motion bed does, and there is no media
     // element left that needs pausing separately.
@@ -2413,5 +2455,6 @@ const TrainAudio = (() => {
            platform, terminal, diner, dinerCue, mall, mallCue, liftCue, liftTravel, passing, gate, render, impulse, lines,
            music, duckMusic, renderMusic, renderSong, renderMallBed, mallNotice,
            MUSIC_ORDER, PA_ROOMS, RETAIL_SONGS, skipTrack, onTrackEnd, trackEnded,
-           cabinNoise, cabinLevel, cabinChime, cabinCue, duckCabin, captain, level };
+           cabinNoise, cabinLevel, cabinChime, cabinCue, duckCabin, captain, level,
+           awake, setVolume, volume, guestBus };
 })();

@@ -116,12 +116,14 @@
 //    judged on the *press* rather than the completion, because that is what a reaction game is.
 //    See REQUESTS at the foot of this file for the two lines in game.js that retire the shim.
 //
-//  * **The photograph is a real frame.** js/gl.js:2913 builds the WebGL2 context with
-//    `preserveDrawingBuffer:true`, in its own words "what a screenshot needs" — the drawing buffer
-//    survives the swap, so `#cv` can be read back after it has been presented. The demo phone reads
-//    it with `toDataURL`. Nothing here paints a fake picture. Nothing here writes one to
-//    localStorage either: a JPEG of a 1280-wide canvas is well over 100 kB and the save lives in
-//    the same 5 MB bucket, so the roll is held in memory and only its count is persisted.
+//  * **The photograph is a real frame.** The demo phone reads `#cv` with `toDataURL`. It used to
+//    be able to do that at any moment, because the context was built with
+//    `preserveDrawingBuffer:true`; that flag is gone (js/gl.js:3422 — it costs a phone a
+//    full-resolution buffer copy every frame), so the read is booked with `R.requestCapture` and
+//    happens at the end of the next `present()`, inside the frame that drew it. Same picture, one
+//    frame later. Nothing here paints a fake picture. Nothing here writes one to localStorage
+//    either: a JPEG of a 1280-wide canvas is well over 100 kB and the save lives in the same 5 MB
+//    bucket, so the roll is held in memory and only its count is persisted.
 //
 // No real brand names anywhere: 白鹭 and 长风 are invented, and so is every model number, price and
 // specification printed beside them.
@@ -259,7 +261,8 @@ const MallDigital = (() => {
   // is failure handling: a browser that refuses `toDataURL` on a tainted canvas, a canvas that is
   // not there yet, and a roll that is not allowed to grow without limit.
   const ROLL = 8;
-  function capture() {
+  // Read the canvas, right now. Only ever called from inside the render pass — see `capture`.
+  function readFrame() {
     const cv = document.getElementById('cv');
     if (!cv || !cv.width || !cv.height) return null;
     let url = null;
@@ -270,6 +273,22 @@ const MallDigital = (() => {
     while (photos.length > ROLL) photos.pop();
     S.shots++; persist();
     return shot;
+  }
+  // The shutter, and it is asynchronous now — `then(shot)` rather than a returned one.
+  //
+  // The engine no longer creates its context with `preserveDrawingBuffer` (js/gl.js:3422, and the
+  // reason is a phone's memory bandwidth), so `#cv` holds a defined picture only inside the frame
+  // that drew it. A button handler is not inside a frame. `R.requestCapture` books the read for
+  // the end of the next `present()`, which is that instant, and hands back what it found.
+  //
+  // Without the renderer — a harness, a headless module test — the read is simply attempted where
+  // it stands, which is the behaviour this had before and is still right for a caller that has no
+  // frame loop to wait for.
+  function capture(then) {
+    const done = typeof then === 'function' ? then : () => {};
+    const R = typeof window !== 'undefined' ? window.R : null;
+    if (R && typeof R.requestCapture === 'function') { R.requestCapture(() => done(readFrame())); return; }
+    done(readFrame());
   }
   // Where a phone would show it: bottom left, small, briefly, and unable to take a click off
   // anything underneath it. This is the tenant's own element and its own inline styling —
@@ -318,13 +337,30 @@ const MallDigital = (() => {
   // phrase, a distorted power chord with a drum under it, and speech-band noise with a room tone
   // that drops away when the noise cancelling comes on. Each one is also shaped by the pair it is
   // wired to, so the bass pair really does move the low end.
-  let AC = null;
+  // The shop borrows the building's AudioContext rather than opening one of its own.
+  //
+  // It used to open its own, lazily, on the first press of the LISTEN button — which is after the
+  // gesture that unlocks audio on a phone, so on iOS it arrived already suspended and stayed that
+  // way. It also sat outside every other audio control in the game: the pause sheet suspends
+  // Speech and TrainAudio, the volume slider scales them, and a third context knew about neither.
+  // Three separate contexts is also three separate things for iOS to leave `interrupted` after a
+  // phone call, and Safari puts a ceiling on how many a page may have at all.
+  //
+  // `TrainAudio.guestBus` hands back that context and a node in front of its compressor, which is
+  // where the loudness discipline below wanted to be anyway. The own-context path is kept for a
+  // harness that loads this file without the rest of the game.
+  let AC = null, guest = null;
   function ctx() {
     if (AC === null) {
-      const K = window.AudioContext || window.webkitAudioContext;
-      AC = K ? new K() : false;
+      const TA = typeof window !== 'undefined' ? window.TrainAudio : null;
+      guest = TA && typeof TA.guestBus === 'function' ? TA.guestBus(1) : null;
+      if (guest) AC = guest.ctx;
+      else {
+        const K = window.AudioContext || window.webkitAudioContext;
+        AC = K ? new K() : false;
+      }
     }
-    if (AC && AC.state === 'suspended') { try { AC.resume(); } catch (_) {} }
+    if (AC && AC.state !== 'running') { try { AC.resume(); } catch (_) {} }
     return AC || null;
   }
   // Loudness discipline: everything below runs through one gain node at a level the mall's own
@@ -332,7 +368,7 @@ const MallDigital = (() => {
   function bus(ac, level) {
     const g = ac.createGain();
     g.gain.value = level;
-    g.connect(ac.destination);
+    g.connect(guest && guest.ctx === ac ? guest.node : ac.destination);
     return g;
   }
   function pluck(ac, out, t, freq, len, level) {
@@ -1572,9 +1608,12 @@ MallFit['电子产品'] = (A) => {
       return;
     }
     if (key === 'photo') {
-      const shot = MD.capture();
-      if (shot) MD.review(shot, `照片 ${MD.state().shots} · zhàopiàn · your photograph`);
-      else card('拍不了。', 'The camera could not read the frame.');
+      // A frame away, not a return value. The preview appears on the frame after the shutter,
+      // which is about sixteen milliseconds and reads as the shutter itself.
+      MD.capture(shot => {
+        if (shot) MD.review(shot, `照片 ${MD.state().shots} · zhàopiàn · your photograph`);
+        else card('拍不了。', 'The camera could not read the frame.');
+      });
       return;
     }
     if (key === 'warranty') {
