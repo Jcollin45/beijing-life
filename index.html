@@ -2,7 +2,7 @@
 <html lang="zh-Hans">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
 <title>北京生活 · Beijing Life</title>
 <link rel="icon" href="data:,">
 <style>
@@ -432,6 +432,9 @@
   .unk{color:#ffdc92}
 
   /* ---------- vocab notebook ---------- */
+  /* Learning text is reference material: let players copy Hanzi, pinyin and translations into a
+     dictionary without making the canvas, HUD or movement surface selectable. */
+  #book,#talk{-webkit-user-select:text;user-select:text}
   /* The conversation panel. Wider than the word card because a sentence needs the width, and the
      replies are full-width buttons under it. */
   #talk{position:absolute;left:50%;top:50%;transform:translate(-50%,-48%) scale(.97);
@@ -1304,10 +1307,6 @@
   @media (max-width:760px) and (any-pointer:coarse){
     body.playing #touchControls{display:block}
     #keys{display:none}
-    #goals,#map,#goals:not(.is-collapsed),#map:not(.is-collapsed){
-      bottom:calc(var(--safe-b) + 140px)}
-    #prompt{bottom:calc(var(--safe-b) + 214px)}
-    #doing{bottom:calc(var(--safe-b) + 264px)}
   }
 
   @media (max-height:600px) and (orientation:landscape){
@@ -1431,16 +1430,42 @@
     .panel-disclosure .hz{font-size:13px}
     .panel-disclosure small{font-size:10px}
   }
+  /* Under about 424px the clock bar and the needs panel are wider than the screen between them:
+     measured at 375px the bar ends at x=284 and the panel starts at x=235, and their boxes cross
+     for 6px vertically, so the panel appears to sit on the bar's corner. Drop it to the second
+     band, the same 61px the flight and care slips already use, and move the toast below it so
+     the three do not restack the same collision one row down. */
   @media (max-width:480px){
+    #needs{top:calc(var(--safe-t) + 61px)}
+    #toast{top:calc(var(--safe-t) + 124px)}
+    #ui:has(#flightStatus.on) #needs,
+    #ui:has(#hospitalStatus.on) #needs{top:calc(var(--safe-t) + 145px)}
     #bookStats{gap:5px}
     #bookStats .stat{padding:8px 4px}
     #bookFilters button{min-height:36px;font-size:12px}
     #coach{left:8px;bottom:132px;width:calc(100vw - 16px)}
   }
+  /* The phone's bottom band is four independently anchored panels — the two touch pads, the
+     goals/map cards on the left and right, and the centred prompt over them — and each one used
+     to carry its own hand-tuned offset. Measured on the live site at 375x812: the prompt's box
+     ran from 186px to 222px off the bottom while the collapsed goals card reached 206px, so the
+     two crossed by 20px and the card painted over the left end of "E 看看 钥匙". Expanded the
+     cards are far worse: goals grows to 176px tall and the metro map to 252px, both of which
+     swallow the prompt whole.
+
+     A taller offset alone cannot fix that, because the card's height is content-driven and will
+     grow past any number chosen for it. Bounding the card is what makes the band deterministic:
+     with a 96px ceiling the card's top can never pass 214px, so a prompt at 232px clears it in
+     every state — 26px of air when the cards are collapsed, 10px when they are open. */
   @media (max-width:760px) and (any-pointer:coarse){
     #goals,#map,#goals:not(.is-collapsed),#map:not(.is-collapsed){bottom:calc(var(--safe-b) + 118px)}
-    #prompt{bottom:calc(var(--safe-b) + 178px)}
-    #doing{bottom:calc(var(--safe-b) + 226px)}
+    /* ponytail: a fixed 96px ceiling, not a measured one. The metro map wants 252px and scrolls
+       inside this instead. If the map earns the room back, the honest fix is for the cards to
+       yield the band while a prompt is up, which needs a class off the prompt's own visibility
+       in game.js rather than another number here. */
+    #goals,#map{max-height:96px;overflow-y:auto;overscroll-behavior:contain}
+    #prompt{bottom:calc(var(--safe-b) + 224px)}
+    #doing{bottom:calc(var(--safe-b) + 272px)}
   }
 </style>
 </head>
@@ -2131,7 +2156,7 @@
 
   // One content version for the whole set. It preserves the all-or-nothing build contract while
   // allowing unchanged scripts and assets to survive a reload in a production cache.
-  var v = '2026.08.15.25';
+  var v = '2026.08.15.33';
 
   function loadGame() {
   var last = null;
