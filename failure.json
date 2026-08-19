@@ -1,0 +1,81 @@
+{
+  "status": "failed",
+  "sourceSha": "abe2c452754bc83ba984ea61844221abe7feee1f",
+  "workflowRun": "https://github.com/Jcollin45/beijing-life/actions/runs/32218503059",
+  "captureJobsResult": "failure",
+  "downloadOutcome": "success",
+  "verificationJobsResult": "cancelled",
+  "verificationDownloadOutcome": "success",
+  "mergeOutcome": "failure",
+  "verificationMergeOutcome": "failure",
+  "compareOutcome": "failure",
+  "captureCount": 47,
+  "rootCaptureCount": 47,
+  "expectedViews": 57,
+  "shards": [
+    {
+      "building": "B01",
+      "artifactPresent": true,
+      "captureOutcome": "failure",
+      "complete": null,
+      "views": 0,
+      "fatal": "university view failed: {\"view\":{\"building\":\"B01\",\"level\":1,\"place\":\"campus_b01_f1\",\"portal\":\"B01/PUBLIC\",\"at\":{\"x\":0,\"z\":-4.25,\"yaw\":0},\"mode\":\"entry\",\"suffix\":\"entry\"},\"result\":{\"ok\":false,\"error\":\"TypeError: Cannot read properties of undefined (reading 'localBounds')\\n    at <anonymous>:8:25\"}}"
+    },
+    {
+      "building": "B02",
+      "artifactPresent": true,
+      "captureOutcome": "success",
+      "complete": true,
+      "views": 8,
+      "fatal": null
+    },
+    {
+      "building": "B03",
+      "artifactPresent": true,
+      "captureOutcome": "success",
+      "complete": true,
+      "views": 2,
+      "fatal": null
+    },
+    {
+      "building": "B04",
+      "artifactPresent": true,
+      "captureOutcome": "success",
+      "complete": true,
+      "views": 12,
+      "fatal": null
+    },
+    {
+      "building": "B05",
+      "artifactPresent": true,
+      "captureOutcome": "success",
+      "complete": true,
+      "views": 8,
+      "fatal": null
+    },
+    {
+      "building": "B06",
+      "artifactPresent": true,
+      "captureOutcome": "success",
+      "complete": true,
+      "views": 8,
+      "fatal": null
+    },
+    {
+      "building": "B07",
+      "artifactPresent": true,
+      "captureOutcome": "success",
+      "complete": true,
+      "views": 7,
+      "fatal": null
+    },
+    {
+      "building": "B08",
+      "artifactPresent": true,
+      "captureOutcome": "success",
+      "complete": true,
+      "views": 2,
+      "fatal": null
+    }
+  ]
+}

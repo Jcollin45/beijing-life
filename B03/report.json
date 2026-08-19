@@ -1,0 +1,236 @@
+{
+  "schema": "chinesegame.university-visual-review-report/v2",
+  "source": "abe2c452754bc83ba984ea61844221abe7feee1f",
+  "building": "B03",
+  "expectedViews": 2,
+  "complete": true,
+  "views": 2,
+  "reviewPrerequisites": {
+    "bodyControl": true,
+    "uiClean": true,
+    "fontReady": true,
+    "fontCheck": true,
+    "glyphCount": 10,
+    "glyphVariants": 10,
+    "minGlyphInk": 331
+  },
+  "report": [
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B03",
+      "level": 1,
+      "place": "campus_canteen",
+      "portal": "B03/PUBLIC",
+      "at": {
+        "x": 5.6,
+        "z": 0,
+        "yaw": -1.5707963267948966
+      },
+      "mode": "entry",
+      "suffix": "entry",
+      "ok": true,
+      "buildingId": "B03",
+      "props": 1894,
+      "solids": 119,
+      "blockers": 6,
+      "things": 2,
+      "lights": 24,
+      "zones": 25,
+      "spawn": {
+        "x": 1.9999999999999996,
+        "z": 2.2043642384652358e-16,
+        "yaw": -1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": null,
+      "reviewAt": null,
+      "entryReviewAt": {
+        "x": 3.83,
+        "z": 2,
+        "yaw": 0,
+        "inward": 0,
+        "lateral": 0,
+        "cameraBack": 3.6,
+        "authoredCameraBack": 3.6,
+        "frontDepth": 5.96,
+        "entryZone": "B03/F1/ENTRY",
+        "focusRoom": "B03/F1/DINING",
+        "cameraZone": "B03/F1/ENTRY",
+        "authored": true,
+        "focusFixtureIds": [
+          "B03/F1/DINING/ARRIVAL"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B03/F1/DINING/ARRIVAL",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 10.42,
+            "lateral": 0.57,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 189,
+            "projectedWidth": 0.341,
+            "projectedHeight": 0.225,
+            "projectedArea": 0.077,
+            "faceOn": 0.998
+          }
+        ]
+      },
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B03-F1-entry.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 137.74,
+        "stddev": 52.91,
+        "range": 230.36,
+        "luminanceBins": 30,
+        "adjacentLumaMae": 2.86,
+        "strongEdgeFraction": 0.0065,
+        "compressionRatio": 0.454,
+        "healthy": true
+      }
+    },
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B03",
+      "level": 1,
+      "place": "campus_canteen",
+      "portal": "B03/PUBLIC",
+      "at": {
+        "x": 5.6,
+        "z": 0,
+        "yaw": -1.5707963267948966
+      },
+      "mode": "programme",
+      "suffix": "programme",
+      "ok": true,
+      "buildingId": "B03",
+      "props": 1894,
+      "solids": 119,
+      "blockers": 6,
+      "things": 2,
+      "lights": 24,
+      "zones": 25,
+      "spawn": {
+        "x": 1.9999999999999996,
+        "z": 2.2043642384652358e-16,
+        "yaw": -1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": "B03/F1/DINING",
+      "reviewAt": {
+        "x": 2.8,
+        "z": -2.62,
+        "yaw": -1.15,
+        "cameraBack": 3.2,
+        "authoredCameraBack": 3.2,
+        "frontDepth": 2.72,
+        "authored": true,
+        "focusFixtureIds": [
+          "B03/F1/SERVE/C2",
+          "B03/F1/SERVE/C3",
+          "B03/F1/SERVE/C2-PRICE",
+          "B03/F1/SERVE/C3-PRICE"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B03/F1/SERVE/C2",
+            "prefab": "PF-KITCHEN-RANGE",
+            "reviewFacing": "local-negative-z",
+            "forward": 6.1,
+            "lateral": 2.37,
+            "visibleSamples": 99,
+            "samples": 189,
+            "innerSamples": 99,
+            "projectedWidth": 0.321,
+            "projectedHeight": 0.372,
+            "projectedArea": 0.12,
+            "faceOn": 0.999
+          },
+          {
+            "id": "B03/F1/SERVE/C3",
+            "prefab": "PF-SERVING-COUNTER",
+            "reviewFacing": "local-negative-z",
+            "forward": 6.9,
+            "lateral": 0.59,
+            "visibleSamples": 240,
+            "samples": 378,
+            "innerSamples": 240,
+            "projectedWidth": 0.269,
+            "projectedHeight": 0.564,
+            "projectedArea": 0.152,
+            "faceOn": 0.944
+          },
+          {
+            "id": "B03/F1/SERVE/C2-PRICE",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 5.6,
+            "lateral": 2.28,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 189,
+            "projectedWidth": 0.227,
+            "projectedHeight": 0.146,
+            "projectedArea": 0.033,
+            "faceOn": 0.999
+          },
+          {
+            "id": "B03/F1/SERVE/C3-PRICE",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 6.4,
+            "lateral": 0.5,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 189,
+            "projectedWidth": 0.171,
+            "projectedHeight": 0.127,
+            "projectedArea": 0.022,
+            "faceOn": 0.942
+          }
+        ]
+      },
+      "entryReviewAt": null,
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B03-F1-programme.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 130.53,
+        "stddev": 48.63,
+        "range": 232.58,
+        "luminanceBins": 30,
+        "adjacentLumaMae": 3.5,
+        "strongEdgeFraction": 0.0082,
+        "compressionRatio": 0.503,
+        "healthy": true
+      }
+    }
+  ],
+  "errors": []
+}

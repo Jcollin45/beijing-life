@@ -1,0 +1,221 @@
+{
+  "schema": "chinesegame.university-visual-review-report/v2",
+  "source": "abe2c452754bc83ba984ea61844221abe7feee1f",
+  "building": "B08",
+  "expectedViews": 2,
+  "complete": true,
+  "views": 2,
+  "reviewPrerequisites": {
+    "bodyControl": true,
+    "uiClean": true,
+    "fontReady": true,
+    "fontCheck": true,
+    "glyphCount": 10,
+    "glyphVariants": 10,
+    "minGlyphInk": 331
+  },
+  "report": [
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B08",
+      "level": 1,
+      "place": "campus_security",
+      "portal": "B08/STAFF",
+      "at": {
+        "x": 1.8,
+        "z": 1.65,
+        "yaw": 3.141592653589793
+      },
+      "mode": "entry",
+      "suffix": "entry",
+      "ok": true,
+      "buildingId": "B08",
+      "props": 539,
+      "solids": 28,
+      "blockers": 6,
+      "things": 1,
+      "lights": 5,
+      "zones": 5,
+      "spawn": {
+        "x": 1.8000000000000003,
+        "z": 0.44999999999999996,
+        "yaw": 3.141592653589793
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": null,
+      "reviewAt": null,
+      "entryReviewAt": {
+        "x": -1.3,
+        "z": -1,
+        "yaw": -1.2,
+        "inward": 0,
+        "lateral": 0,
+        "cameraBack": 2,
+        "authoredCameraBack": 2,
+        "frontDepth": 1.52,
+        "entryZone": "B08/F1/WORK",
+        "focusRoom": "B08/F1/WORK",
+        "cameraZone": "B08/F1/WORK",
+        "authored": true,
+        "focusFixtureIds": [
+          "B08/F1/WORK/COUNTER",
+          "B08/F1/WORK/WINDOW"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B08/F1/WORK/COUNTER",
+            "prefab": "PF-SERVICE-COUNTER",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.61,
+            "lateral": 0.66,
+            "visibleSamples": 282,
+            "samples": 297,
+            "innerSamples": 282,
+            "projectedWidth": 0.482,
+            "projectedHeight": 1.074,
+            "projectedArea": 0.517,
+            "faceOn": 0.851
+          },
+          {
+            "id": "B08/F1/WORK/WINDOW",
+            "prefab": "PF-WALL-RUN",
+            "reviewFacing": "omnidirectional",
+            "forward": 3.85,
+            "lateral": 0.57,
+            "visibleSamples": 71,
+            "samples": 162,
+            "innerSamples": 38,
+            "projectedWidth": 0.519,
+            "projectedHeight": 0.693,
+            "projectedArea": 0.36,
+            "faceOn": 1
+          }
+        ]
+      },
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B08-F1-entry.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 125.42,
+        "stddev": 57.23,
+        "range": 226.12,
+        "luminanceBins": 30,
+        "adjacentLumaMae": 2.13,
+        "strongEdgeFraction": 0.0061,
+        "compressionRatio": 0.422,
+        "healthy": true
+      }
+    },
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B08",
+      "level": 1,
+      "place": "campus_security",
+      "portal": "B08/STAFF",
+      "at": {
+        "x": 1.8,
+        "z": 1.65,
+        "yaw": 3.141592653589793
+      },
+      "mode": "programme",
+      "suffix": "programme",
+      "ok": true,
+      "buildingId": "B08",
+      "props": 539,
+      "solids": 28,
+      "blockers": 6,
+      "things": 1,
+      "lights": 5,
+      "zones": 5,
+      "spawn": {
+        "x": 1.8000000000000003,
+        "z": 0.44999999999999996,
+        "yaw": 3.141592653589793
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": "B08/F1/WORK",
+      "reviewAt": {
+        "x": -1.7,
+        "z": 0.2,
+        "yaw": -0.3,
+        "cameraBack": 2,
+        "authoredCameraBack": 2,
+        "frontDepth": 2.16,
+        "authored": true,
+        "focusFixtureIds": [
+          "B08/F1/WORK/CONSOLE",
+          "B08/F1/WORK/CCTV-CAM01"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B08/F1/WORK/CONSOLE",
+            "prefab": "PF-CCTV-DESK",
+            "reviewFacing": "local-negative-z",
+            "forward": 1.77,
+            "lateral": 1.08,
+            "visibleSamples": 718,
+            "samples": 1161,
+            "innerSamples": 591,
+            "projectedWidth": 0.881,
+            "projectedHeight": 1.065,
+            "projectedArea": 0.937,
+            "faceOn": 0.969
+          },
+          {
+            "id": "B08/F1/WORK/CCTV-CAM01",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.83,
+            "lateral": 1.11,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 172,
+            "projectedWidth": 0.416,
+            "projectedHeight": 0.304,
+            "projectedArea": 0.126,
+            "faceOn": 1
+          }
+        ]
+      },
+      "entryReviewAt": null,
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B08-F1-programme.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 125.29,
+        "stddev": 50.9,
+        "range": 227.69,
+        "luminanceBins": 30,
+        "adjacentLumaMae": 2.46,
+        "strongEdgeFraction": 0.0051,
+        "compressionRatio": 0.444,
+        "healthy": true
+      }
+    }
+  ],
+  "errors": []
+}

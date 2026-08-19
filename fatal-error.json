@@ -1,0 +1,8 @@
+{
+  "schema": "chinesegame.university-visual-review-report/v2",
+  "source": "abe2c452754bc83ba984ea61844221abe7feee1f",
+  "building": "ALL",
+  "view": null,
+  "message": "independent university recapture failed: primary and independent verification reports must both be complete v2 reports | independent review rows 47/57 and 45/57 | B03/F1/entry: missing independent recapture | B03/F1/programme: missing independent recapture",
+  "stack": "Error: independent university recapture failed: primary and independent verification reports must both be complete v2 reports | independent review rows 47/57 and 45/57 | B03/F1/entry: missing independent recapture | B03/F1/programme: missing independent recapture\n    at compareIndependentReviewOutputs (/home/runner/work/beijing-life/beijing-life/university-visual-review.js:578:27)\n    at main (/home/runner/work/beijing-life/beijing-life/university-visual-review.js:584:26)\n    at Object.<anonymous> (/home/runner/work/beijing-life/beijing-life/university-visual-review.js:1228:26)\n    at Module._compile (node:internal/modules/cjs/loader:1872:14)\n    at Object..js (node:internal/modules/cjs/loader:2003:10)\n    at Module.load (node:internal/modules/cjs/loader:1594:32)\n    at Module._load (node:internal/modules/cjs/loader:1396:12)\n    at wrapModuleLoad (node:internal/modules/cjs/loader:255:19)\n    at Module.executeUserEntryPoint [as runMain] (node:internal/modules/run_main:154:5)\n    at node:internal/main/run_main_module:33:47"
+}

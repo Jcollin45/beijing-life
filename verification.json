@@ -1,0 +1,378 @@
+{
+  "schema": "chinesegame.university-visual-review-verification/v1",
+  "source": "abe2c452754bc83ba984ea61844221abe7feee1f",
+  "complete": false,
+  "views": 45,
+  "thresholds": {
+    "visualMaeMaximum": 8,
+    "structureDistanceMaximum": 0.2
+  },
+  "rows": [
+    {
+      "key": "B02/F1/entry",
+      "file": "B02-F1-entry.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "2ed49cafa158307c154a9825575164f054799aec18b93e5d960978591d48267e",
+      "verificationSha256": "2ed49cafa158307c154a9825575164f054799aec18b93e5d960978591d48267e"
+    },
+    {
+      "key": "B02/F1/programme",
+      "file": "B02-F1-programme.png",
+      "mae": 0.037,
+      "structureDistance": 0.0016,
+      "primarySha256": "664c5cafff4ce4c8ca447db8f8b78485ed41084c167d029eb6ed4baadb3239c4",
+      "verificationSha256": "7bd01fdca1d647bdeb82ce44579521f26f0d40d092f73914f1b8bd85ae4e38f0"
+    },
+    {
+      "key": "B02/F2/entry",
+      "file": "B02-F2-entry.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "cda7e70fddaa9544c6543f8a000a5e3adad6de756232652b09984fb13921f92c",
+      "verificationSha256": "cda7e70fddaa9544c6543f8a000a5e3adad6de756232652b09984fb13921f92c"
+    },
+    {
+      "key": "B02/F2/programme",
+      "file": "B02-F2-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "a8bcf3f70636543aff6ab096e1e5508d6d8b5f9120dbc501cf3cbfb68b9aa7db",
+      "verificationSha256": "a8bcf3f70636543aff6ab096e1e5508d6d8b5f9120dbc501cf3cbfb68b9aa7db"
+    },
+    {
+      "key": "B02/F3/entry",
+      "file": "B02-F3-entry.png",
+      "mae": 0.002,
+      "structureDistance": 0,
+      "primarySha256": "b87ada29ba3c36289d80f2698492190077695ba2093a2345ac91d46f62037704",
+      "verificationSha256": "44e263ee465a5f2ffdb34498f3d6ae40fd3797f8fe30fa70c566ac38e2f23d54"
+    },
+    {
+      "key": "B02/F3/programme",
+      "file": "B02-F3-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "5c0635abc95e930b5de4e05016ea6b67c1d83aa5f9edcbdc021497a1a8ca45d1",
+      "verificationSha256": "5c0635abc95e930b5de4e05016ea6b67c1d83aa5f9edcbdc021497a1a8ca45d1"
+    },
+    {
+      "key": "B02/F4/entry",
+      "file": "B02-F4-entry.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "65bec0b767e440bbabc41db4282599d0f0b3744b5bb3cbccca5472f3e6a33c58",
+      "verificationSha256": "65bec0b767e440bbabc41db4282599d0f0b3744b5bb3cbccca5472f3e6a33c58"
+    },
+    {
+      "key": "B02/F4/programme",
+      "file": "B02-F4-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "a547a617d3f1b96495dfb88a65271773dd46b60e97fdbc9b753f9b86a315b662",
+      "verificationSha256": "a547a617d3f1b96495dfb88a65271773dd46b60e97fdbc9b753f9b86a315b662"
+    },
+    {
+      "key": "B04/F1/entry",
+      "file": "B04-F1-entry.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "bb5f405b98bc6bffb687e818d59b8ca0ac97ca638418147386f50dc1f5e473ef",
+      "verificationSha256": "bb5f405b98bc6bffb687e818d59b8ca0ac97ca638418147386f50dc1f5e473ef"
+    },
+    {
+      "key": "B04/F1/programme",
+      "file": "B04-F1-programme.png",
+      "mae": 0.255,
+      "structureDistance": 0,
+      "primarySha256": "86c0c2ef19b177569ac3b978e52f5e071611c12edd7b799531dc7088d31a8cc8",
+      "verificationSha256": "5d8b6625c3713f8cbb8b48d346070d871382f05fc7731c7006a5136340d49f12"
+    },
+    {
+      "key": "B04/F2/entry",
+      "file": "B04-F2-entry.png",
+      "mae": 0.001,
+      "structureDistance": 0.0016,
+      "primarySha256": "c04a52040092266d71873c8640b5822f7d5450e2fbade8be3bc3e15ccf0b0a7a",
+      "verificationSha256": "6c921456d38e1f050623412f0229d80bc39ea0b4eb3532a61f519738f463ca7e"
+    },
+    {
+      "key": "B04/F2/programme",
+      "file": "B04-F2-programme.png",
+      "mae": 0.001,
+      "structureDistance": 0,
+      "primarySha256": "831df37ec58c56011f2a20f3e09610b119e92159c0f5c563463ac238d5f70705",
+      "verificationSha256": "e0bf548d2979e3156085694c39f58e8f312589cbecb2e8e74c04180e31a4dc7a"
+    },
+    {
+      "key": "B04/F3/entry",
+      "file": "B04-F3-entry.png",
+      "mae": 0.002,
+      "structureDistance": 0,
+      "primarySha256": "43749aa968863b9439e28d5c8c92742e110968d75733aee86d3b8cf8e932bf08",
+      "verificationSha256": "f19b2cefa1f13f624646afdd7227d7f6e4085293dcedc0d325ea7d74ff2ff3fe"
+    },
+    {
+      "key": "B04/F3/programme",
+      "file": "B04-F3-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "07b50d2b87449654331d314b46d1d7bdd70ad738504bf31d14706164a6a437c1",
+      "verificationSha256": "07b50d2b87449654331d314b46d1d7bdd70ad738504bf31d14706164a6a437c1"
+    },
+    {
+      "key": "B04/F4/entry",
+      "file": "B04-F4-entry.png",
+      "mae": 0.001,
+      "structureDistance": 0,
+      "primarySha256": "ca65907a9ca56810e702e25aff5e24c269c38f859445c19cf9b63c5c16a5442e",
+      "verificationSha256": "892fddbe157599a3f88c39e2447c555dd458a1ce4c86df01067790fbf4277ffc"
+    },
+    {
+      "key": "B04/F4/programme",
+      "file": "B04-F4-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "f0caf90f26d49f717bdfa396cd441b2c6d07c88923da7f494734d5ad2c7ef685",
+      "verificationSha256": "5ba78732493c59814e8784bcf46e357fe42ceb9f7e458d3c768362a7cbcc1f67"
+    },
+    {
+      "key": "B04/F5/entry",
+      "file": "B04-F5-entry.png",
+      "mae": 0.002,
+      "structureDistance": 0,
+      "primarySha256": "36a73b1012233ef87add8f3e93044cb355f521bc7780a375bab6169f8ff0132b",
+      "verificationSha256": "7bb1f5f51c8d83f66afb3f91458fb5e5c3daa79b90916e133d4670c364abac67"
+    },
+    {
+      "key": "B04/F5/programme",
+      "file": "B04-F5-programme.png",
+      "mae": 0.001,
+      "structureDistance": 0,
+      "primarySha256": "cfbb523538766cab8e063799b95721ad010e1fcb14366d4fbf1c37b638b048d5",
+      "verificationSha256": "c2da128ba11059ee101664cb0580d03ff8f94fb3e2a096404d410e0dfc9cc7fa"
+    },
+    {
+      "key": "B04/F6/entry",
+      "file": "B04-F6-entry.png",
+      "mae": 0.001,
+      "structureDistance": 0,
+      "primarySha256": "6145d3bb3b97b569ff8326b7febfd52ec96edb04c9e13359ca4a59125a3e3b92",
+      "verificationSha256": "5db2eda9e8be9410eb4c1828df30da0cc5131cbde4cb92415d7f60d11bc61f9d"
+    },
+    {
+      "key": "B04/F6/programme",
+      "file": "B04-F6-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "f58bcfc84f13d1c234a8c8dca304d4d5228828934d8e3a62e6ff3ed1a8a8ed4b",
+      "verificationSha256": "da325132aab3aabce79bd8d6bd58e3ad4889b743691add198841e91e64f8caf2"
+    },
+    {
+      "key": "B05/F1/entry",
+      "file": "B05-F1-entry.png",
+      "mae": 0.001,
+      "structureDistance": 0,
+      "primarySha256": "0841d596232055a63705dcef8b995e42a2b0387bda637d672c64a9ffd3f1fc5a",
+      "verificationSha256": "7feb45f46265f0328a66e87076394eed0537eac8ec4ebeb599426554c2a6ead1"
+    },
+    {
+      "key": "B05/F1/programme",
+      "file": "B05-F1-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "bf58a6540dd1e8548401aa66bdd9197c172395dbe268010b41efeafb15824dcd",
+      "verificationSha256": "e8b5202e03b339eb9fa16f3bf35fa1a9cf3abdb9ff8749590904c52109e00b73"
+    },
+    {
+      "key": "B05/F2/entry",
+      "file": "B05-F2-entry.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "da40ab17147a2558e538e8b0612362ca93c1a2e5a36579ce1c67c2728b36f266",
+      "verificationSha256": "2ed2df22d273b0d16c63e8fdc103bd856dd3478a145c3ac527be04edbdcbd73a"
+    },
+    {
+      "key": "B05/F2/programme",
+      "file": "B05-F2-programme.png",
+      "mae": 0.004,
+      "structureDistance": 0,
+      "primarySha256": "955f7c89502386c94860b73a59325dd4d7f82fe54b3e6b442b1d4f1653d36c03",
+      "verificationSha256": "0812ac488199b5b8edbf1108ff2200292e3f81e13ad57a718d0441be7ab67acd"
+    },
+    {
+      "key": "B05/F3/entry",
+      "file": "B05-F3-entry.png",
+      "mae": 0.001,
+      "structureDistance": 0,
+      "primarySha256": "38df8ea4ec28c8cba020a5a567193dab49ef8fef1020ce1f4b95f61c7dc43bb3",
+      "verificationSha256": "79fbd31cb2bdaca721508a5ef90573cceffcedd094df0f7c17ecbc980cc36b1f"
+    },
+    {
+      "key": "B05/F3/programme",
+      "file": "B05-F3-programme.png",
+      "mae": 0.002,
+      "structureDistance": 0,
+      "primarySha256": "7fbd997917896c8d94e21e636657c574f102d21202a0b2fa12528c6a6a55f95a",
+      "verificationSha256": "fe53d5a1f6a40053ee48308913e771a700709469256d17c46ef8a59f21da6f7f"
+    },
+    {
+      "key": "B05/F4/entry",
+      "file": "B05-F4-entry.png",
+      "mae": 0.003,
+      "structureDistance": 0,
+      "primarySha256": "66cf711bae08c0e94596a52176f226570f077b80831dde8481c6b8909d3c5950",
+      "verificationSha256": "2f92f1b5a9c8602354405dfb0cb0b36e8a2157f60a567b7bdf235491e3e86459"
+    },
+    {
+      "key": "B05/F4/programme",
+      "file": "B05-F4-programme.png",
+      "mae": 0.001,
+      "structureDistance": 0,
+      "primarySha256": "8446561170266e1f556b9a26dbd5ed569a552c9089f22c41c3553b777a1b7fb9",
+      "verificationSha256": "9ae4f5b74cd7b6784923b58fa56da455eabe6f9de6dfaa2243a193775055d895"
+    },
+    {
+      "key": "B06/F1/entry",
+      "file": "B06-F1-entry.png",
+      "mae": 0.002,
+      "structureDistance": 0,
+      "primarySha256": "f0ef59b9dd6eba8c1bbd4d46dc7d4357f5b606cc482aae8ee4ea4543df4a8c9a",
+      "verificationSha256": "fb87f32ea73323484f1d1b4429150398f59c2a759bd7bcd173836858bbb5ff71"
+    },
+    {
+      "key": "B06/F1/programme",
+      "file": "B06-F1-programme.png",
+      "mae": 0.005,
+      "structureDistance": 0,
+      "primarySha256": "88526a954538d552ec27e093bb9d07eb8178ed55fdbf529130fc0d3b1a70d8c7",
+      "verificationSha256": "c333971aef543f6be836f832886514e0c046ed9f0ecaf4b66ccf4de758a4297e"
+    },
+    {
+      "key": "B06/F2/entry",
+      "file": "B06-F2-entry.png",
+      "mae": 0.002,
+      "structureDistance": 0,
+      "primarySha256": "d7c11fbf282891ef32d68d21278cb4b69750c73241c01e68941b9dcfe7b79013",
+      "verificationSha256": "a741f1f62d68107702b7cc97af67c4aec2fd7278e78cfd8ca5e3c57d5439ce51"
+    },
+    {
+      "key": "B06/F2/programme",
+      "file": "B06-F2-programme.png",
+      "mae": 0.001,
+      "structureDistance": 0,
+      "primarySha256": "204db3592f2ce1756b2578fd6ed8aa30e124e574b9add87c7a0651659fc8e9df",
+      "verificationSha256": "4f63f15603b356ecee962e8b80bf395f2433a72a85ce2a0a85b693a945fa9b9c"
+    },
+    {
+      "key": "B06/F3/entry",
+      "file": "B06-F3-entry.png",
+      "mae": 0.01,
+      "structureDistance": 0,
+      "primarySha256": "e228f07d2b8d8fea8fcc50cadb630b8b726b8c0220777ae7f186b4fa80d950d5",
+      "verificationSha256": "e7d076444dc01c4e414d2e40f951bff23a1f9cbb6c0d956f85fbc6f8a18a7f98"
+    },
+    {
+      "key": "B06/F3/programme",
+      "file": "B06-F3-programme.png",
+      "mae": 0.003,
+      "structureDistance": 0.0016,
+      "primarySha256": "1fb047a9ee5590652e7fd34dac4fd3c8afbb6cdba1daf1218c78c34d6b8eef53",
+      "verificationSha256": "1494b290550e7c4d40fa37e068153ff324f6baf8463060eddc460f0cb7a7cc4c"
+    },
+    {
+      "key": "B06/F4/entry",
+      "file": "B06-F4-entry.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "beff84ce7eca0eedd264ed6f98a3800ed4016c38df2e099ce6d157020f641976",
+      "verificationSha256": "b0b887e6ed7f804dbdd9465b6b805454345e395d4644ae87fa0c61fc21d06d59"
+    },
+    {
+      "key": "B06/F4/programme",
+      "file": "B06-F4-programme.png",
+      "mae": 0.001,
+      "structureDistance": 0,
+      "primarySha256": "65c7b2e4b15a168df43874817f7c6ff783bae1a32bc5c09ebb1bfc19335629a9",
+      "verificationSha256": "273ec91f1bcb54b701a9e8147f3e4adc1e2d814cb8ebf9c73470ccdaa36b33cc"
+    },
+    {
+      "key": "B07/F1/entry",
+      "file": "B07-F1-entry.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "ea5161de912c94f583f1e5bd50516a164bb4b8f963411303bba2bdb164bf423c",
+      "verificationSha256": "ea5161de912c94f583f1e5bd50516a164bb4b8f963411303bba2bdb164bf423c"
+    },
+    {
+      "key": "B07/F1/programme",
+      "file": "B07-F1-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "dbc89438e2128243683714d39b0774fc475a486b8ffe972167a5de20415da478",
+      "verificationSha256": "dbc89438e2128243683714d39b0774fc475a486b8ffe972167a5de20415da478"
+    },
+    {
+      "key": "B07/F1/clinic-entry",
+      "file": "B07-F1-clinic-entry.png",
+      "mae": 0.04,
+      "structureDistance": 0,
+      "primarySha256": "fbd7c560274e0e53b86325a4c358e3f389ee3a84d381426db4d9343d2c500315",
+      "verificationSha256": "4eb841d20e095b8ff21f0c82b27ab33199221d768a0d7118906575c3931947f1"
+    },
+    {
+      "key": "B07/F2/entry",
+      "file": "B07-F2-entry.png",
+      "mae": 0.159,
+      "structureDistance": 0,
+      "primarySha256": "8365c0b31957ed295a4f00f889749cee91661bea830938dad8e72389f07930a3",
+      "verificationSha256": "8ff8fb2f7a2fffbdb9cb43ac4ccfa6e59d07987d02d0a374b83410f0c2b562e8"
+    },
+    {
+      "key": "B07/F2/programme",
+      "file": "B07-F2-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "5fc0572d8dd82af2efc586aeb9d339a5755a3117897357c5cf2a252267440464",
+      "verificationSha256": "5fc0572d8dd82af2efc586aeb9d339a5755a3117897357c5cf2a252267440464"
+    },
+    {
+      "key": "B07/F3/entry",
+      "file": "B07-F3-entry.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "5946c7b83fd936fb41fc9ae2585e496386b5d09cef9b41b48f5bc79ce2bbde23",
+      "verificationSha256": "5946c7b83fd936fb41fc9ae2585e496386b5d09cef9b41b48f5bc79ce2bbde23"
+    },
+    {
+      "key": "B07/F3/programme",
+      "file": "B07-F3-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "ff6168a36911a9b3d1c70619a9b0874f447fb22bc6439b0a6f59c1a63a6471ba",
+      "verificationSha256": "def889d9a5483c8b578f97470d28106bca00f66eb61170f816b9401291d61548"
+    },
+    {
+      "key": "B08/F1/entry",
+      "file": "B08-F1-entry.png",
+      "mae": 0.002,
+      "structureDistance": 0.0016,
+      "primarySha256": "a314342b0b07c3fe5bd58f727e9d67f245f1bf9dce240c4bf62c032e41443e93",
+      "verificationSha256": "91e7dd15ba151c2abcd0aacc5a018f402cee18fabf087e07a4863eda47d16025"
+    },
+    {
+      "key": "B08/F1/programme",
+      "file": "B08-F1-programme.png",
+      "mae": 0,
+      "structureDistance": 0,
+      "primarySha256": "d823104d6e185743abcfa0ada8306ed50b36c244c10f7f4dbd2f3353e7c8d13b",
+      "verificationSha256": "4b47ca7ae73f06232bcbc554e78e1b7afe4f3eabb29793d08f3f2a0e2bbfaa1a"
+    }
+  ],
+  "errors": [
+    "primary and independent verification reports must both be complete v2 reports",
+    "independent review rows 47/57 and 45/57",
+    "B03/F1/entry: missing independent recapture",
+    "B03/F1/programme: missing independent recapture"
+  ]
+}

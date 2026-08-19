@@ -1,0 +1,749 @@
+{
+  "schema": "chinesegame.university-visual-review-report/v2",
+  "source": "abe2c452754bc83ba984ea61844221abe7feee1f",
+  "building": "B05",
+  "expectedViews": 8,
+  "complete": true,
+  "views": 8,
+  "reviewPrerequisites": {
+    "bodyControl": true,
+    "uiClean": true,
+    "fontReady": true,
+    "fontCheck": true,
+    "glyphCount": 10,
+    "glyphVariants": 10,
+    "minGlyphInk": 331
+  },
+  "report": [
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B05",
+      "level": 1,
+      "place": "campus_admin_f1",
+      "portal": "B05/PUBLIC",
+      "at": {
+        "x": 5.6,
+        "z": 0,
+        "yaw": -1.5707963267948966
+      },
+      "mode": "entry",
+      "suffix": "entry",
+      "ok": true,
+      "buildingId": "B05",
+      "props": 1546,
+      "solids": 86,
+      "blockers": 6,
+      "things": 4,
+      "lights": 11,
+      "zones": 9,
+      "spawn": {
+        "x": 1.9999999999999996,
+        "z": 2.2043642384652358e-16,
+        "yaw": -1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": null,
+      "reviewAt": null,
+      "entryReviewAt": {
+        "x": 2.82,
+        "z": -4.08,
+        "yaw": -1.608,
+        "inward": 0,
+        "lateral": 0,
+        "cameraBack": 2.8,
+        "authoredCameraBack": 2.8,
+        "frontDepth": 2,
+        "entryZone": "B05/F1/B",
+        "focusRoom": "B05/F1/B",
+        "cameraZone": "B05/F1/B",
+        "authored": true,
+        "focusFixtureIds": [
+          "B05/F1/B/FLAG"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B05/F1/B/FLAG",
+            "prefab": "PF-FLAG",
+            "reviewFacing": "local-negative-z",
+            "forward": 4.82,
+            "lateral": 0.5,
+            "visibleSamples": 622,
+            "samples": 891,
+            "innerSamples": 586,
+            "projectedWidth": 0.296,
+            "projectedHeight": 0.45,
+            "projectedArea": 0.133,
+            "faceOn": 0.99
+          }
+        ]
+      },
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B05-F1-entry.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 117.76,
+        "stddev": 62.28,
+        "range": 234.64,
+        "luminanceBins": 31,
+        "adjacentLumaMae": 2.29,
+        "strongEdgeFraction": 0.0057,
+        "compressionRatio": 0.429,
+        "healthy": true
+      }
+    },
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B05",
+      "level": 1,
+      "place": "campus_admin_f1",
+      "portal": "B05/PUBLIC",
+      "at": {
+        "x": 5.6,
+        "z": 0,
+        "yaw": -1.5707963267948966
+      },
+      "mode": "programme",
+      "suffix": "programme",
+      "ok": true,
+      "buildingId": "B05",
+      "props": 1546,
+      "solids": 86,
+      "blockers": 6,
+      "things": 4,
+      "lights": 11,
+      "zones": 9,
+      "spawn": {
+        "x": 1.9999999999999996,
+        "z": 2.2043642384652358e-16,
+        "yaw": -1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": "B05/F1/B",
+      "reviewAt": {
+        "x": 3.92,
+        "z": -3.58,
+        "yaw": -2.422,
+        "cameraBack": 2,
+        "authoredCameraBack": 2,
+        "frontDepth": 2.52,
+        "authored": true,
+        "focusFixtureIds": [
+          "B05/F1/B/COUNTER-MAIN",
+          "B05/F1/B/COUNTER-ACCESS"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B05/F1/B/COUNTER-MAIN",
+            "prefab": "PF-SERVICE-COUNTER",
+            "reviewFacing": "local-negative-z",
+            "forward": 4.27,
+            "lateral": 0.89,
+            "visibleSamples": 276,
+            "samples": 297,
+            "innerSamples": 276,
+            "projectedWidth": 0.341,
+            "projectedHeight": 0.946,
+            "projectedArea": 0.323,
+            "faceOn": 0.601
+          },
+          {
+            "id": "B05/F1/B/COUNTER-ACCESS",
+            "prefab": "PF-SIDE-TABLE",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.5,
+            "lateral": 0.01,
+            "visibleSamples": 238,
+            "samples": 243,
+            "innerSamples": 238,
+            "projectedWidth": 0.383,
+            "projectedHeight": 0.598,
+            "projectedArea": 0.229,
+            "faceOn": 0.749
+          }
+        ]
+      },
+      "entryReviewAt": null,
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B05-F1-programme.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 104.02,
+        "stddev": 61.86,
+        "range": 238.35,
+        "luminanceBins": 31,
+        "adjacentLumaMae": 2.31,
+        "strongEdgeFraction": 0.0053,
+        "compressionRatio": 0.442,
+        "healthy": true
+      }
+    },
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B05",
+      "level": 2,
+      "place": "campus_admin_f2",
+      "portal": null,
+      "at": null,
+      "mode": "entry",
+      "suffix": "entry",
+      "ok": true,
+      "buildingId": "B05",
+      "props": 1720,
+      "solids": 80,
+      "blockers": 4,
+      "things": 6,
+      "lights": 11,
+      "zones": 9,
+      "spawn": {
+        "x": 0,
+        "z": 0,
+        "yaw": 1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": null,
+      "reviewAt": null,
+      "entryReviewAt": {
+        "x": -2.35,
+        "z": 3.55,
+        "yaw": -1.5,
+        "inward": 0,
+        "lateral": 4.26,
+        "cameraBack": 2,
+        "authoredCameraBack": 2,
+        "entryZone": "B05/F2/C",
+        "frontDepth": 1.52,
+        "authored": true,
+        "focusFixtureIds": [
+          "B05/F2/C/WORKFLOW"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B05/F2/C/WORKFLOW",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.58,
+            "lateral": 0.21,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 189,
+            "projectedWidth": 0.792,
+            "projectedHeight": 0.49,
+            "projectedArea": 0.388,
+            "faceOn": 1
+          }
+        ]
+      },
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B05-F2-entry.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 137.52,
+        "stddev": 54.73,
+        "range": 230.3,
+        "luminanceBins": 30,
+        "adjacentLumaMae": 2.27,
+        "strongEdgeFraction": 0.0058,
+        "compressionRatio": 0.424,
+        "healthy": true
+      }
+    },
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B05",
+      "level": 2,
+      "place": "campus_admin_f2",
+      "portal": null,
+      "at": null,
+      "mode": "programme",
+      "suffix": "programme",
+      "ok": true,
+      "buildingId": "B05",
+      "props": 1720,
+      "solids": 80,
+      "blockers": 4,
+      "things": 6,
+      "lights": 11,
+      "zones": 9,
+      "spawn": {
+        "x": 0,
+        "z": 0,
+        "yaw": 1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": "B05/F2/D",
+      "reviewAt": {
+        "x": 2.67,
+        "z": 3.87,
+        "yaw": 0.123,
+        "cameraBack": 2,
+        "authoredCameraBack": 2,
+        "frontDepth": 1.64,
+        "authored": true,
+        "focusFixtureIds": [
+          "B05/F2/D/SCAN-STATUS",
+          "B05/F2/D/SCAN-STEPS",
+          "B05/F2/D/SCAN-MONITOR"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B05/F2/D/SCAN-STATUS",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.58,
+            "lateral": 0.62,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 189,
+            "projectedWidth": 0.536,
+            "projectedHeight": 0.346,
+            "projectedArea": 0.186,
+            "faceOn": 0.999
+          },
+          {
+            "id": "B05/F2/D/SCAN-STEPS",
+            "prefab": "PF-ROOM-SIGN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.57,
+            "lateral": 0.62,
+            "visibleSamples": 54,
+            "samples": 54,
+            "innerSamples": 54,
+            "projectedWidth": 0.548,
+            "projectedHeight": 0.146,
+            "projectedArea": 0.08,
+            "faceOn": 0.999
+          },
+          {
+            "id": "B05/F2/D/SCAN-MONITOR",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.09,
+            "lateral": 0.56,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 189,
+            "projectedWidth": 0.163,
+            "projectedHeight": 0.179,
+            "projectedArea": 0.029,
+            "faceOn": 0.998
+          }
+        ]
+      },
+      "entryReviewAt": null,
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B05-F2-programme.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 139.42,
+        "stddev": 58.29,
+        "range": 224.26,
+        "luminanceBins": 29,
+        "adjacentLumaMae": 2.1,
+        "strongEdgeFraction": 0.006,
+        "compressionRatio": 0.405,
+        "healthy": true
+      }
+    },
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B05",
+      "level": 3,
+      "place": "campus_admin_f3",
+      "portal": null,
+      "at": null,
+      "mode": "entry",
+      "suffix": "entry",
+      "ok": true,
+      "buildingId": "B05",
+      "props": 1612,
+      "solids": 77,
+      "blockers": 4,
+      "things": 6,
+      "lights": 11,
+      "zones": 9,
+      "spawn": {
+        "x": 0,
+        "z": 0,
+        "yaw": 1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": null,
+      "reviewAt": null,
+      "entryReviewAt": {
+        "x": 4.82,
+        "z": -0.18,
+        "yaw": 1.9,
+        "inward": 0,
+        "lateral": 4.82,
+        "cameraBack": 2,
+        "authoredCameraBack": 2,
+        "entryZone": "B05/F3/CORRIDOR",
+        "frontDepth": 1.76,
+        "authored": true,
+        "focusFixtureIds": [
+          "B05/F3/COR/ARRIVAL-SCREEN"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B05/F3/COR/ARRIVAL-SCREEN",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.48,
+            "lateral": 0.95,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 189,
+            "projectedWidth": 0.476,
+            "projectedHeight": 0.323,
+            "projectedArea": 0.154,
+            "faceOn": 0.998
+          }
+        ]
+      },
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B05-F3-entry.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 140.67,
+        "stddev": 50.57,
+        "range": 225.38,
+        "luminanceBins": 29,
+        "adjacentLumaMae": 1.99,
+        "strongEdgeFraction": 0.0047,
+        "compressionRatio": 0.438,
+        "healthy": true
+      }
+    },
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B05",
+      "level": 3,
+      "place": "campus_admin_f3",
+      "portal": null,
+      "at": null,
+      "mode": "programme",
+      "suffix": "programme",
+      "ok": true,
+      "buildingId": "B05",
+      "props": 1612,
+      "solids": 77,
+      "blockers": 4,
+      "things": 6,
+      "lights": 11,
+      "zones": 9,
+      "spawn": {
+        "x": 0,
+        "z": 0,
+        "yaw": 1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": "B05/F3/A",
+      "reviewAt": {
+        "x": -1.5,
+        "z": -3.64,
+        "yaw": -2.70798,
+        "cameraBack": 2,
+        "authoredCameraBack": 2,
+        "frontDepth": 2.04,
+        "authored": true,
+        "focusFixtureIds": [
+          "B05/F3/A/TRAINING-SIGN",
+          "B05/F3/A/TRAINING-TASK-B"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B05/F3/A/TRAINING-SIGN",
+            "prefab": "PF-ROOM-SIGN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.81,
+            "lateral": 0.56,
+            "visibleSamples": 54,
+            "samples": 54,
+            "innerSamples": 36,
+            "projectedWidth": 0.589,
+            "projectedHeight": 0.191,
+            "projectedArea": 0.113,
+            "faceOn": 0.959
+          },
+          {
+            "id": "B05/F3/A/TRAINING-TASK-B",
+            "prefab": "PF-ROOM-SIGN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.78,
+            "lateral": 0.55,
+            "visibleSamples": 54,
+            "samples": 54,
+            "innerSamples": 54,
+            "projectedWidth": 0.203,
+            "projectedHeight": 0.136,
+            "projectedArea": 0.028,
+            "faceOn": 0.958
+          }
+        ]
+      },
+      "entryReviewAt": null,
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B05-F3-programme.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 138.69,
+        "stddev": 55.78,
+        "range": 232.9,
+        "luminanceBins": 30,
+        "adjacentLumaMae": 2.34,
+        "strongEdgeFraction": 0.0077,
+        "compressionRatio": 0.428,
+        "healthy": true
+      }
+    },
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B05",
+      "level": 4,
+      "place": "campus_admin_f4",
+      "portal": null,
+      "at": null,
+      "mode": "entry",
+      "suffix": "entry",
+      "ok": true,
+      "buildingId": "B05",
+      "props": 1609,
+      "solids": 73,
+      "blockers": 4,
+      "things": 3,
+      "lights": 11,
+      "zones": 9,
+      "spawn": {
+        "x": 0,
+        "z": 0,
+        "yaw": 1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": null,
+      "reviewAt": null,
+      "entryReviewAt": {
+        "x": 4.75,
+        "z": -0.7,
+        "yaw": 1.475,
+        "inward": 0,
+        "lateral": 4.8,
+        "cameraBack": 2,
+        "authoredCameraBack": 2,
+        "entryZone": "B05/F4/CORRIDOR",
+        "frontDepth": 1.72,
+        "authored": true,
+        "focusFixtureIds": [
+          "B05/F4/COR/ARRIVAL-SCREEN"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B05/F4/COR/ARRIVAL-SCREEN",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.84,
+            "lateral": 0.53,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 189,
+            "projectedWidth": 0.519,
+            "projectedHeight": 0.254,
+            "projectedArea": 0.132,
+            "faceOn": 0.973
+          }
+        ]
+      },
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B05-F4-entry.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 144.55,
+        "stddev": 49.59,
+        "range": 224.67,
+        "luminanceBins": 29,
+        "adjacentLumaMae": 2.07,
+        "strongEdgeFraction": 0.0053,
+        "compressionRatio": 0.425,
+        "healthy": true
+      }
+    },
+    {
+      "schema": "chinesegame.university-visual-review-row/v2",
+      "building": "B05",
+      "level": 4,
+      "place": "campus_admin_f4",
+      "portal": null,
+      "at": null,
+      "mode": "programme",
+      "suffix": "programme",
+      "ok": true,
+      "buildingId": "B05",
+      "props": 1609,
+      "solids": 73,
+      "blockers": 4,
+      "things": 3,
+      "lights": 11,
+      "zones": 9,
+      "spawn": {
+        "x": 0,
+        "z": 0,
+        "yaw": 1.5707963267948966
+      },
+      "bodyVisible": false,
+      "bodyPolicy": "hidden",
+      "reviewRoom": "B05/F4/A",
+      "reviewAt": {
+        "x": -1.88,
+        "z": -3.72,
+        "yaw": -2.7,
+        "cameraBack": 2,
+        "authoredCameraBack": 2,
+        "frontDepth": 1.96,
+        "authored": true,
+        "focusFixtureIds": [
+          "B05/F4/A/COUNCIL-CREST",
+          "B05/F4/A/COUNCIL-AGENDA"
+        ],
+        "focusEvidence": [
+          {
+            "id": "B05/F4/A/COUNCIL-CREST",
+            "prefab": "PF-ROOM-SIGN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.57,
+            "lateral": 0.88,
+            "visibleSamples": 51,
+            "samples": 54,
+            "innerSamples": 51,
+            "projectedWidth": 0.733,
+            "projectedHeight": 0.239,
+            "projectedArea": 0.175,
+            "faceOn": 0.98
+          },
+          {
+            "id": "B05/F4/A/COUNCIL-AGENDA",
+            "prefab": "PF-SCREEN",
+            "reviewFacing": "local-negative-z",
+            "forward": 3.58,
+            "lateral": 0.89,
+            "visibleSamples": 189,
+            "samples": 189,
+            "innerSamples": 189,
+            "projectedWidth": 0.578,
+            "projectedHeight": 0.293,
+            "projectedArea": 0.169,
+            "faceOn": 0.98
+          }
+        ]
+      },
+      "entryReviewAt": null,
+      "movementProof": null,
+      "reviewPrerequisites": {
+        "bodyControl": true,
+        "uiClean": true,
+        "fontReady": true,
+        "fontCheck": true,
+        "glyphCount": 10,
+        "glyphVariants": 10,
+        "minGlyphInk": 331
+      },
+      "file": "B05-F4-programme.png",
+      "image": {
+        "width": 1024,
+        "height": 640,
+        "samples": 10240,
+        "mean": 126,
+        "stddev": 55.96,
+        "range": 231.5,
+        "luminanceBins": 30,
+        "adjacentLumaMae": 2.27,
+        "strongEdgeFraction": 0.0058,
+        "compressionRatio": 0.44,
+        "healthy": true
+      }
+    }
+  ],
+  "errors": []
+}
