@@ -1263,6 +1263,29 @@ const R = (() => {
     // whole dome is the light source, which is why a dawn street lit on the indoor figures
     // silhouetted into a black trench under a bright sky.
     if (uIndoor < 0.5) amb *= 2.1;
+    // ...and indoors that slice arrives from ONE DIRECTION, which the term above does not say.
+    // On any vertical surface up and down are both zero, so all that survives is the horizon
+    // band -- a single value with no dependence on which way the wall faces. Every wall in every
+    // interior in this game was therefore lit identically: two partitions at right angles came
+    // out as the same paint value and read as one folded plane. Measured off the live build,
+    // 2026-08-19, the flat's entry corridor sat at sd 0.1245 with 91% of the frame inside a
+    // single 0.4-wide luminance window and nothing at all in the top two or bottom two bands.
+    //
+    // A room is lit through an opening, not by a uniform shell. The wall facing the window is
+    // the brightest surface in it; the wall the window is IN is the darkest, because it is
+    // backlit. uWinN is that opening's outward normal -- already selected per frame for the
+    // nearest window and already uploaded -- so the whole correction is one dot product.
+    // The window wall's inward normal is -uWinN and the wall opposite it is +uWinN, which is
+    // why the dot is taken against uWinN and not against its negation.
+    //
+    // Mean-preserving by construction: mix(0.80, 1.16, x) averages 0.98 over normals spread
+    // evenly in x, so this adds separation without lifting or crushing a room that art
+    // direction has already valued. Drawn curtains keep part of the split rather than all of
+    // it, because a curtain diffuses the daylight it admits, it does not make it isotropic.
+    if (uIndoor > 0.5 && uWinOn > 0.5) {
+      float dirAmb = mix(0.80, 1.16, 0.5 + 0.5 * dot(n, uWinN));
+      amb *= mix(1.0, dirAmb, mix(0.45, 1.0, uWinShade));
+    }
     // Metals reflect their coloured base and carry very little coloured diffuse response. The
     // factor stops short of zero to suit the stylised renderer and keep dark metal readable.
     vec3 diffuseBase = base * (1.0 - metalness * 0.86);
