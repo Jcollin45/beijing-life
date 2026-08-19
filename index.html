@@ -1446,25 +1446,31 @@
     #coach{left:8px;bottom:132px;width:calc(100vw - 16px)}
   }
   /* The phone's bottom band is four independently anchored panels — the two touch pads, the
-     goals/map cards on the left and right, and the centred prompt over them — and each one used
-     to carry its own hand-tuned offset. Measured on the live site at 375x812: the prompt's box
-     ran from 186px to 222px off the bottom while the collapsed goals card reached 206px, so the
-     two crossed by 20px and the card painted over the left end of "E 看看 钥匙". Expanded the
-     cards are far worse: goals grows to 176px tall and the metro map to 252px, both of which
-     swallow the prompt whole.
+     goals and map cards, and the centred prompt over them — and each carried its own hand-tuned
+     offset. Measured on the live site at 375x812, the prompt ran from 186px to 222px off the
+     bottom while the goals card reached 206px, so the two crossed by 20px and the card painted
+     over the left end of "E 看看 钥匙". Open, the cards are far worse: goals reaches 174px tall
+     and the metro map 252px, whose top lands 378px off the bottom.
 
-     A taller offset alone cannot fix that, because the card's height is content-driven and will
-     grow past any number chosen for it. Bounding the card is what makes the band deterministic:
-     with a 96px ceiling the card's top can never pass 214px, so a prompt at 232px clears it in
-     every state — 26px of air when the cards are collapsed, 10px when they are open. */
+     No offset fixes the open case, because these heights are content-driven. The first attempt
+     here capped both cards at 96px and set one prompt offset above that ceiling; it worked for
+     goals and was silently dead for the map, because #map:not(.is-collapsed) at line 1185 already
+     sets max-height and outranks a bare #map on specificity. The map stayed 252px tall and went
+     on covering the prompt by 99x35px.
+
+     Capping was the wrong instinct anyway. setPanel() below treats these as an accordion: under
+     760px, opening any one of needs/goals/map/keys collapses the other three, and all four start
+     collapsed. So the band holds at most one open panel, the player opened it deliberately, and
+     it should get the room — the prompt is the thing that yields. Collapsed, which is the default
+     and the common case, the prompt sits at 232px with 25px of air above the card. */
   @media (max-width:760px) and (any-pointer:coarse){
     #goals,#map,#goals:not(.is-collapsed),#map:not(.is-collapsed){bottom:calc(var(--safe-b) + 118px)}
-    /* ponytail: a fixed 96px ceiling, not a measured one. The metro map wants 252px and scrolls
-       inside this instead. If the map earns the room back, the honest fix is for the cards to
-       yield the band while a prompt is up, which needs a class off the prompt's own visibility
-       in game.js rather than another number here. */
-    #goals,#map{max-height:96px;overflow-y:auto;overscroll-behavior:contain}
     #prompt{bottom:calc(var(--safe-b) + 224px)}
+    /* !important because the frame loop writes style.opacity straight onto #prompt every frame,
+       and an inline style beats any selector without it — same reason the title-screen rule at
+       the top of this file carries one. */
+    #ui:has(#goals:not(.is-collapsed)) #prompt,
+    #ui:has(#map:not(.is-collapsed)) #prompt{opacity:0!important;pointer-events:none}
     #doing{bottom:calc(var(--safe-b) + 272px)}
   }
 </style>
