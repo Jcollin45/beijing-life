@@ -810,3 +810,51 @@ drawing set. `STREET-TENANT.md` is new and is the contract to read instead of `j
 
 **Not measured, and owed:** a frame-rate number for the district, and an emissive-quad census.
 Both are tickets E1/E2 in `STOREFRONT-UPGRADES.md` and both are the gatekeeper's.
+
+---
+
+## Graphics wave, 2026-08-19 — interior ambient and the phone HUD
+
+**Landed and verified:** `3b03e0f` + `be892cc` (index.html, HUD collision fixes, gate PASS off
+jcollin45.github.io), `9bf4ca6` + `abe2c45` (js/gl.js, directional interior ambient plus the window
+wall recovery). Reports: `.reports/renderer-graphics.md`, `.reports/gate-graphics.md`,
+`.reports/gate-graphics-r2.md`, `.reports/gate-graphics-r3.md`.
+
+**Disproved this session — do not re-derive:**
+- The flat's corridor was **not overexposed**. Nothing in the frame exceeded 80% luminance; 91% of
+  it sat in one 0.4-wide band. It was *compressed*, and the cause was that on a vertical surface
+  `up` and `down` are both 0, so the surviving ambient term had no dependence on facing and every
+  wall in every interior rendered at one identical value.
+- **The luminance-split metric is confounded and should not be rebuilt.** Frames are not
+  geometrically symmetric and the HUD contaminates two bands. Round 2 established this after
+  round 1 leaned on it.
+- **A CSS max-height on `#goals,#map` cannot bound the phone's bottom band.**
+  `#map:not(.is-collapsed)` at index.html:1185 is (0,2,0) and beats a bare `#map` at (0,1,0)
+  regardless of source order. The band is bounded by the accordion in `setPanel` instead — under
+  760px, opening one of needs/goals/map/keys collapses the other three — so the prompt yields to
+  an open panel rather than the panel being capped.
+- **`env(safe-area-inset-*)` was dead for the whole stylesheet** until `viewport-fit=cover` was
+  added to the viewport meta. Nine references were silently resolving to 0 and falling back to
+  their px floors, so every offset tuned against them was tuned against a fallback.
+- **`js/mall.js` is not missing a `WIN`.** It declares one at `js/mall.js:223` and exports it by
+  ES6 shorthand at 5853; a `grep "WIN *:"` misses shorthand. Recorded because it was reported as
+  missing once already.
+
+**Traps worth keeping:**
+- A check that cannot fail is the default outcome, not the exception. Round 2's first opacity test
+  passed in **every** state including the control, because `index.html:237`'s
+  `transition:opacity .15s` makes an immediate computed read return the pre-transition value.
+  Break the thing before trusting the check.
+- The render harness **cannot hold the cabin**. Three attempts across two rounds ejected to
+  `bund`/`diner`/`home`; a frame named for a room is not evidence it is that room, so validate
+  `where()` on both sides of every capture.
+- `.audit.js` never echoes its URL and defaults to `127.0.0.1:8000` (`.audit.js:2296`), so a PNG
+  on disk carries no proof of origin. Same for `.fpscheck.js:850` and `.bootcheck.js:125`, the
+  last of which has no override at all.
+- `window.__game.light` exists but is **not a function**; a round-3 script died on that assumption.
+
+**Not measured, and owed:** any **certified** frame number. The machine was on battery for the
+whole wave and `.fpscheck.js` refuses to certify on battery, correctly. Live-origin uncertified
+readings: home med 7.3 / p95 15.2, street 8.7 / 17.4, mall 11.7 / 26.1. Lane A reported 0 late
+frames in 2,495; the gate measured 4 late in the mall and did not accept the claim. Also owed: a
+visual check of the cabin, and of the firestation/hospital east-west wall pair.
