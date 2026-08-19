@@ -2596,6 +2596,35 @@ const R = (() => {
   // cross(up, n) — every window in this game is vertical, so up is always +y and the tangent is
   // never degenerate unless somebody asks for a skylight, which the beam test could not shade
   // anyway. Its sign does not matter: the shader takes abs(q).
+  // Which wall of the current room an opening at (x, z) is set into.
+  //
+  // The five-argument `setWindow` is the pre-registry signature and it hardcoded an outward
+  // normal of -z, which its own contract says it does. The trouble is the callers: `js/game.js`
+  // spreads `scene.WIN` into that form at line 15368 and at line 7, so a room that declares its
+  // own `n` never gets it. `js/library.js:480` declares `n: [0,0,1]` — the exact inverse of the
+  // default — and its daylight has therefore been cast through the opposite wall; `js/cabin.js`
+  // puts its window at `x: -RX`, an x wall, and got a z normal, which is not even the right axis.
+  // Only `js/world.js:301` escapes, because it passes the array form.
+  //
+  // Fixing it at the two call sites means editing `js/game.js`, which is contended. It does not
+  // need editing: every one of these declarations is authored against the room box that
+  // `setRoom` has just been handed on the line above (`z: -RZ + .06`, `z: RZ - .03`, `x: RX - .08`,
+  // `x: -RX`), so the wall is recoverable from the geometry. Nearest face wins.
+  //
+  // The 0.40 m gate is what makes this safe rather than clever. `setRoom` is only called when the
+  // place declares RX, so `room` can be the previous place's box — in which case no face is near
+  // and the documented -z fallback stands, exactly as today. Half a metre is further than any
+  // window in the game is set back from its own wall (the largest is 0.20 m) and far short of any
+  // room's half-width.
+  function wallNormal(x, z) {
+    const near = [[Math.abs(-room[0] - x), [-1, 0, 0]],
+                  [Math.abs( room[0] - x), [ 1, 0, 0]],
+                  [Math.abs(-room[2] - z), [ 0, 0, -1]],
+                  [Math.abs( room[2] - z), [ 0, 0,  1]]];
+    near.sort((a, b) => a[0] - b[0]);
+    return near[0][0] <= 0.40 ? near[0][1] : [0, 0, -1];
+  }
+
   function addWin(w) {
     const nx = w.n ? w.n[0] : 0, ny = w.n ? w.n[1] : 0, nz = w.n ? w.n[2] : -1;
     const nl = Math.hypot(nx, ny, nz) || 1;
@@ -4066,7 +4095,11 @@ const R = (() => {
     // written before the registry uses — it still means "this place has one window", and it now
     // says so by clearing the registry rather than by there being nowhere else to put one.
     //
-    //   R.setWindow(x, y, z, hw, hh)     one window, facing -z. Unchanged behaviour.
+    //   R.setWindow(x, y, z, hw, hh)     one window, facing whichever wall of the current room
+    //                                    it is set into — see `wallNormal`, and note this used to
+    //                                    be -z unconditionally, which was wrong for any room whose
+    //                                    window is not in its -z wall.
+    //   R.setWindow({x,y,z,hw,hh,n,shade})        one window, declaration and all.
     //   R.setWindow([{x,y,z,hw,hh,n,shade}, …])   the whole scene's openings at once.
     //   R.addWindow(x, y, z, hw, hh, n)  one more, for a room that builds itself.
     //
@@ -4076,7 +4109,11 @@ const R = (() => {
     setWindow(x,y,z,hw,hh){
       WINDOWS.length = 0; picked = null; pickEye[0] = 1e30;
       if (Array.isArray(x)) { for (const w of x) addWin(w); return; }
-      winPos=[x,y,z]; winHalf=[hw,hh]; winN=[0,0,-1]; winU=[-1,0,0];
+      // A caller holding the whole declaration can hand it over whole and keep its own `n`.
+      if (x && typeof x === 'object') { addWin(x); return; }
+      winPos=[x,y,z]; winHalf=[hw,hh];
+      const n = wallNormal(x, z);
+      winN = n; winU = [n[2], 0, -n[0]];   // cross([0,1,0], n); the y term is always 0
     },
     addWindow(x,y,z,hw,hh,n){
       addWin((x && typeof x === 'object') ? x : { x, y, z, hw, hh, n });
