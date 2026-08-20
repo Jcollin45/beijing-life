@@ -853,7 +853,36 @@ wall recovery). Reports: `.reports/renderer-graphics.md`, `.reports/gate-graphic
   last of which has no override at all.
 - `window.__game.light` exists but is **not a function**; a round-3 script died on that assumption.
 
-**Not measured, and owed:** any **certified** frame number. The machine was on battery for the
+**Frame rate cannot be measured reliably on this machine, and that is the wave's real blocker.**
+The repo sits on an **iCloud-synced Desktop**, so `bird` (iCloudDriveCore) re-syncs on every large
+write. Measured 2026-08-19 immediately after a `REPEATS=3` run: `bird` at **65.9% CPU**, top
+process on the box, load average **23.19 / 36.28 / 22.40** on 8 cores, and a bare `ps -Aro` taking
+over 120 s to return. The largest trigger was this session's own `git checkout -- audio/voice/`,
+which restored **1,372 .m4a files** at once. Any `.fpscheck.js` reading taken while `bird` is
+working is contaminated, whatever the harness says about `onMains`.
+- Do **not** suspend `bird` to get a quiet box — it hangs other apps at launch. Wait it out.
+- Check `ps -Aro pcpu,comm | head` and `uptime` BEFORE quoting any frame number, not after.
+- Do not run `brctl status` to check sync progress; it blocks indefinitely when the provider is
+  busy and it hung a shell here.
+
+**`REPEATS` is the wrong knob for warm rows.** `REPEATS=3` runs three windows inside ONE browser —
+the harness calls it "the cheap band, not the exit criterion's isolated runs" — so `warm` stays
+`n=0` and every row comes back `windowQuiet:false`. It *removes* trustworthiness rather than adding
+it. Warm/isolated rows need `RELOAD`/`WINDOWS`, not `REPEATS`.
+
+**Certification is `pass && trustworthy`, and battery was never the only blocker.** `.fpscheck.js`
+:1465. `trustworthy` is eight conjuncts — quiet, machineStable, windowQuiet, rigsSettled, onMains,
+notSoftwareRenderer, notInjected, pinHeldIfAsked. Both a coder lane and a gate this session read
+`certified:false` as "on battery" and stopped there; on mains it was still false, from
+`rigsSettled:false` (home), `machineStable:false` (mall), and `pass:false` everywhere.
+
+**The one trustworthy row of the session**, live origin, `REPEATS` unset, load1 4.66, `bird` not yet
+saturated: **street `trustworthy:true`, `pass:false`, med 17.8 ms, p95 24.2 ms, 4.3% late.** It is a
+COLD row (`warm:n=0`), so it carries shader compile and streaming, and there is no before/after — it
+establishes the live site misses budget on the street, not that the ambient change caused it. It
+does refute Lane A's "0 late frames in 2,495"; the gate was right to reject that claim.
+
+**Not measured, and still owed:** any **certified** frame number. The machine was on battery for the
 whole wave and `.fpscheck.js` refuses to certify on battery, correctly. Live-origin uncertified
 readings: home med 7.3 / p95 15.2, street 8.7 / 17.4, mall 11.7 / 26.1. Lane A reported 0 late
 frames in 2,495; the gate measured 4 late in the mall and did not accept the claim. Also owed: a
