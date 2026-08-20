@@ -854,14 +854,22 @@ wall recovery). Reports: `.reports/renderer-graphics.md`, `.reports/gate-graphic
 - `window.__game.light` exists but is **not a function**; a round-3 script died on that assumption.
 
 **Frame rate cannot be measured reliably on this machine, and that is the wave's real blocker.**
-The repo sits on an **iCloud-synced Desktop**, so `bird` (iCloudDriveCore) re-syncs on every large
-write. Measured 2026-08-19 immediately after a `REPEATS=3` run: `bird` at **65.9% CPU**, top
-process on the box, load average **23.19 / 36.28 / 22.40** on 8 cores, and a bare `ps -Aro` taking
-over 120 s to return. The largest trigger was this session's own `git checkout -- audio/voice/`,
-which restored **1,372 .m4a files** at once. Any `.fpscheck.js` reading taken while `bird` is
-working is contaminated, whatever the harness says about `onMains`.
-- Do **not** suspend `bird` to get a quiet box — it hangs other apps at launch. Wait it out.
-- Check `ps -Aro pcpu,comm | head` and `uptime` BEFORE quoting any frame number, not after.
+Load average hit **59.84 / 44.50 / 22.56** on 8 cores during measurement, and a bare `ps -Aro` took
+over 120 s to return. Three contributors, in the order they actually mattered — the first was
+misdiagnosed here at first and the correction is the useful part:
+- **Orphaned headless Chrome from the harness itself.** One `--headless=new` process at **75.7%**
+  with its node parent already gone, plus a helper at 38.3%. `.fpscheck.js` does not always reap
+  its browser. **Check `pgrep -f headless` and kill strays BEFORE measuring** — a previous run's
+  leak is the most likely reason a fresh run looks slow.
+- **Unrelated user work on the same box.** A `zgen.py` job at 20.6% for 14+ minutes. Nothing to do
+  with this repo; it simply means the machine is not always available for timing, and the harness's
+  `machineStable`/`windowQuiet` conjuncts are what catch it.
+- **iCloud, but only in spikes, not sustained.** The repo sits on an iCloud-synced Desktop and
+  `bird` was caught at **65.9%** right after this session restored 1,372 `.m4a` files in one
+  `git checkout -- audio/voice/`. It fell back to **0.0%** while load stayed high, so `bird` is a
+  spike on large writes, **not** the standing cause. An earlier version of this entry blamed iCloud
+  for the whole thing; that was wrong and is corrected here so nobody re-derives it.
+- Do **not** suspend `bird` — it hangs other apps at launch. Wait out the spike instead.
 - Do not run `brctl status` to check sync progress; it blocks indefinitely when the provider is
   busy and it hung a shell here.
 
